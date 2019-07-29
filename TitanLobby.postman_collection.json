@@ -1,0 +1,337 @@
+{
+	"info": {
+		"_postman_id": "84f3ae5f-2c19-4ba3-ba0b-f3d6d8d535cb",
+		"name": "TitanLobby",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Login",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "5c59aeb2-bd8b-4ebd-939a-782a7af45a2d",
+						"exec": [
+							"pm.globals.set(\"TITAN_TOKEN\", pm.response.json().accessToken);",
+							"pm.globals.set(\"TITAN_REFRESH\", pm.response.json().refreshToken);",
+							"pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"name": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"usernameOrEmail\": \"markd315@gmail.com\",\n\t\"password\": \"pass\"\n}"
+				},
+				"url": {
+					"raw": "https://ec2-18-223-131-64.us-east-2.compute.amazonaws.com:8080/login",
+					"protocol": "https",
+					"host": [
+						"ec2-18-223-131-64",
+						"us-east-2",
+						"compute",
+						"amazonaws",
+						"com"
+					],
+					"port": "8080",
+					"path": [
+						"login"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "refresh",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "5c59aeb2-bd8b-4ebd-939a-782a7af45a2d",
+						"exec": [
+							"pm.globals.set(\"TITAN_TOKEN\", pm.response.json().accessToken);",
+							"pm.globals.set(\"TITAN_REFRESH\", pm.response.json().refreshToken);",
+							"pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{TITAN_REFRESH}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"name": "Content-Type",
+						"type": "text",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "https://ec2-18-223-131-64.us-east-2.compute.amazonaws.com:8080/refresh",
+					"protocol": "https",
+					"host": [
+						"ec2-18-223-131-64",
+						"us-east-2",
+						"compute",
+						"amazonaws",
+						"com"
+					],
+					"port": "8080",
+					"path": [
+						"refresh"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Login oppo",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "5c59aeb2-bd8b-4ebd-939a-782a7af45a2d",
+						"exec": [
+							"pm.globals.set(\"TITAN_TOKEN\", pm.response.json().accessToken);",
+							"pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"name": "Content-Type",
+						"type": "text",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"usernameOrEmail\": \"mattbuster\",\n\t\"password\": \"pass\"\n}"
+				},
+				"url": {
+					"raw": "https://ec2-18-223-131-64.us-east-2.compute.amazonaws.com:8080/login",
+					"protocol": "https",
+					"host": [
+						"ec2-18-223-131-64",
+						"us-east-2",
+						"compute",
+						"amazonaws",
+						"com"
+					],
+					"port": "8080",
+					"path": [
+						"login"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Join",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://ec2-18-223-131-64.us-east-2.compute.amazonaws.com:8080/join",
+					"protocol": "https",
+					"host": [
+						"ec2-18-223-131-64",
+						"us-east-2",
+						"compute",
+						"amazonaws",
+						"com"
+					],
+					"port": "8080",
+					"path": [
+						"join"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Leave",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://ec2-18-223-131-64.us-east-2.compute.amazonaws.com:8080/leave",
+					"protocol": "https",
+					"host": [
+						"ec2-18-223-131-64",
+						"us-east-2",
+						"compute",
+						"amazonaws",
+						"com"
+					],
+					"port": "8080",
+					"path": [
+						"leave"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Gamecheck",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://ec2-18-223-131-64.us-east-2.compute.amazonaws.com:8080/gamecheck",
+					"protocol": "https",
+					"host": [
+						"ec2-18-223-131-64",
+						"us-east-2",
+						"compute",
+						"amazonaws",
+						"com"
+					],
+					"port": "8080",
+					"path": [
+						"gamecheck"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "user create",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"name": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"username\": \"pou\",\n\t\"password\": \"jeff\",\n\t\"email\": \"eeemail\",\n\t\"role\": \"USER\"\n}"
+				},
+				"url": {
+					"raw": "https://ec2-18-223-131-64.us-east-2.compute.amazonaws.com:8080/",
+					"protocol": "https",
+					"host": [
+						"ec2-18-223-131-64",
+						"us-east-2",
+						"compute",
+						"amazonaws",
+						"com"
+					],
+					"port": "8080",
+					"path": [
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "stat",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"name": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"username\": \"u3\"\n}"
+				},
+				"url": {
+					"raw": "https://ec2-18-223-131-64.us-east-2.compute.amazonaws.com:8080/stat",
+					"protocol": "https",
+					"host": [
+						"ec2-18-223-131-64",
+						"us-east-2",
+						"compute",
+						"amazonaws",
+						"com"
+					],
+					"port": "8080",
+					"path": [
+						"stat"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{TITAN_TOKEN}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"id": "927cafc2-d9cd-4fc7-bc3d-61f7fc7a5f2a",
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"id": "49b525ea-9100-4700-827f-8d5cf869d852",
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	]
+}

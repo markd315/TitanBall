@@ -1,0 +1,24 @@
+---
+LMB: SHOT
+RMB: MV_CLICK
+32: CAM #Space
+81: E #Q
+87: R #W
+69: PASS #E
+82: BOOST_LOCK #R
+84: STEAL #T
+90: SWITCH #Z
+49: E #1
+50: R #2
+51: BOOST #3
+52: BOOST_LOCK #4
+70: BOOST #F
+71: BOOST_LOCK #G
+88: MV_CLICK #X
+67: MV_BALL #C
+73: INSTR #I
+79: SHOT #O
+80: PASS #P
+#See link for key numbers in the left column
+#https://docs.oracle.com/javase/7/docs/api/constant-values.html#java.awt.event.KeyEvent.VK_T
+#Alternate RTS-style bindings provided with move-right-click for those used to games like LOL/DOTA
