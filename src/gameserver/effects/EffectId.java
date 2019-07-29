@@ -1,0 +1,7 @@
+package gameserver.effects;
+
+public enum EffectId {
+    BURN, FLARE, BOMB, COOLDOWN_E, COOLDOWN_R,
+    STUN, DEAD, ROOT, CURSED, FAST, DEFENSE, HEAL,
+    STEALTHED, SLOW, SHOOT, COOLDOWN_CURVE, POSSESSION, BLIND
+}

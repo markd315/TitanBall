@@ -1,0 +1,27 @@
+TargetSelector can take an Effect or a Runnable, maybe a cooldown too
+
+img:file displays in row at bottom left with spinners
+if modifies entity variables in onActive (multiplicatively), make sure it restores them in onCease
+
+Activator map that decodes keypres+titantype
+
+
+Titan contains Ability[]
+
+Ability(keycode, titantype, cooldown_id, Targeting, Effect):
+constructor populates activator map
+constructor populates effect map from id->impl class
+
+this should allow us to "set and forget" abilities with the flow:
+Activator is checked and tripped when processing client keys
+Cooldown is checked and returned for validity
+Selector is created and pool returned
+pool reduced by any filters/limits
+Any effects are created on the victims/targets
+The ability goes back on cooldown
+
+fix bug where ball can be taken on attacking away goalie
+make ball taken by any collision with a goalie during intersect check
+
+
+Colliders that persist for a duration and tear down. Tick mode and one-hit mode.
