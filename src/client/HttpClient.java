@@ -4,20 +4,19 @@ import com.mashape.unirest.http.HttpResponse;
 import com.mashape.unirest.http.JsonNode;
 import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
+import org.json.JSONObject;
 
 public class HttpClient {
 
-    public static String token = null;
-    public static String gameId;
+    public String token, refreshToken = null;
+    public String gameId;
 
-    public static String springEndpoint() {
+    public String springEndpoint() {
         return "http://" + System.getenv("host") + ":8080/";
     }
 
-    public static String authenticate() {
+    public String authenticate(String un, String pass) {
         try {
-            String un = System.getenv("user");
-            String pass = System.getenv("pass");
             HttpResponse<JsonNode> response = Unirest.post(springEndpoint() + "login")
                     .header("accept", "application/json")
                     .header("Content-Type", "application/json")
@@ -25,25 +24,41 @@ public class HttpClient {
                             " \"password\" :\"" + pass + "\"}")
                     .asJson();
             System.out.println("statusCode = " + response.getStatus());
-            System.out.println("auth result");
-            System.out.println(response.getBody().getObject().toString());
-            System.out.println(response.getBody().getObject().get("accessToken").toString());
             token = response.getBody().getObject().get("accessToken").toString();
-            System.out.println("token = " + token);
+            refreshToken = response.getBody().getObject().get("refreshToken").toString();
         } catch (Exception ex) {
         }
         return token;
     }
 
-    public static void join() throws UnirestException {
-        while (joinRequest() == 401) {
-            token = null;
-            System.out.println("Session expired, refreshing token");
-            authenticate();
+    public int refresh() throws UnirestException {
+        return refresh(this.refreshToken);
+    }
+
+    public int refresh(String inputRt) throws UnirestException {
+        try {
+            HttpResponse<JsonNode> response = Unirest.post(springEndpoint() + "refresh")
+                    .header("Authorization", "Bearer " + inputRt)
+                    .asJson();
+            System.out.println("statusCode = " + response.getStatus());
+            JSONObject body = response.getBody().getObject();
+            this.token = body.getString("accessToken");
+            this.refreshToken = body.getString("refreshToken");
+            return response.getStatus();
+        }catch (Exception e){
+            return 401;
         }
     }
 
-    public static int joinRequest() throws UnirestException {
+    public void join() throws UnirestException {
+        while (joinRequest() == 401) {
+            token = null;
+            System.out.println("Session expired, refreshing token");
+            refresh(refreshToken);
+        }
+    }
+
+    public int joinRequest() throws UnirestException {
         try {
             HttpResponse<String> response = Unirest.get(springEndpoint() + "join")
                     .header("Authorization", "Bearer " + token)
@@ -57,15 +72,15 @@ public class HttpClient {
         }
     }
 
-    public static void leave() throws UnirestException {
+    public void leave() throws UnirestException {
         while (leaveRequest() == 401) {
             token = null;
             System.out.println("Session expired, refreshing token");
-            authenticate();
+            refresh(refreshToken);
         }
     }
 
-    public static int leaveRequest() throws UnirestException {
+    public int leaveRequest() throws UnirestException {
         try {
             HttpResponse<String> response = Unirest.get(springEndpoint() + "leave")
                     .header("Authorization", "Bearer " + token)
@@ -79,15 +94,15 @@ public class HttpClient {
         }
     }
 
-    public static void stat() throws UnirestException {
+    public void stat() throws UnirestException {
         while (statRequest() == 401) {
             token = null;
             System.out.println("Session expired, refreshing token");
-            authenticate();
+            refresh(refreshToken);
         }
     }
 
-    public static int statRequest(){
+    public int statRequest(){
         try {
             HttpResponse<String> response = Unirest.get(springEndpoint() + "stat")
                     .header("Authorization", "Bearer " + token)
@@ -103,15 +118,15 @@ public class HttpClient {
     }
     }
 
-    public static void check() throws UnirestException {
+    public void check() throws UnirestException {
         while (checkRequest() == 401) {
             token = null;
             System.out.println("Session expired, refreshing token");
-            authenticate();
+            refresh(refreshToken);
         }
     }
 
-    public static int checkRequest(){
+    public int checkRequest(){
         try {
             HttpResponse<String> response = Unirest.get(springEndpoint() + "gamecheck")
                     .header("Authorization", "Bearer " + token)

@@ -93,7 +93,7 @@ public class GameTenant {
                     PlayerDivider pd = dividerFromConn(client.getClient());
                     update.underControl = update.titanSelected(pd);
                     //System.out.println("updating " + pd.id + update.underControl.getType().toString());
-                    client.getClient().sendTCP(update);
+                    client.getClient().sendUDP(update);
                 });
             };
 

@@ -36,6 +36,7 @@ C:\Users\markd\Chaosball\src\gameserver\Game.java
 C:\Users\markd\Chaosball\src\authserver\users\UserRepository.java
 C:\Users\markd\Chaosball\src\gameserver\effects\effects\Effect.java
 C:\Users\markd\Chaosball\src\gameserver\effects\effects\EmptyEffect.java
+C:\Users\markd\Chaosball\src\client\forms\LoginForm.java
 C:\Users\markd\Chaosball\src\client\Images.java
 C:\Users\markd\Chaosball\src\gameserver\targeting\Limiter.java
 C:\Users\markd\Chaosball\src\gameserver\effects\effects\BombEffect.java
@@ -46,6 +47,7 @@ C:\Users\markd\Chaosball\src\gameserver\targeting\Selector.java
 C:\Users\markd\Chaosball\src\networking\CandidateGame.java
 C:\Users\markd\Chaosball\src\authserver\jwt\JwtAuthenticationFilter.java
 C:\Users\markd\Chaosball\src\authserver\SpringContext.java
+C:\Users\markd\Chaosball\src\client\forms\LoginListener.java
 C:\Users\markd\Chaosball\src\client\StaticImage.java
 C:\Users\markd\Chaosball\src\gameserver\effects\EffectId.java
 C:\Users\markd\Chaosball\src\gameserver\engine\TeamAffiliation.java

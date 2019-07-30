@@ -32,6 +32,7 @@ gameserver\engine\StatEngine.class
 client\GoalSprite.class
 gameserver\effects\effects\DefenseEffect.class
 gameserver\ServerMode.class
+client\forms\LoginListener.class
 gameserver\effects\cooldowns\CooldownCurve.class
 gameserver\effects\EffectId.class
 gameserver\ServerApplication.class
@@ -71,6 +72,7 @@ gameserver\effects\effects\DeadEffect.class
 gameserver\effects\effects\FlareEffect.class
 gameserver\engine\TeamAffiliation.class
 authserver\matchmaking\Rating.class
+client\forms\LoginForm.class
 gameserver\entity\RangeCircle.class
 gameserver\entity\minions\Wall.class
 util\Util.class

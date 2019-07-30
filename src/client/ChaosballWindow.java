@@ -1,21 +1,31 @@
 package client;
-/* client.src.ChaosballWindow for Java main client
+/* loginClient.src.ChaosballWindow for Java main client
  * Chaosball Alpha testing version
  * */
 
+import client.forms.LoginForm;
+
 import javax.swing.*;
 import java.awt.*;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.Scanner;
 
 public class ChaosballWindow extends JFrame {
-    public ChaosballWindow() throws IOException {
+    private static HttpClient loginClient;
+
+    public ChaosballWindow(HttpClient loginClient) {
+        this.loginClient = loginClient;
         initUI();
     }
 
-    private void initUI() throws IOException {
+    private void initUI() {
         int xSize = 1920;
         int ySize = 1080;
-        add(new client.ChaosballClient(xSize, ySize));
+        ChaosballClient client = new ChaosballClient(xSize, ySize, loginClient);
+        add(client);
+
         setTitle("Chaosball Alpha");
         //GraphicsConfiguration config = this.getGraphicsConfiguration();
         //Rectangle usableBounds = SunGraphicsEnvironment.getUsableBounds(config.getDevice());
@@ -30,16 +40,38 @@ public class ChaosballWindow extends JFrame {
         setResizable(false);
     }
 
-    public static void main(String[] args) {
+    private static void writeRefreshToken(String refreshToken) throws IOException {
+        FileOutputStream fio = new FileOutputStream(new File("session.jwt"));
+        fio.write(refreshToken.getBytes());
+        fio.close();
+    }
 
-        EventQueue.invokeLater(() -> {
-            ChaosballWindow ex = null;
-            try {
-                ex = new ChaosballWindow();
-            } catch (IOException e) {
-                e.printStackTrace();
+    public static void main(String[] args) throws IOException {
+        loginClient = new HttpClient();
+        try{
+            Scanner sc = new Scanner(new File("session.jwt"));
+            loginClient.refreshToken = sc.nextLine();
+            sc.close();
+            if(loginClient.refresh(loginClient.refreshToken) != 200){
+                throw new Exception("Refresh token invalid!");
             }
-            ex.setVisible(true);
+            writeRefreshToken(loginClient.refreshToken);
+        }
+        catch(Exception ex) {
+            LoginForm authFrame = new LoginForm(loginClient);
+            authFrame.setVisible(false);
+            authFrame.dispose();
+            authFrame = null;
+            System.gc();
+            writeRefreshToken(loginClient.refreshToken);
+        }
+        String finalToken = loginClient.token;
+        String finalRefreshToken = loginClient.refreshToken;
+        System.out.println(finalToken + " bearer");
+        System.out.println(finalRefreshToken + " refresh");
+        EventQueue.invokeLater(() -> {
+            ChaosballWindow fr = new ChaosballWindow(loginClient);
+            fr.setVisible(true);
         });
     }
 }

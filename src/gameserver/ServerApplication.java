@@ -27,12 +27,12 @@ public class ServerApplication {
     static UserService userService;
 
     public static void main(String[] args) throws IOException {
-        Server server = new Server();
+        Server server = new Server(16384*8, 2048*8);
         Kryo kryo = server.getKryo();
         KryoRegistry.register(kryo);
         server.start();
         //gameserver.setHardy(true);
-        server.bind(54555);
+        server.bind(54555, 54556);
 
         states = new HashMap<>();
 

@@ -70,7 +70,7 @@ public class User implements Serializable, UserDetails {
     public User(){
         this.wins = 0;
         this.losses = 0;
-        this.rating = 1200.0;
+        this.rating = 1000.0;
         this.goals = 0;
         this.points = 0.0;
         this.steals = 0;

@@ -43,7 +43,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class ChaosballClient extends JPanel implements ActionListener, KeyListener {
-    private Client client = new Client(8192*2, 32768*2);
+    private Client client = new Client(8192*8, 32768*8);
     private String gameID;
     private Game game;
     ClientPacket controlsHeld = new ClientPacket();
@@ -73,8 +73,16 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
     private boolean camFollow = false;
     int xSize, ySize;
     private boolean keysEnabled = true;
-    private String token;
+    private String token, refresh;
+    private HttpClient loginClient;
 
+    public void setAuth(String token, String refresh){
+        this.token = token;
+        this.refresh = refresh;
+        loginClient = new HttpClient();
+        loginClient.token = token;
+        loginClient.refreshToken = refresh;
+    }
 
     public int indexSelected(){
         for(int i=0; i<game.players.length; i++){
@@ -169,7 +177,7 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
         client.start();
         //client.setHardy(true);
         gameID = waitForGame(g);
-        client.connect(5000, System.getenv("host"), 54555);
+        client.connect(60000, System.getenv("host"), 54555,54556);
         //client.connect(5000, "127.0.0.1", 54555);
         client.addListener(new Listener() {
             public synchronized void received(Connection connection, Object object) {
@@ -202,21 +210,20 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
     }
 
     private String waitForGame(Graphics g) throws UnirestException, InterruptedException {
-        HttpClient.authenticate();
-        token = HttpClient.token;
-        HttpClient.join();
-        while(HttpClient.gameId == null
-        || HttpClient.gameId.equals("NOT QUEUED")
-        || HttpClient.gameId.equals("WAITING")){
+        token = loginClient.token;
+        loginClient.join();
+        while(loginClient.gameId == null
+        || loginClient.gameId.equals("NOT QUEUED")
+        || loginClient.gameId.equals("WAITING")){
             lobby(g);
-            if(HttpClient.gameId.equals("NOT QUEUED")){
+            if(loginClient.gameId.equals("NOT QUEUED")){
                 throw new UnirestException("Server not accepting connections");
             }
-            HttpClient.check();
-            System.out.println(HttpClient.gameId);
-            Thread.sleep(100);
+            loginClient.check();
+            System.out.println(loginClient.gameId);
+            Thread.sleep(1000);
         }
-        return HttpClient.gameId;
+        return loginClient.gameId;
     }
 
     public void rotTranslateArrow(Graphics2D g2D, int xt, int yt, double rot){
@@ -858,9 +865,10 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
         phase = 5;
     }
 
-    public ChaosballClient(int xSize, int ySize) {
+    public ChaosballClient(int xSize, int ySize, HttpClient loginClient) {
         this.xSize = xSize;
         this.ySize = ySize;
+        this.loginClient = loginClient;
         intro.loadImage("res/Court/LogoIndi.png");
         ballTexture.loadImage("res/Court/ballA.png");
         ballBTexture.loadImage("res/Court/ballB.png");
