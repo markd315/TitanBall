@@ -1,6 +1,6 @@
 package gameserver.effects.effects;
 
-import gameserver.Game;
+import gameserver.GameEngine;
 import gameserver.effects.EffectId;
 import gameserver.entity.Entity;
 
@@ -11,17 +11,17 @@ public class TestEffect extends Effect {
     }
 
     @Override
-    public void onActivate(Game context) {
+    public void onActivate(GameEngine context) {
         System.out.println("activated");
     }
 
     @Override
-    public void onCease(Game context) {
+    public void onCease(GameEngine context) {
         System.out.println("ceased");
     }
 
     @Override
-    public void onTick(Game context) {
+    public void onTick(GameEngine context) {
         System.out.println("ticked");
     }
 

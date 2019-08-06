@@ -1,6 +1,6 @@
 package gameserver.entity.minions;
 
-import gameserver.Game;
+import gameserver.GameEngine;
 import gameserver.engine.TeamAffiliation;
 import gameserver.entity.Box;
 import gameserver.entity.Collidable;
@@ -20,7 +20,7 @@ public class Trap extends gameserver.entity.Entity implements Collidable {
     }
 
     @Override
-    public void triggerCollide(Game context, Box box) {
+    public void triggerCollide(GameEngine context, Box box) {
         if (box instanceof Entity) {
             Entity entity = (Entity) box;
             if (entity.team != this.team) {

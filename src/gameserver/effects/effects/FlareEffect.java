@@ -1,6 +1,6 @@
 package gameserver.effects.effects;
 
-import gameserver.Game;
+import gameserver.GameEngine;
 import gameserver.effects.EffectId;
 import gameserver.entity.Entity;
 
@@ -19,16 +19,16 @@ public class FlareEffect extends Effect {
     }
 
     @Override
-    public void onActivate(Game context) {
+    public void onActivate(GameEngine context) {
         on.damage(context, initialDamage);
     }
 
     @Override
-    public void onCease(Game context) {
+    public void onCease(GameEngine context) {
     }
 
     @Override
-    public void onTick(Game context) {
+    public void onTick(GameEngine context) {
         on.damage(context, recurringDamage);
     }
 

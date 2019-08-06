@@ -1,6 +1,6 @@
 package networking;
 
-import gameserver.Game;
+import gameserver.GameEngine;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -47,7 +47,7 @@ public class PlayerDivider {
         this.selection = possibleSelection.get(0);
     }
 
-    public void incSel(Game context){
+    public void incSel(GameEngine context){
         context.players[this.selection - 1].sel = 0;
         //System.out.println("client updating from " + this.selection);
         int index = possibleSelection.indexOf(this.selection);

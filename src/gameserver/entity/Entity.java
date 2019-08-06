@@ -1,7 +1,7 @@
 package gameserver.entity;
 
 
-import gameserver.Game;
+import gameserver.GameEngine;
 import gameserver.effects.effects.DeadEffect;
 import gameserver.engine.TeamAffiliation;
 
@@ -34,14 +34,14 @@ public class Entity extends Box {
             this.health = this.maxHealth;
     }
 
-    public void damage(Game context, double health) {
+    public void damage(GameEngine context, double health) {
         health /= this.armorRatio;
         this.health -= health;
         if (this.health < 0.0)
             this.die(context);
     }
 
-    private void die(Game context) {
+    private void die(GameEngine context) {
         context.effectPool.addUniqueEffect(new DeadEffect(4000, this));
     }
 
@@ -65,7 +65,7 @@ public class Entity extends Box {
     }
 
 
-    public boolean teamPoss(Game context) {
+    public boolean teamPoss(GameEngine context) {
         for(Titan t : context.players){
             if(t.possession == 1 && t.team.equals(this.team)){
                 return true;

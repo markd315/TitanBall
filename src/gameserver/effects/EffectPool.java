@@ -1,6 +1,6 @@
 package gameserver.effects;
 
-import gameserver.Game;
+import gameserver.GameEngine;
 import gameserver.effects.effects.Effect;
 import gameserver.entity.Entity;
 import gameserver.entity.Titan;
@@ -16,7 +16,7 @@ public class EffectPool{
         this.castBy = new ArrayList<>();
     }
 
-    public void tickAll(Game context){
+    public void tickAll(GameEngine context){
         List<Effect> rm = new ArrayList<>();
         for(int i=0; i<pool.size(); i++){
             Effect e = pool.get(i);
@@ -155,7 +155,7 @@ public class EffectPool{
         return hasEffect(t, EffectId.ROOT) || hasEffect(t, EffectId.STUN);
     }
 
-    public void cullAllOn(Game context, Entity on) {
+    public void cullAllOn(GameEngine context, Entity on) {
         for(int i=0; i<pool.size(); i++){
             Effect e = pool.get(i);
             Entity t = targetPool.get(i);

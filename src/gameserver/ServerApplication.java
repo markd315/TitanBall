@@ -96,7 +96,7 @@ public class ServerApplication {
         }
     }
 
-    private static void injectRatingsToPlayers(Game state) {
+    private static void injectRatingsToPlayers(GameEngine state) {
         List<Rating> home = new ArrayList<>(), away = new ArrayList<>();
         for(PlayerDivider pl : state.clients){
             User persistence = userService.findUserByEmail(pl.email);

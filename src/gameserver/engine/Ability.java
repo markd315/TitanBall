@@ -1,6 +1,6 @@
 package gameserver.engine;
 
-import gameserver.Game;
+import gameserver.GameEngine;
 import gameserver.effects.EffectId;
 import gameserver.effects.cooldowns.CooldownCurve;
 import gameserver.effects.cooldowns.CooldownE;
@@ -35,7 +35,7 @@ public class Ability {
     static Limiter unlimited = new Limiter(SortBy.NEAREST, 999);
     static Limiter mouseNear = new Limiter(SortBy.NEAREST_MOUSE, 1);
 
-    public static boolean castE(Game context, Titan caster) throws NullPointerException{
+    public static boolean castE(GameEngine context, Titan caster) throws NullPointerException{
         int clientIndex = context.clientIndex(caster);
         int x = context.lastControlPacket[clientIndex].posX + context.lastControlPacket[clientIndex].camX;
         int y = context.lastControlPacket[clientIndex].posY + context.lastControlPacket[clientIndex].camY;
@@ -196,7 +196,7 @@ public class Ability {
         return false;
     }
 
-    public static boolean castR(Game context, Titan caster) throws NullPointerException{
+    public static boolean castR(GameEngine context, Titan caster) throws NullPointerException{
         int clientIndex = context.clientIndex(caster);
         int x = context.lastControlPacket[clientIndex].posX + context.lastControlPacket[clientIndex].camX;
         int y = context.lastControlPacket[clientIndex].posY + context.lastControlPacket[clientIndex].camY;
@@ -379,7 +379,7 @@ public class Ability {
         return false;
     }
 
-    public static boolean castQ(Game context, Titan caster) throws NullPointerException{
+    public static boolean castQ(GameEngine context, Titan caster) throws NullPointerException{
         Selector sel = null;
         Shape shape = null;
         Set<Entity> appliedTo = null;

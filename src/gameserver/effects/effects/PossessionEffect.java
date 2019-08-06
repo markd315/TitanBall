@@ -1,7 +1,7 @@
 package gameserver.effects.effects;
 
 
-import gameserver.Game;
+import gameserver.GameEngine;
 import gameserver.effects.EffectId;
 import gameserver.entity.Entity;
 
@@ -11,19 +11,19 @@ public class PossessionEffect extends Effect {
     }
 
     @Override
-    public void onActivate(Game context) {
+    public void onActivate(GameEngine context) {
         on.setHealReduce(on.getHealReduce() * 1000);
         on.setSpeed(on.getSpeed() / 3.2);
     }
 
     @Override
-    public void onCease(Game context) {
+    public void onCease(GameEngine context) {
         on.setHealReduce(on.getHealReduce() / 1000);
         on.setSpeed(on.getSpeed() * 3.2);
     }
 
     @Override
-    public void onTick(Game context) {
+    public void onTick(GameEngine context) {
     }
 
     public PossessionEffect(){}

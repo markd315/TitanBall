@@ -1,7 +1,7 @@
 package gameserver.entity.minions;
 
+import gameserver.GameEngine;
 import org.joda.time.Instant;
-import gameserver.Game;
 import gameserver.engine.TeamAffiliation;
 import gameserver.entity.Box;
 import gameserver.entity.Collidable;
@@ -55,7 +55,7 @@ public class BallPortal extends Entity implements Collidable {
         }
     }
 
-    private Optional<BallPortal> findFriendlyBallPortal(Game context, UUID creator) {
+    private Optional<BallPortal> findFriendlyBallPortal(GameEngine context, UUID creator) {
         for (Entity e : context.entityPool) {
             if (e instanceof BallPortal) {
                 BallPortal p = (BallPortal) e;
@@ -72,7 +72,7 @@ public class BallPortal extends Entity implements Collidable {
     }
 
     @Override
-    public void triggerCollide(Game context, Box entity) {
+    public void triggerCollide(GameEngine context, Box entity) {
         if (!this.isCooldown()) {
             Optional<BallPortal> p = findFriendlyBallPortal(context, this.createdById);
             if(!context.ball.id.equals(entity.id)){

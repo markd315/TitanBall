@@ -1,7 +1,7 @@
 package gameserver.effects.effects;
 
 import client.StaticImage;
-import gameserver.Game;
+import gameserver.GameEngine;
 import gameserver.effects.EffectId;
 import gameserver.entity.Entity;
 import org.joda.time.Duration;
@@ -15,9 +15,9 @@ public abstract class Effect {
     public Entity on;
     public StaticImage icon;
 
-    public abstract void onActivate(Game context);
-    public abstract void onCease(Game context);
-    public abstract void onTick(Game context); //Writes data, call once per game tick
+    public abstract void onActivate(GameEngine context);
+    public abstract void onCease(GameEngine context);
+    public abstract void onTick(GameEngine context); //Writes data, call once per game tick
 
     public Image getIcon(){
         icon = new StaticImage();
@@ -46,7 +46,7 @@ public abstract class Effect {
         return icon.getImage();
     }
 
-    public boolean tick(Game context){//Removes from effect pool when expired
+    public boolean tick(GameEngine context){//Removes from effect pool when expired
         if(Instant.now().isBefore(getBegin())){
             return false;
         }
@@ -87,7 +87,7 @@ public abstract class Effect {
         return true;
     }
 
-    public void cull(Game context){
+    public void cull(GameEngine context){
         onCease(context);
         this.setEnd(Instant.now());
         this.everActive = true;

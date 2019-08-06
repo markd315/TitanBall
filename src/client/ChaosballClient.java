@@ -6,7 +6,6 @@ import com.esotericsoftware.kryonet.Client;
 import com.esotericsoftware.kryonet.Connection;
 import com.esotericsoftware.kryonet.Listener;
 import com.mashape.unirest.http.exceptions.UnirestException;
-import gameserver.Game;
 import gameserver.effects.EffectId;
 import gameserver.effects.cooldowns.CooldownE;
 import gameserver.effects.cooldowns.CooldownR;
@@ -24,17 +23,17 @@ import gameserver.entity.TitanType;
 import gameserver.entity.minions.BallPortal;
 import gameserver.entity.minions.Portal;
 import gameserver.entity.minions.Wall;
+import gameserver.models.Game;
 import gameserver.targeting.ShapePayload;
 import networking.KryoRegistry;
 import org.json.JSONObject;
+import util.Util;
 
 import javax.swing.Timer;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
-import java.awt.geom.AffineTransform;
-import java.awt.geom.Arc2D;
-import java.awt.geom.Ellipse2D;
+import java.awt.geom.*;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
@@ -75,6 +74,7 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
     private boolean keysEnabled = true;
     private String token, refresh;
     private HttpClient loginClient;
+    private boolean instructionToggle = false;
 
     public void setAuth(String token, String refresh){
         this.token = token;
@@ -161,7 +161,9 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
                 if(rank == 3){
                     g2D.setColor(new Color(.804f, .498f, .196f));//gold silver bronze
                 }
-                g2D.drawString(""+rank ,295, y);
+                g2D.fill(new Ellipse2D.Double(290+1, y-14+1, 16, 16));
+                g2D.setColor(Color.BLACK);
+                g2D.draw(new Ellipse2D.Double(290, y-14, 18, 18));
             }
             y+= 23;
         }
@@ -296,12 +298,15 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
         ballFrameCounter = 0;
         camX = 500;
         camY = 300;
-        game.serverGoalScored();
     }
 
     private void doDrawing(Graphics g) {
         Graphics2D g2D = (Graphics2D) g;
         if (game == null) {
+            return;
+        }
+        if (instructionToggle){
+            tutorial(g);
             return;
         }
         g2D.drawImage(field.getImage(), (1 - camX), (1 - camY), this);
@@ -400,11 +405,42 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
         }
 
         if(game.underControl.possession == 1){
+            g2D.setStroke(new BasicStroke(1));
             double pow = game.underControl.throwPower;
-            RangeCircle shot = new RangeCircle(new Color(.65f,0f,0f), (int) (320 * pow));
-            RangeCircle pass = new RangeCircle(Color.BLUE, (int) (186 * pow));
-            clientCircles.add(shot);
-            clientCircles.add(pass);
+            double mx = controlsHeld.posX + camX;
+            double my = controlsHeld.posY + camY;
+            double ox = game.underControl.X - camX + 35;
+            double oy = game.underControl.Y - camY + 35;
+            double angle = Math.toRadians(Util.degreesFromCoords(mx - game.underControl.X - 35,
+                    my - game.underControl.Y - 35));
+            Line2D pass = new Line2D.Double(ox,
+                    oy,
+                    ox+ (186*pow*Math.cos(angle)),
+                    oy+ (186*pow*Math.sin(angle)));
+            g2D.setColor(Color.BLUE);
+            g2D.draw(pass);
+            Line2D shot = new Line2D.Double(ox+ (186*pow*Math.cos(angle)),
+                    oy+ (186*pow*Math.sin(angle)),
+                    ox+ (320*pow*Math.cos(angle)),
+                    oy+ (320*pow*Math.sin(angle)));
+            g2D.setColor(new Color(.65f,0f,0f));
+            g2D.draw(shot);
+            if(game.underControl.possession == 1 && game.underControl.getType() == TitanType.ARTISAN){
+                QuadCurve2D eL = new QuadCurve2D.Double(ox, oy,
+                        ox+ (310*pow*Math.cos(angle-.97)),
+                        oy+ (310*pow*Math.sin(angle-.97)),
+                        ox+ (186*pow*Math.cos(angle)),
+                        oy+ (186*pow*Math.sin(angle)));
+                QuadCurve2D eR = new QuadCurve2D.Double(ox, oy,
+                        ox+ (310*pow*Math.cos(angle+.97)),
+                        oy+ (310*pow*Math.sin(angle+.97)),
+                        ox+ (186*pow*Math.cos(angle)),
+                        oy+ (186*pow*Math.sin(angle)));
+                g2D.setColor(Color.GREEN);
+                g2D.draw(eL);
+                g2D.setColor(new Color(.45f, .0f, .85f));
+                g2D.draw(eR);
+            }
         }
         else{
             RangeCircle steal = new RangeCircle(new Color(.25f,.75f,.75f), 80);
@@ -416,14 +452,16 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
             g2D.setColor(ri.getColor());
             Titan t = game.underControl;
             if(ri.getRadius() > 0){
-                int w = ri.getRadius() * 2;
-                int h = ri.getRadius() * 2;
-                int x = (int)t.X + (t.width / 2) - w / 2;
-                int y = (int)t.Y + (t.height / 2) - w / 2;
-                Ellipse2D.Double ell = new Ellipse2D.Double(x, y, w, h);
-                ShapePayload c = new ShapePayload(ell);
-                Shape b = c.fromWithCamera(camX, camY);
-                g2D.draw(b);
+                if(t.getType() != TitanType.ARTISAN || t.possession == 0) {
+                    int w = ri.getRadius() * 2;
+                    int h = ri.getRadius() * 2;
+                    int x = (int) t.X + (t.width / 2) - w / 2;
+                    int y = (int) t.Y + (t.height / 2) - w / 2;
+                    Ellipse2D.Double ell = new Ellipse2D.Double(x, y, w, h);
+                    ShapePayload c = new ShapePayload(ell);
+                    Shape b = c.fromWithCamera(camX, camY);
+                    g2D.draw(b);
+                }
             }
         }
 
@@ -641,6 +679,49 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
         g2D.fill(healthStat);
     }
 
+    public void classFacts(Graphics2D g2D){
+        updateSelected();
+        double speed = Titan.normalOutOfTenFromStat(Titan.titanSpeed, controlsHeld.classSelecton);
+        double hp = Titan.normalOutOfTenFromStat(Titan.titanHealth, controlsHeld.classSelecton);
+        double shoot = Titan.normalOutOfTenFromStat(Titan.titanShoot, controlsHeld.classSelecton);
+        String e = Titan.titanEText.get(controlsHeld.classSelecton);
+        String r = Titan.titanRText.get(controlsHeld.classSelecton);
+        String text = Titan.titanText.get(controlsHeld.classSelecton);
+        g2D.setColor(Color.BLUE);
+        g2D.setFont(new Font("Verdana", Font.BOLD, 20));
+        g2D.fill(new Rectangle(1100, 100, 106, 9));
+        g2D.drawString("Speed", 1045, 80);
+        g2D.drawImage(new FastEffect(0,null)
+                .getIcon(), 1060, 100, this);
+        g2D.fill(new Rectangle(1100, 200, 106, 9));
+        g2D.drawString("Health", 1045, 180);
+        g2D.drawImage(new HealEffect(0,null)
+                .getIcon(), 1060, 200, this);
+        g2D.fill(new Rectangle(1100, 300, 106, 9));
+        g2D.drawString("Shot Power", 1027, 280);
+        g2D.drawImage(new ShootEffect(0,null)
+                .getIcon(), 1060, 300, this);
+
+        g2D.setColor(Color.BLACK);
+        g2D.setFont(new Font("Verdana", Font.BOLD, 22));
+        g2D.drawString(text, 20, 690);
+        g2D.setFont(new Font("Verdana", Font.BOLD, 14));
+
+        g2D.drawImage(new CooldownE(0,null)
+                .getIcon(), 712, 445, this);
+        g2D.drawString(e, 750, 460);
+        g2D.drawImage(new CooldownR(0,null)
+                .getIcon(), 712, 505, this);
+        g2D.drawString(r, 750, 520);
+
+        setColorBasedOnPercent(g2D, speed*10.0, false);
+        g2D.fill(new Rectangle(1103, 102, (int)(speed*10.0), 5));
+        setColorBasedOnPercent(g2D, hp*10.0, false);
+        g2D.fill(new Rectangle(1103, 202, (int)(hp*10.0), 5));
+        setColorBasedOnPercent(g2D, shoot*10.0, false);
+        g2D.fill(new Rectangle(1103, 302, (int)(shoot*10.0), 5));
+    }
+
     public void keyPressed(KeyEvent ke) {
         int key = ke.getKeyCode();
         // ONLY IF SET ON debugCamera =1
@@ -687,11 +768,11 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
             controlsHeld.SPACE = true;
             phase = 8;
         }
-        if (key == KeyEvent.VK_R && phase == 8 && keysEnabled) {
+        if ((key == KeyEvent.VK_R|| key == KeyEvent.VK_2) && phase == 8 && keysEnabled) {
             controlsHeld.R = true;
             //shotSound.rewindStart();
         }
-        if (key == KeyEvent.VK_E && phase == 8  && keysEnabled) {
+        if ((key == KeyEvent.VK_E || key == KeyEvent.VK_1) && phase == 8  && keysEnabled) {
             //shotSound.rewindStart();
             controlsHeld.E = true;
         }
@@ -734,49 +815,9 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
                 cursor += 4;
             }
         }
-    }
-
-    public void classFacts(Graphics2D g2D){
-        updateSelected();
-        double speed = Titan.normalOutOfTenFromStat(Titan.titanSpeed, controlsHeld.classSelecton);
-        double hp = Titan.normalOutOfTenFromStat(Titan.titanHealth, controlsHeld.classSelecton);
-        double shoot = Titan.normalOutOfTenFromStat(Titan.titanShoot, controlsHeld.classSelecton);
-        String e = Titan.titanEText.get(controlsHeld.classSelecton);
-        String r = Titan.titanRText.get(controlsHeld.classSelecton);
-        String text = Titan.titanText.get(controlsHeld.classSelecton);
-        g2D.setColor(Color.BLUE);
-        g2D.setFont(new Font("Verdana", Font.BOLD, 20));
-        g2D.fill(new Rectangle(1100, 100, 106, 9));
-        g2D.drawString("Speed", 1045, 80);
-        g2D.drawImage(new FastEffect(0,null)
-                .getIcon(), 1060, 100, this);
-        g2D.fill(new Rectangle(1100, 200, 106, 9));
-        g2D.drawString("Health", 1045, 180);
-        g2D.drawImage(new HealEffect(0,null)
-                .getIcon(), 1060, 200, this);
-        g2D.fill(new Rectangle(1100, 300, 106, 9));
-        g2D.drawString("Shot Power", 1027, 280);
-        g2D.drawImage(new ShootEffect(0,null)
-                .getIcon(), 1060, 300, this);
-
-        g2D.setColor(Color.BLACK);
-        g2D.setFont(new Font("Verdana", Font.BOLD, 22));
-        g2D.drawString(text, 20, 690);
-        g2D.setFont(new Font("Verdana", Font.BOLD, 14));
-
-        g2D.drawImage(new CooldownE(0,null)
-                .getIcon(), 712, 445, this);
-        g2D.drawString(e, 750, 460);
-        g2D.drawImage(new CooldownR(0,null)
-                .getIcon(), 712, 505, this);
-        g2D.drawString(r, 750, 520);
-
-        setColorBasedOnPercent(g2D, speed*10.0, false);
-        g2D.fill(new Rectangle(1103, 102, (int)(speed*10.0), 5));
-        setColorBasedOnPercent(g2D, hp*10.0, false);
-        g2D.fill(new Rectangle(1103, 202, (int)(hp*10.0), 5));
-        setColorBasedOnPercent(g2D, shoot*10.0, false);
-        g2D.fill(new Rectangle(1103, 302, (int)(shoot*10.0), 5));
+        if ((key == KeyEvent.VK_I) && keysEnabled) {
+            instructionToggle = true;
+        }
     }
 
     public void keyReleased(KeyEvent ke) {
@@ -822,11 +863,14 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
         if (key == KeyEvent.VK_Q) {
             controlsHeld.Q = false;
         }
-        if (key == KeyEvent.VK_E) {
+        if (key == KeyEvent.VK_E || key == KeyEvent.VK_1) {
             controlsHeld.E = false;
         }
-        if (key == KeyEvent.VK_R) {
+        if (key == KeyEvent.VK_R || key == KeyEvent.VK_2) {
             controlsHeld.R = false;
+        }
+        if ((key == KeyEvent.VK_I) && keysEnabled) {
+            instructionToggle = false;
         }
     }
 

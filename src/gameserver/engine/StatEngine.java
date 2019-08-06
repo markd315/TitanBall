@@ -1,6 +1,6 @@
 package gameserver.engine;
 
-import gameserver.Game;
+import gameserver.GameEngine;
 import gameserver.entity.Titan;
 import networking.PlayerDivider;
 import org.json.JSONObject;
@@ -31,7 +31,7 @@ public class StatEngine {
         grant(pl, en, 1.0);
     }
 
-    public void grant(Game context,  Titan t, StatEnum en){
+    public void grant(GameEngine context, Titan t, StatEnum en){
         PlayerDivider pl = context.clientFromTitan(t);
         grant(pl, en, 1.0);
     }
@@ -48,7 +48,6 @@ public class StatEngine {
         for(Map<String, Double> category : gamestats){
             String name = StatEnum.valueOf(gamestats.indexOf(category)).toString();
             if(category.containsKey(email)) {
-                System.out.println("stat found for " + name);
                 stats.put(name, category.get(email));
             }else{
                 stats.put(name, 0.0);
@@ -61,13 +60,33 @@ public class StatEngine {
         JSONObject ranks = new JSONObject();
         for(Map<String, Double> category : gamestats){
             String name = StatEnum.valueOf(gamestats.indexOf(category)).toString();
-            double actual;
-            actual = category.getOrDefault(t.email, 0.0);
-            List<Double> sortedCat = new ArrayList<>(category.values());
-            int rank = sortedCat.indexOf(actual) + 1;
+            double actual = category.getOrDefault(t.email, 0.0);
+            List<Double> toSort = new ArrayList<>(category.values());
+            if(actual == 0.0){
+                toSort.add(actual);
+            }
+            discernAndSortStat(name, toSort);
+            int rank = toSort.indexOf(actual) + 1;
             ranks.put(name, rank);
         }
         return ranks;
+    }
+
+    private void discernAndSortStat(String statName, List<Double> sort) {
+        statName = statName.toLowerCase();
+        switch(statName){
+            //Bad stats
+            case "deaths":
+            case "turnovers":
+                //Sort in ascending
+                sort.sort((o1, o2) -> (int) (o1 *500.0 - o2 *500.0));
+                break;
+            default:
+                sort.sort((o1, o2) -> (int) (o2 *500.0 - o1 *500.0));
+                break;
+
+        }
+        return;
     }
 
     public enum StatEnum {

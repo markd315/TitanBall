@@ -1,14 +1,14 @@
 package gameserver.entity.minions;
 
 
-import gameserver.Game;
+import gameserver.GameEngine;
 import gameserver.engine.TeamAffiliation;
 import gameserver.entity.Box;
 import gameserver.entity.Collidable;
 
 public class Wall extends gameserver.entity.Entity implements Collidable {
 
-    public Wall(Game context, int x, int y) {
+    public Wall(GameEngine context, int x, int y) {
         this.team = TeamAffiliation.UNAFFILIATED;
         this.setX(x);
         this.setY(y);
@@ -23,7 +23,7 @@ public class Wall extends gameserver.entity.Entity implements Collidable {
     }
 
     @Override
-    public void triggerCollide(Game context, Box entity) {
+    public void triggerCollide(GameEngine context, Box entity) {
         return; //impossible
     }
 

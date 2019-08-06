@@ -5,8 +5,9 @@ import authserver.users.UserService;
 import client.ClientPacket;
 import com.esotericsoftware.kryonet.Connection;
 import com.rits.cloning.Cloner;
-import gameserver.Game;
+import gameserver.GameEngine;
 import gameserver.ServerMode;
+import gameserver.models.Game;
 import util.Util;
 
 import java.util.*;
@@ -18,7 +19,7 @@ public class GameTenant {
     public static final ServerMode serverMode = ServerMode.TEAMS;
     public static int PLAYERS;//instantiated in static block
 
-    public Game state;
+    public GameEngine state;
     public String gameId;
     List<PlayerConnection> clients = new ArrayList<>();
     public List<List<Integer>> availableSlots;
@@ -69,7 +70,7 @@ public class GameTenant {
         if(lobbyFull(wipClients)){
             System.out.println("lobby full");
             List<PlayerDivider> players = playersFromConnections(wipClients);
-            state = new Game(gameId, players); //Start the game
+            state = new GameEngine(gameId, players); //Start the game
             try {
                 state.initializeServer();
                 instantiateSpringContext();
@@ -91,7 +92,7 @@ public class GameTenant {
                 clients.parallelStream().forEach(client -> {
                     Game update = cloner.deepClone(state);
                     PlayerDivider pd = dividerFromConn(client.getClient());
-                    update.underControl = update.titanSelected(pd);
+                    update.underControl = state.titanSelected(pd);
                     //System.out.println("updating " + pd.id + update.underControl.getType().toString());
                     client.getClient().sendUDP(update);
                 });
@@ -104,7 +105,7 @@ public class GameTenant {
     private static List<PlayerDivider> playersFromConnections(List<PlayerConnection> clients) {
         List<PlayerDivider> ret = new ArrayList<>();
         for(PlayerConnection pc : clients){
-            ret.add(new PlayerDivider(pc)); //Game class doesn't know the connections, just IDs
+            ret.add(new PlayerDivider(pc)); //GameEngine class doesn't know the connections, just IDs
         }
         return ret;
     }
