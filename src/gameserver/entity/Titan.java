@@ -4,7 +4,6 @@ package gameserver.entity;
 import gameserver.engine.TeamAffiliation;
 
 import java.awt.*;
-import java.util.List;
 import java.util.*;
 
 import static util.Util.typesafeNumeric;
@@ -28,9 +27,24 @@ public class Titan extends Entity {
     public int kickingFrames;
     public int actionFrame = 0; //For answering how long have we been in a shooting/passing state?
 
+    public double fuel = 50.0;
+    public boolean isBoosting = false;
+
+    public boolean programmed = false;
+    public int marchingOrderX = 0;
+    public int marchingOrderY = 0;
+    public int stealRad = 26;
+    public boolean typeAndMasteriesLocked = false;
+    public double damageFactor = 1.0;
+    public double cooldownFactor = 1.0;
+    public double durationsFactor = 1.0;
+    public double rangeFactor = 1.0;
+    public boolean moveMemU, moveMemD, moveMemL, moveMemR;
+
     private TitanType type;
 
-    public List<RangeCircle> rangeIndicators = new ArrayList<>();
+    public ArrayList<RangeCircle> rangeIndicators = new ArrayList<>();
+    public double boostFactor = 1.3;
 
     public Titan(int x, int y, TeamAffiliation team, TitanType type){
         super(team);
@@ -39,18 +53,7 @@ public class Titan extends Entity {
         this.type = type;
         this.width = 70;
         this.height = 70;
-        setVarsBasedOnType();
-        titanList.add(this);
         this.solid = true;
-    }
-
-    public static Titan byId(UUID query) {
-        for(Titan t : titanList){
-            if(t.id.equals(query)){
-                return t;
-            }
-        }
-        return null;
     }
 
     public double getThrowPower() {
@@ -61,17 +64,25 @@ public class Titan extends Entity {
         this.throwPower = throwPower;
     }
 
-    private void setVarsBasedOnType() {
-        this.maxHealth = titanHealth.get(type);
-        this.health = titanHealth.get(type) / 2;
-        this.throwPower = titanShoot.get(type);
-        this.speed = titanSpeed.get(type);
-        this.eCastFrames = titanEFrames.get(type);
-        this.rCastFrames = titanRFrames.get(type);
-        this.sCastFrames = titanStealFrames.get(type);
-        if(titanRange.containsKey(this.type)){
-            this.rangeIndicators = new ArrayList<RangeCircle>();
-            this.rangeIndicators.addAll(titanRange.get(this.type));
+    public void setVarsBasedOnType() {
+        if(type != null){
+            this.maxHealth = titanHealth.get(type);
+            this.health = titanHealth.get(type) / 2;
+            this.throwPower = titanShoot.get(type);
+            this.speed = titanSpeed.get(type);
+            this.eCastFrames = titanEFrames.get(type);
+            this.rCastFrames = titanRFrames.get(type);
+            this.sCastFrames = titanStealFrames.get(type);
+            this.stealRad = titanStealRad.get(type);
+            if(titanRange.containsKey(this.type)){
+                this.rangeIndicators = new ArrayList<>();
+                this.rangeIndicators.addAll(titanRange.get(this.type));
+            }
+            if(type == TitanType.SLASHER){
+                this.boostFactor = 2.0;
+            }else{
+                this.boostFactor = 1.3;
+            }
         }
     }
     public TitanType getType() {
@@ -79,8 +90,11 @@ public class Titan extends Entity {
     }
 
     public void setType(TitanType type) {
-        this.type = type;
-        this.setVarsBasedOnType();
+        if(!typeAndMasteriesLocked){
+            this.type = type;
+            this.setVarsBasedOnType();
+        }
+
     }
 
     public Titan(){
@@ -95,13 +109,13 @@ public class Titan extends Entity {
         this.sel = sel;
     }
 
-    static List<Titan> titanList = new ArrayList();
     public static Map<TitanType, Double> titanHealth = new HashMap();
     public static Map<TitanType, Double> titanSpeed = new HashMap();
     public static Map<TitanType, Double> titanShoot = new HashMap();
     static Map<TitanType, Integer> titanEFrames = new HashMap();
     static Map<TitanType, Integer> titanRFrames = new HashMap();
     static Map<TitanType, Integer> titanStealFrames = new HashMap();
+    public static Map<TitanType, Integer> titanStealRad = new HashMap();
     static Map<TitanType, Set<RangeCircle>> titanRange = new HashMap();
     public static Map<TitanType, String> titanText = new HashMap();
     public static Map<TitanType, String> titanEText = new HashMap();
@@ -109,7 +123,7 @@ public class Titan extends Entity {
 
     public static double normalOutOfTenFromStat(Map<TitanType, ?> stat, TitanType query){
         double mean=0.0, sd=0.0;
-        final double MEAN_STARS=5.0, SD_STARS=2.0;
+        final double MEAN_STARS=5.0, SD_STARS=1.7;
         for(Map.Entry<TitanType, ?> entry : stat.entrySet()){
             if(!entry.getKey().equals(TitanType.GUARDIAN)) {
                 mean += typesafeNumeric(entry.getValue());
@@ -128,17 +142,15 @@ public class Titan extends Entity {
         double zScore = (toConvert - mean) / sd;
         return MEAN_STARS + (zScore*SD_STARS);
     }
-    public static Optional<Titan> titanInPossession() {//code smell and potentially broken during shots
-
-        for(int i=0; i <titanList.size(); i++){
-            if(titanList.get(i).possession == 1){
-                return Optional.of(titanList.get(i));
-            }
-        }
-        return Optional.empty();
-    }
 
     public TitanState actionState  = TitanState.IDLE;
+
+    public double actualSpeed() {
+        return this.isBoosting
+                ? this.speed * this.boostFactor
+                : this.speed;
+    }
+
     public enum TitanState{
         PASS, SHOOT, A1, A2, CURVE_LEFT, CURVE_RIGHT, STEAL, IDLE
     }
@@ -149,70 +161,95 @@ public class Titan extends Entity {
     public int runDown = 0;
 
     static{
-        titanSpeed.put(TitanType.ARTISAN, 6.0);
-        titanSpeed.put(TitanType.GUARDIAN, 5.0);
-        titanSpeed.put(TitanType.MARKSMAN, 5.2);
-        titanSpeed.put(TitanType.POST, 4.2);
+        titanSpeed.put(TitanType.SUPPORT, 5.5);
+        titanSpeed.put(TitanType.WARRIOR, 5.5);
+        titanSpeed.put(TitanType.ARTISAN, 5.3);
+        titanSpeed.put(TitanType.MARKSMAN, 5.1);
         titanSpeed.put(TitanType.RANGER, 5.0);
+        titanSpeed.put(TitanType.STEALTH, 4.85);
+        titanSpeed.put(TitanType.MAGE, 4.8);
+        titanSpeed.put(TitanType.BUILDER, 4.75);
+        titanSpeed.put(TitanType.SLASHER, 4.7); //Has a 1.5x as effective boost, so this is pretty solid
+        titanSpeed.put(TitanType.POST, 4.5);
+        titanSpeed.put(TitanType.GUARDIAN, 4.5);
         //titanSpeed.put(TitanType.RECON, 7);
-        titanSpeed.put(TitanType.SLASHER, 4.5);
-        titanSpeed.put(TitanType.STEALTH, 4.8);
-        titanSpeed.put(TitanType.SUPPORT, 5.7);
-        titanSpeed.put(TitanType.WARRIOR, 5.7);
-        titanSpeed.put(TitanType.MAGE, 4.7);
-        titanSpeed.put(TitanType.BUILDER, 4.7);
 
-        titanHealth.put(TitanType.ARTISAN, 100.0);
+
         titanHealth.put(TitanType.GUARDIAN, 800.0);
-        titanHealth.put(TitanType.MARKSMAN, 75.0);
-        titanHealth.put(TitanType.POST, 180.0);
+        titanHealth.put(TitanType.POST, 200.0);
+        titanHealth.put(TitanType.WARRIOR, 135.0);
         titanHealth.put(TitanType.RANGER, 120.0);
-        //titanHealth.put(TitanType.RECON, 65.0);
+        titanHealth.put(TitanType.MAGE, 110.0);
+        titanHealth.put(TitanType.ARTISAN, 90.0);
+        titanHealth.put(TitanType.BUILDER, 90.0);
+        titanHealth.put(TitanType.SUPPORT, 85.0);
+        titanHealth.put(TitanType.MARKSMAN, 85.0);
         titanHealth.put(TitanType.SLASHER, 80.0);
         titanHealth.put(TitanType.STEALTH, 80.0);
-        titanHealth.put(TitanType.SUPPORT, 85.0);
-        titanHealth.put(TitanType.WARRIOR, 150.0);
-        titanHealth.put(TitanType.MAGE, 110.0);
-        titanHealth.put(TitanType.BUILDER, 90.0);
+        //titanHealth.put(TitanType.RECON, 65.0);
 
-        titanShoot.put(TitanType.ARTISAN, 1.0);
-        titanShoot.put(TitanType.GUARDIAN, 1.1);
-        titanShoot.put(TitanType.MARKSMAN, 1.2);
-        titanShoot.put(TitanType.POST, 1.2);
-        titanShoot.put(TitanType.RANGER, 0.48);
+
+        titanShoot.put(TitanType.MARKSMAN, 1.5);
+        titanShoot.put(TitanType.POST, 1.45);
+        titanShoot.put(TitanType.GUARDIAN, 1.38);
+        titanShoot.put(TitanType.ARTISAN, 1.15);
+        titanShoot.put(TitanType.SLASHER, 1.09);
+        titanShoot.put(TitanType.STEALTH, 1.09);
+        titanShoot.put(TitanType.SUPPORT, 1.0);
+        titanShoot.put(TitanType.BUILDER, 0.96);
+        titanShoot.put(TitanType.RANGER, 0.74);
+        titanShoot.put(TitanType.MAGE, 0.74);
+        titanShoot.put(TitanType.WARRIOR, 0.69);
         //titanShoot.put(TitanType.RECON, 0.8);
-        titanShoot.put(TitanType.SLASHER, 0.9);
-        titanShoot.put(TitanType.STEALTH, 0.9);
-        titanShoot.put(TitanType.SUPPORT, 0.7);
-        titanShoot.put(TitanType.WARRIOR, 0.48);
-        titanShoot.put(TitanType.MAGE, 0.48);
-        titanShoot.put(TitanType.BUILDER, 0.7);
 
-        titanEFrames.put(TitanType.ARTISAN, 10);
+
+
+        //33 Frames == 1 Second
         titanEFrames.put(TitanType.GUARDIAN, 1);
-        titanEFrames.put(TitanType.MARKSMAN, 8);
-        titanEFrames.put(TitanType.POST, 6);
-        titanEFrames.put(TitanType.RANGER, 10);
-        //titanEFrames.put(TitanType.RECON, 1);
-        titanEFrames.put(TitanType.SLASHER, 14);
-        titanEFrames.put(TitanType.STEALTH, 6);
-        titanEFrames.put(TitanType.SUPPORT, 6);
-        titanEFrames.put(TitanType.WARRIOR, 1);
-        titanEFrames.put(TitanType.MAGE, 8);
-        titanEFrames.put(TitanType.BUILDER, 8);
+        titanEFrames.put(TitanType.SLASHER, 3); //Cover ball
+        titanEFrames.put(TitanType.POST, 3); //steroids
+        titanEFrames.put(TitanType.BUILDER, 5);//Wall
+        titanEFrames.put(TitanType.RANGER, 5); //Single targets
+        titanEFrames.put(TitanType.MARKSMAN, 5);
+        titanEFrames.put(TitanType.STEALTH, 8); //stealth
+        titanEFrames.put(TitanType.ARTISAN, 10);//Suck
+        titanEFrames.put(TitanType.MAGE, 12);
+        titanEFrames.put(TitanType.WARRIOR, 16);
+        titanEFrames.put(TitanType.SUPPORT, 16); //Stun (for 1.5s)
 
-        titanRFrames.put(TitanType.ARTISAN, 10);
         titanRFrames.put(TitanType.GUARDIAN, 1);
-        titanRFrames.put(TitanType.MARKSMAN, 6);
-        titanRFrames.put(TitanType.POST, 32);
-        titanRFrames.put(TitanType.RANGER, 22);
-        //titanRFrames.put(TitanType.RECON, 1);
-        titanRFrames.put(TitanType.SLASHER, 8);
+        titanRFrames.put(TitanType.WARRIOR, 1);//blinks
         titanRFrames.put(TitanType.STEALTH, 1);
-        titanRFrames.put(TitanType.SUPPORT, 6);
-        titanRFrames.put(TitanType.WARRIOR, 24);
-        titanRFrames.put(TitanType.MAGE, 8);
-        titanRFrames.put(TitanType.BUILDER, 8);
+        titanRFrames.put(TitanType.MARKSMAN, 3);//steroids
+        titanRFrames.put(TitanType.MAGE, 5);//Single Targets
+        titanRFrames.put(TitanType.SLASHER, 5);
+        titanRFrames.put(TitanType.SUPPORT, 5);
+        titanRFrames.put(TitanType.ARTISAN, 10);//Minions
+        titanRFrames.put(TitanType.BUILDER, 10);
+        titanRFrames.put(TitanType.POST, 12);//Scatters
+        titanRFrames.put(TitanType.RANGER, 15);
+        //titanRFrames.put(TitanType.RECON, 1);
+
+        //Most cast lag=support(21) warrior (17) ranger (17) mage (17)
+        //2 points is a 40% reduction, 0 points is a 30% increase (in fullcombo)
+        //Would take support from 27 frames to 12 frames for fullcombo, a difference of .45 seconds
+        //Least cast lag=, slasher (8), marksman (8), stealth (9)
+        //If inted, reduces a single-target from 6 to 3 frames (0pts vs max)
+        //anything less than 4 frames may have no effect for some points with 30% scaling
+
+
+        titanStealRad.put(TitanType.ARTISAN, 33);
+        titanStealRad.put(TitanType.GUARDIAN, 26);
+        titanStealRad.put(TitanType.MARKSMAN, 24);
+        titanStealRad.put(TitanType.POST, 35);
+        titanStealRad.put(TitanType.RANGER, 24);
+        //titanStealFrames.put(TitanType.RECON, 40);
+        titanStealRad.put(TitanType.SLASHER, 30);
+        titanStealRad.put(TitanType.STEALTH, 26);
+        titanStealRad.put(TitanType.SUPPORT, 28);
+        titanStealRad.put(TitanType.WARRIOR, 26);
+        titanStealRad.put(TitanType.MAGE, 26);
+        titanStealRad.put(TitanType.BUILDER, 26);
 
         titanStealFrames.put(TitanType.ARTISAN, 40);
         titanStealFrames.put(TitanType.GUARDIAN, 40);
@@ -232,16 +269,19 @@ public class Titan extends Entity {
         HashSet<RangeCircle> support= new HashSet<>();
         HashSet<RangeCircle> ranger= new HashSet<>();
         HashSet<RangeCircle> warrior= new HashSet<>();
+        HashSet<RangeCircle> artisan= new HashSet<>();
         mage.add(e(200));
         mage.add(r(250));
         builder.add(e(200));
         builder.add(r(250));
-        support.add(e(50));
+        support.add(e(80));
         support.add(r(250));
         ranger.add(e(250));
         ranger.add(r(60));
-        warrior.add(e(140));
-        warrior.add(r(100));
+        warrior.add(e(100));
+        warrior.add(r(140));
+        artisan.add(e(140));
+        artisan.add(r(200));
         titanRange.put(TitanType.MAGE, mage);
         titanRange.put(TitanType.RANGER, ranger);
         titanRange.put(TitanType.MARKSMAN, Collections.singleton(e(150)));
@@ -251,12 +291,12 @@ public class Titan extends Entity {
         titanRange.put(TitanType.WARRIOR, warrior);
         titanRange.put(TitanType.STEALTH, Collections.singleton(r(100)));
         titanRange.put(TitanType.SUPPORT, support);
-        titanRange.put(TitanType.ARTISAN, Collections.singleton(e(140)));
+        titanRange.put(TitanType.ARTISAN, artisan);
 
         titanText.put(TitanType.MAGE, "DAMAGE ignite enemies and warp players around the map with portals");
         titanText.put(TitanType.RANGER, "DAMAGE/DEFENSE take attacking enemies down from a distance");
         titanText.put(TitanType.MARKSMAN, "SCORER long-range shooting and passing specialist");
-        titanText.put(TitanType.SLASHER, "SCORER drives to the hoop, dashing around enemies");
+        titanText.put(TitanType.SLASHER, "SCORER drives to the hoop with high boost, dashing around enemies");
         titanText.put(TitanType.POST, "SCORER/UTILITY slow-moving but high survivability under duress");
         titanText.put(TitanType.BUILDER, "UTILITY/DEFENSE build field hazards to deter+manipulate enemies");
         titanText.put(TitanType.WARRIOR, "DAMAGE/DEFENSE slash and dash your way through the opposition");
@@ -267,10 +307,10 @@ public class Titan extends Entity {
         titanEText.put(TitanType.MAGE, "Spawn a portal to carry players with a 5-second cooldown");
         titanEText.put(TitanType.RANGER, "Shoot a damaging arrow at enemies");
         titanEText.put(TitanType.MARKSMAN, "Slow a nearby enemy temporarily");
-        titanEText.put(TitanType.SLASHER, "Significant, short-term speed boost");
+        titanEText.put(TitanType.SLASHER, "Protect the ball from any steal attempts");
         titanEText.put(TitanType.POST, "Block 99% of incoming damage for a few seconds");
         titanEText.put(TitanType.BUILDER, "Build traps that will damage anyone moving thru them");
-        titanEText.put(TitanType.WARRIOR, "Warp a short distance, or until you hit a solid player/object");
+        titanEText.put(TitanType.WARRIOR, "Powerfully slash nearby enemies for significant damage");
         titanEText.put(TitanType.SUPPORT, "Stun an enemy for a short amount of time");
         titanEText.put(TitanType.ARTISAN, "Suck a nearby ball towards you until it touches any player");
         titanEText.put(TitanType.STEALTH, "Go invisible for a very short time");
@@ -281,19 +321,11 @@ public class Titan extends Entity {
         titanRText.put(TitanType.SLASHER, "Ignite an enemy with a flare to prevent stealth");
         titanRText.put(TitanType.POST, "Knock all nearby enemies back a moderate distance");
         titanRText.put(TitanType.BUILDER, "Build walls that block balls and players");
-        titanRText.put(TitanType.WARRIOR, "Powerfully slash nearby enemies for significant damage");
+        titanRText.put(TitanType.WARRIOR, "Warp a short distance, or until you hit a solid player/object");
         titanRText.put(TitanType.SUPPORT, "Heal an ally, some at first and more over time");
         titanRText.put(TitanType.ARTISAN, "Spawn a portal that can carry a ball (including its momentum)");
         titanRText.put(TitanType.STEALTH, "Blink a very short distance");
 
-    }
-
-    public static List<Entity> getTitanList(){
-        List<Entity> ents = new ArrayList<>();
-        for(Titan t: titanList){
-            ents.add((Entity) t);
-        }
-        return ents;
     }
     private static RangeCircle e(int x){
         return new RangeCircle(Color.GREEN, x);
@@ -301,5 +333,23 @@ public class Titan extends Entity {
     private static RangeCircle r(int x){
         Color purple = new Color(.45f, .0f, .85f);
         return new RangeCircle(purple, x);
+    }
+
+    public void pushMove() {
+        this.moveMemU = this.runUp == 1;
+        this.moveMemD = this.runDown == 1;
+        this.moveMemL = this.runLeft == 1;
+        this.moveMemR = this.runRight == 1;
+        this.runUp = 0;
+        this.runDown = 0;
+        this.runLeft = 0;
+        this.runRight = 0;
+    }
+
+    public void popMove() {
+        this.runUp = this.moveMemU ? 1 : 0;
+        this.runDown = this.moveMemD ? 1 : 0;
+        this.runLeft = this.moveMemL ? 1 : 0;
+        this.runRight = this.moveMemR ? 1 : 0;
     }
 }

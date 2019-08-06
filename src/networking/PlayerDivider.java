@@ -1,6 +1,7 @@
 package networking;
 
-import gameserver.Game;
+import com.esotericsoftware.kryonet.Connection;
+import gameserver.GameEngine;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -47,7 +48,7 @@ public class PlayerDivider {
         this.selection = possibleSelection.get(0);
     }
 
-    public void incSel(Game context){
+    public void incSel(GameEngine context){
         context.players[this.selection - 1].sel = 0;
         //System.out.println("client updating from " + this.selection);
         int index = possibleSelection.indexOf(this.selection);
@@ -62,5 +63,13 @@ public class PlayerDivider {
 
     public void setEmail(String jwtExtractEmail) {
         this.email = jwtExtractEmail;
+    }
+
+    public String getEmail(){
+        return this.email;
+    }
+
+    public void setId(Connection connection) {
+        this.id = connection.getID();
     }
 }

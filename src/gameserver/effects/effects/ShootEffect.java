@@ -1,6 +1,6 @@
 package gameserver.effects.effects;
 
-import gameserver.Game;
+import gameserver.GameEngine;
 import gameserver.effects.EffectId;
 import gameserver.entity.Entity;
 import gameserver.entity.Titan;
@@ -19,7 +19,7 @@ public class ShootEffect extends Effect {
     }
 
     @Override
-    public void onActivate(Game context) {
+    public void onActivate(GameEngine context) {
         if(on instanceof Titan) {
             Titan t = (Titan) on;
             t.throwPower *= shotRatio;
@@ -27,7 +27,7 @@ public class ShootEffect extends Effect {
     }
 
     @Override
-    public void onCease(Game context) {
+    public void onCease(GameEngine context) {
         if(on instanceof Titan) {
             Titan t = (Titan) on;
             t.throwPower /= shotRatio;
@@ -35,7 +35,7 @@ public class ShootEffect extends Effect {
     }
 
     @Override
-    public void onTick(Game context) {
+    public void onTick(GameEngine context) {
     }
 
     public ShootEffect(){}

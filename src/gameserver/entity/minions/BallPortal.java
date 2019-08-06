@@ -1,7 +1,8 @@
 package gameserver.entity.minions;
 
+import gameserver.GameEngine;
+import org.joda.time.Duration;
 import org.joda.time.Instant;
-import gameserver.Game;
 import gameserver.engine.TeamAffiliation;
 import gameserver.entity.Box;
 import gameserver.entity.Collidable;
@@ -14,6 +15,7 @@ import java.util.UUID;
 
 public class BallPortal extends Entity implements Collidable {
 
+    private static int COOLDOWN_MS = 5000;
     private UUID createdById;
     private Instant createdAt;
     private Instant cdUntil;
@@ -55,7 +57,7 @@ public class BallPortal extends Entity implements Collidable {
         }
     }
 
-    private Optional<BallPortal> findFriendlyBallPortal(Game context, UUID creator) {
+    private Optional<BallPortal> findFriendlyBallPortal(GameEngine context, UUID creator) {
         for (Entity e : context.entityPool) {
             if (e instanceof BallPortal) {
                 BallPortal p = (BallPortal) e;
@@ -68,11 +70,11 @@ public class BallPortal extends Entity implements Collidable {
     }
 
     private void triggerCd() {
-        this.cdUntil = Instant.now().plus(5000);
+        this.cdUntil = Instant.now().plus(COOLDOWN_MS);
     }
 
     @Override
-    public void triggerCollide(Game context, Box entity) {
+    public void triggerCollide(GameEngine context, Box entity) {
         if (!this.isCooldown()) {
             Optional<BallPortal> p = findFriendlyBallPortal(context, this.createdById);
             if(!context.ball.id.equals(entity.id)){
@@ -81,11 +83,21 @@ public class BallPortal extends Entity implements Collidable {
             if (p.isPresent() && !p.get().isCooldown()) {
                 this.triggerCd();
                 p.get().triggerCd();
-                int x = (int)p.get().getX() + 25 - 7;
-                int y = (int)p.get().getY() + 25 - 7;
+                int x = (int)p.get().getX() + 25 - context.ball.centerDist;
+                int y = (int)p.get().getY() + 25 - context.ball.centerDist;
                 entity.setX(x);
                 entity.setY(y);
             }
+        }
+    }
+
+    public double cooldownPercentOver(){
+        if(cdUntil != null){
+            Duration dur = new Duration(Instant.now(), cdUntil);
+            return ((double) (COOLDOWN_MS - dur.getMillis())) / ((double) COOLDOWN_MS)*100.0;
+        }
+        else{
+            return 0;
         }
     }
 

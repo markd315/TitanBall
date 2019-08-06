@@ -6,6 +6,7 @@ import org.springframework.security.core.GrantedAuthority;
 
 import java.io.*;
 import java.util.Base64;
+import java.util.Random;
 
 public class Util {
 
@@ -79,5 +80,15 @@ public class Util {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public static String randomKey(){
+        Random rng = new Random();
+        String s = "";
+        for(int i=0; i<10; i++){
+            char c = (char) (65+ rng.nextInt(26));
+            s+=c;
+        }
+        return s;
     }
 }

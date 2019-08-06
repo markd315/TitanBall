@@ -3,6 +3,7 @@ package authserver;
 import authserver.jwt.JwtTokenProvider;
 import authserver.matchmaking.Matchmaker;
 import authserver.models.DTO.LoginRequest;
+import authserver.models.DTO.RenewRequest;
 import authserver.models.DTO.UserDTO;
 import authserver.models.User;
 import authserver.models.responses.JwtAuthenticationResponse;
@@ -29,6 +30,7 @@ import static util.Util.isRole;
 @RestController
 @CrossOrigin(exposedHeaders = "errors, content-type")
 public class LoginController {
+    private static final String M2M_AUTH = "VERY SECRET PAYPAL PRIVATE KEY";
 
     @Autowired
     PasswordEncoder passwordEncoder;
@@ -47,7 +49,6 @@ public class LoginController {
 
     @PostMapping("/login")
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
-        System.out.println("hit authenticate");
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         loginRequest.getUsernameOrEmail(),
@@ -62,7 +63,6 @@ public class LoginController {
 
     @PostMapping("/refresh")
     public ResponseEntity<?> reauthenticateUser(@RequestHeader String authorization) {
-        System.out.println("hit refresh");
         String[] newTokens = tokenProvider.bothRefreshed(authorization);
         if(newTokens.length != 2){
             return ResponseEntity.status(401).body("Refresh token not/no longer valid");
@@ -70,22 +70,69 @@ public class LoginController {
         return ResponseEntity.ok(new JwtAuthenticationResponse(newTokens[0], newTokens[1]));
     }
 
+    @PostMapping("/activate")
+    public ResponseEntity<?> activateUser(@Valid @RequestBody LoginRequest loginRequest, @RequestParam String key) throws Exception {
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(
+                        loginRequest.getUsernameOrEmail(),
+                        loginRequest.getPassword()
+                )
+        );
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+        User user;
+        try{
+            user = userService.findUserByEmail(loginRequest.getUsernameOrEmail());
+        }
+        catch (Exception ex1){
+            user = userService.findUserByUsername(loginRequest.getUsernameOrEmail());
+        }
+        if(user == null){
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
+        if(user.activate(key)){
+            user.setEnabled(true);
+            user.renew(14);
+            userService.saveUser(user);
+            return new ResponseEntity<>(HttpStatus.OK);
+        }else{
+            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+        }
+    }
+
+    @PostMapping("/renew")
+    public ResponseEntity<?> renewUser(@Valid @RequestBody RenewRequest loginRequest) throws Exception {
+        User user;
+        try{
+            user = userService.findUserByEmail(loginRequest.getUsernameOrEmail());
+        }
+        catch (Exception ex1){
+            user = userService.findUserByUsername(loginRequest.getUsernameOrEmail());
+        }
+        if(user == null){
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
+        if(loginRequest.getM2mAuth().equals(M2M_AUTH)){
+            user.renew(loginRequest.getDays());
+            userService.saveUser(user);
+            return new ResponseEntity<>(HttpStatus.OK);
+        }else{
+            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+        }
+    }
+
     @RequestMapping("/gamecheck")
     public ResponseEntity<String> gameCheck(Authentication auth) {
-        System.out.println("hit gamecheck");
         return new ResponseEntity<>(userPool.findGame(auth), HttpStatus.OK);
     }
 
     @RequestMapping("/join")
     public ResponseEntity<String> joinLobby(Authentication auth) throws IOException {
-        System.out.println("hit join");
         userPool.registerIntent(auth);
         return new ResponseEntity<>(userPool.findGame(auth), HttpStatus.OK);
     }
 
     @RequestMapping("/leave")
     public ResponseEntity<String> leaveLobby(Authentication auth) {
-        System.out.println("hit leave");
         userPool.removeIntent(auth);
         String game = userPool.findGame(auth);
         if(!game.equals("NOT QUEUED")){

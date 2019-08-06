@@ -1,11 +1,14 @@
 package authserver.models;
 
+import gameserver.ServerApplication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
+import util.Util;
 
 import javax.persistence.*;
 import java.io.Serializable;
 import java.sql.Timestamp;
+import java.util.Calendar;
 import java.util.Collection;
 
 @Entity
@@ -17,60 +20,68 @@ public class User implements Serializable, UserDetails {
     protected Integer id;
 
     @Column(name = "username")
-    private String username;
-
-    @Column(name = "email")
-    private String email;
+    protected String username;
 
     @Column(name = "role")
-    private String role;
+    protected String role;
+
+    @Column(name = "email")
+    protected String email;
 
     @Column(name = "password")
-    private String password;
+    protected String password;
 
     @Column(name = "rating")
-    private Double rating;
-
-    @Column(name = "wins")
-    private Integer wins;
-
-    @Column(name = "losses")
-    private Integer losses;
+    protected Double rating;
 
     @Column(name = "created")
-    private Timestamp createdAt;
+    protected Timestamp createdAt;
 
-    @Column(name = "goals")
-    private int goals;
+    @Column(name = "activation")
+    protected String activation;
 
-    @Column(name = "sidegoals")
-    private int sidegoals;
+    @Column(name = "subexpiration")
+    protected Timestamp subExp;
 
-    @Column(name = "points")
-    private double points;
+    @Column(name = "enabled")
+    private boolean enabled;
 
-    @Column(name = "steals")
-    private int steals;
+    public boolean activate(String trialCode){
+        if(trialCode.equals(activation) && !enabled){
+            renew(14);
+            this.enabled = true;
+            return true;
+        }
+        return false;
+    }
 
-    @Column(name = "blocks")
-    private int blocks;
+    public void renew(int renewalDays){
+        Calendar calendar = Calendar.getInstance();
+        java.util.Date now = calendar.getTime();
+        java.sql.Timestamp currentTimestamp = new java.sql.Timestamp(now.getTime());
 
-    @Column(name = "passes")
-    private int passes;
+        if(subExp.before(currentTimestamp)){ //bring up to current time before renew
+            subExp = new java.sql.Timestamp(now.getTime());
+        }
 
-    @Column(name = "kills")
-    private int kills;
+        long lTime = subExp.getTime();
+        lTime += (long) renewalDays * 1000L * 60L * 60L * 24L;
+        subExp = new java.sql.Timestamp(lTime);
+    }
 
-    @Column(name = "deaths")
-    private int deaths;
+    public String getActivation() {
+        return activation;
+    }
 
-    @Column(name = "turnovers")
-    private int turnovers;
+    public Timestamp getSubExp() {
+        return subExp;
+    }
 
     public User(){
+        this.role = "USER";
+        this.rating = 1000.0;
         this.wins = 0;
         this.losses = 0;
-        this.rating = 1000.0;
         this.goals = 0;
         this.points = 0.0;
         this.steals = 0;
@@ -80,13 +91,22 @@ public class User implements Serializable, UserDetails {
         this.deaths = 0;
         this.passes = 0;
         this.turnovers = 0;
+        this.killassists = 0;
+        this.goalassists = 0;
+        this.rebounds = 0;
+        this.enabled = false;
+        Calendar calendar = Calendar.getInstance();
+        java.util.Date now = calendar.getTime();
+        java.sql.Timestamp currentTimestamp = new java.sql.Timestamp(now.getTime());
+        this.subExp = currentTimestamp;
+        this.activation = Util.randomKey();
+        //TODO send email activation
     }
 
     public User(String username, String pwEncoded){
         this();
         this.username = username;
         this.password = pwEncoded;
-        this.role = "USER";
     }
 
     public String getUsername() {
@@ -105,20 +125,6 @@ public class User implements Serializable, UserDetails {
         this.password = password;
     }
 
-    public Integer getId() {
-        return id;
-    }
-
-    public void setId(Integer id) {
-        this.id = id;
-    }
-    public String getRole() {
-        return role;
-    }
-
-    public void setRole(String role) {
-        this.role = role;
-    }
     public String getEmail() {
         return email;
     }
@@ -134,6 +140,95 @@ public class User implements Serializable, UserDetails {
     public void setRating(Double rating) {
         this.rating = rating;
     }
+
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
+    }
+
+    @Override
+    public boolean isAccountNonExpired() {
+        return this.isEnabled();
+    }
+
+    @Override
+    public boolean isAccountNonLocked() {
+        return this.isEnabled();
+    }
+
+    @Override
+    public boolean isCredentialsNonExpired(){
+        if(ServerApplication.PAYWALL){
+            Calendar calendar = Calendar.getInstance();
+            java.util.Date now = calendar.getTime();
+            java.sql.Timestamp currentTimestamp = new java.sql.Timestamp(now.getTime());
+
+            return (subExp.after(currentTimestamp));
+        }
+        return true;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return this.enabled;
+    }
+
+    public void setEnabled(boolean s) {
+        this.enabled = s;
+    }
+
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return null;
+    }
+
+    @Column(name = "wins")
+    protected Integer wins;
+
+    @Column(name = "losses")
+    protected Integer losses;
+
+    @Column(name = "ties")
+    protected Integer ties;
+
+    @Column(name = "goals")
+    protected int goals;
+
+    @Column(name = "sidegoals")
+    protected int sidegoals;
+
+    @Column(name = "points")
+    protected double points;
+
+    @Column(name = "steals")
+    protected int steals;
+
+    @Column(name = "blocks")
+    protected int blocks;
+
+    @Column(name = "passes")
+    protected int passes;
+
+    @Column(name = "kills")
+    protected int kills;
+
+    @Column(name = "deaths")
+    protected int deaths;
+
+    @Column(name = "turnovers")
+    protected int turnovers;
+
+    @Column(name = "killassists")
+    protected int killassists;
+
+    @Column(name = "goalassists")
+    protected int goalassists;
+
+    @Column(name = "rebounds")
+    protected int rebounds;
 
     public Integer getWins() {
         return wins;
@@ -151,29 +246,12 @@ public class User implements Serializable, UserDetails {
         this.losses = losses;
     }
 
-    @Override
-    public Collection<? extends GrantedAuthority> getAuthorities() {
-        return null;
+    public int getTies() {
+        return this.ties;
     }
 
-    @Override
-    public boolean isAccountNonExpired() {
-        return true;
-    }
-
-    @Override
-    public boolean isAccountNonLocked() {
-        return true;
-    }
-
-    @Override
-    public boolean isCredentialsNonExpired() {
-        return true;
-    }
-
-    @Override
-    public boolean isEnabled() {
-        return true;
+    public void setTies(int ties) {
+        this.ties = ties;
     }
 
     public Integer getGoals() {
@@ -246,5 +324,29 @@ public class User implements Serializable, UserDetails {
 
     public void setTurnovers(Integer turnovers) {
         this.turnovers = turnovers;
+    }
+
+    public int getKillassists() {
+        return killassists;
+    }
+
+    public void setKillassists(int killassists) {
+        this.killassists = killassists;
+    }
+
+    public int getGoalassists() {
+        return goalassists;
+    }
+
+    public void setGoalassists(int goalassists) {
+        this.goalassists = goalassists;
+    }
+
+    public int getRebounds() {
+        return rebounds;
+    }
+
+    public void setRebounds(int rebounds) {
+        this.rebounds = rebounds;
     }
 }

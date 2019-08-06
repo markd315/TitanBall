@@ -1,8 +1,8 @@
 package gameserver.entity;
 
-import gameserver.Game;
+import gameserver.GameEngine;
 
 public interface Collidable {
 
-    void triggerCollide(Game context, Box entity);
+    void triggerCollide(GameEngine context, Box entity);
 }

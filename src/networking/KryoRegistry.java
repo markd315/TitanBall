@@ -1,26 +1,29 @@
 package networking;
 
-import client.ClientPacket;
 import client.GoalSprite;
 import client.Images;
 import client.StaticImage;
 import com.esotericsoftware.kryo.Kryo;
-import gameserver.engine.*;
-import org.joda.time.Instant;
-import gameserver.Game;
+import gameserver.GameEngine;
+import gameserver.TutorialOverrides;
+import gameserver.TutorialTenant;
 import gameserver.effects.EffectId;
 import gameserver.effects.EffectPool;
 import gameserver.effects.cooldowns.CooldownCurve;
 import gameserver.effects.cooldowns.CooldownE;
+import gameserver.effects.cooldowns.CooldownQ;
 import gameserver.effects.cooldowns.CooldownR;
 import gameserver.effects.effects.*;
+import gameserver.engine.*;
 import gameserver.entity.Box;
 import gameserver.entity.*;
 import gameserver.entity.minions.BallPortal;
 import gameserver.entity.minions.Portal;
 import gameserver.entity.minions.Trap;
 import gameserver.entity.minions.Wall;
+import gameserver.models.Game;
 import gameserver.targeting.*;
+import org.joda.time.Instant;
 
 import javax.swing.*;
 import java.awt.event.MouseEvent;
@@ -50,9 +53,10 @@ public class KryoRegistry {
         kryo.register(DeadEffect.class);
         kryo.register(DefenseEffect.class);
         kryo.register(ShootEffect.class);
-        kryo.register(PossessionEffect.class);
+        kryo.register(HideBallEffect.class);
         kryo.register(CooldownE.class);
         kryo.register(CooldownR.class);
+        kryo.register(CooldownQ.class);
         kryo.register(CooldownCurve.class);
 
         kryo.register(Collidable.class);
@@ -62,6 +66,7 @@ public class KryoRegistry {
         kryo.register(Portal.class);
         kryo.register(BallPortal.class);
 
+        kryo.register(GameEngine.class);
         kryo.register(Game.class);
         kryo.register(GoalHoop.class);
         kryo.register(GoalHoop[].class);
@@ -78,6 +83,7 @@ public class KryoRegistry {
         kryo.register(GoalSprite.class);
         kryo.register(ShapePayload.class);
         kryo.register(PlayerDivider.class);
+        kryo.register(Masteries.class);
         kryo.register(Team.class);
         kryo.register(ShapePayload.class);
         kryo.register(ShapePayload.ShapeSelector.class);
@@ -92,6 +98,7 @@ public class KryoRegistry {
         kryo.register(Targeting.class);
         kryo.register(DistanceFilter.class);
         kryo.register(Ability.class);
+        kryo.register(AbilityStrategy.class);
         kryo.register(StaticImage.class);
         kryo.register(Images.class);
         kryo.register(RangeCircle.class);
@@ -125,6 +132,9 @@ public class KryoRegistry {
         kryo.register(boolean.class);
         kryo.register(boolean.class);
         kryo.register(Random.class);
+
+        kryo.register(TutorialTenant.class);
+        kryo.register(TutorialOverrides.class);
         //Log.DEBUG();
         //Log.TRACE();
     }

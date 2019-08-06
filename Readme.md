@@ -31,3 +31,5 @@ Post/tank from https://opengameart.org/content/lpc-golem
 
 Slasher and Artisan sprites generated with http://gaurav.munjal.us/Universal-LPC-Spritesheet-Character-Generator
 
+Ball downsized from https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Basketball_Clipart.svg/1035px-Basketball_Clipart.svg.png
+

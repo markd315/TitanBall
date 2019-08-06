@@ -1,6 +1,6 @@
 package gameserver.targeting;
 
-import gameserver.Game;
+import gameserver.GameEngine;
 import gameserver.engine.TeamAffiliation;
 import gameserver.entity.Entity;
 import gameserver.entity.TitanType;
@@ -20,7 +20,7 @@ public class Targeting {
             );
     private static Limiter defaultLimiter = new Limiter(SortBy.NEAREST, 1);
 
-    public Targeting(Selector sel, Filter fil, Limiter lim, Game context){
+    public Targeting(Selector sel, Filter fil, Limiter lim, GameEngine context){
     //initialize and call children with entity array
         entities = new HashSet<>();
         List<Entity> entityList = Arrays.asList(context.allSolids);
@@ -32,15 +32,15 @@ public class Targeting {
         limiter = lim;
     }
 
-    public Targeting(Selector sel, Game context){
+    public Targeting(Selector sel, GameEngine context){
         this(sel, defaultFilter, defaultLimiter, context);
     }
 
-    public Targeting(Selector sel, Filter fil, Game context){
+    public Targeting(Selector sel, Filter fil, GameEngine context){
         this(sel, fil, defaultLimiter, context);
     }
 
-    public Targeting(Selector sel, Limiter lim, Game context){
+    public Targeting(Selector sel, Limiter lim, GameEngine context){
         this(sel, defaultFilter, lim, context);
     }
 

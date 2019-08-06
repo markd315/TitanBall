@@ -65,7 +65,8 @@ public class SpringSecurityConfig extends WebSecurityConfigurerAdapter {
                         "/**/*.js")
                 .permitAll()
                 .antMatchers("/login/**",
-                        "/refresh/**")
+                        "/refresh/**",
+                        "/renew/**")
                 .permitAll()
                 .antMatchers("/login/checkUsernameAvailability", "/login/checkEmailAvailability")
                 .permitAll()
@@ -128,7 +129,29 @@ public class SpringSecurityConfig extends WebSecurityConfigurerAdapter {
         passes int default 0,
         kills int default 0,
         deaths int default 0,
-	    turnovers int default 0
+	    turnovers int default 0,
+	    killassists int default 0,
+	    goalassists int default 0,
+	    rebounds int default 0
+	);
+
+	CREATE TABLE classes (
+	    id int auto_increment primary key,
+	    role varchar(32),
+	    wins int default 0,
+	    losses int default 0,
+	    goals int default 0,
+	    points double default 0.0,
+        sidegoals int default 0,
+        blocks int default 0,
+        steals int default 0,
+        passes int default 0,
+        kills int default 0,
+        deaths int default 0,
+	    turnovers int default 0,
+	    killassists int default 0,
+	    goalassists int default 0,
+	    rebounds int default 0
 	);
 
 	insert into users (id, username, email, password, role, created)
@@ -150,5 +173,27 @@ public class SpringSecurityConfig extends WebSecurityConfigurerAdapter {
 	 insert into users (id, username, email, password, role, created)
 	 values(7,'u7', 'e7@gmail.com', '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.','USER', CURRENT_TIMESTAMP);
 
+     insert into classes (id, role)
+	 values(1,'GUARDIAN');
+	 insert into classes (id, role)
+	 values(2,'WARRIOR');
+	 insert into classes (id, role)
+	 values(3,'RANGER');
+	 insert into classes (id, role)
+	 values(4,'SLASHER');
+	 insert into classes (id, role)
+	 values(5,'MARKSMAN');
+	 insert into classes (id, role)
+	 values(6,'STEALTH');
+	 insert into classes (id, role)
+	 values(7,'SUPPORT');
+	 insert into classes (id, role)
+	 values(8,'ARTISAN');
+	 insert into classes (id, role)
+	 values(9,'POST');
+	 insert into classes (id, role)
+	 values(10,'MAGE');
+	 insert into classes (id, role)
+	 values(11,'BUILDER');
     //'pass' is the test password
  */

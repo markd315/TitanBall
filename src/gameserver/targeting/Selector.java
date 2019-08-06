@@ -7,6 +7,7 @@ import util.Util;
 
 import java.awt.*;
 import java.awt.geom.AffineTransform;
+import java.awt.geom.Ellipse2D;
 import java.awt.geom.Point2D;
 import java.util.HashSet;
 import java.util.Set;
@@ -92,5 +93,13 @@ public class Selector {
             return new Rectangle(99999,9999,0,0);
         }
         return latestCollider.getBounds();
+    }
+
+    public Ellipse2D.Double getLatestColliderCircle() {
+        if(latestCollider == null){
+            return new Ellipse2D.Double(99999,9999,0,0);
+        }
+        Rectangle r = latestCollider.getBounds();
+        return new Ellipse2D.Double(r.x, r.y, r.width, r.height);
     }
 }

@@ -1,8 +1,6 @@
 package authserver.users;
 
 import authserver.models.User;
-import gameserver.engine.StatEngine;
-import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -18,6 +16,9 @@ public class CustomUserDetailsService implements UserDetailsService, UserService
 
     @Autowired
     UserRepository userRepository;
+
+    @Autowired
+    ClassRepository classRepository;
 
     @Override
     @Transactional
@@ -79,43 +80,4 @@ public class CustomUserDetailsService implements UserDetailsService, UserService
         return user;
     }
 
-    @Override
-    public void postgameStats(String email, StatEngine stats, int wasVictorious, double newRating) throws Exception {
-        User user = findUserByEmail(email);
-        JSONObject toAdd = stats.statsOf(email);
-        if(wasVictorious == 1){
-            user.setWins(user.getWins() + 1);
-        }else{
-            user.setLosses(user.getLosses() + 1);
-        }
-        user.setRating(newRating);
-        if(toAdd.has(StatEngine.StatEnum.GOALS.toString())){
-            user.setGoals((int) (user.getGoals() + (double) toAdd.get(StatEngine.StatEnum.GOALS.toString())));
-        }
-        if(toAdd.has(StatEngine.StatEnum.SIDEGOALS.toString())){
-            user.setSidegoals((int) (user.getSidegoals() +(double)  toAdd.get(StatEngine.StatEnum.SIDEGOALS.toString())));
-        }
-        if(toAdd.has(StatEngine.StatEnum.POINTS.toString())){
-            user.setPoints(user.getPoints() + (double) toAdd.get(StatEngine.StatEnum.POINTS.toString()));
-        }
-        if(toAdd.has(StatEngine.StatEnum.STEALS.toString())){
-            user.setSteals((int) (user.getSteals() + (double)  toAdd.get(StatEngine.StatEnum.STEALS.toString())));
-        }
-        if(toAdd.has(StatEngine.StatEnum.BLOCKS.toString())){
-            user.setBlocks((int) (user.getBlocks() + (double) toAdd.get(StatEngine.StatEnum.BLOCKS.toString())));
-        }
-        if(toAdd.has(StatEngine.StatEnum.PASSES.toString())){
-            user.setPasses((int) (user.getPasses() +(double)  toAdd.get(StatEngine.StatEnum.PASSES.toString())));
-        }
-        if(toAdd.has(StatEngine.StatEnum.KILLS.toString())){
-            user.setKills((int) (user.getKills() + (double) toAdd.get(StatEngine.StatEnum.KILLS.toString())));
-        }
-        if(toAdd.has(StatEngine.StatEnum.DEATHS.toString())){
-            user.setDeaths((int) (user.getDeaths() +(double) toAdd.get(StatEngine.StatEnum.DEATHS.toString())));
-        }
-        if(toAdd.has(StatEngine.StatEnum.TURNOVERS.toString())){
-            user.setTurnovers((int) (user.getTurnovers() +(double)  toAdd.get(StatEngine.StatEnum.TURNOVERS.toString())));
-        }
-        saveUser(user);
-    }
 }

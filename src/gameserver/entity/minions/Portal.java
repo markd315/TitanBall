@@ -1,12 +1,13 @@
 package gameserver.entity.minions;
 
-import org.joda.time.Instant;
-import gameserver.Game;
+import gameserver.GameEngine;
 import gameserver.engine.TeamAffiliation;
 import gameserver.entity.Box;
 import gameserver.entity.Collidable;
 import gameserver.entity.Entity;
 import gameserver.entity.Titan;
+import org.joda.time.Duration;
+import org.joda.time.Instant;
 
 import java.util.List;
 import java.util.Optional;
@@ -14,6 +15,7 @@ import java.util.UUID;
 
 public class Portal extends gameserver.entity.Entity implements Collidable {
 
+    private static int COOLDOWN_MS = 5000;
     private UUID createdById;
     private Instant createdAt;
     private Instant cdUntil;
@@ -55,7 +57,7 @@ public class Portal extends gameserver.entity.Entity implements Collidable {
         }
     }
 
-    private Optional<Portal> findFriendlyPortal(Game context, UUID creator) {
+    private Optional<Portal> findFriendlyPortal(GameEngine context, UUID creator) {
         for (Entity e : context.entityPool) {
             if (e instanceof Portal) {
                 Portal p = (Portal) e;
@@ -68,11 +70,11 @@ public class Portal extends gameserver.entity.Entity implements Collidable {
     }
 
     private void triggerCd() {
-        this.cdUntil = Instant.now().plus(5000);
+        this.cdUntil = Instant.now().plus(COOLDOWN_MS);
     }
 
     @Override
-    public void triggerCollide(Game context, Box entity) {
+    public void triggerCollide(GameEngine context, Box entity) {
         if (!this.isCooldown()) {
             Optional<Portal> p = findFriendlyPortal(context, this.createdById);
             if (p.isPresent() && !p.get().isCooldown() && entity instanceof Titan) {
@@ -86,6 +88,16 @@ public class Portal extends gameserver.entity.Entity implements Collidable {
                     entity.Y += 3;
                 }
             }
+        }
+    }
+
+    public double cooldownPercentOver(){
+        if(cdUntil != null){
+            Duration dur = new Duration(Instant.now(), cdUntil);
+            return ((double) (COOLDOWN_MS - dur.getMillis())) / ((double) COOLDOWN_MS)*100.0;
+        }
+        else{
+            return 0;
         }
     }
 

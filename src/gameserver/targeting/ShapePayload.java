@@ -1,15 +1,23 @@
 package gameserver.targeting;
 
+import gameserver.engine.TeamAffiliation;
+import gameserver.entity.Titan;
+import org.joda.time.Instant;
+
 import java.awt.*;
 import java.awt.geom.Ellipse2D;
 
 public class ShapePayload {
+    private static final int COLLIDER_DISP_MS = 400;
     int x, y, w, h;
     double rot;
     ShapeSelector type;
     private int[] xp, yp;
+    protected float[] color = new float[4];
+    public Instant dispUntil;
+    public boolean disp;
 
-    public ShapePayload(){}
+    public ShapePayload(){ }
     public ShapePayload(Shape s){
         this(s, 0.0);
     }
@@ -32,6 +40,7 @@ public class ShapePayload {
         this.h = s.getBounds().height;
         this.w = s.getBounds().width;
         this.rot = rot;
+        trigger();
     }
 
     public Shape from(){
@@ -59,7 +68,45 @@ public class ShapePayload {
         return new Rectangle(this.x - camX, this.y - camY, this.w, this.h);
     }
 
+    public void setColor(Titan caster) {
+        if(caster.team == TeamAffiliation.HOME){
+            setColor(Color.blue);
+            return;
+        }
+        if(caster.team == TeamAffiliation.AWAY){
+            setColor(Color.white);
+            return;
+        }
+        setColor(Color.gray);
+    }
+
+    private void setColor(Color color){
+        this.color = new float[4];
+        this.color[0] = color.getRed()/256.0f;
+        this.color[1] = color.getGreen()/256.0f;
+        this.color[2] = color.getBlue()/256.0f;
+        this.color[3] = color.getAlpha()/256.0f;
+    }
+
     public enum ShapeSelector{
         RECT, TRI, ELLIPSE
+    }
+
+    public Color getColor() {
+        return new Color(color[0], color[1], color[2], color[3]);
+    }
+
+    public void trigger() {
+        disp = true;
+        Instant now = Instant.now();
+        dispUntil = now.plus(COLLIDER_DISP_MS);
+    }
+
+    public boolean checkDisp() {
+        Instant currentTimestamp = Instant.now();
+        if (currentTimestamp.isAfter(dispUntil)) {
+            disp = false;
+        }
+        return disp;
     }
 }

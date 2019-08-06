@@ -26,7 +26,7 @@ public class Team {
         }
     }
 
-    public Team getEnemyTeam(){
+    public Team readEnemyTeam(){
 
         for(int i=0; i < allTeams.size(); i++){
             if(!allTeams.get(i).equals(this)){

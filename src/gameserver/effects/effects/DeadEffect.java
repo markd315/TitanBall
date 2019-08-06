@@ -1,6 +1,6 @@
 package gameserver.effects.effects;
 
-import gameserver.Game;
+import gameserver.GameEngine;
 import gameserver.effects.EffectId;
 import gameserver.engine.StatEngine;
 import gameserver.engine.TeamAffiliation;
@@ -14,16 +14,24 @@ public class DeadEffect extends Effect {
     }
 
     @Override
-    public void onActivate(Game context) {
+    public void onActivate(GameEngine context) {
         if(on instanceof Titan) {
+            Titan t = (Titan) on;
+            if(t.possession == 1){
+                context.lastPossessed = null;
+                t.possession = 0;
+                context.ball.X = t.X + 35 - context.ball.centerDist;
+                context.ball.Y = t.Y + 35 - context.ball.centerDist;
+            }
             context.stats.grant(context.clientFromTitan((on)), StatEngine.StatEnum.DEATHS);
+            context.stats.grantKillAssists(context, (Titan) on, context.effectPool);
         }
         on.setHealth(-99999);
         context.effectPool.cullAllOn(context, on);
     }
 
     @Override
-    public void onCease(Game context) {
+    public void onCease(GameEngine context) {
         if(on instanceof Titan) {
             if (on.team == TeamAffiliation.HOME) {
                 on.X = 133;
@@ -44,11 +52,7 @@ public class DeadEffect extends Effect {
     }
 
     @Override
-    public void onTick(Game context) {
-        if(on instanceof Titan){
-            Titan t = (Titan) on;
-            t.possession = 0;
-        }
+    public void onTick(GameEngine context) {
         on.setHealth(-99999);
         on.X = 9999999;
         on.Y = 9999999;
