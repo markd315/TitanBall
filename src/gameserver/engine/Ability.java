@@ -167,6 +167,30 @@ public class Ability {
             }
             context.colliders.get(context.colliders.size() - 1).setColor(caster);
         }
+        return injectColliders(context, sel, shape, caster);
+    }
+
+    private static boolean injectColliders(Game context, Selector sel, Shape shape, Titan caster){
+        context.cullOldColliders();
+        if (sel != null && sel.latestCollider != null) {
+            //sel has the bounds, shape has the correct class.
+            //so we inject the sel bounds back into the shape class and eventually use the camera to render it
+            Rectangle bounds = sel.latestCollider.getBounds();
+            if (shape instanceof Ellipse2D.Double) {
+                context.colliders.add(
+                        new ShapePayload(new Ellipse2D.Double(bounds.getX(), bounds.getY(),
+                                bounds.getWidth(), bounds.getHeight())));
+            } else if (shape instanceof Polygon) {
+                //TODO this won't work probably
+                context.colliders.add(
+                        new ShapePayload(sel.latestCollider));
+            } else if (shape instanceof Rectangle) {
+                context.colliders.add(
+                        new ShapePayload(new Rectangle((int) bounds.getX(), (int) bounds.getY(),
+                                (int) bounds.getWidth(), (int) bounds.getHeight())));
+            }
+            context.colliders.get(context.colliders.size() -1).setColor(caster);
+        }
         return true;
     }
 }

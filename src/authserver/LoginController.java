@@ -169,7 +169,7 @@ public class LoginController {
         return new ResponseEntity<>(new UserResponse(user, rating, rating1v1), HttpStatus.OK);
     }
 
-    @RequestMapping(value = "", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @RequestMapping(value = "", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<UserResponse> addUser(@RequestBody @Valid UserDTO userinput, BindingResult bindingResult, Authentication auth) throws Exception {
         HttpHeaders headers = new HttpHeaders();
         /*if(!isRole(auth, "ADMIN")){
