@@ -47,7 +47,6 @@ public class LoginController {
 
     @PostMapping("/login")
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
-        System.out.println("hit authenticate");
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         loginRequest.getUsernameOrEmail(),
@@ -62,7 +61,6 @@ public class LoginController {
 
     @PostMapping("/refresh")
     public ResponseEntity<?> reauthenticateUser(@RequestHeader String authorization) {
-        System.out.println("hit refresh");
         String[] newTokens = tokenProvider.bothRefreshed(authorization);
         if(newTokens.length != 2){
             return ResponseEntity.status(401).body("Refresh token not/no longer valid");
@@ -72,20 +70,17 @@ public class LoginController {
 
     @RequestMapping("/gamecheck")
     public ResponseEntity<String> gameCheck(Authentication auth) {
-        System.out.println("hit gamecheck");
         return new ResponseEntity<>(userPool.findGame(auth), HttpStatus.OK);
     }
 
     @RequestMapping("/join")
     public ResponseEntity<String> joinLobby(Authentication auth) throws IOException {
-        System.out.println("hit join");
         userPool.registerIntent(auth);
         return new ResponseEntity<>(userPool.findGame(auth), HttpStatus.OK);
     }
 
     @RequestMapping("/leave")
     public ResponseEntity<String> leaveLobby(Authentication auth) {
-        System.out.println("hit leave");
         userPool.removeIntent(auth);
         String game = userPool.findGame(auth);
         if(!game.equals("NOT QUEUED")){

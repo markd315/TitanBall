@@ -5,6 +5,7 @@ import client.GoalSprite;
 import client.Images;
 import client.StaticImage;
 import com.esotericsoftware.kryo.Kryo;
+import gameserver.GameEngine;
 import gameserver.effects.EffectId;
 import gameserver.effects.EffectPool;
 import gameserver.effects.cooldowns.CooldownCurve;
@@ -62,6 +63,7 @@ public class KryoRegistry {
         kryo.register(Portal.class);
         kryo.register(BallPortal.class);
 
+        kryo.register(GameEngine.class);
         kryo.register(Game.class);
         kryo.register(GoalHoop.class);
         kryo.register(GoalHoop[].class);

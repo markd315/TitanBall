@@ -15,7 +15,6 @@ import networking.PlayerDivider;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -29,7 +28,7 @@ public class Game {
     public static final int SPRITE_X_EMPTY = 50;
     public static final int SPRITE_Y_EMPTY = 18;
     protected AtomicBoolean locked = new AtomicBoolean(false);
-    public Set<ShapePayload> colliders;
+    public List<ShapePayload> colliders;
     public Entity[] allSolids;
     protected int curveFactor;
     public Titan underControl = null; //Only set by the gameserver right before pushing an update
@@ -45,7 +44,7 @@ public class Game {
     public static final int GOALIE_XH_MIN = 43;
     public static final int GOALIE_XA_MAX = 2002;
     public static final int GOALIE_XA_MIN = 1866;
-    protected final int FIELD_LENGTH = 2070;
+    protected final int FIELD_LENGTH = 2050;
     protected final int TOP_WING_ST = 0;
     protected final int TOP_WING_END = 500;
     protected final int BOT_WING_ST = 700;
@@ -56,11 +55,11 @@ public class Game {
     protected final int MID_RETREAT = 550;
     protected final int FW_CREEP = 1850;
     protected final int FW_RETREAT = 1250;
-    protected final int TOP_WING_HOME = 300;
-    protected final int MID_WING_HOME = 600;
+    protected final int TOP_WING_HOME = 287;
+    protected final int MID_WING_HOME = 587;
+    protected final int BOT_WING_HOME = 887;
     protected final int T_CIRCLE_WING_HOME = 450;
     protected final int B_CIRCLE_WING_HOME = 750;
-    protected final int BOT_WING_HOME = 900;
     protected final int DEFENDER_HOME = 325;
     protected final int MID_HOME = 850;
     protected final int FW_HOME = 900;
@@ -141,5 +140,19 @@ public class Game {
             }
         }
         return null;
+    }
+
+    public void cullOldColliders() {
+        if (this.colliders == null) {
+            this.colliders = new ArrayList<>();
+        }
+        ArrayList<ShapePayload> rm = new ArrayList<>();
+        for (int i=0; i<this.colliders.size(); i++) {
+            ShapePayload coll = this.colliders.get(i);
+            if (!coll.checkDisp()) {
+                rm.add(coll);
+            }
+        }
+        this.colliders.removeAll(rm);
     }
 }

@@ -128,7 +128,9 @@ public class SpringSecurityConfig extends WebSecurityConfigurerAdapter {
         passes int default 0,
         kills int default 0,
         deaths int default 0,
-	    turnovers int default 0
+	    turnovers int default 0,
+	    killassists int default 0,
+	    goalassists int default 0
 	);
 
 	insert into users (id, username, email, password, role, created)

@@ -67,6 +67,12 @@ public class User implements Serializable, UserDetails {
     @Column(name = "turnovers")
     private int turnovers;
 
+    @Column(name = "killassists")
+    private int killassists;
+
+    @Column(name = "goalassists")
+    private int goalassists;
+
     public User(){
         this.wins = 0;
         this.losses = 0;
@@ -80,6 +86,8 @@ public class User implements Serializable, UserDetails {
         this.deaths = 0;
         this.passes = 0;
         this.turnovers = 0;
+        this.killassists = 0;
+        this.goalassists = 0;
     }
 
     public User(String username, String pwEncoded){
@@ -246,5 +254,21 @@ public class User implements Serializable, UserDetails {
 
     public void setTurnovers(Integer turnovers) {
         this.turnovers = turnovers;
+    }
+
+    public int getKillassists() {
+        return killassists;
+    }
+
+    public void setKillassists(int killassists) {
+        this.killassists = killassists;
+    }
+
+    public int getGoalassists() {
+        return goalassists;
+    }
+
+    public void setGoalassists(int goalassists) {
+        this.goalassists = goalassists;
     }
 }

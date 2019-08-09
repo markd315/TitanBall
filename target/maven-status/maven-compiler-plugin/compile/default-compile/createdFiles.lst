@@ -36,6 +36,7 @@ networking\CandidateGame.class
 gameserver\engine\TeamAffiliation.class
 authserver\matchmaking\Rating.class
 client\forms\LoginForm.class
+client\ScreenConst.class
 gameserver\entity\minions\Wall.class
 util\Util.class
 client\SelectClassSkins.class

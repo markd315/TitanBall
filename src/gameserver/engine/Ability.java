@@ -13,13 +13,13 @@ import gameserver.entity.minions.BallPortal;
 import gameserver.entity.minions.Portal;
 import gameserver.entity.minions.Trap;
 import gameserver.entity.minions.Wall;
+import gameserver.models.Game;
 import gameserver.targeting.*;
 import util.Util;
 
 import java.awt.*;
 import java.awt.geom.Ellipse2D;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Set;
 
 public class Ability {
@@ -77,7 +77,7 @@ public class Ability {
                     corners = sel.getLatestColliderBounds();
                     if (corners.getWidth() > 0) {
                         context.effectPool.addUniqueEffect(new CooldownE(15000, caster));
-                        context.entityPool.add(new Trap(TeamAffiliation.UNAFFILIATED, (int) corners.getX(), (int) corners.getY()));
+                        context.entityPool.add(new Trap(caster, (int) corners.getX(), (int) corners.getY()));
                     }
                     break;
                 case MARKSMAN:
@@ -149,6 +149,7 @@ public class Ability {
                             .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
                     for (Entity e : appliedTo) {
                         context.effectPool.addUniqueEffect(new CooldownE(3000, caster));
+                        context.effectPool.addStackingEffect(caster, new EmptyEffect(5000, e, EffectId.ATTACKED));
                         e.damage(context, 24);
                     }
                     break;
@@ -172,26 +173,7 @@ public class Ability {
                     }
                     break;
             }
-            if (sel != null && sel.latestCollider != null) {
-                //sel has the bounds, shape has the correct class.
-                //so we inject the sel bounds back into the shape class and eventually use the camera to render it
-                context.colliders = new HashSet<>();
-                Rectangle bounds = sel.latestCollider.getBounds();
-                if (shape instanceof Ellipse2D.Double) {
-                    context.colliders.add(
-                            new ShapePayload(new Ellipse2D.Double(bounds.getX(), bounds.getY(),
-                                    bounds.getWidth(), bounds.getHeight())));
-                } else if (shape instanceof Polygon) {
-                    //TODO this won't work probably
-                    context.colliders.add(
-                            new ShapePayload(sel.latestCollider));
-                } else if (shape instanceof Rectangle) {
-                    context.colliders.add(
-                            new ShapePayload(new Rectangle((int) bounds.getX(), (int) bounds.getY(),
-                                    (int) bounds.getWidth(), (int) bounds.getHeight())));
-                }
-            }
-            return true;
+            return injectColliders(context, sel, shape, caster);
         }
         return false;
     }
@@ -311,6 +293,7 @@ public class Ability {
                             .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
                     for (Entity e : appliedTo) {
                         eff = new FlareEffect(3000, e, .55, .55);
+                        context.effectPool.addStackingEffect(caster, new EmptyEffect(5000, e, EffectId.ATTACKED));
                         context.effectPool.addStackingEffect(eff); //also unique and singleto
                     }
                     break;
@@ -321,6 +304,7 @@ public class Ability {
                     appliedTo = new Targeting(sel, notFriendly, unlimited, context)
                             .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
                     for (Entity e : appliedTo) {
+                        context.effectPool.addStackingEffect(caster, new EmptyEffect(5000, e, EffectId.ATTACKED));
                         e.damage(context, 40);
                     }
                     break;
@@ -356,25 +340,7 @@ public class Ability {
                     }
                     break;
             }
-            if (sel != null && sel.latestCollider != null) {
-                //sel has the bounds, shape has the correct class.
-                //so we inject the sel bounds back into the shape class and eventually use the camera to render it
-                context.colliders = new HashSet<>();
-                Rectangle bounds = sel.latestCollider.getBounds();
-                if (shape instanceof Ellipse2D.Double) {
-                    context.colliders.add(
-                            new ShapePayload(new Ellipse2D.Double(bounds.getX(), bounds.getY(),
-                                    bounds.getWidth(), bounds.getHeight())));
-                } else if (shape instanceof Polygon) {
-                    //TODO this won't work probably
-                    context.colliders.add(
-                            new ShapePayload(sel.latestCollider));
-                } else if (shape instanceof Rectangle) {
-                    context.colliders.add(
-                            new ShapePayload(new Rectangle((int) bounds.getX(), (int) bounds.getY(),
-                                    (int) bounds.getWidth(), (int) bounds.getHeight())));
-                }
-            }return true;
+            return injectColliders(context, sel, shape, caster);
         }
         return false;
     }
@@ -394,8 +360,8 @@ public class Ability {
         appliedTo = new Targeting(sel, all, unlimited, context)
                 .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
         if(appliedTo.size() >= 3){ //doesn't include self, so target and 1 others
-            if(Titan.titanInPossession().isPresent()){
-                Titan tip = Titan.titanInPossession().get();
+            if(context.titanInPossession().isPresent()){
+                Titan tip = context.titanInPossession().get();
                 context.stats.grant(context, tip, StatEngine.StatEnum.TURNOVERS);
                 context.stats.grant(context, caster, StatEngine.StatEnum.STEALS);
                 for(Entity e : appliedTo){
@@ -403,10 +369,33 @@ public class Ability {
                         tip.possession = 0;
                         context.ball.X += Math.random() * 100 - 50;
                         context.ball.Y += Math.random() * 100 - 50;
-
                     }
                 }
             }
+        }
+        return injectColliders(context, sel, shape, caster);
+    }
+
+    private static boolean injectColliders(Game context, Selector sel, Shape shape, Titan caster){
+        context.cullOldColliders();
+        if (sel != null && sel.latestCollider != null) {
+            //sel has the bounds, shape has the correct class.
+            //so we inject the sel bounds back into the shape class and eventually use the camera to render it
+            Rectangle bounds = sel.latestCollider.getBounds();
+            if (shape instanceof Ellipse2D.Double) {
+                context.colliders.add(
+                        new ShapePayload(new Ellipse2D.Double(bounds.getX(), bounds.getY(),
+                                bounds.getWidth(), bounds.getHeight())));
+            } else if (shape instanceof Polygon) {
+                //TODO this won't work probably
+                context.colliders.add(
+                        new ShapePayload(sel.latestCollider));
+            } else if (shape instanceof Rectangle) {
+                context.colliders.add(
+                        new ShapePayload(new Rectangle((int) bounds.getX(), (int) bounds.getY(),
+                                (int) bounds.getWidth(), (int) bounds.getHeight())));
+            }
+            context.colliders.get(context.colliders.size() -1).setColor(caster);
         }
         return true;
     }

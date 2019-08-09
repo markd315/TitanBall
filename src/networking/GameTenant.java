@@ -7,7 +7,6 @@ import com.esotericsoftware.kryonet.Connection;
 import com.rits.cloning.Cloner;
 import gameserver.GameEngine;
 import gameserver.ServerMode;
-import gameserver.models.Game;
 import util.Util;
 
 import java.util.*;
@@ -16,7 +15,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class GameTenant {
-    public static final ServerMode serverMode = ServerMode.TEAMS;
+    public static final ServerMode serverMode = ServerMode.TRUETWO;
     public static int PLAYERS;//instantiated in static block
 
     public GameEngine state;
@@ -68,18 +67,18 @@ public class GameTenant {
             wipClients.add(new PlayerConnection(nextUnclaimedSlot(), c, email));
         }
         if(lobbyFull(wipClients)){
-            System.out.println("lobby full");
+            System.out.println("starting full");
             List<PlayerDivider> players = playersFromConnections(wipClients);
             state = new GameEngine(gameId, players); //Start the game
             try {
                 state.initializeServer();
                 instantiateSpringContext();
+                wipClients = this.monteCarloBalance(wipClients);
                 seconds = 5;
                 for(int i=0; i<5; i++){
                     Thread.sleep(1000);
                     seconds-=1;
                 }
-                wipClients = this.monteCarloBalance(wipClients);
             }
             catch (InterruptedException e) {
                 e.printStackTrace();
@@ -90,7 +89,7 @@ public class GameTenant {
             Runnable updateClients = () -> {
                 //System.out.println("updating clients now");
                 clients.parallelStream().forEach(client -> {
-                    Game update = cloner.deepClone(state);
+                    GameEngine update = cloner.deepClone(state);
                     PlayerDivider pd = dividerFromConn(client.getClient());
                     update.underControl = state.titanSelected(pd);
                     //System.out.println("updating " + pd.id + update.underControl.getType().toString());
@@ -157,6 +156,12 @@ public class GameTenant {
             PLAYERS = 4;
         }
         if(serverMode == ServerMode.THREES){
+            PLAYERS = 6;
+        }
+        if(serverMode == ServerMode.TRUETWO){
+            PLAYERS = 4;
+        }
+        if(serverMode == ServerMode.TRUETHREE){
             PLAYERS = 6;
         }
     }
@@ -306,6 +311,48 @@ public class GameTenant {
             this.availableSlots.add(c4);
             this.availableSlots.add(c5);
             this.availableSlots.add(c6);
+        }
+        else if(GameTenant.serverMode == ServerMode.TRUETWO){
+            this.availableSlots = new ArrayList<>();
+            List<Integer> c3 = new ArrayList<>();
+            List<Integer> c4 = new ArrayList<>();
+            List<Integer> c5 = new ArrayList<>();
+            List<Integer> c6 = new ArrayList<>();
+            c3.add(1); //goalies are removed anyway if disabled for "true" 2v2
+            c3.add(3);
+            c4.add(4);
+
+            c5.add(2);
+            c5.add(5);
+            c6.add(6);
+            this.availableSlots.add(c3);
+            this.availableSlots.add(c4);
+            this.availableSlots.add(c5);
+            this.availableSlots.add(c6);
+        }
+        else if(GameTenant.serverMode == ServerMode.TRUETHREE){
+            this.availableSlots = new ArrayList<>();
+            List<Integer> c3 = new ArrayList<>();
+            List<Integer> c4 = new ArrayList<>();
+            List<Integer> c5 = new ArrayList<>();
+            List<Integer> c6 = new ArrayList<>();
+            List<Integer> c7 = new ArrayList<>();
+            List<Integer> c8 = new ArrayList<>();
+            c3.add(1);//goalies are removed anyway if disabled for "true" 3v3
+            c3.add(3);
+            c4.add(4);
+            c5.add(5);
+
+            c6.add(2);
+            c6.add(6);
+            c7.add(7);
+            c8.add(8);
+            this.availableSlots.add(c3);
+            this.availableSlots.add(c4);
+            this.availableSlots.add(c5);
+            this.availableSlots.add(c6);
+            this.availableSlots.add(c7);
+            this.availableSlots.add(c8);
         }
     }
 }

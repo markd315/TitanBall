@@ -17,6 +17,7 @@ public class DeadEffect extends Effect {
     public void onActivate(GameEngine context) {
         if(on instanceof Titan) {
             context.stats.grant(context.clientFromTitan((on)), StatEngine.StatEnum.DEATHS);
+            context.stats.grantKillAssists(context, (Titan) on, context.effectPool);
         }
         on.setHealth(-99999);
         context.effectPool.cullAllOn(context, on);

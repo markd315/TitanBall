@@ -22,11 +22,28 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class GameEngine extends Game {
+    private static final boolean GOALIE_DISABLED = true;
+
     public GameEngine(String id, List<PlayerDivider> clients) {
         this.clients = clients;
-        //cullUnmappedTitans();
+        cullUnmappedTitans();
+        if (GOALIE_DISABLED) {
+            cullGoalies();
+        }
         this.gameId = id;
         this.lastControlPacket = new ClientPacket[clients.size()];
+    }
+
+    private void cullGoalies() {
+        for (PlayerDivider p : clients) {
+            List<Integer> rm = new ArrayList<>();
+            for (Integer poss : p.possibleSelection) {
+                if (poss == 1 || poss == 2) {
+                    rm.add(poss);
+                }
+            }
+            p.possibleSelection.removeAll(rm);
+        }
     }
 
     protected void cullUnmappedTitans() {
@@ -38,12 +55,16 @@ public class GameEngine extends Game {
                     found = true;
                 }
             }
-            if (!found)
-                rm.add(players[i]);
+            if (!found) {
+                Titan t = players[i];
+                rm.add(t);
+                System.out.println("unmapped titan " + t.team + t.getType() + t.id);
+            }
         }
         List<Titan> temp = new LinkedList<>(Arrays.asList(players));
         temp.removeAll(rm);
-        players = (Titan[]) temp.toArray();
+        players = new Titan[temp.size()];
+        players = temp.toArray(players);
     }
 
     public GameEngine() {
@@ -52,7 +73,7 @@ public class GameEngine extends Game {
 
     public void lock() {
         while (!locked.compareAndSet(false, true)) {
-            //some other thread won, waiting.
+            //some other thread won, starting.
         }
     }
 
@@ -60,7 +81,7 @@ public class GameEngine extends Game {
         locked.set(false);
     }
 
-    protected void doHealthModification() throws Exception {
+    protected void doHealthModification() {
         for (Entity e : allSolids) {
             GoalHoop[] pains = getPainHoopsFromTeam(e.team);
             for (GoalHoop pain : pains) {
@@ -74,13 +95,13 @@ public class GameEngine extends Game {
                     if (delta > 20) {
                         delta = 20;
                     }
-                    e.damage(this, delta / 40.0);
+                    e.damage(this, delta / 70.0);
                 } else {
                     if (delta < -5) {
                         delta = -5;
                     }
                     if (e.team != TeamAffiliation.UNAFFILIATED && !e.teamPoss(this)) {
-                        e.heal(delta / -12.0);
+                        e.heal(delta / -50.0);
                     }
                 }
             }
@@ -168,11 +189,12 @@ public class GameEngine extends Game {
     }
 
     protected PlayerDivider getPossessorOrThrower() {
-        if (Titan.titanInPossession().isPresent()) {
-            return clientFromTitan(Titan.titanInPossession().get());
+        if (this.titanInPossession().isPresent()) {
+            return clientFromTitan(this.titanInPossession().get());
         }
-        if(lastPossessed != null){
-            return clientFromTitan(Titan.byId(lastPossessed));
+        if (lastPossessed != null) {
+            return clientFromTitan((Entity)
+                    this.titanByID(lastPossessed.toString()).get());
         }
         return null;
     }
@@ -208,40 +230,85 @@ public class GameEngine extends Game {
             client.setSelection(client.getPossibleSelection().get(0));
         }
         lastPossessed = null;
-        players[0].setX(HOME_HI_X);
-        players[1].setX(AWAY_HI_X);
-        players[2].X = DEFENDER_HOME;
-        players[3].X = MID_HOME;
-        players[4].X = FW_HOME;
-        players[5].X = FW_HOME;
-        players[6].X = FIELD_LENGTH - DEFENDER_HOME;
-        players[7].X = FIELD_LENGTH - MID_HOME;
-        players[8].X = FIELD_LENGTH - FW_HOME;
-        players[9].X = FIELD_LENGTH - FW_HOME;
-
-        players[0].setY(HOME_HI_Y);
-        players[1].Y = AWAY_HI_Y;
-        players[2].Y = MID_WING_HOME;
-        players[3].Y = MID_WING_HOME;
-        players[4].Y = TOP_WING_HOME;
-        players[5].Y = BOT_WING_HOME;
-
-        players[6].Y = MID_WING_HOME;
-        players[7].Y = MID_WING_HOME;
-        players[8].Y = TOP_WING_HOME;
-        players[9].Y = BOT_WING_HOME;
-        /*if (home.hasBall == true) { //TODO this is kinda pointless eventually
-            players[5].X = 1000;
-            players[6].X = 1000;
-            players[5].Y = 555;
-            players[6].Y = 624;
+        if(GOALIE_DISABLED){
+            players[0].setX(999999);
+            players[1].setX(999999);
+            players[0].setY(999999);
+            players[1].setY(999999);
         }
-        if (away.hasBall == true) { //TODO this is kinda pointless eventually
-            players[5].X = 1000;
-            players[6].X = 1000;
-            players[5].Y = 555;
-            players[6].Y = 624;
-        }*/
+        else{
+            players[0].setX(HOME_HI_X);
+            players[1].setX(AWAY_HI_X);
+            players[0].setY(HOME_HI_Y);
+            players[1].setY(AWAY_HI_Y);
+        }
+        int nonGoaliePerTeam = (players.length - 2) / 2;
+        int i=2;
+        int teamIndex = 0;
+        for(; i<2+nonGoaliePerTeam; i++){
+            players[i].team = TeamAffiliation.HOME; //unmap sometimes breaks this
+            setPosition(players[i], teamIndex, nonGoaliePerTeam);
+            if(home.score > away.score){
+                players[i].X -= 100;//possession penalty for winning
+            }
+            teamIndex++;
+        }
+        System.out.println("into AWAY");
+        teamIndex = 0;
+        for(i=2+nonGoaliePerTeam; i<players.length; i++) {
+            players[i].team = TeamAffiliation.AWAY; //unmap sometimes breaks this
+            setPosition(players[i], teamIndex, nonGoaliePerTeam);
+            if(away.score > home.score){
+                players[i].X -= 100;//possession penalty for winning
+            }
+            players[i].X = FIELD_LENGTH - players[i].X; //reflect across X mid
+            teamIndex++;
+        }
+    }
+
+    private void setPosition(Titan t, int slotIndex, int slots) {
+        if(slots <= 2){
+            if(slotIndex == 0){
+                t.X = MID_HOME;
+                t.Y = MID_WING_HOME;
+            }
+            if(slotIndex == 1){
+                t.X = DEFENDER_HOME;
+                t.Y = MID_WING_HOME;
+            }
+        }
+        if(slots == 3){
+            if(slotIndex == 0){
+                t.X = MID_HOME;
+                t.Y = MID_WING_HOME;
+            }
+            if(slotIndex == 1){
+                t.X = FW_HOME;
+                t.Y = TOP_WING_HOME;
+            }
+            if(slotIndex == 2){
+                t.X = FW_HOME;
+                t.Y = BOT_WING_HOME;
+            }
+        }
+        if(slots >= 4){
+            if(slotIndex == 0){
+                t.X = MID_HOME;
+                t.Y = MID_WING_HOME;
+            }
+            if(slotIndex == 1){
+                t.X = DEFENDER_HOME;
+                t.Y = MID_WING_HOME;
+            }
+            if(slotIndex == 2){
+                t.X = FW_HOME;
+                t.Y = TOP_WING_HOME;
+            }
+            if(slotIndex >= 3){
+                t.X = FW_HOME;
+                t.Y = BOT_WING_HOME;
+            }
+        }
     }
 
     public void serverGoalScored() {
@@ -265,7 +332,7 @@ public class GameEngine extends Game {
         }
         resetPosSel();
         ball.X = 1050;
-        ball.Y = 630;
+        ball.Y = 613;
     }
 
     public void intersectAll() {
@@ -451,7 +518,7 @@ public class GameEngine extends Game {
                 t.dirToBall = 0;
             }
             if (controlsHeld.R == -1 || controlsHeld.E == -1 || controlsHeld.Q == -1 && this.phase == 8 && t.actionState == Titan.TitanState.IDLE) {
-                this.colliders = new HashSet<>();
+                //this.colliders = new ArrayList<>();
             }
         }
     }
@@ -526,6 +593,7 @@ public class GameEngine extends Game {
                 effectPool.tickAll(this);
                 doHealthModification();
                 updateSelectedDirection();
+                cullOldColliders();
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -599,7 +667,7 @@ public class GameEngine extends Game {
 
 
     protected void setBallFromTip() {
-        Optional<Titan> tip = Titan.titanInPossession();
+        Optional<Titan> tip = this.titanInPossession();
         if (tip.isPresent()) {
             TeamAffiliation team = tip.get().team;
             if (team == TeamAffiliation.HOME) {
@@ -623,7 +691,7 @@ public class GameEngine extends Game {
         if ((r1.intersects(r2))) {
             Titan t = players[numSel - 1];
             if (t.id.equals(players[numSel - 1].id) && !t.id.equals(lastPossessed)) {
-                Optional<Titan> tip = Titan.titanInPossession();
+                Optional<Titan> tip = this.titanInPossession();
                 if (!tip.isPresent()) {
                     Titan release = getAnyBallMover();
                     if (release != null) {
@@ -643,12 +711,11 @@ public class GameEngine extends Game {
     }
 
     protected void changePossessionStats(Titan lost, Titan gained) {
-        if(lost != null){
+        if (lost != null) {
             TeamAffiliation oldTeam = lost.team;
-            if(gained.team == oldTeam){
+            if (gained.team == oldTeam) {
                 stats.grant(this, lost, StatEngine.StatEnum.PASSES);
-            }
-            else{ //Enemy taking possession
+            } else { //Enemy taking possession
                 stats.grant(this, lost, StatEngine.StatEnum.TURNOVERS);
                 stats.grant(this, gained, StatEngine.StatEnum.BLOCKS);
             }
@@ -713,7 +780,7 @@ public class GameEngine extends Game {
     }
 
     protected void aiTactics(int pIndex, int minX, int maxX, int minY, int maxY) {
-        Optional<Titan> tip = Titan.titanInPossession();
+        Optional<Titan> tip = this.titanInPossession();
         //PlayerDivider client = clientFromIndex(pIndex);
         Titan aiFor = players[pIndex]; //no sub1
         if (!anyClientSelected(pIndex + 1)) {
@@ -792,6 +859,10 @@ public class GameEngine extends Game {
     }
 
     protected void goalieTactics(Titan goalie, TeamAffiliation team) {
+        if (GOALIE_DISABLED) {
+            goalie.X = 99999;
+            goalie.Y = 99999;
+        }
         if (effectPool.isRooted(goalie) || goalie.possession == 1) {
             return;
         }
@@ -893,7 +964,6 @@ public class GameEngine extends Game {
     // Movement methods with player selection
     public void runUpCtrl(Titan t) {
         if (phase == 8) {
-            this.colliders = new HashSet<>();
             if (t.id.equals(players[0].id) && !effectPool.isRooted(players[0])) {
                 players[0].setY((int) players[0].getY() - 4);
                 if (players[0].getY() < GOALIE_Y_MIN) players[0].setY(GOALIE_Y_MIN);
@@ -926,7 +996,6 @@ public class GameEngine extends Game {
 
     public void runDownCtrl(Titan t) {
         if (phase == 8) {
-            this.colliders = new HashSet<>();
             if (t.id.equals(players[0].id) && !effectPool.isRooted(players[0])) {
                 players[0].setY((int) players[0].getY() + 4);
                 if (players[0].getY() > GOALIE_Y_MAX) players[0].setY(GOALIE_Y_MAX);
@@ -959,7 +1028,6 @@ public class GameEngine extends Game {
 
     public void runRightCtrl(Titan t) {
         if (phase == 8) {
-            this.colliders = new HashSet<>();
             if (t.id.equals(players[0].id) && !effectPool.isRooted(players[0])) {
                 players[0].setX((int) players[0].getX() + 4);
                 if (players[0].getX() > GOALIE_XH_MAX) players[0].setX(GOALIE_XH_MAX);
@@ -989,7 +1057,6 @@ public class GameEngine extends Game {
 
     public void runLeftCtrl(Titan t) {
         if (phase == 8) {
-            this.colliders = new HashSet<>();
             if (t.id.equals(players[0].id) && !effectPool.isRooted(players[0])) {
                 players[0].setX((int) players[0].getX() - 3);
                 if (players[0].getX() < GOALIE_XH_MIN) players[0].setX(GOALIE_XH_MIN);
@@ -1020,17 +1087,17 @@ public class GameEngine extends Game {
     // Effect of the kicked ball
     public void shootingBall(Titan t) throws Exception {
         //System.out.println("pow " + xKickPow + " " + yKickPow);
-        if (lastPossessed != null || Titan.titanInPossession().isPresent()) {
+        if (lastPossessed != null || this.titanInPossession().isPresent()) {
             if (lastPossessed == null) {
-                lastPossessed = Titan.titanInPossession().get().id;
+                lastPossessed = this.titanInPossession().get().id;
             }
             Titan tip;
             try {
-                tip = titanFromId(lastPossessed);
+                tip = this.titanByID(lastPossessed.toString()).get();
             } catch (Exception e) {
                 return;
             }
-            if (tip == null || effectPool.isStunned(tip)) {
+            if (effectPool.isStunned(tip)) {
                 return;
             }
             if (t.actionFrame == 0 && !t.getType().equals(TitanType.GUARDIAN)) {
@@ -1068,15 +1135,6 @@ public class GameEngine extends Game {
         }
     }
 
-    protected Titan titanFromId(UUID lastPossessed) throws Exception {
-        for (Titan t : players) {
-            if (t.id.equals(lastPossessed)) {
-                return t;
-            }
-        }
-        throw new Exception("No titan with id!");
-    }
-
     protected void centerBall(Titan t) {
         ball.X = t.getX() + 35 - 7;
         ball.Y = t.getY() + 35 - 7;
@@ -1098,17 +1156,17 @@ public class GameEngine extends Game {
 
     public void passingBall(Titan t) throws Exception {
         //System.out.println("pow " + xKickPow + " " + yKickPow);
-        if (lastPossessed != null || Titan.titanInPossession().isPresent()) {
+        if (lastPossessed != null || this.titanInPossession().isPresent()) {
             if (lastPossessed == null) {
-                lastPossessed = Titan.titanInPossession().get().id;
+                lastPossessed = this.titanInPossession().get().id;
             }
             Titan tip;
             try {
-                tip = titanFromId(lastPossessed);
+                tip = this.titanByID(lastPossessed.toString()).get();
             } catch (Exception e) {
                 return;
             }
-            if (tip == null || effectPool.isStunned(tip)) {
+            if (effectPool.isStunned(tip)) {
                 return;
             }
             if (t.actionFrame == 0) {
@@ -1147,17 +1205,17 @@ public class GameEngine extends Game {
 
     protected void curve(Titan t, int sign) throws Exception {
         //System.out.println("pow " + xKickPow + " " + yKickPow);
-        if (lastPossessed != null || Titan.titanInPossession().isPresent()) {
+        if (lastPossessed != null || this.titanInPossession().isPresent()) {
             if (lastPossessed == null) {
-                lastPossessed = Titan.titanInPossession().get().id;
+                lastPossessed = this.titanInPossession().get().id;
             }
             Titan tip;
             try {
-                tip = titanFromId(lastPossessed);
+                tip = this.titanByID(lastPossessed.toString()).get();
             } catch (Exception e) {
                 return;
             }
-            if (tip == null || effectPool.isStunned(tip)) {
+            if (effectPool.isStunned(tip)) {
                 return;
             }
             if (t.actionFrame == 0) {
@@ -1204,6 +1262,15 @@ public class GameEngine extends Game {
         }
     }
 
+    public Optional<Titan> titanInPossession() {
+        for (Titan t : players) {
+            if (t.possession == 1) {
+                return Optional.of(t);
+            }
+        }
+        return Optional.empty();
+    }
+
     public void attack1(Titan t) {
         if (t.actionFrame < t.eCastFrames) {
             t.actionFrame++;
@@ -1239,6 +1306,15 @@ public class GameEngine extends Game {
         //System.out.println( "controlling " + (t.team.toString() + t.getType()
         //+ " " + t.runUp + t.runDown + t.runLeft + t.runRight));
         return t;
+    }
+
+    public Optional<Titan> titanByID(String id) {
+        for (Titan t : players) {
+            if (t.id.toString().equals(id)) {
+                return Optional.of(t);
+            }
+        }
+        return Optional.empty();
     }
 
     void checkWinCondition() throws Exception {

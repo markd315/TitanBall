@@ -9,87 +9,46 @@ import java.util.ArrayList;
 import java.util.ConcurrentModificationException;
 import java.util.List;
 
-public class EffectPool{
-    public EffectPool(){
+public class EffectPool {
+    public EffectPool() {
         this.pool = new ArrayList<>();
         this.targetPool = new ArrayList<>();
         this.castBy = new ArrayList<>();
     }
 
-    public void tickAll(GameEngine context){
-        List<Effect> rm = new ArrayList<>();
-        for(int i=0; i<pool.size(); i++){
-            Effect e = pool.get(i);
-            //System.out.println(e);
-            if(e.everActive && !e.active){
-                rm.add(e);
-            }
-            else{
-                e.tick(context);
-            }
-        }
-
-        for(int i=0; i<rm.size(); i++){
-            int idx = pool.indexOf(rm.get(i));
-            while(true) {
-                try {
-                    pool.remove(idx);
-                    targetPool.remove(idx);
-                    castBy.remove(idx);
-                    break;
-                } catch (ConcurrentModificationException comod) {
-                    // handle exception
-                    System.out.println("retrying effect removal per comod");
-                }
-            }
-        }
-    }
-
-    public boolean containsSingletonEffect(EffectId id){
+    public boolean containsSingletonEffect(EffectId id) {
         //Only one of this effect per game
-        for(Effect e : pool){
-            if(e.getEffect() == id){
+        for (Effect e : pool) {
+            if (e.getEffect() == id) {
                 return true;
             }
         }
         return false;
     }
 
-    public boolean containsUniqueEffect(EffectId id, Entity target){
+    public boolean containsUniqueEffect(EffectId id, Entity target) {
         //One of this per target
-        for(int i=0; i<pool.size(); i++){
+        for (int i = 0; i < pool.size(); i++) {
             Effect e = pool.get(i);
             Entity t = targetPool.get(i);
-            if(e.getEffect().equals(id) && t.id.equals(target.id)){
+            if (e.getEffect().equals(id) && t.id.equals(target.id)) {
                 return true;
             }
         }
         return false;
     }
 
-    public boolean addSingletonEffect(Effect eff){
-        //One of this per target
-        EffectId id = eff.getEffect();
-        Entity target = eff.on;
-        for(int i=0; i<pool.size(); i++){
-            Effect e = pool.get(i);
-            if(e.getEffect() == id && e.active){
-                return false;
-            }
-        }
-        pool.add(eff);
-        targetPool.add(target);
-        castBy.add(null);
-        return true;
+    public boolean addSingletonEffect(Effect eff) {
+        return addSingletonEffect(null, eff);
     }
 
-    public boolean addCasterUniqueEffect(Effect eff, Entity caster){
+    public boolean addSingletonEffect(Titan caster, Effect eff) {
         //One of this per target
         EffectId id = eff.getEffect();
         Entity target = eff.on;
-        for(int i=0; i<pool.size(); i++){
+        for (int i = 0; i < pool.size(); i++) {
             Effect e = pool.get(i);
-            if(e.getEffect() == id && caster.id.equals(castBy.get(i).id) &&  e.active){
+            if (e.getEffect() == id && e.active) {
                 return false;
             }
         }
@@ -99,37 +58,54 @@ public class EffectPool{
         return true;
     }
 
-    public boolean addUniqueEffect(Effect eff){
+    public boolean addCasterUniqueEffect(Effect eff, Titan caster) {
         //One of this per target
         EffectId id = eff.getEffect();
         Entity target = eff.on;
-        for(int i=0; i<pool.size(); i++){
+        for (int i = 0; i < pool.size(); i++) {
             Effect e = pool.get(i);
-            Entity t = targetPool.get(i);
-            if(e.getEffect() == id && t.id.equals(target.id) && e.active){
+            if (e.getEffect() == id && caster.id.equals(castBy.get(i).id) && e.active) {
                 return false;
             }
         }
         pool.add(eff);
         targetPool.add(target);
-        castBy.add(null);
+        castBy.add(caster);
         return true;
     }
 
-    public boolean addStackingEffect(Effect eff){
+    public boolean addUniqueEffect(Titan caster, Effect eff) {
+        //One of this per target
+        EffectId id = eff.getEffect();
+        Entity target = eff.on;
+        for (int i = 0; i < pool.size(); i++) {
+            Effect e = pool.get(i);
+            Entity t = targetPool.get(i);
+            if (e.getEffect() == id && t.id.equals(target.id) && e.active) {
+                return false;
+            }
+        }
         pool.add(eff);
-        targetPool.add(eff.on);
-        castBy.add(null);
+        targetPool.add(target);
+        castBy.add(caster);
         return true;
     }
 
-    public boolean isStunned(Titan t){
+    public boolean addUniqueEffect(Effect eff) {
+        return addUniqueEffect(null, eff);
+    }
+
+    public boolean addStackingEffect(Effect eff) {
+        return addStackingEffect(null, eff);
+    }
+
+    public boolean isStunned(Titan t) {
         return hasEffect(t, EffectId.STUN);
     }
 
     private List<Effect> pool;
     private List<Entity> targetPool; //Wrapper around a list
-    private List<Entity> castBy;
+    private List<Titan> castBy;
 
     public List<Effect> getEffects() {
         return pool;
@@ -139,12 +115,16 @@ public class EffectPool{
         return targetPool;
     }
 
+    public List<Titan> getCastBy() {
+        return castBy;
+    }
+
     public boolean hasEffect(Titan caster, EffectId queryType) {
-        for(int i=0; i<pool.size(); i++){
+        for (int i = 0; i < pool.size(); i++) {
             //For sure it's in there we're jusy checking the wrong
             //System.out.println(targetPool.get(i).id + "" + t.id);
-            if(pool.get(i).getEffect() == queryType
-                    && targetPool.get(i).id.equals(caster.id)){
+            if (pool.get(i).getEffect() == queryType
+                    && targetPool.get(i).id.equals(caster.id)) {
                 return true;
             }
         }
@@ -156,11 +136,62 @@ public class EffectPool{
     }
 
     public void cullAllOn(GameEngine context, Entity on) {
-        for(int i=0; i<pool.size(); i++){
+        for (int i = 0; i < pool.size(); i++) {
             Effect e = pool.get(i);
             Entity t = targetPool.get(i);
-            if(e.getEffect() != EffectId.DEAD && t.id.equals(on.id) && e.active){
+            if (e.getEffect() != EffectId.DEAD && t.id.equals(on.id) && e.active) {
                 e.cull(context);
+            }
+        }
+    }
+
+    public boolean addStackingEffect(Titan caster, Effect eff) {
+        pool.add(eff);
+        targetPool.add(eff.on);
+        castBy.add(caster);
+        return true;
+    }
+
+    public void tickAll(GameEngine context) {
+        List<Effect> rm = new ArrayList<>();
+        for (int i = 0; i < pool.size(); i++) {
+            Effect e = pool.get(i);
+            //System.out.println(e);
+            if (e.everActive && !e.active) {
+                rm.add(e);
+            } else {
+                e.tick(context);
+            }
+        }
+
+        for (int i = 0; i < rm.size(); i++) {
+            int idx = pool.indexOf(rm.get(i));
+            while (true) {
+                try {
+                    pool.remove(idx);
+                    break;
+                } catch (ConcurrentModificationException comod) {
+                    // handle exception
+                    System.out.println("retrying effect removal per comod");
+                }
+            }
+            while (true) {
+                try {
+                    targetPool.remove(idx);
+                    break;
+                } catch (ConcurrentModificationException comod) {
+                    // handle exception
+                    System.out.println("retrying effect removal per comod");
+                }
+            }
+            while (true) {
+                try {
+                    castBy.remove(idx);
+                    break;
+                } catch (ConcurrentModificationException comod) {
+                    // handle exception
+                    System.out.println("retrying effect removal per comod");
+                }
             }
         }
     }

@@ -30,7 +30,7 @@ public class Box extends Coordinates{
     public boolean collidesAny(GameEngine context, Box[] boxes, int yd, int xd){
         Shape cmp = new Rectangle((int)this.X + xd, (int)this.Y + yd, this.width, this.height);
         if (this instanceof Titan) {
-            cmp = new Ellipse2D.Double(this.X + xd + GameEngine.SPRITE_X_EMPTY/2, this.Y + yd + GameEngine.SPRITE_Y_EMPTY/2,
+            cmp = new Rectangle((int)(this.X + xd + GameEngine.SPRITE_X_EMPTY/2), (int)(this.Y + yd + GameEngine.SPRITE_Y_EMPTY/2),
                     this.width - GameEngine.SPRITE_X_EMPTY, this.height - GameEngine.SPRITE_Y_EMPTY);
         }
         boolean ret = false;

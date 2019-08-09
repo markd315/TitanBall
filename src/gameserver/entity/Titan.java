@@ -40,17 +40,7 @@ public class Titan extends Entity {
         this.width = 70;
         this.height = 70;
         setVarsBasedOnType();
-        titanList.add(this);
         this.solid = true;
-    }
-
-    public static Titan byId(UUID query) {
-        for(Titan t : titanList){
-            if(t.id.equals(query)){
-                return t;
-            }
-        }
-        return null;
     }
 
     public double getThrowPower() {
@@ -95,7 +85,6 @@ public class Titan extends Entity {
         this.sel = sel;
     }
 
-    static List<Titan> titanList = new ArrayList();
     public static Map<TitanType, Double> titanHealth = new HashMap();
     public static Map<TitanType, Double> titanSpeed = new HashMap();
     public static Map<TitanType, Double> titanShoot = new HashMap();
@@ -127,15 +116,6 @@ public class Titan extends Entity {
         double toConvert = typesafeNumeric(stat.get(query));
         double zScore = (toConvert - mean) / sd;
         return MEAN_STARS + (zScore*SD_STARS);
-    }
-    public static Optional<Titan> titanInPossession() {//code smell and potentially broken during shots
-
-        for(int i=0; i <titanList.size(); i++){
-            if(titanList.get(i).possession == 1){
-                return Optional.of(titanList.get(i));
-            }
-        }
-        return Optional.empty();
     }
 
     public TitanState actionState  = TitanState.IDLE;
@@ -286,14 +266,6 @@ public class Titan extends Entity {
         titanRText.put(TitanType.ARTISAN, "Spawn a portal that can carry a ball (including its momentum)");
         titanRText.put(TitanType.STEALTH, "Blink a very short distance");
 
-    }
-
-    public static List<Entity> getTitanList(){
-        List<Entity> ents = new ArrayList<>();
-        for(Titan t: titanList){
-            ents.add((Entity) t);
-        }
-        return ents;
     }
     private static RangeCircle e(int x){
         return new RangeCircle(Color.GREEN, x);

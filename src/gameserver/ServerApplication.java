@@ -102,7 +102,7 @@ public class ServerApplication {
             User persistence = userService.findUserByEmail(pl.email);
             //System.out.println("got user " + persistence.getEmail() + persistence.getRating());
             Rating<User> oldRating = new Rating<>(persistence, persistence.getLosses()+persistence.getWins());
-            if(state.players[pl.getSelection() + 1].team == TeamAffiliation.HOME){
+            if(state.players[pl.getSelection() - 1].team == TeamAffiliation.HOME){
                 oldRating.setRating(persistence.getRating());
                 home.add(oldRating);
             }
