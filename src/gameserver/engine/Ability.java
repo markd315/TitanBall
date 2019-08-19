@@ -170,7 +170,7 @@ public class Ability {
         return injectColliders(context, sel, shape, caster);
     }
 
-    private static boolean injectColliders(Game context, Selector sel, Shape shape, Titan caster){
+    private static boolean injectColliders(Game context, Selector sel, Shape shape, Titan caster) {
         context.cullOldColliders();
         if (sel != null && sel.latestCollider != null) {
             //sel has the bounds, shape has the correct class.
@@ -189,7 +189,7 @@ public class Ability {
                         new ShapePayload(new Rectangle((int) bounds.getX(), (int) bounds.getY(),
                                 (int) bounds.getWidth(), (int) bounds.getHeight())));
             }
-            context.colliders.get(context.colliders.size() -1).setColor(caster);
+            context.colliders.get(context.colliders.size() - 1).setColor(caster);
         }
         return true;
     }

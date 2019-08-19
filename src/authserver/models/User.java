@@ -74,6 +74,9 @@ public class User implements Serializable, UserDetails {
         return subExp;
     }
 
+    @Column(name = "rebounds")
+    private int rebounds;
+
     public User(){
         this.role = "USER";
         this.rating = 1000.0;
