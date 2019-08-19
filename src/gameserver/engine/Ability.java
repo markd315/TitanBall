@@ -19,6 +19,7 @@ import util.Util;
 
 import java.awt.*;
 import java.awt.geom.Ellipse2D;
+import java.awt.geom.Point2D;
 import java.util.Collections;
 import java.util.Set;
 
@@ -35,7 +36,7 @@ public class Ability {
     static Limiter unlimited = new Limiter(SortBy.NEAREST, 999);
     static Limiter mouseNear = new Limiter(SortBy.NEAREST_MOUSE, 1);
 
-    public static boolean castE(GameEngine context, Titan caster) throws NullPointerException{
+    public static boolean castE(GameEngine context, Titan caster) throws NullPointerException {
         int clientIndex = context.clientIndex(caster);
         int x = context.lastControlPacket[clientIndex].posX + context.lastControlPacket[clientIndex].camX;
         int y = context.lastControlPacket[clientIndex].posY + context.lastControlPacket[clientIndex].camY;
@@ -118,12 +119,12 @@ public class Ability {
                     break;
                 case SUPPORT:
                     context.effectPool.addUniqueEffect(new CooldownE(7000, caster));
-                    shape = new Ellipse2D.Double(0, 0, 100, 100);
+                    shape = new Ellipse2D.Double(0, 0, 160, 160);
                     sel = new Selector(shape, SelectorOffset.CAST_CENTER, 9999);
                     appliedTo = new Targeting(sel, champions, nearest, context)
                             .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
                     for (Entity e : appliedTo) {
-                        eff = new EmptyEffect(1200, e, EffectId.STUN);
+                        eff = new EmptyEffect(1800, e, EffectId.STUN);
                         context.effectPool.addCasterUniqueEffect(eff, caster);
                     }
                     break;
@@ -162,7 +163,7 @@ public class Ability {
                     Rectangle re = sel.latestCollider.getBounds();
                     int limitt = 0;
                     while (limitt < 140) {
-                        double ang = Util.degreesFromCoords(re.getX() - caster.X - 35, re.getY() - caster.Y -35);
+                        double ang = Util.degreesFromCoords(re.getX() - caster.X - 35, re.getY() - caster.Y - 35);
                         double dx = Math.cos(Math.toRadians((ang)));
                         double dy = Math.sin(Math.toRadians((ang)));
                         if (!caster.collidesSolid(context, context.allSolids, (int) dx, (int) dy)) { //collision
@@ -178,7 +179,7 @@ public class Ability {
         return false;
     }
 
-    public static boolean castR(GameEngine context, Titan caster) throws NullPointerException{
+    public static boolean castR(GameEngine context, Titan caster) throws NullPointerException {
         int clientIndex = context.clientIndex(caster);
         int x = context.lastControlPacket[clientIndex].posX + context.lastControlPacket[clientIndex].camX;
         int y = context.lastControlPacket[clientIndex].posY + context.lastControlPacket[clientIndex].camY;
@@ -329,7 +330,7 @@ public class Ability {
                     Rectangle re = sel.latestCollider.getBounds();
                     int limitt = 0;
                     while (limitt < 100) {
-                        double ang = Util.degreesFromCoords(re.getX() - caster.X - 35, re.getY() - caster.Y -35);
+                        double ang = Util.degreesFromCoords(re.getX() - caster.X - 35, re.getY() - caster.Y - 35);
                         double dx = Math.cos(Math.toRadians((ang)));
                         double dy = Math.sin(Math.toRadians((ang)));
                         if (!caster.collidesSolid(context, context.allSolids, (int) dx, (int) dy)) { //collision
@@ -345,7 +346,7 @@ public class Ability {
         return false;
     }
 
-    public static boolean castQ(GameEngine context, Titan caster) throws NullPointerException{
+    public static boolean castQ(GameEngine context, Titan caster) throws NullPointerException {
         Selector sel = null;
         Shape shape = null;
         Set<Entity> appliedTo = null;
@@ -355,28 +356,28 @@ public class Ability {
         int x = context.lastControlPacket[clientIndex].posX + context.lastControlPacket[clientIndex].camX;
         int y = context.lastControlPacket[clientIndex].posY + context.lastControlPacket[clientIndex].camY;
         //context.effectPool.addUniqueEffect(new CooldownQ(12000, caster));
-        shape = new Ellipse2D.Double(0, 0, 160, 160);
+        shape = new Ellipse2D.Double(0, 0, 52, 52);
         sel = new Selector(shape, SelectorOffset.CAST_CENTER, 9999);
-        appliedTo = new Targeting(sel, all, unlimited, context)
+        new Targeting(sel, all, unlimited, context)
                 .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
-        if(appliedTo.size() >= 3){ //doesn't include self, so target and 1 others
-            if(context.titanInPossession().isPresent()){
-                Titan tip = context.titanInPossession().get();
-                context.stats.grant(context, tip, StatEngine.StatEnum.TURNOVERS);
-                context.stats.grant(context, caster, StatEngine.StatEnum.STEALS);
-                for(Entity e : appliedTo){
-                    if(e.id.equals(tip.id)){
-                        tip.possession = 0;
-                        context.ball.X += Math.random() * 100 - 50;
-                        context.ball.Y += Math.random() * 100 - 50;
-                    }
-                }
+        if (context.titanInPossession().isPresent()) {
+            Titan tip = context.titanInPossession().get();
+            context.stats.grant(context, tip, StatEngine.StatEnum.TURNOVERS);
+            context.stats.grant(context, caster, StatEngine.StatEnum.STEALS);
+            Point2D.Double ball = new Point2D.Double((int) context.ball.X + 7, (int) context.ball.Y + 7);
+            if (sel.getLatestColliderCircle().contains(ball)) {
+                tip.possession = 0;
+                context.ball.X = caster.X + 35 - 7;
+                context.ball.Y = caster.Y + 35 - 7;
+                caster.possession = 1;
+                eff = new EmptyEffect(1500, tip, EffectId.STUN);
+                context.effectPool.addStackingEffect(caster, eff);
             }
         }
         return injectColliders(context, sel, shape, caster);
     }
 
-    private static boolean injectColliders(Game context, Selector sel, Shape shape, Titan caster){
+    private static boolean injectColliders(Game context, Selector sel, Shape shape, Titan caster) {
         context.cullOldColliders();
         if (sel != null && sel.latestCollider != null) {
             //sel has the bounds, shape has the correct class.
@@ -395,7 +396,7 @@ public class Ability {
                         new ShapePayload(new Rectangle((int) bounds.getX(), (int) bounds.getY(),
                                 (int) bounds.getWidth(), (int) bounds.getHeight())));
             }
-            context.colliders.get(context.colliders.size() -1).setColor(caster);
+            context.colliders.get(context.colliders.size() - 1).setColor(caster);
         }
         return true;
     }

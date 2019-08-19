@@ -1,23 +1,22 @@
 package networking;
 
 
-import client.ClientPacket;
-
 public class KeyDifferences {
-    public int W = 0, A = 0, S = 0, D = 0, E = 0, R = 0, SPACE = 0, Q = 0, TAB = 0, Z = 0;
+    public int UP = 0, LEFT = 0, DOWN = 0, RIGHT = 0, E = 0, R = 0, CAM = 0,
+            STEAL = 0, TAB = 0, SWITCH = 0, BOOST =0, BOOST_LOCK =0, MV_CLICK=0, MV_BALL=0;
 
     public KeyDifferences(ClientPacket act, ClientPacket old) {
-        if (act.W) {
-            W++;
+        if (act.UP) {
+            UP++;
         }
-        if (act.A) {
-            A++;
+        if (act.LEFT) {
+            LEFT++;
         }
-        if (act.S) {
-            S++;
+        if (act.DOWN) {
+            DOWN++;
         }
-        if (act.D) {
-            D++;
+        if (act.RIGHT) {
+            RIGHT++;
         }
         if (act.E) {
             E++;
@@ -25,27 +24,33 @@ public class KeyDifferences {
         if (act.R) {
             R++;
         }
-        if (act.SPACE) {
-            SPACE++;
+        if (act.CAM) {
+            CAM++;
         }
-        if (act.Q) {
-            Q++;
+        if (act.STEAL) {
+            STEAL++;
         }
-        if (act.Z) {
-            Z++;
+        if (act.SWITCH) {
+            SWITCH++;
+        }
+        if(act.BOOST){
+            BOOST++;
+        }
+        if(act.BOOST_LOCK){
+            BOOST_LOCK++;
         }
         if (old != null) {
-            if (old.W) {
-                W--;
+            if (old.UP) {
+                UP--;
             }
-            if (old.A) {
-                A--;
+            if (old.LEFT) {
+                LEFT--;
             }
-            if (old.S) {
-                S--;
+            if (old.DOWN) {
+                DOWN--;
             }
-            if (old.D) {
-                D--;
+            if (old.RIGHT) {
+                RIGHT--;
             }
             if (old.E) {
                 E--;
@@ -53,14 +58,26 @@ public class KeyDifferences {
             if (old.R) {
                 R--;
             }
-            if (old.SPACE) {
-                SPACE--;
+            if (old.CAM) {
+                CAM--;
             }
-            if (old.Q) {
-                Q--;
+            if (old.STEAL) {
+                STEAL--;
             }
-            if (old.Z) {
-                Z--;
+            if (old.SWITCH) {
+                SWITCH--;
+            }
+            if (old.BOOST) {
+                BOOST--;
+            }
+            if(old.BOOST_LOCK){
+                BOOST_LOCK--;
+            }
+            if (old.MV_CLICK) {
+                MV_CLICK--;
+            }
+            if(old.MV_BALL){
+                MV_BALL--;
             }
         }
     }

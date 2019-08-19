@@ -28,6 +28,13 @@ public class Titan extends Entity {
     public int kickingFrames;
     public int actionFrame = 0; //For answering how long have we been in a shooting/passing state?
 
+    public double fuel = 50.0;
+    public boolean isBoosting = false;
+
+    public boolean programmed = false;
+    public int marchingOrderX = 0;
+    public int marchingOrderY = 0;
+
     private TitanType type;
 
     public List<RangeCircle> rangeIndicators = new ArrayList<>();
@@ -60,7 +67,7 @@ public class Titan extends Entity {
         this.rCastFrames = titanRFrames.get(type);
         this.sCastFrames = titanStealFrames.get(type);
         if(titanRange.containsKey(this.type)){
-            this.rangeIndicators = new ArrayList<RangeCircle>();
+            this.rangeIndicators = new ArrayList<>();
             this.rangeIndicators.addAll(titanRange.get(this.type));
         }
     }
@@ -155,18 +162,18 @@ public class Titan extends Entity {
         titanHealth.put(TitanType.MAGE, 110.0);
         titanHealth.put(TitanType.BUILDER, 90.0);
 
-        titanShoot.put(TitanType.ARTISAN, 1.0);
-        titanShoot.put(TitanType.GUARDIAN, 1.1);
-        titanShoot.put(TitanType.MARKSMAN, 1.2);
-        titanShoot.put(TitanType.POST, 1.2);
-        titanShoot.put(TitanType.RANGER, 0.48);
+        titanShoot.put(TitanType.ARTISAN, 1.3);
+        titanShoot.put(TitanType.GUARDIAN, 1.43);
+        titanShoot.put(TitanType.MARKSMAN, 1.56);
+        titanShoot.put(TitanType.POST, 1.56);
+        titanShoot.put(TitanType.RANGER, 0.65);
         //titanShoot.put(TitanType.RECON, 0.8);
-        titanShoot.put(TitanType.SLASHER, 0.9);
-        titanShoot.put(TitanType.STEALTH, 0.9);
-        titanShoot.put(TitanType.SUPPORT, 0.7);
-        titanShoot.put(TitanType.WARRIOR, 0.48);
-        titanShoot.put(TitanType.MAGE, 0.48);
-        titanShoot.put(TitanType.BUILDER, 0.7);
+        titanShoot.put(TitanType.SLASHER, 1.17);
+        titanShoot.put(TitanType.STEALTH, 1.17);
+        titanShoot.put(TitanType.SUPPORT, 0.91);
+        titanShoot.put(TitanType.WARRIOR, 0.65);
+        titanShoot.put(TitanType.MAGE, 0.65);
+        titanShoot.put(TitanType.BUILDER, 0.91);
 
         titanEFrames.put(TitanType.ARTISAN, 10);
         titanEFrames.put(TitanType.GUARDIAN, 1);
@@ -216,7 +223,7 @@ public class Titan extends Entity {
         mage.add(r(250));
         builder.add(e(200));
         builder.add(r(250));
-        support.add(e(50));
+        support.add(e(80));
         support.add(r(250));
         ranger.add(e(250));
         ranger.add(r(60));

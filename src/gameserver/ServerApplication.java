@@ -6,13 +6,12 @@ import authserver.matchmaking.Matchmaker;
 import authserver.matchmaking.Rating;
 import authserver.models.User;
 import authserver.users.UserService;
-import client.ClientPacket;
+import networking.ClientPacket;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryonet.Connection;
 import com.esotericsoftware.kryonet.Listener;
 import com.esotericsoftware.kryonet.Server;
 import gameserver.engine.TeamAffiliation;
-import networking.GameTenant;
 import networking.KryoRegistry;
 import networking.PlayerDivider;
 

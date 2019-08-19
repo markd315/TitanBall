@@ -1,7 +1,7 @@
 package authserver.matchmaking;
 
 import gameserver.ServerApplication;
-import networking.GameTenant;
+import gameserver.GameTenant;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 

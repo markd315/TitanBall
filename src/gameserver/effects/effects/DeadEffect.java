@@ -16,6 +16,13 @@ public class DeadEffect extends Effect {
     @Override
     public void onActivate(GameEngine context) {
         if(on instanceof Titan) {
+            Titan t = (Titan) on;
+            if(t.possession == 1){
+                context.lastPossessed = null;
+                t.possession = 0;
+                context.ball.X = t.X + 35 - 7;
+                context.ball.Y = t.Y + 35 - 7;
+            }
             context.stats.grant(context.clientFromTitan((on)), StatEngine.StatEnum.DEATHS);
             context.stats.grantKillAssists(context, (Titan) on, context.effectPool);
         }
@@ -46,10 +53,6 @@ public class DeadEffect extends Effect {
 
     @Override
     public void onTick(GameEngine context) {
-        if(on instanceof Titan){
-            Titan t = (Titan) on;
-            t.possession = 0;
-        }
         on.setHealth(-99999);
         on.X = 9999999;
         on.Y = 9999999;

@@ -122,6 +122,9 @@ public class CustomUserDetailsService implements UserDetailsService, UserService
         if(toAdd.has(StatEngine.StatEnum.GOALASSISTS.toString())){
             user.setGoalassists((int) (user.getGoalassists() +(double)  toAdd.get(StatEngine.StatEnum.GOALASSISTS.toString())));
         }
+        if(toAdd.has(StatEngine.StatEnum.REBOUND.toString())){
+            user.setRebounds((int) (user.getRebounds() +(double)  toAdd.get(StatEngine.StatEnum.REBOUND.toString())));
+        }
         saveUser(user);
     }
 }

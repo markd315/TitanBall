@@ -21,8 +21,8 @@ networking\PlayerConnection.class
 client\ChaosballClient.class
 gameserver\targeting\Targeting.class
 gameserver\entity\TitanType.class
+networking\ClientPacket.class
 client\Sound.class
-networking\GameTenant.class
 authserver\LoginController.class
 client\Images.class
 gameserver\entity\Titan$TitanState.class
@@ -38,6 +38,7 @@ authserver\matchmaking\Rating.class
 client\forms\LoginForm.class
 client\ScreenConst.class
 gameserver\entity\minions\Wall.class
+client\ControlsConfig.class
 util\Util.class
 client\SelectClassSkins.class
 authserver\SpringSecurityConfig.class
@@ -73,6 +74,7 @@ gameserver\ServerApplication.class
 authserver\jwt\JwtTokenProvider.class
 gameserver\targeting\SelectorOffset.class
 authserver\matchmaking\Matchmaker.class
+gameserver\GameTenant.class
 client\ChaosballWindow.class
 gameserver\targeting\Selector.class
 client\StaticImage.class
@@ -81,7 +83,6 @@ gameserver\entity\Titan.class
 gameserver\targeting\ShapePayload$ShapeSelector.class
 gameserver\effects\effects\BombEffect.class
 gameserver\engine\Ability.class
-client\ClientPacket.class
 gameserver\targeting\DistanceFilter.class
 gameserver\effects\effects\DeadEffect.class
 gameserver\effects\effects\FlareEffect.class

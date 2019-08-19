@@ -149,8 +149,8 @@ public class StatEngine {
     public enum StatEnum {
         GOALS(0), SIDEGOALS(1), POINTS(2),
         STEALS(3), BLOCKS(4), PASSES(5),
-        KILLS(6), //TODO
-        DEATHS(7), TURNOVERS(8), KILLASSISTS(9), GOALASSISTS(10);
+        KILLS(6), DEATHS(7), TURNOVERS(8),
+        KILLASSISTS(9), GOALASSISTS(10), REBOUND(11);
         private final int index;
 
         private final static Map<Integer, StatEnum> map =
@@ -178,6 +178,7 @@ public class StatEngine {
         Map<String, Double> turnovers = new HashMap<>();
         Map<String, Double> killassists = new HashMap<>();
         Map<String, Double> goalassists = new HashMap<>();
+        Map<String, Double> rebounds = new HashMap<>();
         gamestats.add(goals);
         gamestats.add(sidegoals);
         gamestats.add(points);
@@ -189,5 +190,6 @@ public class StatEngine {
         gamestats.add(turnovers);
         gamestats.add(killassists);
         gamestats.add(goalassists);
+        gamestats.add(rebounds);
     }
 }

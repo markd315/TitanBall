@@ -25,6 +25,7 @@ import gameserver.entity.minions.BallPortal;
 import gameserver.entity.minions.Portal;
 import gameserver.entity.minions.Wall;
 import gameserver.targeting.ShapePayload;
+import networking.ClientPacket;
 import networking.KryoRegistry;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
@@ -79,6 +80,7 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
     private String token, refresh;
     private HttpClient loginClient;
     private boolean instructionToggle = false;
+    ControlsConfig controlsConfig = new ControlsConfig();
 
     public void setAuth(String token, String refresh){
         this.token = token;
@@ -461,7 +463,7 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
             }
         }
         else{
-            RangeCircle steal = new RangeCircle(new Color(.25f,.75f,.75f), 80);
+            RangeCircle steal = new RangeCircle(new Color(.25f,.75f,.75f), 26);
             clientCircles.add(steal);
         }
 
@@ -612,6 +614,13 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
                 g2D.drawImage(selector.getImage(), ((int)p.getX() - camX + 27), ((int)p.getY() - camY - 22), this);
             }
         }
+        //The boost indicator
+        for(Titan t :game.players){
+            if(t.isBoosting){
+               g2D.setColor(new Color(1f, .45f, 0f));
+                g2D.draw(new Rectangle((int)t.X-camX+30, (int)t.Y-camY+69, 10, 2));
+            }
+        }
     }
 
     private boolean invisible(Titan t) {
@@ -688,13 +697,24 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
             g2D.setColor(Color.BLUE);
             xOffset = 4;
         }
-        Rectangle healthBar = new Rectangle((int)e.X + xOffset - camX, (int)e.Y - 6 - camY, 50, 7);
+        Rectangle healthBar = new Rectangle((int)e.X + xOffset - camX, (int)e.Y - 8 - camY, 50, 7);
         g2D.fill(healthBar);
         int hpPercentage = (int) (100 * e.health / e.maxHealth);
         //System.out.println(hpPercentage);
-        Rectangle healthStat = new Rectangle((int)e.X + xOffset - camX, (int)e.Y - 4 - camY, hpPercentage / 2, 3);
+        Rectangle healthStat = new Rectangle((int)e.X + xOffset - camX, (int)e.Y - 6 - camY, hpPercentage / 2, 3);
         setColorBasedOnPercent(g2D, hpPercentage, false);
         g2D.fill(healthStat);
+        if(e instanceof Titan) {
+            Titan t = (Titan) e;
+            if(t.fuel > 25){
+                g2D.setColor(new Color(1f, .50f, .1f));
+            }
+            else{
+                g2D.setColor(new Color(0.7f, 0f, 0f));
+            }
+            Rectangle buustStat = new Rectangle((int) e.X + xOffset - camX, (int) e.Y - 1 - camY, (int)t.fuel /2, 2);
+            g2D.fill(buustStat);
+        }
     }
 
     public void classFacts(Graphics2D g2D){
@@ -765,58 +785,38 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
             System.out.println("-------------");
         }
         if (key == KeyEvent.VK_SPACE && phase == 5 && keysEnabled) {
-            controlsHeld.SPACE = true;
+            controlsHeld.CAM = true;
             phase = 6;
         }
         if (key == KeyEvent.VK_SPACE && phase == 2 && keysEnabled) {
-            controlsHeld.SPACE = true;
+            controlsHeld.CAM = true;
             phase = 3;
         }
         if (key == KeyEvent.VK_SPACE && phase == 0 && keysEnabled) {
-            controlsHeld.SPACE = true;
+            controlsHeld.CAM = true;
             phase = 1;
         }
         if (key == KeyEvent.VK_SPACE && phase == 1 && keysEnabled) {
             phase = 2;
-            controlsHeld.SPACE = true;
+            controlsHeld.CAM = true;
         }
 
         if (key == KeyEvent.VK_SPACE && (phase == 8 || phase == 9 && keysEnabled)) {
             camFollow = !camFollow;
-            controlsHeld.SPACE = true;
+            controlsHeld.CAM = true;
             //TODO play restart ding/click
         }
         if (key == KeyEvent.VK_SPACE && phase == 9 && keysEnabled) {
             postgoalReset();
-            controlsHeld.SPACE = true;
+            controlsHeld.CAM = true;
             phase = 8;
         }
-        if ((key == KeyEvent.VK_R|| key == KeyEvent.VK_2) && phase == 8 && keysEnabled) {
-            controlsHeld.R = true;
+        if (phase == 8 && keysEnabled) {
+            controlsConfig.mapKeyPress(controlsHeld, key);
             //shotSound.rewindStart();
-        }
-        if ((key == KeyEvent.VK_E || key == KeyEvent.VK_1) && phase == 8  && keysEnabled) {
-            //shotSound.rewindStart();
-            controlsHeld.E = true;
-        }
-        if (key == KeyEvent.VK_Q && phase == 8  && keysEnabled) {
-            controlsHeld.Q = true;
-        }
-        // Selection switch
-        if (key == KeyEvent.VK_Z && phase == 8 && keysEnabled) {
-            controlsHeld.Z = true;
-        }
-        if (key == KeyEvent.VK_D && phase == 8 && keysEnabled ) {
-            controlsHeld.D = true;
-        }
-        if (key == KeyEvent.VK_A && phase == 8 && keysEnabled) {
-            controlsHeld.A = true;
-        }
-        if (key == KeyEvent.VK_W && phase == 8 && keysEnabled) {
-            controlsHeld.W = true;
-        }
-        if (key == KeyEvent.VK_S && phase == 8 && keysEnabled) {
-            controlsHeld.S = true;
+            if(controlsConfig.toggleInstructions(""+key)){
+                instructionToggle = true;
+            }
         }
         if ((key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) && keysEnabled) {
             if (phase == 2 && cursor > 1){
@@ -838,62 +838,23 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
                 cursor += 4;
             }
         }
-        if ((key == KeyEvent.VK_I) && keysEnabled) {
-            instructionToggle = true;
-        }
     }
 
     public void keyReleased(KeyEvent ke) {
         int key = ke.getKeyCode();
-        if (key == KeyEvent.VK_SPACE) {
-            controlsHeld.SPACE = false;
-        }
-        if (key == KeyEvent.VK_D && phase == 8) {
-            controlsHeld.D = false;
-            for (Titan p : game.players) {
-                p.runningFrame = 0;
-                p.diagonalRunDir = 0;
+        if (phase == 8 && keysEnabled) {
+            controlsConfig.mapKeyRelease(controlsHeld, "" + key);
+            //shotSound.rewindStart();
+            if (controlsConfig.toggleInstructions("" + key)) {
+                instructionToggle = false;
             }
-        }
-        if (key == KeyEvent.VK_A && phase == 8) {
-            controlsHeld.A = false;
-            for (Titan p : game.players) {
-                p.runningFrame = 0;
-                p.diagonalRunDir = 0;
+            if (controlsConfig.movKey(""+key)) {
+                for (Titan p : game.players) {
+                    //todo only for controlled
+                    p.runningFrame = 0;
+                    p.diagonalRunDir = 0;
+                }
             }
-        }
-        if (key == KeyEvent.VK_W && phase == 8) {
-            controlsHeld.W = false;
-            for (Titan p : game.players) {
-                p.runningFrame = 0;
-                p.dirToBall = 0;
-            }
-        }
-        if (key == KeyEvent.VK_S && phase == 8) {
-            controlsHeld.S = false;
-            for (Titan p : game.players) {
-                p.runningFrame = 0;
-                p.dirToBall = 0;
-            }
-        }
-        if(key == KeyEvent.VK_SPACE && (this.phase == 8 || this.phase == 9)){
-            //camFollow = false;
-            controlsHeld.SPACE = false;
-        }
-        if (key == KeyEvent.VK_Z) {
-            controlsHeld.Z = false;
-        }
-        if (key == KeyEvent.VK_Q) {
-            controlsHeld.Q = false;
-        }
-        if (key == KeyEvent.VK_E || key == KeyEvent.VK_1) {
-            controlsHeld.E = false;
-        }
-        if (key == KeyEvent.VK_R || key == KeyEvent.VK_2) {
-            controlsHeld.R = false;
-        }
-        if ((key == KeyEvent.VK_I) && keysEnabled) {
-            instructionToggle = false;
         }
     }
 
@@ -999,7 +960,12 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
                     shotSound.rewindStart();
                     controlsHeld.posX = event.getPoint().x;
                     controlsHeld.posY = event.getPoint().y;
-                    controlsHeld.btn = event.getButton();
+                    if(event.getButton() == 1){
+                        controlsConfig.mapKeyPress(controlsHeld, "LMB");
+                    }
+                    if(event.getButton() == 3){
+                        controlsConfig.mapKeyPress(controlsHeld, "RMB");
+                    }
                     controlsHeld.camX = camX;
                     controlsHeld.camY = camY;
                 }
@@ -1008,7 +974,8 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
             @Override
             public void mouseReleased(MouseEvent e) {
                 if(keysEnabled) {
-                    controlsHeld.btn = 0;
+                    controlsConfig.mapKeyRelease(controlsHeld, "LMB");
+                    controlsConfig.mapKeyRelease(controlsHeld, "RMB");
                 }
             }
         };
@@ -1110,6 +1077,19 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
                 Effect e = game.effectPool.getEffects().get(i);
                 Entity on = game.effectPool.getOn().get(i);
                 if (game.underControl.id.equals(on.id) && !e.toString().contains("ATTACKED")) {
+                    g2d.setFont(new Font("Verdana", Font.PLAIN, 72));
+                    if(e.effect == EffectId.SLOW){
+                        g2d.setColor(new Color(.36f, .51f, .28f, .4f));
+                        g2d.drawString("Rooted!" ,450, 300);
+                    }
+                    if(e.effect == EffectId.SLOW){
+                        g2d.setColor(new Color(.45f, .9f, .75f, .4f));
+                        g2d.drawString("Slowed!" ,450, 300);
+                    }
+                    if(e.effect == EffectId.STUN){
+                        g2d.setColor(new Color(1f, .74f, 0f, .4f));
+                        g2d.drawString("Stunned!" ,450, 300);
+                    }
                     if (e.getIcon() != null) {
                         Composite originalComposite = g2d.getComposite();
                         g2d.setComposite(makeComposite(.5f));

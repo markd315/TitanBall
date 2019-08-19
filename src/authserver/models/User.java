@@ -73,6 +73,9 @@ public class User implements Serializable, UserDetails {
     @Column(name = "goalassists")
     private int goalassists;
 
+    @Column(name = "rebounds")
+    private int rebounds;
+
     public User(){
         this.wins = 0;
         this.losses = 0;
@@ -88,6 +91,7 @@ public class User implements Serializable, UserDetails {
         this.turnovers = 0;
         this.killassists = 0;
         this.goalassists = 0;
+        this.rebounds = 0;
     }
 
     public User(String username, String pwEncoded){
@@ -270,5 +274,13 @@ public class User implements Serializable, UserDetails {
 
     public void setGoalassists(int goalassists) {
         this.goalassists = goalassists;
+    }
+
+    public int getRebounds() {
+        return rebounds;
+    }
+
+    public void setRebounds(int rebounds) {
+        this.rebounds = rebounds;
     }
 }

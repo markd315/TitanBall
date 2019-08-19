@@ -1,6 +1,6 @@
 package gameserver.models;
 
-import client.ClientPacket;
+import networking.ClientPacket;
 import gameserver.effects.EffectPool;
 import gameserver.engine.GoalHoop;
 import gameserver.engine.StatEngine;
@@ -20,7 +20,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Game {
     public String gameId;
-    protected UUID lastPossessed;
+    public UUID lastPossessed;
     public static final double SOFT_WIN = 3.0, WIN_BY = 2.0, HARD_WIN = 8.0;
     protected static final long GAMETICK_MS = 25;
     public List<PlayerDivider> clients;

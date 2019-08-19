@@ -1,6 +1,5 @@
 package networking;
 
-import client.ClientPacket;
 import client.GoalSprite;
 import client.Images;
 import client.StaticImage;
