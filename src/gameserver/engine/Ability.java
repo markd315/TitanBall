@@ -170,8 +170,10 @@ public class Ability {
         return injectColliders(context, sel, shape, caster);
     }
 
-    private static boolean injectColliders(Game context, Selector sel, Shape shape, Titan caster) {
+    private static boolean injectColliders(Game context, AbilityStrategy strat, Titan caster) {
         context.cullOldColliders();
+        Selector sel = strat.sel;
+        Shape shape = strat.shape;
         if (sel != null && sel.latestCollider != null) {
             //sel has the bounds, shape has the correct class.
             //so we inject the sel bounds back into the shape class and eventually use the camera to render it

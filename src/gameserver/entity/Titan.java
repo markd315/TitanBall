@@ -313,6 +313,19 @@ public class Titan extends Entity {
         titanStealRad.put(TitanType.GRENADIER, 27);
         titanStealRad.put(TitanType.HOUNDMASTER, 28);
 
+        titanStealRad.put(TitanType.ARTISAN, 33);
+        titanStealRad.put(TitanType.GUARDIAN, 26);
+        titanStealRad.put(TitanType.MARKSMAN, 24);
+        titanStealRad.put(TitanType.POST, 35);
+        titanStealRad.put(TitanType.RANGER, 24);
+        //titanStealFrames.put(TitanType.RECON, 40);
+        titanStealRad.put(TitanType.SLASHER, 30);
+        titanStealRad.put(TitanType.STEALTH, 26);
+        titanStealRad.put(TitanType.SUPPORT, 28);
+        titanStealRad.put(TitanType.WARRIOR, 26);
+        titanStealRad.put(TitanType.MAGE, 26);
+        titanStealRad.put(TitanType.BUILDER, 26);
+
         titanStealFrames.put(TitanType.ARTISAN, 40);
         titanStealFrames.put(TitanType.GOALIE, 1);
         titanStealFrames.put(TitanType.MARKSMAN, 40);

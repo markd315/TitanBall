@@ -5,6 +5,7 @@ import gameserver.effects.EffectId;
 import gameserver.effects.effects.DeadEffect;
 import gameserver.engine.GameEngine;
 import gameserver.engine.TeamAffiliation;
+import gameserver.models.Game;
 
 public class Entity extends Box {
     public double health, maxHealth;
