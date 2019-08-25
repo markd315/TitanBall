@@ -4,6 +4,7 @@ package gameserver.entity;
 import gameserver.GameEngine;
 import gameserver.effects.effects.DeadEffect;
 import gameserver.engine.TeamAffiliation;
+import gameserver.models.Game;
 
 public class Entity extends Box {
     public double health, maxHealth;
@@ -72,5 +73,22 @@ public class Entity extends Box {
             }
         }
         return false;
+    }
+
+    public void translateBounded(double dx, double dy) {
+        this.X+=dx;
+        this.Y+=dy;
+        if(this.X > Game.E_MAX_X){
+            this.X = Game.E_MAX_X;
+        }
+        if(this.X < Game.E_MIN_X){
+            this.X = Game.E_MIN_X;
+        }
+        if(this.Y > Game.E_MAX_Y){
+            this.Y = Game.E_MAX_Y;
+        }
+        if(this.Y < Game.E_MIN_Y){
+            this.Y = Game.E_MIN_Y;
+        }
     }
 }

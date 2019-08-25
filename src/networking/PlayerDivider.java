@@ -1,5 +1,6 @@
 package networking;
 
+import com.esotericsoftware.kryonet.Connection;
 import gameserver.GameEngine;
 
 import java.util.ArrayList;
@@ -62,5 +63,13 @@ public class PlayerDivider {
 
     public void setEmail(String jwtExtractEmail) {
         this.email = jwtExtractEmail;
+    }
+
+    public String getEmail(){
+        return this.email;
+    }
+
+    public void setId(Connection connection) {
+        this.id = connection.getID();
     }
 }

@@ -1,20 +1,23 @@
 package gameserver;
 
 import authserver.SpringContextBridge;
+import authserver.jwt.JwtTokenProvider;
 import authserver.matchmaking.Match;
 import authserver.matchmaking.Matchmaker;
 import authserver.matchmaking.Rating;
 import authserver.models.User;
 import authserver.users.UserService;
-import networking.ClientPacket;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryonet.Connection;
 import com.esotericsoftware.kryonet.Listener;
 import com.esotericsoftware.kryonet.Server;
 import gameserver.engine.TeamAffiliation;
+import networking.ClientPacket;
 import networking.KryoRegistry;
 import networking.PlayerDivider;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.*;
 
@@ -24,6 +27,22 @@ public class ServerApplication {
     static Matchmaker matchmaker;
 
     static UserService userService;
+
+    static JwtTokenProvider tp = new JwtTokenProvider();
+
+    static Properties prop;
+    static String appSecret;
+    static {
+        try {
+            prop = new Properties();
+            prop.load(new FileInputStream(new File("application.properties")));
+            appSecret = prop.getProperty("app.jwtSecret");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+
 
     public static void main(String[] args) throws IOException {
         Server server = new Server(16384*8, 2048*8);
@@ -39,9 +58,14 @@ public class ServerApplication {
             public void received (Connection connection, Object object) {
                 if(connection.getID() > 0) {
                     if(object instanceof ClientPacket){
-                        if(((ClientPacket) object).token == null){
-                            return; //TODO stricter assertions
+                        String token = ((ClientPacket) object).token;
+                        if(token == null){
+                            return;
                         }
+                        //disabled because secret not loading
+                        /*if(!tp.validateIgnoreExpiration(token, appSecret)){
+                            return;
+                        }*/
                         delegatePacket(connection, (ClientPacket) object);
                     }
                 }

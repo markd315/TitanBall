@@ -1,0 +1,24 @@
+---
+69: E
+82: R
+LMB: SHOT
+RMB: PASS
+87: UP #W
+83: DOWN #S
+65: LEFT #A
+68: RIGHT #D
+32: CAM #Space
+81: STEAL #Q
+90: SWITCH #Z
+51: BOOST #3
+52: BOOST_LOCK #4
+70: MV_CLICK #F
+67: MV_BALL #C
+73: INSTR #I
+49: E #1
+50: R #2
+79: SHOT #O
+80: PASS #P
+#See link for key numbers in the left column
+#https://docs.oracle.com/javase/7/docs/api/constant-values.html#java.awt.event.KeyEvent.VK_O
+#Keys default to WASD Third-person-shooter style bindings

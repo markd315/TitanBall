@@ -35,9 +35,13 @@ public class Game {
     public boolean ended = false;
     public StatEngine stats = new StatEngine();
     public static final int MAX_X = 2070;
+    public static final int E_MAX_X = 2030;
     public static final int MAX_Y = 1010;
+    public static final int E_MAX_Y = 950;
     public static final int MIN_X = 50;
+    public static final int E_MIN_X = -10;
     public static final int MIN_Y = 230;
+    public static final int E_MIN_Y = 170;
     public static final int GOALIE_Y_MAX = 890;
     public static final int GOALIE_Y_MIN = 290;
     public static final int GOALIE_XH_MAX = 179;
@@ -69,10 +73,6 @@ public class Game {
     public boolean ballVisible, inGame, goalVisible;
 
     public int phase;
-    public long startTime;
-    public long startGameTime;
-    public long endGameTime;
-    public int timeSpent;
     public boolean began = false;
     public double xKickPow, yKickPow;
 
@@ -107,7 +107,7 @@ public class Game {
     public Team home = new Team(TeamAffiliation.HOME, 0.0, homeHiGoal, lowGoals[0], lowGoals[1],
             players);
 
-    public Box ball = new Box(0, 0, 15, 15);
+    public Box ball = new Box(0, 0, 30, 30);
 
     public boolean anyPoss() {
         for (Titan t : players) {

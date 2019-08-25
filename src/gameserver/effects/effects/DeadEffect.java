@@ -20,8 +20,8 @@ public class DeadEffect extends Effect {
             if(t.possession == 1){
                 context.lastPossessed = null;
                 t.possession = 0;
-                context.ball.X = t.X + 35 - 7;
-                context.ball.Y = t.Y + 35 - 7;
+                context.ball.X = t.X + 35 - context.ball.centerDist;
+                context.ball.Y = t.Y + 35 - context.ball.centerDist;
             }
             context.stats.grant(context.clientFromTitan((on)), StatEngine.StatEnum.DEATHS);
             context.stats.grantKillAssists(context, (Titan) on, context.effectPool);

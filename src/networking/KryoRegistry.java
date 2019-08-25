@@ -9,6 +9,7 @@ import gameserver.effects.EffectId;
 import gameserver.effects.EffectPool;
 import gameserver.effects.cooldowns.CooldownCurve;
 import gameserver.effects.cooldowns.CooldownE;
+import gameserver.effects.cooldowns.CooldownQ;
 import gameserver.effects.cooldowns.CooldownR;
 import gameserver.effects.effects.*;
 import gameserver.engine.*;
@@ -50,9 +51,10 @@ public class KryoRegistry {
         kryo.register(DeadEffect.class);
         kryo.register(DefenseEffect.class);
         kryo.register(ShootEffect.class);
-        kryo.register(PossessionEffect.class);
+        kryo.register(HideBallEffect.class);
         kryo.register(CooldownE.class);
         kryo.register(CooldownR.class);
+        kryo.register(CooldownQ.class);
         kryo.register(CooldownCurve.class);
 
         kryo.register(Collidable.class);
@@ -93,6 +95,7 @@ public class KryoRegistry {
         kryo.register(Targeting.class);
         kryo.register(DistanceFilter.class);
         kryo.register(Ability.class);
+        kryo.register(AbilityStrategy.class);
         kryo.register(StaticImage.class);
         kryo.register(Images.class);
         kryo.register(RangeCircle.class);

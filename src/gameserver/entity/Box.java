@@ -12,11 +12,13 @@ public class Box extends Coordinates{
     public int width, height;
     public boolean solid;
     public UUID id;
+    public int centerDist;
 
     public Box(int x, int y, int w, int h) {
         super(x, y);
         this.width=w;
         this.height=h;
+        this.centerDist=(w+h)/4;//assumes symmetrical dimensions
         id = UUID.randomUUID();
         solid = false;
     }

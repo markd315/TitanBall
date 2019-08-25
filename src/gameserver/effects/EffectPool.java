@@ -100,11 +100,11 @@ public class EffectPool {
     }
 
     public boolean isStunned(Titan t) {
-        return hasEffect(t, EffectId.STUN);
+        return hasEffect(t, EffectId.STUN) || hasEffect(t, EffectId.STEAL);
     }
 
     private List<Effect> pool;
-    private List<Entity> targetPool; //Wrapper around a list
+    private List<Entity> targetPool; //Wrappers around a list
     private List<Titan> castBy;
 
     public List<Effect> getEffects() {
@@ -119,12 +119,10 @@ public class EffectPool {
         return castBy;
     }
 
-    public boolean hasEffect(Titan caster, EffectId queryType) {
+    public boolean hasEffect(Titan target, EffectId queryType) {
         for (int i = 0; i < pool.size(); i++) {
-            //For sure it's in there we're jusy checking the wrong
-            //System.out.println(targetPool.get(i).id + "" + t.id);
             if (pool.get(i).getEffect() == queryType
-                    && targetPool.get(i).id.equals(caster.id)) {
+                    && (targetPool.get(i).id.equals(target.id) || pool.get(i).on.id.equals(target.id))) {
                 return true;
             }
         }
@@ -132,7 +130,8 @@ public class EffectPool {
     }
 
     public boolean isRooted(Titan t) {
-        return hasEffect(t, EffectId.ROOT) || hasEffect(t, EffectId.STUN);
+        return hasEffect(t, EffectId.ROOT) ||
+                hasEffect(t, EffectId.STUN) || hasEffect(t, EffectId.STEAL);
     }
 
     public void cullAllOn(GameEngine context, Entity on) {
@@ -194,5 +193,12 @@ public class EffectPool {
                 }
             }
         }
+    }
+
+    public void cullOnly(Effect e) {
+        int idx = getEffects().indexOf(e);
+        getEffects().remove(idx);
+        getOn().remove(idx);
+        getCastBy().remove(idx);
     }
 }

@@ -194,10 +194,6 @@ public class GameEngine extends Game {
     }
 
     public void initializeServer() throws InterruptedException {
-        startTime = System.currentTimeMillis();
-        startGameTime = startTime / 60000;
-        endGameTime = (startGameTime + 5);
-        timeSpent = (int) (endGameTime - startGameTime);
         home.hasBall = false;
         away.hasBall = false;
         goalVisible = false;
@@ -374,7 +370,7 @@ public class GameEngine extends Game {
                     if (client.id == from.id) {
                         from.ready = true;
                         int classSelIndex = client.possibleSelection.get(0) - 1;
-                        players[classSelIndex].setType(request.classSelecton);
+                        players[classSelIndex].setType(request.classSelection);
                     }
                 }
                 for (PlayerDivider client : clients) {
@@ -446,8 +442,8 @@ public class GameEngine extends Game {
                     && t.actionState == Titan.TitanState.IDLE) {//Later repurpose button to be a steal
                 if (!effectPool.isStunned(t)) {
                     try {
-                        boolean caststun = Ability.castQ(this, t);
-                        if (t.actionState == Titan.TitanState.IDLE && caststun) {//Curve may be set by ability
+                        boolean stolen = Ability.castQ(this, t);
+                        if (t.actionState == Titan.TitanState.IDLE && !stolen) {//Curve may be set by ability
                             t.actionState = Titan.TitanState.STEAL;
                             t.actionFrame = 0;
                         }
@@ -525,24 +521,32 @@ public class GameEngine extends Game {
             int toY = t.marchingOrderY;
             if (t.marchingOrderX == -1 && t.marchingOrderY == -1) {
                 //move to ball
-                toX = (int) (ball.X + 7);
-                toY = (int) (ball.Y + 7);
+                toX = (int) (ball.X + ball.centerDist);
+                toY = (int) (ball.Y + ball.centerDist);
             }
-            if (t.X + 35 > toX + t.speed) { //speed included to avoid jittery finish
+            if (t.X + 35 > toX + t.actualSpeed()) { //speed included to avoid jittery finish
                 t.runLeft = 1;
                 t.runRight = 0;
             }
-            if (t.X + 35< toX - t.speed) {
+            else if (t.X + 35< toX - t.actualSpeed()) {
                 t.runRight = 1;
                 t.runLeft = 0;
             }
-            if (t.Y + 35 > toY + t.speed) {
+            else{ //Calm down once we arrive at click destination
+                t.runRight = 0;
+                t.runLeft = 0;
+            }
+            if (t.Y + 35 > toY + t.actualSpeed()) {
                 t.runUp = 1;
                 t.runDown = 0;
             }
-            if (t.Y + 35 < toY - t.speed) {
+            else if (t.Y + 35 < toY - t.actualSpeed()) {
                 t.runDown = 1;
                 t.runUp = 0;
+            }
+            else{
+                t.runUp = 0;
+                t.runDown = 0;
             }
         } else {
             if (controlsHeld.RIGHT == 1 && this.phase == 8 && t.actionState == Titan.TitanState.IDLE) {
@@ -674,11 +678,6 @@ public class GameEngine extends Game {
             } catch (Exception e) {
                 e.printStackTrace();
             }
-            startTime = System.currentTimeMillis();
-            startGameTime = startTime / 60000;
-            timeSpent = (int) (endGameTime - startGameTime);
-            if (timeSpent < 1) {
-            }
             for (Titan t : players) {
                 if (t.isBoosting) {
                     t.fuel -= .5;
@@ -743,8 +742,8 @@ public class GameEngine extends Game {
             int valuePlayerX = (int) t.X;
             int valuePlayerY = (int) t.Y;
             if (numSel != 1 && numSel != 2) {
-                ball.X = (valuePlayerX + 35 - 7);
-                ball.Y = (valuePlayerY + 35 - 7);
+                ball.X = (valuePlayerX + 35 - ball.centerDist);
+                ball.Y = (valuePlayerY + 35 - ball.centerDist);
             }
             if (numSel == 1) {//guardian exceptions
                 ball.X = (valuePlayerX + 57);
@@ -863,8 +862,8 @@ public class GameEngine extends Game {
             if (phase == 8 && btn == 5) {
                 t.actionState = Titan.TitanState.CURVE_RIGHT;
             }
-            int xClick = (int) ((clickX - ball.X) + camX - 7); //mid sprite, plus account for locations
-            int yClick = (int) (-1 * ((clickY - ball.Y) + camY - 7)); //same, plus flip Y axis for coordinate plane
+            int xClick = (int) ((clickX - ball.X) + camX - ball.centerDist); //mid sprite, plus account for locations
+            int yClick = (int) (-1 * ((clickY - ball.Y) + camY - ball.centerDist)); //same, plus flip Y axis for coordinate plane
             //System.out.println("angle params: " + " (" + (xClick) + ", " + (yClick) + ")");
             double angle = Util.degreesFromCoords(xClick, yClick);
             //System.out.println("ang: " + angle);
@@ -878,19 +877,19 @@ public class GameEngine extends Game {
         //PlayerDivider client = clientFromIndex(pIndex);
         Titan aiFor = players[pIndex]; //no sub1
         if (!anyClientSelected(pIndex + 1)) {
-            if (aiFor.X + 35 > (ball.X + 7) && aiFor.X > minX) {
+            if (aiFor.X + 35 > (ball.X + ball.centerDist) && aiFor.X > minX) {
                 aiFor.inactiveDir = 2;
                 runLeftAI(aiFor);
             }
-            if (aiFor.X + 35 < (ball.X + 7) && aiFor.X < maxX) {
+            if (aiFor.X + 35 < (ball.X + ball.centerDist) && aiFor.X < maxX) {
                 aiFor.inactiveDir = 1;
                 runRightAI(aiFor);
             }
             if (tip.isPresent() && tip.get().team != aiFor.team) {
-                if (aiFor.Y + 35 > (ball.Y + 7) && aiFor.Y > minY) {
+                if (aiFor.Y + 35 > (ball.Y + ball.centerDist) && aiFor.Y > minY) {
                     runUpAI(aiFor);
                 }
-                if (aiFor.Y + 35 < (ball.Y + 7) && aiFor.Y < maxY) {
+                if (aiFor.Y + 35 < (ball.Y + ball.centerDist) && aiFor.Y < maxY) {
                     runDownAI(aiFor);
                 }
             }// Bot intersection control with ball and passing ball in case of automatic control
@@ -977,13 +976,13 @@ public class GameEngine extends Game {
                 if (goalie.getY() < YMIN) goalie.setY(YMIN);
             }
         }
-        if (goalie.getX() + 35 > ball.X + 7) {
+        if (goalie.getX() + 35 > ball.X + ball.centerDist) {
             if (!goalie.collidesSolid(this, allSolids, 0, (int) -goalie.speed)) {
                 goalie.setX((int) (goalie.getX() - goalie.speed));
                 if (goalie.getX() < XMIN) goalie.setX(XMIN);
             }
         }
-        if (goalie.getX() + 35 < ball.X + 7) {
+        if (goalie.getX() + 35 < ball.X + ball.centerDist) {
             if (!goalie.collidesSolid(this, allSolids, 0, (int) goalie.speed)) {
                 goalie.setX((int) (goalie.getX() + goalie.speed));
                 if (goalie.getX() > XMAX) goalie.setX(XMAX);
@@ -1074,9 +1073,7 @@ public class GameEngine extends Game {
                         if (t.X > ball.X) t.dirToBall = 2;
                         if (t.diagonalRunDir == 1) t.dirToBall = 1;
                         if (t.diagonalRunDir == 2) t.dirToBall = 2;
-                        double actualSpeed = t.isBoosting ? t.speed * 1.3 : t.speed;
-                        t.Y -= actualSpeed;
-                        if (t.Y < 170) t.Y = 170;
+                        t.translateBounded(0.0, -t.actualSpeed());
                         t.runningFrameCounter += 1;
                         if (t.runningFrameCounter == 5) t.runningFrame = 1;
                         if (t.runningFrameCounter == 10) {
@@ -1107,9 +1104,7 @@ public class GameEngine extends Game {
                         if (t.X > ball.X) t.dirToBall = 2;
                         if (t.diagonalRunDir == 1) t.dirToBall = 1;
                         if (t.diagonalRunDir == 2) t.dirToBall = 2;
-                        double actualSpeed = t.isBoosting ? t.speed * 1.3 : t.speed;
-                        t.Y += actualSpeed;
-                        if (t.Y > 950) t.Y = 950;
+                        t.translateBounded(0.0, t.actualSpeed());
                         t.runningFrameCounter += 1;
                         if (t.runningFrameCounter == 5) t.runningFrame = 1;
                         if (t.runningFrameCounter == 10) {
@@ -1137,9 +1132,7 @@ public class GameEngine extends Game {
                         && t.actionState == Titan.TitanState.IDLE) {
                     if (!t.collidesSolid(this, allSolids, 0, (int) t.speed)) {
                         t.diagonalRunDir = 1;
-                        double actualSpeed = t.isBoosting ? t.speed * 1.3 : t.speed;
-                        t.X += actualSpeed;
-                        if (t.X > 2030) t.X = 2030;
+                        t.translateBounded(t.actualSpeed(), 0.0);
                         t.runningFrameCounter += 1;
                         if (t.runningFrameCounter == 5) t.runningFrame = 1;
                         if (t.runningFrameCounter == 10) {
@@ -1167,9 +1160,7 @@ public class GameEngine extends Game {
                         && t.actionState == Titan.TitanState.IDLE) {
                     t.diagonalRunDir = 2;
                     if (!t.collidesSolid(this, allSolids, 0, (int) -t.speed)) {
-                        double actualSpeed = t.isBoosting ? t.speed * 1.3 : t.speed;
-                        t.X -= actualSpeed;
-                        if (t.X < -10) t.X = -10;
+                        t.translateBounded(-t.actualSpeed(), 0.0);
                         t.runningFrameCounter += 1;
                         if (t.runningFrameCounter == 5) t.runningFrame = 1;
                         if (t.runningFrameCounter == 10) {
@@ -1234,8 +1225,8 @@ public class GameEngine extends Game {
     }
 
     protected void centerBall(Titan t) {
-        ball.X = t.getX() + 35 - 7;
-        ball.Y = t.getY() + 35 - 7;
+        ball.X = t.getX() + 35 - ball.centerDist;
+        ball.Y = t.getY() + 35 - ball.centerDist;
     }
 
     public void bounceWalls() {

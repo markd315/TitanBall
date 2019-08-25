@@ -15,7 +15,7 @@ public class ClientPacket implements Serializable {
     public boolean passBtn = false, shotBtn = false;
     public int posX, posY;
     public int camX, camY;
-    public TitanType classSelecton;
+    public TitanType classSelection;
     public String token;
     public String gameID;
 }

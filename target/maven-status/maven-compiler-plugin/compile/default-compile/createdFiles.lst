@@ -5,6 +5,7 @@ gameserver\GameEngine.class
 authserver\models\responses\UserResponse.class
 gameserver\ServerApplication$1.class
 networking\UUIDSerializer.class
+gameserver\effects\effects\HideBallEffect.class
 networking\PlayerDivider.class
 authserver\models\DTO\UserDTO.class
 networking\KryoRegistry.class
@@ -14,6 +15,7 @@ gameserver\entity\minions\Portal.class
 gameserver\engine\StatEngine.class
 client\GoalSprite.class
 gameserver\effects\effects\DefenseEffect.class
+gameserver\effects\cooldowns\CooldownQ.class
 gameserver\effects\cooldowns\CooldownCurve.class
 gameserver\targeting\ShapePayload.class
 authserver\models\User.class
@@ -65,7 +67,6 @@ authserver\LoginApp.class
 client\ChaosballClient$3.class
 gameserver\entity\Coordinates.class
 gameserver\effects\effects\EmptyEffect.class
-gameserver\effects\effects\PossessionEffect.class
 authserver\matchmaking\Match.class
 gameserver\ServerMode.class
 client\forms\LoginListener.class
@@ -74,6 +75,7 @@ gameserver\ServerApplication.class
 authserver\jwt\JwtTokenProvider.class
 gameserver\targeting\SelectorOffset.class
 authserver\matchmaking\Matchmaker.class
+gameserver\engine\AbilityStrategy.class
 gameserver\GameTenant.class
 client\ChaosballWindow.class
 gameserver\targeting\Selector.class

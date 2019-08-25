@@ -19,4 +19,6 @@ RMB: PASS
 50: R #2
 79: SHOT #O
 80: PASS #P
+#See link for key numbers in the left column
 #https://docs.oracle.com/javase/7/docs/api/constant-values.html#java.awt.event.KeyEvent.VK_O
+#Keys default to WASD Third-person-shooter style bindings

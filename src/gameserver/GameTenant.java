@@ -31,11 +31,25 @@ public class GameTenant {
 
     public void delegatePacket(Connection connection, ClientPacket request) {
         if (state == null) {
-            addIfNewClient(connection, clients, request.token);
+            addOrReplaceNewClient(connection, clients, request.token);
         }
         if (state != null) {
             PlayerDivider pd = dividerFromConn(connection);
-            pd.setEmail(Util.jwtExtractEmail(request.token));
+            if(pd == null){//client rejoining under new connection ID
+                String email = Util.jwtExtractEmail(request.token);
+                for(PlayerDivider p : state.clients){
+                    if(p.getEmail().equals(email)){
+                        pd = p;
+                        pd.setId(connection);
+                        pd.setEmail(email);
+                    }
+                }
+                for(PlayerConnection pc : clients){
+                    if(pc.getEmail().equals(email)){
+                        pc.setClient(connection);
+                    }
+                }
+            }
             state.processClientPacket(pd, request);
         }
     }
@@ -47,25 +61,40 @@ public class GameTenant {
                 return pc;
             }
         }
-        throw new IllegalArgumentException("Client DNE yet!");
+        return null;
     }
 
     boolean lobbyFull(List<PlayerConnection> pd){
         return (pd.size() == availableSlots.size());
     }
 
-    void addIfNewClient(Connection c, List<PlayerConnection> wipClients, String token){
-        boolean found = false;
+    void addOrReplaceNewClient(Connection c, List<PlayerConnection> wipClients, String token){
+        boolean connFound = false;
         for(PlayerConnection p : wipClients){
             if (p.getClient().equals(c)){
-                found = true;
+                connFound = true;
             }
         }
-        if(!found){
-            System.out.println("adding client");
-            System.out.println(c.getRemoteAddressTCP());
-            String email = Util.jwtExtractEmail(token);
-            wipClients.add(new PlayerConnection(nextUnclaimedSlot(), c, email));
+        boolean emailFound = false;
+        String email = Util.jwtExtractEmail(token);
+        for(PlayerConnection p : wipClients){
+            if (p.getEmail().equals(email)){
+                emailFound = true;
+            }
+        }
+        if(!connFound){
+            if(emailFound){ //rejoin unstarted game
+                for(PlayerConnection p : wipClients){
+                    if(p.getEmail().equals(email)){
+                        p.setClient(c);
+                    }
+                }
+            }else{//add new
+                System.out.println("adding client");
+                System.out.println(c.getRemoteAddressTCP());
+
+                wipClients.add(new PlayerConnection(nextUnclaimedSlot(), c, email));
+            }
         }
         if(lobbyFull(wipClients)){
             System.out.println("starting full");
@@ -101,6 +130,7 @@ public class GameTenant {
             exec.scheduleAtFixedRate(updateClients, 1, 20, TimeUnit.MILLISECONDS);
         }
     }
+
 
     private static List<PlayerDivider> playersFromConnections(List<PlayerConnection> clients) {
         List<PlayerDivider> ret = new ArrayList<>();

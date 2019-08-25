@@ -81,8 +81,8 @@ public class BallPortal extends Entity implements Collidable {
             if (p.isPresent() && !p.get().isCooldown()) {
                 this.triggerCd();
                 p.get().triggerCd();
-                int x = (int)p.get().getX() + 25 - 7;
-                int y = (int)p.get().getY() + 25 - 7;
+                int x = (int)p.get().getX() + 25 - context.ball.centerDist;
+                int y = (int)p.get().getY() + 25 - context.ball.centerDist;
                 entity.setX(x);
                 entity.setY(y);
             }

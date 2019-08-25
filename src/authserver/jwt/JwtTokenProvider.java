@@ -101,6 +101,20 @@ public class JwtTokenProvider {
         return false;
     }
 
+    public boolean validateIgnoreExpiration(String authToken, String secret) {
+        try {
+            Jwts.parser().require("type","access").setSigningKey(secret).parseClaimsJws(authToken);
+            return true;
+        } catch (MalformedJwtException ex) {
+            logger.error("Invalid JWT token");
+        } catch (UnsupportedJwtException ex) {
+            logger.error("Unsupported JWT token");
+        } catch (IllegalArgumentException ex) {
+            logger.error("JWT claims string is empty.");
+        }
+        return false;
+    }
+
     public boolean validateRefreshToken(String authToken) {
         try {
             Jws<Claims> claims = Jwts.parser().require("type","refresh").setSigningKey(jwtSecret).parseClaimsJws(authToken);
