@@ -167,6 +167,9 @@ public class ManagedGame {
                 if(!player.id.equals(underControl)){
                     censor(player);
                 }
+                System.out.println("adding NEW client");
+                System.out.println(c.getRemoteAddressUDP());
+                queue.add(new PlayerConnection(nextUnclaimedSlot(), c, email));
             }
             for(Entity ent : update.entityPool){
                 if(!ent.id.equals(underControl)){
