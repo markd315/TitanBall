@@ -81,6 +81,7 @@ public class KryoRegistry {
         kryo.register(GoalSprite.class);
         kryo.register(ShapePayload.class);
         kryo.register(PlayerDivider.class);
+        kryo.register(Masteries.class);
         kryo.register(Team.class);
         kryo.register(ShapePayload.class);
         kryo.register(ShapePayload.ShapeSelector.class);

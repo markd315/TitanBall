@@ -1,7 +1,6 @@
 package gameserver;
 
 
-import networking.ClientPacket;
 import client.GoalSprite;
 import gameserver.engine.*;
 import gameserver.entity.Box;
@@ -9,6 +8,7 @@ import gameserver.entity.Entity;
 import gameserver.entity.Titan;
 import gameserver.entity.TitanType;
 import gameserver.models.Game;
+import networking.ClientPacket;
 import networking.KeyDifferences;
 import networking.PlayerDivider;
 import util.Util;
@@ -371,6 +371,9 @@ public class GameEngine extends Game {
                         from.ready = true;
                         int classSelIndex = client.possibleSelection.get(0) - 1;
                         players[classSelIndex].setType(request.classSelection);
+                        if(request.masteries != null){
+                            request.masteries.applyMasteries(players[classSelIndex]);
+                        }
                     }
                 }
                 for (PlayerDivider client : clients) {
@@ -506,15 +509,19 @@ public class GameEngine extends Game {
         }
         if(controlsHeld.RIGHT == 1){
             t.runLeft = 0;
+            t.moveMemL = false;
         }
         if(controlsHeld.LEFT == 1){
             t.runRight = 0;
+            t.moveMemR = false;
         }
         if(controlsHeld.UP == 1){
             t.runDown = 0;
+            t.moveMemD = false;
         }
         if(controlsHeld.DOWN == 1){
             t.runUp = 0;
+            t.moveMemU = false;
         }
         if (t.programmed) {
             int toX = t.marchingOrderX;
@@ -549,21 +556,41 @@ public class GameEngine extends Game {
                 t.runDown = 0;
             }
         } else {
-            if (controlsHeld.RIGHT == 1 && this.phase == 8 && t.actionState == Titan.TitanState.IDLE) {
-                t.runLeft = 0;
-                t.runRight = 1;
+            if (controlsHeld.RIGHT == 1 && this.phase == 8) {
+                if(t.actionState == Titan.TitanState.IDLE){
+                    t.runLeft = 0;
+                    t.runRight = 1;
+                }else{
+                    t.moveMemR = true;
+                    t.moveMemL = false;
+                }
             }
-            if (controlsHeld.LEFT == 1 && this.phase == 8 && t.actionState == Titan.TitanState.IDLE) {
-                t.runRight = 0;
-                t.runLeft = 1;
+            if (controlsHeld.LEFT == 1 && this.phase == 8) {
+                if(t.actionState == Titan.TitanState.IDLE){
+                    t.runRight = 0;
+                    t.runLeft = 1;
+                }else{
+                    t.moveMemL = true;
+                    t.moveMemR = false;
+                }
             }
-            if (controlsHeld.UP == 1 && this.phase == 8 && t.actionState == Titan.TitanState.IDLE) {
-                t.runDown = 0;
-                t.runUp = 1;
+            if (controlsHeld.UP == 1 && this.phase == 8) {
+                if(t.actionState == Titan.TitanState.IDLE){
+                    t.runDown = 0;
+                    t.runUp = 1;
+                }else{
+                    t.moveMemU = true;
+                    t.moveMemD = false;
+                }
             }
-            if (controlsHeld.DOWN == 1 && this.phase == 8 && t.actionState == Titan.TitanState.IDLE) {
-                t.runUp = 0;
-                t.runDown = 1;
+            if (controlsHeld.DOWN == 1 && this.phase == 8) {
+                if(t.actionState == Titan.TitanState.IDLE){
+                    t.runUp = 0;
+                    t.runDown = 1;
+                }else{
+                    t.moveMemD = true;
+                    t.moveMemU = false;
+                }
             }
             //Done with helds
 
@@ -572,21 +599,25 @@ public class GameEngine extends Game {
                 t.runRight = 0;
                 t.runningFrame = 0;
                 t.diagonalRunDir = 0;
+                t.moveMemR = false;
             }
             if (controlsHeld.LEFT == -1 && this.phase == 8) {
                 t.runLeft = 0;
                 t.runningFrame = 0;
                 t.diagonalRunDir = 0;
+                t.moveMemL = false;
             }
             if (controlsHeld.UP == -1 && this.phase == 8) {
                 t.runUp = 0;
                 t.runningFrame = 0;
                 t.dirToBall = 0;
+                t.moveMemU = false;
             }
             if (controlsHeld.DOWN == -1 && this.phase == 8) {
                 t.runDown = 0;
                 t.runningFrame = 0;
                 t.dirToBall = 0;
+                t.moveMemD = false;
             }
         }
     }
@@ -778,7 +809,7 @@ public class GameEngine extends Game {
     public void intersectBall(int numSel, int valuePlayerX, int valuePlayerY) {
         Rectangle r1 = new Rectangle(valuePlayerX + SPRITE_X_EMPTY / 2, valuePlayerY + SPRITE_Y_EMPTY / 2, 70 - SPRITE_X_EMPTY, 70 - SPRITE_Y_EMPTY);
         r1 = goalieHitboxOverride(numSel, r1);
-        Rectangle r2 = new Rectangle((int) ball.X, (int) ball.Y, 15, 15);
+        Rectangle r2 = new Rectangle((int) ball.X, (int) ball.Y, 30, 30);
         if ((r1.intersects(r2))) {
             Titan t = players[numSel - 1];
             if (t.id.equals(players[numSel - 1].id) && !t.id.equals(lastPossessed)) {
@@ -894,7 +925,7 @@ public class GameEngine extends Game {
                 }
             }// Bot intersection control with ball and passing ball in case of automatic control
             if (!tip.isPresent()) {
-                Rectangle ballTangle = new Rectangle((int) ball.X, (int) ball.Y, 15, 15);
+                Rectangle ballTangle = new Rectangle((int) ball.X, (int) ball.Y, ball.width, ball.height);
                 Rectangle playertangle = new Rectangle((int) players[pIndex].X + SPRITE_X_EMPTY / 2, (int) players[pIndex].Y + SPRITE_Y_EMPTY / 2,
                         players[pIndex].width - SPRITE_X_EMPTY, players[pIndex].height - SPRITE_Y_EMPTY);
                 if (ballTangle.intersects(playertangle)) {
@@ -964,13 +995,13 @@ public class GameEngine extends Game {
             XMAX = GOALIE_XA_MAX;
             XMIN = GOALIE_XA_MIN;
         }
-        if (goalie.getY() + 35 < (ball.Y + 15)) {
+        if (goalie.getY() + 35 < (ball.Y + ball.centerDist)) {
             if (!goalie.collidesSolid(this, allSolids, (int) goalie.speed, 0)) {
                 goalie.setY((int) (goalie.getY() + goalie.speed));
                 if (goalie.getY() > YMAX) goalie.setY(YMAX);
             }
         }
-        if (goalie.getY() + 35 > (ball.Y + 15)) {
+        if (goalie.getY() + 35 > (ball.Y + ball.centerDist)) {
             if (!goalie.collidesSolid(this, allSolids, (int) -goalie.speed, 0)) {
                 goalie.setY((int) (goalie.getY() - goalie.speed));
                 if (goalie.getY() < YMIN) goalie.setY(YMIN);
@@ -1190,6 +1221,7 @@ public class GameEngine extends Game {
                 return;
             }
             if (t.actionFrame == 0 && !t.getType().equals(TitanType.GUARDIAN)) {
+                t.pushMove();
                 centerBall(t);
             }
             t.actionFrame += 1;
@@ -1197,10 +1229,6 @@ public class GameEngine extends Game {
             //System.out.println("tip " + tip.team + tip.getType());
             t.kickingFrames = 33;
             if (t.actionFrame < t.kickingFrames) {
-                t.runRight = 0;
-                t.runLeft = 0;
-                t.runDown = 0;
-                t.runUp = 0;
                 t.possession = 0;
                 setBallFromTip();
                 for (int i = 0; i < 8; i++) {
@@ -1220,6 +1248,7 @@ public class GameEngine extends Game {
                 if (ball.Y < GameEngine.MIN_Y) ball.Y = GameEngine.MIN_Y;
                 if (ball.Y > GameEngine.MAX_Y) ball.Y = GameEngine.MAX_Y;
                 t.actionState = Titan.TitanState.IDLE;
+                t.popMove();
             }
         }
     }
@@ -1259,16 +1288,13 @@ public class GameEngine extends Game {
                 return;
             }
             if (t.actionFrame == 0) {
+                t.pushMove();
                 centerBall(t);
             }
             t.actionFrame += 1;
             //System.out.println(t.actionState.toString() + t.actionFrame);
             t.kickingFrames = 17;
             if (t.actionFrame < t.kickingFrames) {
-                t.runRight = 0;
-                t.runLeft = 0;
-                t.runDown = 0;
-                t.runUp = 0;
                 t.possession = 0;
                 setBallFromTip();
                 for (int i = 0; i < 8; i++) {
@@ -1288,6 +1314,7 @@ public class GameEngine extends Game {
                 if (ball.Y < GameEngine.MIN_Y) ball.Y = GameEngine.MIN_Y;
                 if (ball.Y > GameEngine.MAX_Y) ball.Y = GameEngine.MAX_Y;
                 t.actionState = Titan.TitanState.IDLE;
+                t.popMove();
             }
         }
     }
@@ -1309,15 +1336,12 @@ public class GameEngine extends Game {
             }
             if (t.actionFrame == 0) {
                 centerBall(t);
+                t.pushMove();
             }
             t.actionFrame += 1;
             //System.out.println(t.actionState.toString() + t.actionFrame);
             t.kickingFrames = 17;
             if (t.actionFrame < t.kickingFrames) {
-                t.runRight = 0;
-                t.runLeft = 0;
-                t.runDown = 0;
-                t.runUp = 0;
                 t.possession = 0;
                 setBallFromTip();
                 curveFactor = sign * 18 - (sign * 2 * t.actionFrame);
@@ -1347,6 +1371,7 @@ public class GameEngine extends Game {
                 if (ball.Y < GameEngine.MIN_Y) ball.Y = GameEngine.MIN_Y;
                 if (ball.Y > GameEngine.MAX_Y) ball.Y = GameEngine.MAX_Y;
                 t.actionState = Titan.TitanState.IDLE;
+                t.popMove();
             }
         }
     }
@@ -1367,6 +1392,7 @@ public class GameEngine extends Game {
         if (t.actionFrame == t.eCastFrames) {
             t.actionFrame = 0;
             t.actionState = Titan.TitanState.IDLE;
+            t.popMove();
         }
     }
 
@@ -1377,6 +1403,7 @@ public class GameEngine extends Game {
         if (t.actionFrame == t.rCastFrames) {
             t.actionFrame = 0;
             t.actionState = Titan.TitanState.IDLE;
+            t.popMove();
         }
     }
 
@@ -1387,6 +1414,7 @@ public class GameEngine extends Game {
         if (t.actionFrame == t.sCastFrames) {
             t.actionFrame = 0;
             t.actionState = Titan.TitanState.IDLE;
+            t.popMove();
         }
     }
 

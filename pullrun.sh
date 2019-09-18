@@ -1,1 +1,0 @@
-git stash; git pull; git stash pop & mvn clean package & java -jar target/loginloadbal.jar

@@ -42,19 +42,19 @@ public class Ability {
                     strat.stunByRadius();
                     break;
                 case POST:
-                    context.effectPool.addUniqueEffect(new CooldownE(18000, caster));
+                    context.effectPool.addUniqueEffect(new CooldownE((int) (caster.cooldownFactor *18000), caster));
                     context.effectPool.addUniqueEffect(
-                            new DefenseEffect(5000, caster, 10));
+                            new DefenseEffect((int) (caster.durationsFactor*5000), caster, 10));
                     break;
                 case STEALTH:
-                    context.effectPool.addUniqueEffect(new CooldownE(18000, caster));
+                    context.effectPool.addUniqueEffect(new CooldownE((int) (caster.cooldownFactor *18000), caster));
                     context.effectPool.addUniqueEffect(
-                            new EmptyEffect(1800, caster, EffectId.STEALTHED));
+                            new EmptyEffect((int) (caster.durationsFactor*1800), caster, EffectId.STEALTHED));
                     break;
                 case SLASHER:
-                    context.effectPool.addUniqueEffect(new CooldownE(20000, caster));
+                    context.effectPool.addUniqueEffect(new CooldownE((int) (caster.cooldownFactor *20000), caster));
                     context.effectPool.addUniqueEffect(
-                            new HideBallEffect(3000, caster));
+                            new HideBallEffect((int) (caster.durationsFactor*3000), caster));
                     break;
                 case RANGER:
                     strat.shootArrow();

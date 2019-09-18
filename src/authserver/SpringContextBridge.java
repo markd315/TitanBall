@@ -1,6 +1,7 @@
 package authserver;
 
 import authserver.matchmaking.Matchmaker;
+import authserver.users.PersistenceManager;
 import authserver.users.UserService;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +20,9 @@ public class SpringContextBridge
 
     @Autowired
     private Matchmaker matchmaker;
+
+    @Autowired
+    private PersistenceManager persistenceManager;
 
     @Override
     public void setApplicationContext(ApplicationContext applicationContext)
@@ -39,5 +43,10 @@ public class SpringContextBridge
     @Override
     public Matchmaker getMatchmaker() {
         return matchmaker; //Return the Autowired userService
+    }
+
+    @Override
+    public PersistenceManager getPersistenceManager() {
+        return persistenceManager; //Return the Autowired userService
     }
 }

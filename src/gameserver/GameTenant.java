@@ -24,13 +24,12 @@ public class GameTenant {
     List<PlayerConnection> clients = new ArrayList<>();
     public List<List<Integer>> availableSlots;
     int claimIndex = 0;
-    private int seconds;
 
     public GameTenant() {
     }
 
     public void delegatePacket(Connection connection, ClientPacket request) {
-        if (state == null) {
+        if (state == null || state.phase < 8) {
             addOrReplaceNewClient(connection, clients, request.token);
         }
         if (state != null) {
@@ -65,70 +64,80 @@ public class GameTenant {
     }
 
     boolean lobbyFull(List<PlayerConnection> pd){
-        return (pd.size() == availableSlots.size());
+        List<String> uniqueEmails = new ArrayList<>();
+        for(PlayerConnection p : pd){
+            if(!uniqueEmails.contains(p.getEmail())){
+                uniqueEmails.add(p.getEmail());
+            }
+        }
+        return (uniqueEmails.size() == availableSlots.size());
     }
 
-    void addOrReplaceNewClient(Connection c, List<PlayerConnection> wipClients, String token){
-        boolean connFound = false;
-        for(PlayerConnection p : wipClients){
-            if (p.getClient().equals(c)){
-                connFound = true;
-            }
-        }
-        boolean emailFound = false;
+    void addOrReplaceNewClient(Connection c, List<PlayerConnection> queue, String token){
+        boolean connFound = connectionQueued(queue, c);
         String email = Util.jwtExtractEmail(token);
-        for(PlayerConnection p : wipClients){
-            if (p.getEmail().equals(email)){
-                emailFound = true;
-            }
-        }
+        boolean emailFound = accountQueued(queue, email);
         if(!connFound){
             if(emailFound){ //rejoin unstarted game
-                for(PlayerConnection p : wipClients){
+                for(PlayerConnection p : queue){
                     if(p.getEmail().equals(email)){
                         p.setClient(c);
                     }
                 }
-            }else{//add new
-                System.out.println("adding client");
-                System.out.println(c.getRemoteAddressTCP());
-
-                wipClients.add(new PlayerConnection(nextUnclaimedSlot(), c, email));
-            }
-        }
-        if(lobbyFull(wipClients)){
-            System.out.println("starting full");
-            List<PlayerDivider> players = playersFromConnections(wipClients);
-            state = new GameEngine(gameId, players); //Start the game
-            try {
-                state.initializeServer();
-                instantiateSpringContext();
-                wipClients = this.monteCarloBalance(wipClients);
-                seconds = 5;
-                for(int i=0; i<5; i++){
-                    Thread.sleep(1000);
-                    seconds-=1;
+            }else{
+                for(PlayerConnection p : queue){
+                    System.out.println(p.toString());
                 }
+                System.out.println("adding NEW client");
+                System.out.println(c.getRemoteAddressUDP());
+                queue.add(new PlayerConnection(nextUnclaimedSlot(), c, email));
             }
-            catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            ScheduledExecutorService exec = Executors.newScheduledThreadPool(wipClients.size());
-            Cloner cloner= new Cloner();
-            clients = wipClients;
-            Runnable updateClients = () -> {
-                //System.out.println("updating clients now");
-                clients.parallelStream().forEach(client -> {
-                    GameEngine update = cloner.deepClone(state);
-                    PlayerDivider pd = dividerFromConn(client.getClient());
-                    update.underControl = state.titanSelected(pd);
-                    //System.out.println("updating " + pd.id + update.underControl.getType().toString());
-                    client.getClient().sendUDP(update);
-                });
-            };
-
-            exec.scheduleAtFixedRate(updateClients, 1, 20, TimeUnit.MILLISECONDS);
         }
+        if(lobbyFull(queue)){
+            startGame(queue);
+        }
+    }
+
+    private void startGame(List<PlayerConnection> gameIncludedClients){
+        System.out.println("starting full");
+        List<PlayerDivider> players = playersFromConnections(gameIncludedClients);
+        state = new GameEngine(gameId, players); //Start the game
+        try {
+            state.initializeServer();
+            instantiateSpringContext();
+            gameIncludedClients = this.monteCarloBalance(gameIncludedClients);
+            int seconds = 5;
+            for(int i=0; i<5; i++){
+                Thread.sleep(1000);
+                seconds -=1;
+            }
+        }
+        catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        ScheduledExecutorService exec = Executors.newScheduledThreadPool(gameIncludedClients.size());
+
+        System.out.println("reassigning client list on startgame");
+        for(PlayerConnection p : clients){
+            System.out.println(p.toString());
+        }
+        clients = gameIncludedClients;
+        for(PlayerConnection p : clients){
+            System.out.println(p.toString());
+        }
+        Runnable updateClients = () -> {
+            //System.out.println("updating clients now");
+            clients.parallelStream().forEach(client -> {
+                PlayerDivider pd = dividerFromConn(client.getClient());
+                //Optimizing clone away by only hacking in the needed var fails because of occasional concurrency issue
+                Cloner cloner= new Cloner();
+                GameEngine update = cloner.deepClone(state);
+                update.underControl = state.titanSelected(pd);
+                client.getClient().sendUDP(update);
+            });
+        };
+
+        exec.scheduleAtFixedRate(updateClients, 1, 20, TimeUnit.MILLISECONDS);
     }
 
 
@@ -145,6 +154,26 @@ public class GameTenant {
     List<Integer> nextUnclaimedSlot(){
         claimIndex++;
         return availableSlots.get(claimIndex -1);
+    }
+
+    private boolean connectionQueued(List<PlayerConnection> queue, Connection query){
+        boolean connFound = false;
+        for(PlayerConnection p : queue){
+            if (p.getClient().getID() == query.getID()){
+                connFound = true;
+            }
+        }
+        return connFound;
+    }
+
+    private boolean accountQueued(List<PlayerConnection> queue, String email) {
+        boolean emailFound = false;
+        for(PlayerConnection p : queue){
+            if (p.getEmail().equals(email)){
+                emailFound = true;
+            }
+        }
+        return emailFound;
     }
 
     private List<PlayerConnection> monteCarloBalance(List<PlayerConnection> players) {
@@ -194,6 +223,9 @@ public class GameTenant {
         }
         if(serverMode == ServerMode.TRUETHREE){
             PLAYERS = 6;
+        }
+        if(serverMode == ServerMode.ONEVTWO){
+            PLAYERS = 3;
         }
     }
 
@@ -384,6 +416,22 @@ public class GameTenant {
             this.availableSlots.add(c6);
             this.availableSlots.add(c7);
             this.availableSlots.add(c8);
+        }
+        else if(GameTenant.serverMode == ServerMode.ONEVTWO){
+            this.availableSlots = new ArrayList<>();
+            List<Integer> c3 = new ArrayList<>();
+            List<Integer> c4 = new ArrayList<>();
+            List<Integer> c5 = new ArrayList<>();
+            c3.add(1); //goalies are removed anyway if disabled for "true" 2v1
+            c3.add(3);
+            c4.add(4);
+
+            c5.add(2);
+            c5.add(5);
+            c5.add(6);
+            this.availableSlots.add(c3);
+            this.availableSlots.add(c4);
+            this.availableSlots.add(c5);
         }
     }
 }

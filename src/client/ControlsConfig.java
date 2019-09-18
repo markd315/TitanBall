@@ -9,14 +9,34 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class ControlsConfig {
-    static Map<String, String> keymap = null;
 
-    public boolean mapKeyPress(ClientPacket prior, int newKey){
-        return mapKeyPress(prior, ""+newKey);
+    public ControlsConfig(){
+        this(false);
+    }
+    protected Map<String, String> keymap = null;
+
+    public ControlsConfig(boolean useRtsConfig){
+        ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+        try {
+            if(useRtsConfig) {
+                keymap = mapper.readValue(new File("rts.yaml"), HashMap.class);
+            }
+            else {
+                keymap = mapper.readValue(new File("keys.yaml"), HashMap.class);
+            }
+
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+    }
+
+    public boolean mapKeyPress(ChaosballClient client, ClientPacket prior, int newKey){
+        return mapKeyPress(client, prior, ""+newKey);
     }
 
     //returns if detected, but also updates packet
-    public boolean mapKeyPress(ClientPacket prior, String newKey){
+    public boolean mapKeyPress(ChaosballClient client, ClientPacket prior, String newKey){
         if(keymap.containsKey(newKey)){
             String value = keymap.get(newKey);
             switch(value){
@@ -27,6 +47,7 @@ public class ControlsConfig {
                     prior.R = true;
                     break;
                 case "SHOT":
+                    client.shotSound.rewindStart();
                     prior.shotBtn = true;
                     break;
                 case "PASS":
@@ -142,15 +163,5 @@ public class ControlsConfig {
             }
         }
         return false;
-    }
-
-    static{
-        ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
-        try {
-            keymap = mapper.readValue(new File("keys.yaml"), HashMap.class);
-        } catch (Exception e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
     }
 }

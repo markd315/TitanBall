@@ -17,69 +17,28 @@ public class User implements Serializable, UserDetails {
     protected Integer id;
 
     @Column(name = "username")
-    private String username;
-
-    @Column(name = "email")
-    private String email;
+    protected String username;
 
     @Column(name = "role")
-    private String role;
+    protected String role;
+
+    @Column(name = "email")
+    protected String email;
 
     @Column(name = "password")
-    private String password;
+    protected String password;
 
     @Column(name = "rating")
-    private Double rating;
-
-    @Column(name = "wins")
-    private Integer wins;
-
-    @Column(name = "losses")
-    private Integer losses;
+    protected Double rating;
 
     @Column(name = "created")
-    private Timestamp createdAt;
-
-    @Column(name = "goals")
-    private int goals;
-
-    @Column(name = "sidegoals")
-    private int sidegoals;
-
-    @Column(name = "points")
-    private double points;
-
-    @Column(name = "steals")
-    private int steals;
-
-    @Column(name = "blocks")
-    private int blocks;
-
-    @Column(name = "passes")
-    private int passes;
-
-    @Column(name = "kills")
-    private int kills;
-
-    @Column(name = "deaths")
-    private int deaths;
-
-    @Column(name = "turnovers")
-    private int turnovers;
-
-    @Column(name = "killassists")
-    private int killassists;
-
-    @Column(name = "goalassists")
-    private int goalassists;
-
-    @Column(name = "rebounds")
-    private int rebounds;
+    protected Timestamp createdAt;
 
     public User(){
+        this.role = "USER";
+        this.rating = 1000.0;
         this.wins = 0;
         this.losses = 0;
-        this.rating = 1000.0;
         this.goals = 0;
         this.points = 0.0;
         this.steals = 0;
@@ -98,7 +57,6 @@ public class User implements Serializable, UserDetails {
         this();
         this.username = username;
         this.password = pwEncoded;
-        this.role = "USER";
     }
 
     public String getUsername() {
@@ -117,20 +75,6 @@ public class User implements Serializable, UserDetails {
         this.password = password;
     }
 
-    public Integer getId() {
-        return id;
-    }
-
-    public void setId(Integer id) {
-        this.id = id;
-    }
-    public String getRole() {
-        return role;
-    }
-
-    public void setRole(String role) {
-        this.role = role;
-    }
     public String getEmail() {
         return email;
     }
@@ -147,25 +91,12 @@ public class User implements Serializable, UserDetails {
         this.rating = rating;
     }
 
-    public Integer getWins() {
-        return wins;
+    public String getRole() {
+        return role;
     }
 
-    public void setWins(Integer wins) {
-        this.wins = wins;
-    }
-
-    public Integer getLosses() {
-        return losses;
-    }
-
-    public void setLosses(Integer losses) {
-        this.losses = losses;
-    }
-
-    @Override
-    public Collection<? extends GrantedAuthority> getAuthorities() {
-        return null;
+    public void setRole(String role) {
+        this.role = role;
     }
 
     @Override
@@ -186,6 +117,69 @@ public class User implements Serializable, UserDetails {
     @Override
     public boolean isEnabled() {
         return true;
+    }
+
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return null;
+    }
+
+    @Column(name = "wins")
+    protected Integer wins;
+
+    @Column(name = "losses")
+    protected Integer losses;
+
+    @Column(name = "goals")
+    protected int goals;
+
+    @Column(name = "sidegoals")
+    protected int sidegoals;
+
+    @Column(name = "points")
+    protected double points;
+
+    @Column(name = "steals")
+    protected int steals;
+
+    @Column(name = "blocks")
+    protected int blocks;
+
+    @Column(name = "passes")
+    protected int passes;
+
+    @Column(name = "kills")
+    protected int kills;
+
+    @Column(name = "deaths")
+    protected int deaths;
+
+    @Column(name = "turnovers")
+    protected int turnovers;
+
+    @Column(name = "killassists")
+    protected int killassists;
+
+    @Column(name = "goalassists")
+    protected int goalassists;
+
+    @Column(name = "rebounds")
+    protected int rebounds;
+
+    public Integer getWins() {
+        return wins;
+    }
+
+    public void setWins(Integer wins) {
+        this.wins = wins;
+    }
+
+    public Integer getLosses() {
+        return losses;
+    }
+
+    public void setLosses(Integer losses) {
+        this.losses = losses;
     }
 
     public Integer getGoals() {

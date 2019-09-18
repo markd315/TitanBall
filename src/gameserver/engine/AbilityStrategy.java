@@ -55,7 +55,9 @@ public class AbilityStrategy {
     }
 
     public void parameterizedFlash(double cdSeconds, int dist){
-        context.effectPool.addUniqueEffect(new CooldownR((int) (cdSeconds*1000), caster));
+        int cd = (int) (caster.cooldownFactor * cdSeconds*1000);
+        dist*=caster.rangeFactor;
+        context.effectPool.addUniqueEffect(new CooldownR(cd, caster));
         shape = new Ellipse2D.Double(0, 0, 2, 2);
         sel = new Selector(shape, SelectorOffset.MOUSE_CENTER, 9999);
         new Targeting(sel, champions, nearest, context)
@@ -74,9 +76,14 @@ public class AbilityStrategy {
     }
 
     public void ignite(double cd, double dur, double initialD, double recurringD){
+        cd*= caster.cooldownFactor;
+        dur*= caster.durationsFactor;
+        initialD*=caster.damageFactor;
+        recurringD*=caster.damageFactor;
+        int range = (int) (250 * caster.rangeFactor);
         shape = new Rectangle(0, 0, 20, 20);
         sel = new Selector(shape, SelectorOffset.MOUSE_CENTER,
-                250);
+                range);
         appliedTo = new Targeting(sel, notFriendly, mouseNear, context)
                 .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
         for (Entity e : appliedTo) {
@@ -89,20 +96,23 @@ public class AbilityStrategy {
     }
 
     public void circleSlash(){
-        context.effectPool.addUniqueEffect(new CooldownE(4000, caster));
-        shape = new Ellipse2D.Double(0, 0, 200, 200);
+        double dmg = 40*caster.damageFactor;
+        double range = 200 * caster.rangeFactor;
+        context.effectPool.addUniqueEffect(new CooldownE((int) (4000*caster.cooldownFactor), caster));
+        shape = new Ellipse2D.Double(0, 0, range, range);
         sel = new Selector(shape, SelectorOffset.CAST_CENTER, 9999);
         appliedTo = new Targeting(sel, notFriendly, unlimited, context)
                 .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
         for (Entity e : appliedTo) {
             context.effectPool.addStackingEffect(caster, new EmptyEffect(5000, e, EffectId.ATTACKED));
-            e.damage(context, 40);
+            e.damage(context, dmg);
         }
     }
 
     public void kick() {
-        context.effectPool.addUniqueEffect(new CooldownR(12000, caster));
-        shape = new Ellipse2D.Double(0, 0, 120, 120);
+        double range = 120 * caster.rangeFactor;
+        context.effectPool.addUniqueEffect(new CooldownR((int) (12000*caster.cooldownFactor), caster));
+        shape = new Ellipse2D.Double(0, 0, range, range);
         sel = new Selector(shape, SelectorOffset.MOUSE_CENTER, 9999);
         appliedTo = new Targeting(sel, champions, nearest, context)
                 .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
@@ -124,21 +134,23 @@ public class AbilityStrategy {
     }
 
     public void wall() {
+        int range = (int) (250 * caster.rangeFactor);
         shape = new Rectangle(0, 0, 30, 30);
         sel = new Selector(shape, SelectorOffset.MOUSE_CENTER,
-                250);
+                range);
         //To update the region to caster loc
         sel.select(Collections.EMPTY_SET, x, y, caster);
         corners = sel.getLatestColliderBounds();
         if (corners.getWidth() > 0) {
-            context.effectPool.addUniqueEffect(new CooldownR(3500, caster));
+            context.effectPool.addUniqueEffect(new CooldownR((int) (caster.cooldownFactor *3500), caster));
             context.entityPool.add(new Wall(context, (int) corners.getX(), (int) corners.getY()));
         }
     }
 
     public void scatter() {
-        context.effectPool.addUniqueEffect(new CooldownR(12000, caster));
-        shape = new Ellipse2D.Double(0, 0, 180, 180);
+        int range = (int) (180 * caster.rangeFactor);
+        context.effectPool.addUniqueEffect(new CooldownR((int) (caster.cooldownFactor *12000), caster));
+        shape = new Ellipse2D.Double(0, 0, range, range);
         sel = new Selector(shape, SelectorOffset.CAST_CENTER, 9999);
         appliedTo = new Targeting(sel, champions, unlimited, context)
                 .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
@@ -160,39 +172,43 @@ public class AbilityStrategy {
     }
 
     public void spawnBallPortal() {
+        int range = (int) (200 * caster.rangeFactor);
         shape = new Rectangle(0, 0, 50, 50);
         sel = new Selector(shape, SelectorOffset.MOUSE_CENTER,
-                200);
+                range);
         sel.select(Collections.EMPTY_SET, x, y, caster);
         corners = sel.getLatestColliderBounds();
         if (corners.getWidth() > 0) {
-            context.effectPool.addUniqueEffect(new CooldownR(7000, caster));
+            context.effectPool.addUniqueEffect(new CooldownR((int) (caster.cooldownFactor *7000), caster));
             context.entityPool.add(new BallPortal(TeamAffiliation.UNAFFILIATED, caster,
                     context.entityPool, (int) corners.getX(), (int) corners.getY()));
         }
     }
 
     public void heal() {
+        int dur = (int) (3000 * caster.durationsFactor);
+        int range = (int) (250 * caster.rangeFactor);
         shape = new Ellipse2D.Double(0, 0, 1, 1);
         sel = new Selector(shape, SelectorOffset.MOUSE_CENTER,
-                250);
+                range);
         appliedTo = new Targeting(sel, friendlyIncSelf, mouseNear, context)
                 .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
         for (Entity e : appliedTo) {
-            context.effectPool.addUniqueEffect(new CooldownR(8000, caster));
-            eff = new HealEffect(3000, e, 15, .35);
+            context.effectPool.addUniqueEffect(new CooldownR((int) (caster.cooldownFactor *8000), caster));
+            eff = new HealEffect(dur, e, 15, .35);
             context.effectPool.addStackingEffect(eff); //also unique and singleton
         }
     }
 
     public void chargeShot() {
-        context.effectPool.addUniqueEffect(new CooldownR(7000, caster));
+        int dur = (int) (3000 * caster.durationsFactor);
+        context.effectPool.addUniqueEffect(new CooldownR((int) (caster.cooldownFactor *7000), caster));
         context.effectPool.addUniqueEffect(
-                new ShootEffect(3000, caster, 1.5));
+                new ShootEffect(dur, caster, 1.5));
     }
 
     public void curveBall(int btnCode){
-        context.effectPool.addUniqueEffect(new CooldownCurve(7000, caster));
+        context.effectPool.addUniqueEffect(new CooldownCurve((int) (caster.cooldownFactor *7000), caster));
         Rectangle shape = new Rectangle(0, 0, 15, 15);
         Selector sel = new Selector(shape, SelectorOffset.CAST_TO_MOUSE, 300);
         new Targeting(sel, champions, nearest, context)
@@ -201,47 +217,52 @@ public class AbilityStrategy {
     }
 
     public void spawnPortal() {
+        int range = (int) (200 * caster.rangeFactor);
         shape = new Rectangle(0, 0, 50, 50);
         sel = new Selector(shape, SelectorOffset.MOUSE_CENTER,
-                200);
+                range);
         sel.select(Collections.EMPTY_SET, x, y, caster);
         corners = sel.getLatestColliderBounds();
         if (corners.getWidth() > 0) {
-            context.effectPool.addUniqueEffect(new CooldownE(5500, caster));
+            context.effectPool.addUniqueEffect(new CooldownE((int) (caster.cooldownFactor *5500), caster));
             context.entityPool.add(new Portal(TeamAffiliation.UNAFFILIATED, caster,
                     context.entityPool, (int) corners.getX(), (int) corners.getY()));
         }
     }
 
     public void spawnTrap() {
+        int range = (int) (200 * caster.rangeFactor);
         shape = new Rectangle(0, 0, 50, 50);
         sel = new Selector(shape, SelectorOffset.MOUSE_CENTER,
-                200);
+                range);
         //To update the region to caster loc
         sel.select(Collections.EMPTY_SET, x, y, caster);
         corners = sel.getLatestColliderBounds();
         if (corners.getWidth() > 0) {
-            context.effectPool.addUniqueEffect(new CooldownE(15000, caster));
+            context.effectPool.addUniqueEffect(new CooldownE((int) (caster.cooldownFactor *15000), caster));
             context.entityPool.add(new Trap(caster, (int) corners.getX(), (int) corners.getY()));
         }
     }
 
     public void slow() {
+        int dur = (int) (2000 * caster.durationsFactor);
+        int range = (int) (150 * caster.rangeFactor);
         shape = new Rectangle(0, 0, 1, 1);
         sel = new Selector(shape, SelectorOffset.MOUSE_CENTER,
-                150);
+                range);
         appliedTo = new Targeting(sel, champions, mouseNear, context)
                 .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
         for (Entity e : appliedTo) {
-            context.effectPool.addUniqueEffect(new CooldownE(3000, caster));
-            eff = new SlowEffect(3000, e, 1.4);
+            context.effectPool.addUniqueEffect(new CooldownE((int) (caster.cooldownFactor *3000), caster));
+            eff = new SlowEffect(dur, e, 1.4);
             context.effectPool.addUniqueEffect(eff);
         }
     }
 
     public void suckBall() {
-        context.effectPool.addUniqueEffect(new CooldownE(30000, caster));
-        shape = new Ellipse2D.Double(0, 0, 280, 280);
+        int range = (int) (280 * caster.rangeFactor);
+        context.effectPool.addUniqueEffect(new CooldownE((int) (caster.cooldownFactor *30000), caster));
+        shape = new Ellipse2D.Double(0, 0, range, range);
         sel = new Selector(shape, SelectorOffset.CAST_CENTER, 9999);
         //To update the region to caster loc
         sel.select(Collections.EMPTY_SET, x, y, caster);
@@ -265,32 +286,37 @@ public class AbilityStrategy {
     }
 
     public void stunByRadius() {
-        context.effectPool.addUniqueEffect(new CooldownE(7000, caster));
-        shape = new Ellipse2D.Double(0, 0, 160, 160);
+        int range = (int) (160 * caster.rangeFactor);
+        int dur = (int) (1800 * caster.durationsFactor);
+        context.effectPool.addUniqueEffect(new CooldownE((int) (caster.cooldownFactor *7000), caster));
+        shape = new Ellipse2D.Double(0, 0, range, range);
         sel = new Selector(shape, SelectorOffset.CAST_CENTER, 9999);
         appliedTo = new Targeting(sel, champions, nearest, context)
                 .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
         for (Entity e : appliedTo) {
-            eff = new EmptyEffect(1800, e, EffectId.STUN);
+            eff = new EmptyEffect(dur, e, EffectId.STUN);
             context.effectPool.addCasterUniqueEffect(eff, caster);
         }
     }
 
     public void shootArrow() {
+        int range = (int) (250 * caster.rangeFactor);
+        double dmg = 24*caster.damageFactor;
         shape = new Rectangle(0, 0, 20, 20);
         sel = new Selector(shape, SelectorOffset.MOUSE_CENTER,
-                250);
+                range);
         appliedTo = new Targeting(sel, notFriendly, mouseNear, context)
                 .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
         for (Entity e : appliedTo) {
-            context.effectPool.addUniqueEffect(new CooldownE(3000, caster));
+            context.effectPool.addUniqueEffect(new CooldownE((int) (caster.cooldownFactor *3000), caster));
             context.effectPool.addStackingEffect(caster, new EmptyEffect(5000, e, EffectId.ATTACKED));
-            e.damage(context, 24);
+            e.damage(context, dmg);
         }
     }
 
     public boolean stealBall() {
-        context.effectPool.addUniqueEffect(new CooldownQ(12000, caster));
+        int dur = (int) (500 * caster.durationsFactor);
+        context.effectPool.addUniqueEffect(new CooldownQ((int) (caster.cooldownFactor *12000), caster));
         shape = new Ellipse2D.Double(0, 0, caster.stealRad*2, caster.stealRad*2);
         sel = new Selector(shape, SelectorOffset.CAST_CENTER, 9999);
         new Targeting(sel, all, unlimited, context)
@@ -306,7 +332,7 @@ public class AbilityStrategy {
                 context.ball.X = caster.X + 35 - context.ball.centerDist;
                 context.ball.Y = caster.Y + 35 - context.ball.centerDist;
                 caster.possession = 1;
-                eff = new EmptyEffect(500, tip, EffectId.STEAL);
+                eff = new EmptyEffect(dur, tip, EffectId.STEAL);
                 context.effectPool.addStackingEffect(caster, eff);
                 return true;
             }

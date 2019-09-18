@@ -4,6 +4,7 @@ C:\Users\markd\Chaosball\src\authserver\users\UserService.java
 C:\Users\markd\Chaosball\src\gameserver\effects\EffectPool.java
 C:\Users\markd\Chaosball\src\gameserver\effects\effects\BleedEffect.java
 C:\Users\markd\Chaosball\src\gameserver\GameTenant.java
+C:\Users\markd\Chaosball\src\authserver\users\ClassServiceImpl.java
 C:\Users\markd\Chaosball\src\client\ScreenConst.java
 C:\Users\markd\Chaosball\src\gameserver\engine\Team.java
 C:\Users\markd\Chaosball\src\gameserver\effects\effects\DeadEffect.java
@@ -25,10 +26,12 @@ C:\Users\markd\Chaosball\src\gameserver\engine\GoalHoop.java
 C:\Users\markd\Chaosball\src\gameserver\entity\TitanType.java
 C:\Users\markd\Chaosball\src\client\ControlsConfig.java
 C:\Users\markd\Chaosball\src\client\ChaosballWindow.java
+C:\Users\markd\Chaosball\src\authserver\users\ClassRepository.java
 C:\Users\markd\Chaosball\src\gameserver\entity\Collidable.java
 C:\Users\markd\Chaosball\src\gameserver\ServerApplication.java
 C:\Users\markd\Chaosball\src\client\HttpClient.java
 C:\Users\markd\Chaosball\src\networking\PlayerDivider.java
+C:\Users\markd\Chaosball\src\authserver\models\ClassStat.java
 C:\Users\markd\Chaosball\src\networking\UUIDSerializer.java
 C:\Users\markd\Chaosball\src\authserver\matchmaking\Rating.java
 C:\Users\markd\Chaosball\src\gameserver\entity\Titan.java
@@ -52,6 +55,7 @@ C:\Users\markd\Chaosball\src\networking\CandidateGame.java
 C:\Users\markd\Chaosball\src\authserver\jwt\JwtAuthenticationFilter.java
 C:\Users\markd\Chaosball\src\authserver\SpringContext.java
 C:\Users\markd\Chaosball\src\client\forms\LoginListener.java
+C:\Users\markd\Chaosball\src\gameserver\engine\Masteries.java
 C:\Users\markd\Chaosball\src\client\StaticImage.java
 C:\Users\markd\Chaosball\src\gameserver\effects\EffectId.java
 C:\Users\markd\Chaosball\src\gameserver\engine\TeamAffiliation.java
@@ -78,11 +82,13 @@ C:\Users\markd\Chaosball\src\gameserver\entity\Coordinates.java
 C:\Users\markd\Chaosball\src\gameserver\entity\minions\Trap.java
 C:\Users\markd\Chaosball\src\gameserver\entity\minions\Portal.java
 C:\Users\markd\Chaosball\src\authserver\LoginController.java
+C:\Users\markd\Chaosball\src\authserver\users\PersistenceManager.java
 C:\Users\markd\Chaosball\src\gameserver\targeting\Filter.java
 C:\Users\markd\Chaosball\src\authserver\jwt\JwtTokenProvider.java
 C:\Users\markd\Chaosball\src\gameserver\effects\effects\FastEffect.java
 C:\Users\markd\Chaosball\src\gameserver\effects\effects\SlowEffect.java
 C:\Users\markd\Chaosball\src\gameserver\effects\cooldowns\CooldownCurve.java
+C:\Users\markd\Chaosball\src\authserver\users\ClassService.java
 C:\Users\markd\Chaosball\src\gameserver\entity\Entity.java
 C:\Users\markd\Chaosball\src\gameserver\entity\minions\Wall.java
 C:\Users\markd\Chaosball\src\authserver\models\DTO\LoginRequest.java

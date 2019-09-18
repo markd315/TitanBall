@@ -34,6 +34,12 @@ public class Titan extends Entity {
     public int marchingOrderX = 0;
     public int marchingOrderY = 0;
     public int stealRad = 26;
+    public boolean typeAndMasteriesLocked = false;
+    public double damageFactor = 1.0;
+    public double cooldownFactor = 1.0;
+    public double durationsFactor = 1.0;
+    public double rangeFactor = 1.0;
+    public boolean moveMemU, moveMemD, moveMemL, moveMemR;
 
     private TitanType type;
 
@@ -47,7 +53,6 @@ public class Titan extends Entity {
         this.type = type;
         this.width = 70;
         this.height = 70;
-        setVarsBasedOnType();
         this.solid = true;
     }
 
@@ -85,8 +90,11 @@ public class Titan extends Entity {
     }
 
     public void setType(TitanType type) {
-        this.type = type;
-        this.setVarsBasedOnType();
+        if(!typeAndMasteriesLocked){
+            this.type = type;
+            this.setVarsBasedOnType();
+        }
+
     }
 
     public Titan(){
@@ -249,6 +257,7 @@ public class Titan extends Entity {
         HashSet<RangeCircle> support= new HashSet<>();
         HashSet<RangeCircle> ranger= new HashSet<>();
         HashSet<RangeCircle> warrior= new HashSet<>();
+        HashSet<RangeCircle> artisan= new HashSet<>();
         mage.add(e(200));
         mage.add(r(250));
         builder.add(e(200));
@@ -259,6 +268,8 @@ public class Titan extends Entity {
         ranger.add(r(60));
         warrior.add(e(100));
         warrior.add(r(140));
+        artisan.add(e(140));
+        artisan.add(r(200));
         titanRange.put(TitanType.MAGE, mage);
         titanRange.put(TitanType.RANGER, ranger);
         titanRange.put(TitanType.MARKSMAN, Collections.singleton(e(150)));
@@ -268,7 +279,7 @@ public class Titan extends Entity {
         titanRange.put(TitanType.WARRIOR, warrior);
         titanRange.put(TitanType.STEALTH, Collections.singleton(r(100)));
         titanRange.put(TitanType.SUPPORT, support);
-        titanRange.put(TitanType.ARTISAN, Collections.singleton(e(140)));
+        titanRange.put(TitanType.ARTISAN, artisan);
 
         titanText.put(TitanType.MAGE, "DAMAGE ignite enemies and warp players around the map with portals");
         titanText.put(TitanType.RANGER, "DAMAGE/DEFENSE take attacking enemies down from a distance");
@@ -310,5 +321,23 @@ public class Titan extends Entity {
     private static RangeCircle r(int x){
         Color purple = new Color(.45f, .0f, .85f);
         return new RangeCircle(purple, x);
+    }
+
+    public void pushMove() {
+        this.moveMemU = this.runUp == 1;
+        this.moveMemD = this.runDown == 1;
+        this.moveMemL = this.runLeft == 1;
+        this.moveMemR = this.runRight == 1;
+        this.runUp = 0;
+        this.runDown = 0;
+        this.runLeft = 0;
+        this.runRight = 0;
+    }
+
+    public void popMove() {
+        this.runUp = this.moveMemU ? 1 : 0;
+        this.runDown = this.moveMemD ? 1 : 0;
+        this.runLeft = this.moveMemL ? 1 : 0;
+        this.runRight = this.moveMemR ? 1 : 0;
     }
 }

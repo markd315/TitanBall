@@ -6,12 +6,14 @@ import com.esotericsoftware.kryonet.Client;
 import com.esotericsoftware.kryonet.Connection;
 import com.esotericsoftware.kryonet.Listener;
 import com.mashape.unirest.http.exceptions.UnirestException;
+import com.rits.cloning.Cloner;
 import gameserver.GameEngine;
 import gameserver.effects.EffectId;
 import gameserver.effects.cooldowns.CooldownE;
 import gameserver.effects.cooldowns.CooldownR;
 import gameserver.effects.effects.*;
 import gameserver.engine.GoalHoop;
+import gameserver.engine.Masteries;
 import gameserver.engine.Team;
 import gameserver.engine.TeamAffiliation;
 import gameserver.entity.Entity;
@@ -42,10 +44,10 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class ChaosballClient extends JPanel implements ActionListener, KeyListener {
-    private final ScreenConst sconst;
-    private Client gameserverConn = new Client(8192*8, 32768*8);
-    private String gameID;
-    private GameEngine game;
+    protected final ScreenConst sconst;
+    protected Client gameserverConn = new Client(8192*8, 32768*8);
+    protected String gameID;
+    protected GameEngine game;
     ClientPacket controlsHeld = new ClientPacket();
     int debugCamera = 0;
     int cursor = 1; // For deciding classes
@@ -68,16 +70,18 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
     Images ballFBTexture = new Images();
     Images ballPtr = new Images();
     Images ballFPtr = new Images();
-    private int phase;
-    private Kryo kryo = gameserverConn.getKryo();
-    private boolean camFollow = false;
+    protected int phase;
+    protected Kryo kryo = gameserverConn.getKryo();
+    protected boolean camFollow = true;
     int xSize, ySize;
-    private boolean keysEnabled = true;
-    private String token, refresh;
-    private HttpClient loginClient;
-    private boolean instructionToggle = false;
+    protected boolean keysEnabled = true;
+    protected String token, refresh;
+    protected HttpClient loginClient;
+    protected boolean instructionToggle = false;
     ControlsConfig controlsConfig = new ControlsConfig();
-    private int staticFrame = 0, staticFrameCounter = 0;
+    protected int staticFrame = 0, staticFrameCounter = 0;
+    protected Masteries masteries = new Masteries();
+    protected int masteriesIndex = 0;
 
     public void setAuth(String token, String refresh){
         this.token = token;
@@ -110,10 +114,12 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
             gameEndStatsAndRanks(g2D, game.underControl);
             return;
         }
-        if (phase == 0) creditPanel(g);
-        if (phase == 1) tutorial(g);
-        if (phase == 2) drawClassScreen(g);
-        if (phase == 3) consumeCursorSelectClasses();
+        if (phase == 0) creditPanel(g2D);
+        if (phase == 1) tutorial(g2D);
+        if (phase == 2) drawClassScreen(g2D);
+        if (phase == 3) drawSetMasteries(g2D);
+        if (phase == 4) consumeCursorSelectClasses();
+
         //TODO rn skips straight to 6 -> 5 -> 7 due to refactors
         if (phase == 6){
             try {
@@ -127,25 +133,72 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
         if(phase == 5){
             try {
                 gameID = requestOrQueueGame(); //sets to 7 when complete
-                lobby(g);
+                lobby(g2D);
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }
         if(phase == 7){
-            starting(g);
+            starting(g2D);
         }
         if (phase == 8 || phase == 9 || phase == 10) {
             updateFrameBall();
-            doDrawing(g); // do drawing of screen
-            displayBallArrow(g);
-            displayScore(g); // call the method to display the game score
+            doDrawing(g2D); // do drawing of screen
+            displayBallArrow(g2D);
+            displayScore(g2D); // call the method to display the game score
         }
 
         Toolkit.getDefaultToolkit().sync();
     }
 
-    private void gameEndStatsAndRanks(Graphics2D g2D, Titan underControl) {
+    protected void drawSetMasteries(Graphics2D g2D) {
+        g2D.setColor(Color.BLACK);
+        g2D.setFont(new Font("Verdana", Font.PLAIN, 32));
+        g2D.drawString("Setting Masteries", 200,50);
+        g2D.setFont(new Font("Verdana", Font.PLAIN, 16));
+        g2D.drawString("Remaining Points", 200,90);
+        g2D.drawString("WASD or arrows to spend points", 200,420);
+        g2D.drawString("Space to enter (And queue for game)", 200,450);
+        int x=430;
+        for(int i=masteries.skillsRemaining(); i>0 ; i--){
+            g2D.fill(new Ellipse2D.Double(x, 76, 16, 16));
+            x+=32;
+        }
+        int y = 150;
+        int[] arr = masteries.asArray();
+        for(int i=0; i<arr.length;i++){
+            x=250;
+            g2D.setColor(Color.BLACK);
+            g2D.drawString(Masteries.masteryFromIndex(i), x,y);
+            if(masteriesIndex == i){
+                g2D.setColor(Color.RED);
+                g2D.fill(new Rectangle(x-30, y-14, 16, 16));
+            }
+            x=430;
+            for(int ballNum=3; ballNum>0; ballNum--) {
+                setColorFromRank(g2D, ballNum);
+                if(3-ballNum < arr[i]){
+                    g2D.fill(new Ellipse2D.Double(x, y-14, 16, 16));
+                }
+                x+=25;
+            }
+            y+=25;
+        }
+    }
+
+    protected void setColorFromRank(Graphics2D g2D, int rank){
+        if(rank == 1){
+            g2D.setColor(new Color(1f, .843f, 0f));//gold silver bronze
+        }
+        if(rank == 2){
+            g2D.setColor(new Color(.753f, .753f, .753f));//gold silver bronze
+        }
+        if(rank == 3){
+            g2D.setColor(new Color(.804f, .498f, .196f));//gold silver bronze
+        }
+    }
+
+    protected void gameEndStatsAndRanks(Graphics2D g2D, Titan underControl) {
         JSONObject stats = game.stats.statsOf(game.clientFromTitan(underControl));
         JSONObject ranks = game.stats.ranksOf(game.clientFromTitan(underControl));
         int y = sconst.STATS_Y;
@@ -156,15 +209,7 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
             g2D.drawString(stat + ": " + stats.get(stat) ,sconst.STATS_X, y);
             if(ranks.has(stat) && ((int) ranks.get(stat) >= 1)){
                 int rank = (int) ranks.get(stat);
-                if(rank == 1){
-                    g2D.setColor(new Color(1f, .843f, 0f));//gold silver bronze
-                }
-                if(rank == 2){
-                    g2D.setColor(new Color(.753f, .753f, .753f));//gold silver bronze
-                }
-                if(rank == 3){
-                    g2D.setColor(new Color(.804f, .498f, .196f));//gold silver bronze
-                }
+                setColorFromRank(g2D, rank);
                 g2D.fill(new Ellipse2D.Double(sconst.STATS_MEDAL+1, //subtractions for internal color circle
                         y-(sconst.STATS_FONT-4)+1,
                         sconst.STATS_FONT-2, sconst.STATS_FONT-2));
@@ -196,6 +241,7 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
                     phase = game.phase;
                     controlsHeld.gameID = gameID;
                     controlsHeld.token = token;
+                    controlsHeld.masteries = masteries;
                     try {
                         gameserverConn.sendTCP(controlsHeld); //Automatically respond to the gameserver with tutorial when we get a new state
                     }
@@ -213,12 +259,13 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
         Runnable updateServer = () -> {
             controlsHeld.gameID = gameID;
             controlsHeld.token = token;
+            controlsHeld.masteries = masteries;
             gameserverConn.sendTCP(controlsHeld);
         };
         exec.scheduleAtFixedRate(updateServer, 1, 20, TimeUnit.MILLISECONDS);
     }
 
-    private String requestOrQueueGame() throws UnirestException{
+    protected String requestOrQueueGame() throws UnirestException{
         if(phase != 5){ //request game
             token = loginClient.token;
             loginClient.join();
@@ -241,8 +288,7 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
         return loginClient.gameId;
     }
 
-    private void creditPanel(Graphics g) {
-        Graphics2D g2D = (Graphics2D) g;
+    protected void creditPanel(Graphics2D g2D) {
         g2D.drawImage(intro.getImage(), 0, 0, this);
         Font font = new Font("Verdana", Font.PLAIN, 65);
         g2D.setFont(font);
@@ -267,11 +313,10 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
         }
     }
 
-    public void displayBallArrow(Graphics g){
+    public void displayBallArrow(Graphics2D g2D){
         if (game == null) {
             //return;
         }
-        Graphics2D g2D = (Graphics2D) g;
         int x = (int) (game.ball.X + game.ball.centerDist - camX);
         int y = (int) (game.ball.Y + game.ball.centerDist - camY);
         final int XCORR = xSize/3;
@@ -321,13 +366,12 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
         camY = 300;
     }
 
-    private void doDrawing(Graphics g) {
-        Graphics2D g2D = (Graphics2D) g;
+    protected void doDrawing(Graphics2D g2D) {
         if (game == null) {
             return;
         }
         if (instructionToggle){
-            tutorial(g);
+            tutorial(g2D);
             return;
         }
         g2D.drawImage(field.getImage(), (1 - camX), (1 - camY), this);
@@ -474,10 +518,10 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
             Titan t = game.underControl;
             if(ri.getRadius() > 0){
                 if(t.getType() != TitanType.ARTISAN || t.possession == 0) {
-                    int w = ri.getRadius() * 2;
-                    int h = ri.getRadius() * 2;
+                    int w = (int) (ri.getRadius() * 2 * t.rangeFactor);
+                    int h = w;
                     int x = (int) t.X + (t.width / 2) - w / 2;
-                    int y = (int) t.Y + (t.height / 2) - w / 2;
+                    int y = (int) t.Y + (t.height / 2) - h / 2;
                     Ellipse2D.Double ell = new Ellipse2D.Double(x, y, w, h);
                     ShapePayload c = new ShapePayload(ell);
                     Shape b = c.fromWithCamera(camX, camY);
@@ -496,7 +540,7 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
         }
     }
 
-    private Team teamFromUnderControl() {
+    protected Team teamFromUnderControl() {
         TeamAffiliation affil = game.underControl.team;
         if(affil.equals(game.home.which)){
             return game.home;
@@ -504,7 +548,7 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
         return game.away;
     }
 
-    private Team enemyFromUnderControl() {
+    protected Team enemyFromUnderControl() {
         TeamAffiliation affil = game.underControl.team;
         if(affil.equals(game.home.which)){
             return game.away;
@@ -512,7 +556,7 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
         return game.home;
     }
 
-    private void drawEntities(Graphics2D g2D) {
+    protected void drawEntities(Graphics2D g2D) {
         drawNontitans(g2D, game.entityPool);
         drawEffectIcons(g2D);
         if (game.allSolids != null) {
@@ -539,7 +583,7 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
             }
         }
         //Skip the goalies for the next display loop
-        addBoostIcons();
+        //addBoostIcons();
         for (int i = 2; i < game.players.length; i++) {
             Titan t = game.players[i];
             if (game.underControl.team != t.team &&
@@ -618,12 +662,12 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
         }
     }
 
-    private boolean invisible(Titan t) {
+    protected boolean invisible(Titan t) {
         return game.effectPool.hasEffect(t, EffectId.STEALTHED) && !game.effectPool.hasEffect(t, EffectId.FLARE);
     }
 
 
-    private void drawNontitans(Graphics2D g2D, java.util.List<Entity> draw) {
+    protected void drawNontitans(Graphics2D g2D, java.util.List<Entity> draw) {
         staticFrame += 1;
         staticFrame %= 2;
         for (Entity e : draw) {
@@ -662,7 +706,7 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
         }
     }
 
-    private void drawEffectIcons(Graphics2D g2D) {
+    protected void drawEffectIcons(Graphics2D g2D) {
         Map<UUID, Integer> offset = new HashMap<>();
         for(Titan t: game.players){
             offset.put(t.id, 4);
@@ -681,7 +725,7 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
 
     }
 
-    private void drawHealthBar(Graphics2D g2D, Entity e) {
+    protected void drawHealthBar(Graphics2D g2D, Entity e) {
         g2D.setColor(Color.DARK_GRAY);
         int xOffset = 0;
         if (e.team == TeamAffiliation.AWAY) {
@@ -789,36 +833,30 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
             System.out.println("camY = " + camY);
             System.out.println("-------------");
         }
-        if (key == KeyEvent.VK_SPACE && phase == 2 && keysEnabled) {
-            controlsHeld.CAM = true;
-            phase = 3;
+        boolean advance = stateControls(key); //3 -> 4
+        if(advance){
+            return;
         }
-        if (key == KeyEvent.VK_SPACE && phase == 0 && keysEnabled) {
-            controlsHeld.CAM = true;
-            phase = 1;
+        advance = masteriesKeys(key); //3 -> 4
+        if(advance){
+            return;
         }
-        if (key == KeyEvent.VK_SPACE && phase == 1 && keysEnabled) {
-            phase = 2;
-            controlsHeld.CAM = true;
-        }
-
-        if (key == KeyEvent.VK_SPACE && (phase == 8 || phase == 9 && keysEnabled)) {
+        if (key == KeyEvent.VK_SPACE && (phase == 8 || phase == 9) && keysEnabled) {
             camFollow = !camFollow;
             controlsHeld.CAM = true;
             //TODO play restart ding/click
         }
-        if (key == KeyEvent.VK_SPACE && phase == 9 && keysEnabled) {
-            postgoalReset();
-            controlsHeld.CAM = true;
-            phase = 8;
-        }
         if (phase == 8 && keysEnabled) {
-            controlsConfig.mapKeyPress(controlsHeld, key);
+            controlsConfig.mapKeyPress(this, controlsHeld, key);
             //shotSound.rewindStart();
             if(controlsConfig.toggleInstructions(""+key)){
                 instructionToggle = true;
             }
         }
+        classKeys(key);
+    }
+
+    private void classKeys(int key) {
         if ((key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) && keysEnabled) {
             if (phase == 2 && cursor > 1){
                 cursor -= 1;
@@ -838,6 +876,95 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
             if (phase == 2 && cursor < 12){
                 cursor += 4;
             }
+        }
+    }
+
+    private boolean stateControls(int key) {
+        if (key == KeyEvent.VK_SPACE && phase == 0 && keysEnabled) {
+            controlsHeld.CAM = true;
+            phase = 1;
+            return true;
+        }
+        if (key == KeyEvent.VK_SPACE && phase == 1 && keysEnabled) {
+            phase = 2;
+            controlsHeld.CAM = true;
+            return true;
+        }
+        if (key == KeyEvent.VK_SPACE && phase == 2 && keysEnabled) {
+            controlsHeld.CAM = true;
+            phase = 3;
+            return true;
+        }
+        if (key == KeyEvent.VK_SPACE && phase == 3 && keysEnabled) {
+            phase = 4;
+            controlsHeld.CAM = true;
+            return true;
+        }
+        if (key == KeyEvent.VK_SPACE && phase == 4 && keysEnabled) {
+            phase = 6;
+            controlsHeld.CAM = true;
+            return true;
+        }
+        return false;
+    }
+
+    protected boolean masteriesKeys(int key) {
+        if((key == KeyEvent.VK_UP || key == KeyEvent.VK_W) && phase == 3 && keysEnabled){
+            masteriesIndex--;
+            if(masteriesIndex < 0){
+                masteriesIndex = 8;
+            }
+        }
+        if((key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S) && phase == 3 && keysEnabled){
+            masteriesIndex++;
+            if(masteriesIndex > 8){
+                masteriesIndex = 0;
+            }
+        }
+        if((key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) && phase == 3 && keysEnabled){
+            masteryDelta(masteriesIndex, 1);
+        }
+        if((key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) && phase == 3 && keysEnabled){
+            masteryDelta(masteriesIndex, -1);
+        }
+        return false;
+    }
+
+    protected void masteryDelta(int index, int delta){
+        Cloner cl = new Cloner();
+        Masteries oldMasteries = cl.deepClone(masteries);
+        switch(index){
+            case 0:
+                masteries.health+=delta;
+                break;
+            case 1:
+                masteries.shot+=delta;
+                break;
+            case 2:
+                masteries.damage+=delta;
+                break;
+            case 3:
+                masteries.speed+=delta;
+                break;
+            case 4:
+                masteries.cooldowns+=delta;
+                break;
+            case 5:
+                masteries.effectDuration+=delta;
+                break;
+            case 6:
+                masteries.stealRadius+=delta;
+                break;
+            case 7:
+                masteries.abilityRange+=delta;
+                break;
+            case 8:
+                masteries.abilityLag+=delta;
+                break;
+        }
+        if(!masteries.validate()){
+            System.out.println("detected invalid mastery settings");
+            masteries = oldMasteries;
         }
     }
 
@@ -876,6 +1003,9 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
         if (cursor == 10) controlsHeld.classSelection = TitanType.BUILDER;
         if (cursor == 11) controlsHeld.classSelection = TitanType.WARRIOR;
         if (cursor == 12) controlsHeld.classSelection = TitanType.WARRIOR;
+        if(masteries != controlsHeld.masteries){
+            controlsHeld.masteries = masteries;
+        }
     }
 
     public void consumeCursorSelectClasses() {
@@ -954,18 +1084,18 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
             }
         };
 
+        ChaosballClient clientSelf = this;
         MouseListener mouseListener = new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent event) {
                 if(keysEnabled && phase == 8) {
-                    shotSound.rewindStart();
                     controlsHeld.posX = event.getPoint().x;
                     controlsHeld.posY = event.getPoint().y;
                     if(event.getButton() == 1){
-                        controlsConfig.mapKeyPress(controlsHeld, "LMB");
+                        controlsConfig.mapKeyPress(clientSelf,controlsHeld, "LMB");
                     }
                     if(event.getButton() == 3){
-                        controlsConfig.mapKeyPress(controlsHeld, "RMB");
+                        controlsConfig.mapKeyPress(clientSelf,controlsHeld, "RMB");
                     }
                     controlsHeld.camX = camX;
                     controlsHeld.camY = camY;
@@ -986,7 +1116,7 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
         fireReconnect();
     }
 
-    private void fireReconnect(){
+    protected void fireReconnect(){
         try {//rejoin game logic
             loginClient.check();
             if(! loginClient.gameId.equals("NOT QUEUED")){
@@ -998,7 +1128,7 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
     }
 
 
-    private void initSurface() {
+    protected void initSurface() {
         // Instantiation of sound classes
         shotSound = new Sound();
         // Load the sounds
@@ -1029,11 +1159,10 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
     StaticImage wall = new StaticImage();
 
 
-    public void starting(Graphics g) {
+    public void starting(Graphics2D g2D) {
         if (gamestart == null){
             gamestart = Instant.now().plus(new Duration(5100));
         }
-        Graphics2D g2D = (Graphics2D) g;
         g2D.drawImage(lobby.getImage(), 1, 1, this);
         Font font = new Font("Verdana", Font.BOLD, 24);
         g2D.setColor(Color.YELLOW);
@@ -1044,13 +1173,14 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
         g2D.setColor(Color.RED);
         g2D.setFont(font);
         g2D.drawString("STARTING", 418, 480);
-        if(Instant.now().isAfter(gamestart.plus(new Duration(50)))){
-
+        if((game == null || game.phase < 8) && Instant.now().isAfter(gamestart.plus(new Duration(500)))){
+            //TODO this messes us up bad somehow for everyone but the last client to connect
+            g2D.setFont(new Font("Verdana", Font.BOLD, 12));
+            g2D.drawString("(Client may be disconnected, try alt-F4 and restarting client)", 80, 520);
         }
     }
 
-    public void lobby(Graphics g) {
-        Graphics2D g2D = (Graphics2D) g;
+    public void lobby(Graphics2D g2D) {
         g2D.drawImage(lobby.getImage(), 1, 1, this);
         Font font = new Font("Verdana", Font.BOLD, 24);
         g2D.setColor(Color.YELLOW);
@@ -1067,7 +1197,6 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
     public void updateFrameBall() {
         if(game.anyPoss() || game.anyBallMoveState()) {
             ballFrameCounter += 1;
-
             if (ballFrameCounter == 5) ballFrame = 1;
             if (ballFrameCounter == 10) {
                 ballFrame = 0;
@@ -1076,49 +1205,48 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
         }
     }
 
-    public void displayScore(Graphics g) {
+    public void displayScore(Graphics2D g2D) {
         if (phase == 8) {
-            Graphics2D g2d = (Graphics2D) g;
             Font font = new Font("Verdana", Font.BOLD, 45);
-            g2d.setFont(font);
+            g2D.setFont(font);
             String goalsHome = Double.toString(game.home.score);
             String goalsAway = Double.toString(game.away.score);
-            g2d.setColor(new Color(0f, 0f, 1f, .5f));
-            g2d.drawString(goalsHome, (int)(.094*xSize), (int)(.652*ySize));
-            g2d.setColor(new Color(1f, 1f, 1f, .5f));
-            g2d.drawString(goalsAway, (int)(.416*xSize), (int)(.652*ySize));
-            g2d.setColor(Color.RED);
+            g2D.setColor(new Color(0f, 0f, 1f, .5f));
+            g2D.drawString(goalsHome, (int)(.094*xSize), (int)(.652*ySize));
+            g2D.setColor(new Color(1f, 1f, 1f, .5f));
+            g2D.drawString(goalsAway, (int)(.416*xSize), (int)(.652*ySize));
+            g2D.setColor(Color.RED);
             int x = xSize/4;
-            addBoostIcons();
+            //addBoostIcons();
             for (int i = 0; i < game.effectPool.getEffects().size(); i++) {
                 Effect e = game.effectPool.getEffects().get(i);
                 Entity on = game.effectPool.getOn().get(i);
                 if (game.underControl.id.equals(on.id) && !e.toString().contains("ATTACKED")) {
-                    g2d.setFont(new Font("Verdana", Font.PLAIN, 72));
+                    g2D.setFont(new Font("Verdana", Font.PLAIN, 72));
                     if(e.effect == EffectId.ROOT){
-                        g2d.setColor(new Color(.36f, .51f, .28f, .4f));
-                        g2d.drawString("Rooted!" ,450, 300);
+                        g2D.setColor(new Color(.36f, .51f, .28f, .4f));
+                        g2D.drawString("Rooted!" ,450, 300);
                     }
                     if(e.effect == EffectId.SLOW){
-                        g2d.setColor(new Color(.45f, .9f, .75f, .4f));
-                        g2d.drawString("Slowed!" ,450, 300);
+                        g2D.setColor(new Color(.45f, .9f, .75f, .4f));
+                        g2D.drawString("Slowed!" ,450, 300);
                     }
                     if(e.effect == EffectId.STUN){
-                        g2d.setColor(new Color(1f, .74f, 0f, .4f));
-                        g2d.drawString("Stunned!" ,450, 300);
+                        g2D.setColor(new Color(1f, .74f, 0f, .4f));
+                        g2D.drawString("Stunned!" ,450, 300);
                     }
                     if(e.effect == EffectId.STEAL){
-                        g2d.setColor(new Color(0f, 0f, 0f, .4f));
-                        g2d.drawString("Stolen!" ,450, 300);
+                        g2D.setColor(new Color(0f, 0f, 0f, .4f));
+                        g2D.drawString("Stolen!" ,450, 300);
                     }
                     if (e.getIcon() != null) {
-                        Composite originalComposite = g2d.getComposite();
-                        g2d.setComposite(makeComposite(.5f));
-                        g2d.drawImage(e.getIcon(), x, 689, this);
-                        g2d.setComposite(originalComposite);
-                        g2d.setColor(new Color(1f, 1f, 1f, .5f));
+                        Composite originalComposite = g2D.getComposite();
+                        g2D.setComposite(makeComposite(.5f));
+                        g2D.drawImage(e.getIcon(), x, 689, this);
+                        g2D.setComposite(originalComposite);
+                        g2D.setColor(new Color(1f, 1f, 1f, .5f));
                         Arc2D.Double background = new Arc2D.Double(x, 657, 32, 32, 90, -360, Arc2D.PIE);
-                        g2d.fill(background);
+                        g2D.fill(background);
                         double percentBar = 100.0 - e.getPercentLeft();
                         if(percentBar > 100){
                             percentBar = 99.99999;
@@ -1126,10 +1254,10 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
                         if(percentBar < 0){
                             percentBar = 0.000001;
                         }
-                        setColorBasedOnPercent(g2d, percentBar, true);
+                        setColorBasedOnPercent(g2D, percentBar, true);
                         double coverage = e.getPercentLeft() / 100.0 * 360.0;
                         Arc2D.Double percent = new Arc2D.Double(x + 2, 659, 28, 28, 90, coverage, Arc2D.PIE);
-                        g2d.fill(percent);
+                        g2D.fill(percent);
                         x += 32;
                     }
                 }
@@ -1137,7 +1265,7 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
         }
     }
 
-    private void addBoostIcons() {
+    protected void addBoostIcons() {
         for(Effect e : game.effectPool.getEffects()){
             if(e.effect == EffectId.FAST){
                 game.effectPool.cullOnly(e);
@@ -1150,7 +1278,7 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
         }
     }
 
-    private AlphaComposite makeComposite(float alpha) {
+    protected AlphaComposite makeComposite(float alpha) {
         int type = AlphaComposite.SRC_OVER;
         return(AlphaComposite.getInstance(type, alpha));
     }
@@ -1170,20 +1298,19 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
         }
     }
 
-    public void tutorial(Graphics g) {
-        Graphics2D g2D = (Graphics2D) g;
+    public void tutorial(Graphics2D g2D) {
         g2D.drawImage(tutorial.getImage(), 1, 1, this);
         Font font = new Font("Verdana", Font.PLAIN, 65);
         g2D.setFont(font);
         g2D.drawString("Space to proceed", 5, 705);
     }
 
-    private void setColorBasedOnPercent(Graphics2D g2d, double inputPercent, boolean translucent) {
-        g2d.setColor(new Color(redColorFromPercent(inputPercent),
+    protected void setColorBasedOnPercent(Graphics2D g2D, double inputPercent, boolean translucent) {
+        g2D.setColor(new Color(redColorFromPercent(inputPercent),
                 greenColorFromPercent(inputPercent), .54f, translucent?.5f:1f));
     }
 
-    private float redColorFromPercent(double inputPercent) {
+    protected float redColorFromPercent(double inputPercent) {
         float rColorValue = (float) (.025f * (100f - inputPercent));
         if (rColorValue < 0f) {
             return 0f;
@@ -1194,15 +1321,14 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
         return rColorValue;
     }
 
-    private float greenColorFromPercent(double inputPercent) {
+    protected float greenColorFromPercent(double inputPercent) {
         if (inputPercent < 0) {
             inputPercent = 0.0;
         }
         return (float) (.01f * (inputPercent));
     }
 
-    private void drawClassScreen(Graphics g) {
-        Graphics2D g2D = (Graphics2D) g;
+    protected void drawClassScreen(Graphics2D g2D) {
         g2D.drawImage(select.getImage(), 1, 1, this);
         if(staticFrameCounter == 0){
             if (staticFrame == 2) {

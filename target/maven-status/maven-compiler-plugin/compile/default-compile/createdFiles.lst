@@ -1,13 +1,16 @@
 client\ChaosballClient$2.class
 authserver\SpringContext.class
+authserver\users\ClassRepository.class
 gameserver\effects\cooldowns\CooldownE.class
 gameserver\GameEngine.class
 authserver\models\responses\UserResponse.class
+authserver\models\ClassStat.class
 gameserver\ServerApplication$1.class
 networking\UUIDSerializer.class
 gameserver\effects\effects\HideBallEffect.class
 networking\PlayerDivider.class
 authserver\models\DTO\UserDTO.class
+gameserver\engine\Masteries.class
 networking\KryoRegistry.class
 authserver\users\UserService.class
 gameserver\effects\effects\TestEffect.class
@@ -56,6 +59,7 @@ gameserver\effects\effects\ShootEffect.class
 gameserver\entity\Box.class
 authserver\jwt\JwtAuthenticationFilter.class
 gameserver\targeting\Limiter.class
+authserver\users\ClassService.class
 gameserver\effects\cooldowns\CooldownR.class
 gameserver\effects\effects\BleedEffect.class
 gameserver\entity\minions\Trap.class
@@ -66,6 +70,7 @@ networking\AtomicBooleanSerializer.class
 authserver\LoginApp.class
 client\ChaosballClient$3.class
 gameserver\entity\Coordinates.class
+authserver\users\PersistenceManager.class
 gameserver\effects\effects\EmptyEffect.class
 authserver\matchmaking\Match.class
 gameserver\ServerMode.class
@@ -85,6 +90,7 @@ gameserver\entity\Titan.class
 gameserver\targeting\ShapePayload$ShapeSelector.class
 gameserver\effects\effects\BombEffect.class
 gameserver\engine\Ability.class
+authserver\users\ClassServiceImpl.class
 gameserver\targeting\DistanceFilter.class
 gameserver\effects\effects\DeadEffect.class
 gameserver\effects\effects\FlareEffect.class
