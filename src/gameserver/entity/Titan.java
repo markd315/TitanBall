@@ -1,6 +1,7 @@
 package gameserver.entity;
 
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import gameserver.Const;
 import gameserver.effects.EffectId;
 import gameserver.effects.effects.Effect;
@@ -15,42 +16,100 @@ import static util.Util.typesafeNumeric;
 
 
 public class Titan extends Entity {
+
+    @JsonProperty
     public int sel, possession = 0;
 
+    @JsonProperty
     public double throwPower = 1.0;
 
+    @JsonProperty
     public int facing = 0;
 
+    @JsonProperty
     public int inactiveDir = 0;//Variables to decide the movement of Rating players when not active, unused for cpu?
 
+    @JsonProperty
     public int runningFrame, runningFrameCounter =0; //This is a BAD variable I couldn't find translations for them while refactoring
+    @JsonProperty
     public int eCastFrames = 20, rCastFrames = 25, sCastFrames = 25;
 
     //TODO these client-affecting variables need to be revisited
+    @JsonProperty
     public int dirToBall = 0; //Direction of the player relative to the ball
+    @JsonProperty
     public int diagonalRunDir = 0; //Used if running away from the ball
+    @JsonProperty
     public int kickingFrames;
+    @JsonProperty
     public int actionFrame = 0; //For answering how long have we been in a shooting/passing state?
 
+    @JsonProperty
     public double fuel = 50.0;
+    @JsonProperty
     public boolean isBoosting = false;
 
+    @JsonProperty
     public boolean programmed = false;
+    @JsonProperty
     public int marchingOrderX = 0;
+    @JsonProperty
     public int marchingOrderY = 0;
+    @JsonProperty
     public int stealRad = 26;
+    @JsonProperty
     public boolean typeAndMasteriesLocked = false;
+    @JsonProperty
     public double damageFactor = 1.0;
+    @JsonProperty
     public double cooldownFactor = 1.0;
+    @JsonProperty
     public double durationsFactor = 1.0;
+    @JsonProperty
     public double rangeFactor = 1.0;
+    @JsonProperty
     public boolean moveMemU, moveMemD, moveMemL, moveMemR;
     public boolean resurrecting = false;
 
+    @JsonProperty
     private TitanType type;
 
+    @JsonProperty
     public ArrayList<RangeCircle> rangeIndicators = new ArrayList<>();
     public double boostFactor = 1.15;
+
+    @JsonProperty
+    public static Map<TitanType, Double> titanHealth = new HashMap();
+    @JsonProperty
+    public static Map<TitanType, Double> titanSpeed = new HashMap();
+    @JsonProperty
+    public static Map<TitanType, Double> titanShoot = new HashMap();
+    @JsonProperty
+    static Map<TitanType, Integer> titanEFrames = new HashMap();
+    @JsonProperty
+    static Map<TitanType, Integer> titanRFrames = new HashMap();
+    @JsonProperty
+    static Map<TitanType, Integer> titanStealFrames = new HashMap();
+    @JsonProperty
+    public static Map<TitanType, Integer> titanStealRad = new HashMap();
+    @JsonProperty
+    static Map<TitanType, Set<RangeCircle>> titanRange = new HashMap();
+    @JsonProperty
+    public static Map<TitanType, String> titanText = new HashMap();
+    @JsonProperty
+    public static Map<TitanType, String> titanEText = new HashMap();
+    @JsonProperty
+    public static Map<TitanType, String> titanRText = new HashMap();
+    @JsonProperty
+    public TitanState actionState  = TitanState.IDLE;
+    @JsonProperty
+    public int runRight = 0;
+    @JsonProperty
+    public int runLeft = 0;
+    @JsonProperty
+    public int runUp = 0;
+    @JsonProperty
+    public int runDown = 0;
 
     public Titan(int x, int y, TeamAffiliation team, TitanType type){
         super(team);
@@ -115,18 +174,6 @@ public class Titan extends Entity {
         this.sel = sel;
     }
 
-    public static Map<TitanType, Double> titanHealth = new HashMap();
-    public static Map<TitanType, Double> titanSpeed = new HashMap();
-    public static Map<TitanType, Double> titanShoot = new HashMap();
-    static Map<TitanType, Integer> titanEFrames = new HashMap();
-    static Map<TitanType, Integer> titanRFrames = new HashMap();
-    static Map<TitanType, Integer> titanStealFrames = new HashMap();
-    public static Map<TitanType, Integer> titanStealRad = new HashMap();
-    static Map<TitanType, Set<RangeCircle>> titanRange = new HashMap();
-    public static Map<TitanType, String> titanText = new HashMap();
-    public static Map<TitanType, String> titanEText = new HashMap();
-    public static Map<TitanType, String> titanRText = new HashMap();
-
     public static double normalOutOfTenFromStat(Map<TitanType, ?> stat, TitanType query){
         double mean=0.0, sd=0.0;
         final double MEAN_STARS=5.0, SD_STARS=1.7;
@@ -148,8 +195,6 @@ public class Titan extends Entity {
         double zScore = (toConvert - mean) / sd;
         return MEAN_STARS + (zScore*SD_STARS);
     }
-
-    public TitanState actionState  = TitanState.IDLE;
 
     public double actualSpeed(GameEngine context) {
         double inspeed = this.speed;
@@ -205,11 +250,6 @@ public class Titan extends Entity {
     public enum TitanState{
         LOB, SHOOT, A1, A2, CURVE_LEFT, CURVE_RIGHT, STEAL, IDLE, DEAD
     }
-
-    public int runRight = 0;
-    public int runLeft = 0;
-    public int runUp = 0;
-    public int runDown = 0;
 
     static{
         Const c = new Const("res/game.cfg");
@@ -314,12 +354,12 @@ public class Titan extends Entity {
         titanStealRad.put(TitanType.HOUNDMASTER, 28);
 
         titanStealRad.put(TitanType.ARTISAN, 33);
-        titanStealRad.put(TitanType.GUARDIAN, 26);
+        titanStealRad.put(TitanType.GOALIE, 26);
         titanStealRad.put(TitanType.MARKSMAN, 24);
-        titanStealRad.put(TitanType.POST, 35);
+        titanStealRad.put(TitanType.GOLEM, 35);
         titanStealRad.put(TitanType.RANGER, 24);
         //titanStealFrames.put(TitanType.RECON, 40);
-        titanStealRad.put(TitanType.SLASHER, 30);
+        titanStealRad.put(TitanType.DASHER, 30);
         titanStealRad.put(TitanType.STEALTH, 26);
         titanStealRad.put(TitanType.SUPPORT, 28);
         titanStealRad.put(TitanType.WARRIOR, 26);

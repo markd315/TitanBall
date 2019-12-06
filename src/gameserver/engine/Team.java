@@ -1,17 +1,24 @@
 package gameserver.engine;
 
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import gameserver.entity.Titan;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class Team {
+    @JsonProperty
     public double score;
+    @JsonProperty
     public boolean hasBall;
+    @JsonProperty
     public TeamAffiliation which;
+    @JsonProperty
     List<GoalHoop> toScore = new ArrayList<>();
+    @JsonProperty
     List<Titan> players = new ArrayList<>();
+
     public Team(TeamAffiliation which, double score, Object... playersAndHoops){
         this.score = score;
         this.which = which;

@@ -1,33 +1,34 @@
 package networking;
 
 import com.esotericsoftware.kryonet.Connection;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import gameserver.engine.GameEngine;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class PlayerDivider {
+    @JsonProperty
     public String email = "";
+    @JsonProperty
     public boolean ready = false;
+    @JsonProperty
     public double newRating;
+    @JsonProperty
+    public int id;
+    @JsonProperty
+    public int selection;
+    @JsonProperty
+    public List<Integer> possibleSelection = new ArrayList<>();
+    @JsonProperty
+    public int wasVictorious = 0; // to decide the victory or defeat at the end of a match
 
-    public PlayerDivider(List<Integer> possibleSelection){
+    public PlayerDivider(List<Integer> possibleSelection, String email){
+        this.email = email;
         this.possibleSelection = possibleSelection;
         selection = possibleSelection.get(0);
     }
     public PlayerDivider(){}
-
-    public PlayerDivider(PlayerConnection pc){
-        this.possibleSelection = pc.possibleSelection;
-        selection = possibleSelection.get(0);
-        this.id = pc.id;
-        this.email = pc.email;
-    }
-
-    public int id;
-    public int selection;
-    public List<Integer> possibleSelection = new ArrayList<>();
-    public int wasVictorious = 0; // to decide the victory or defeat at the end of a match
 
     public int getSelection() {
         return selection;

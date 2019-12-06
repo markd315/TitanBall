@@ -1,11 +1,12 @@
 package gameserver.gamemanager;
 
 import authserver.SpringContextBridge;
+import authserver.matchmaking.Matchmaker;
+import authserver.models.User;
 import authserver.users.identities.UserService;
 import com.esotericsoftware.kryonet.Connection;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.rits.cloning.Cloner;
 import gameserver.Const;
 import gameserver.effects.EffectId;
 import gameserver.effects.EffectPool;
@@ -15,55 +16,34 @@ import gameserver.entity.Entity;
 import gameserver.entity.Titan;
 import networking.CandidateGame;
 import networking.ClientPacket;
-import networking.PlayerConnection;
 import networking.PlayerDivider;
-import org.joda.time.Instant;
 import util.Util;
 
 import java.util.*;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 public class ManagedGame {
     public static final ServerMode SERVER_MODE = ServerMode.TRUETHREE;
-    public ServerMode serverMode = SERVER_MODE;
     protected GameOptions options;
     protected Const c = new Const("res/game.cfg");
 
     public GameEngine state;
     public String gameId;
-    List<PlayerConnection> clients = new ArrayList<>();
+    List<PlayerDivider> clients = new ArrayList<>();
     public List<List<Integer>> availableSlots;
     int claimIndex = 0;
+    private UserService userService;
 
     public ManagedGame() {
     }
 
 
-    public void delegatePacket(Connection connection, ClientPacket request) {
-        if (state == null || state.phase != GamePhase.INGAME) {
-            addOrReplaceNewClient(connection, clients, request.token);
+    public void delegatePacket(PlayerDivider pl, ClientPacket request) {
+        if(state != null){
+            System.out.println("delegating from player " + pl);
+            state.processClientPacket(pl, request);
         }
-        if (state != null) {
-            state.kickoff();
-            PlayerDivider pd = dividerFromConn(connection);
-            if(pd == null){//client rejoining under new connection ID
-                String email = Util.jwtExtractEmail(request.token);
-                for(PlayerDivider p : state.clients){
-                    if(p.getEmail().equals(email)){
-                        pd = p;
-                        pd.setId(connection);
-                        pd.setEmail(email);
-                    }
-                }
-                for(PlayerConnection pc : clients){
-                    if(pc.getEmail().equals(email)){
-                        pc.setClient(connection);
-                    }
-                }
-            }
-            state.processClientPacket(pd, request);
+        else{
+            System.out.println("server still not ready to start!");
         }
     }
 
@@ -77,89 +57,72 @@ public class ManagedGame {
         return null;
     }
 
-    boolean lobbyFull(List<PlayerConnection> pd){
-        List<String> uniqueEmails = new ArrayList<>();
-        for(PlayerConnection p : pd){
-            if(!uniqueEmails.contains(p.getEmail())){
-                uniqueEmails.add(p.getEmail());
-            }
-        }
-        return (uniqueEmails.size() == availableSlots.size());
-    }
-
-    void addOrReplaceNewClient(Connection c, List<PlayerConnection> queue, String token){
-        boolean connFound = connectionQueued(queue, c);
+    public PlayerDivider playerFromToken(String token){
         String email = Util.jwtExtractEmail(token);
-        boolean emailFound = accountQueued(queue, email);
-        System.out.println(email + " c found" + connFound + " e found " + emailFound);
-        if(!connFound){
-            if(emailFound){ //rejoin unstarted game
-                for(PlayerConnection p : queue){
-                    if(p.getEmail().equals(email)){
-                        p.setClient(c);
-                    }
-                }
-            }else{
-                for(PlayerConnection p : queue){
-                    System.out.println(p.toString());
-                }
-                System.out.println("adding NEW client");
-                System.out.println(c.getRemoteAddressTCP());
-                //We should be sorting the connections when the game actually starts, so doesn't matter
-                queue.add(new PlayerConnection(nextUnclaimedSlot(), c, email));
+        PlayerDivider pd = null;
+        for(PlayerDivider p : state.clients){
+            if(p.getEmail().equals(email)){
+                pd = p;
+                pd.setEmail(email);
             }
         }
-        if(lobbyFull(queue)){
-            startGame(queue);
+        return pd;
+    }
+
+    public void passQueueToUsers(Matchmaker matchmaker) {
+        Map<String, String> map = matchmaker.teamGameMap;
+        ArrayList<PlayerDivider> queue = new ArrayList<>();
+        for(String email : map.keySet()){
+            addOrReplaceNewClient(queue, email);
         }
     }
 
-    private void startGame(List<PlayerConnection> gameIncludedClients){
-        if(state != null && state.away.score + state.home.score > 0){
-            return; //Don't reset the game in this case lol
+    List<Integer> nextUnclaimedSlot(){
+        claimIndex++;
+        return availableSlots.get(claimIndex -1);
+    }
+
+    void addOrReplaceNewClient(List<PlayerDivider> queue, String email){
+        if (!accountQueued(queue, email)) {
+            System.out.println("adding NEW client");
+            queue.add(new PlayerDivider(nextUnclaimedSlot(), email));
+            if(lobbyFull(queue)){
+                this.clients = queue;
+                System.out.println("starting game!");
+                startGame();
+            }
         }
-        System.out.println("starting full");
-        List<PlayerDivider> players = playersFromConnections(gameIncludedClients);
-        state = new GameEngine(gameId, players, options, this); //Start the game
+    }
+
+    private void startGame(){
+        instantiateSpringContext();
+        System.out.println("starting full with " + clients.size() + " users and selections ");
+        this.clients = this.monteCarloBalance(this.clients);
+        System.out.println("starting full with " + clients.size() + " users and selections ");
+        for(PlayerDivider cl : clients){
+            for(Integer i : cl.getPossibleSelection()){
+                System.out.print(" " + i);
+            }
+            System.out.println();
+        }
+        state  = new GameEngine(gameId, clients, new GameOptions()); //Start the game
+        waitFive();
+        state.initializeServer();
+        state.clients = clients;
+    }
+
+    private void waitFive() {
         try {
-            state.initializeServer();
-            instantiateSpringContext();
-            gameIncludedClients = this.monteCarloBalance(gameIncludedClients);
-            state.secondsToStart = c.getD("server.startDelay");
             for(int i=0; i<5; i++){
-                Thread.sleep(1000);
-                state.secondsToStart -=1;
+                Thread.sleep(950);
             }
         }
         catch (InterruptedException e) {
             e.printStackTrace();
         }
-        ScheduledExecutorService exec = Executors.newScheduledThreadPool(gameIncludedClients.size());
-
-        System.out.println("reassigning client list on startgame");
-        for(PlayerConnection p : clients){
-            //System.out.println(p.toString());
-        }
-        clients = gameIncludedClients;
-        for(PlayerConnection p : clients){
-            //System.out.println(p.toString());
-        }
-        Runnable updateClients = () -> {
-            //System.out.println("updating clients now");
-            clients.parallelStream().forEach(client -> {
-                PlayerDivider pd = dividerFromConn(client.getClient());
-                //Optimizing clone away by only hacking in the needed var fails because of occasional concurrency issue
-                Cloner cloner= new Cloner();
-                GameEngine update = cloner.deepClone(state);
-                update.underControl = state.titanSelected(pd);
-                update.now = Instant.now();
-                client.getClient().sendTCP(anticheat(update));
-            });
-        };
-        exec.scheduleAtFixedRate(updateClients, 1, 50, TimeUnit.MILLISECONDS);
     }
 
-    private GameEngine anticheat(GameEngine update) {
+    public GameEngine anticheat(GameEngine update) {
         Titan underControl = update.underControl;
         EffectPool fx = update.effectPool;
         if(fx.hasEffect(underControl, EffectId.BLIND)){
@@ -167,9 +130,6 @@ public class ManagedGame {
                 if(!player.id.equals(underControl)){
                     censor(player);
                 }
-                System.out.println("adding NEW client");
-                System.out.println(c.getRemoteAddressUDP());
-                queue.add(new PlayerConnection(nextUnclaimedSlot(), c, email));
             }
             for(Entity ent : update.entityPool){
                 if(!ent.id.equals(underControl)){
@@ -203,35 +163,25 @@ public class ManagedGame {
         player.Y = 99999;
     }
 
-
-    private static List<PlayerDivider> playersFromConnections(List<PlayerConnection> clients) {
-        List<PlayerDivider> ret = new ArrayList<>();
-        for(PlayerConnection pc : clients){
-            ret.add(new PlayerDivider(pc)); //GameEngine class doesn't know the connections, just IDs
-        }
-        return ret;
-    }
-
-    UserService userService = null;
-
-    List<Integer> nextUnclaimedSlot(){
-        claimIndex++;
-        return availableSlots.get(claimIndex -1);
-    }
-
-    private boolean connectionQueued(List<PlayerConnection> queue, Connection query){
-        boolean connFound = false;
-        for(PlayerConnection p : queue){
-            if (p.getClient().getID() == query.getID()){
-                connFound = true;
+    boolean lobbyFull(List<PlayerDivider> pd){
+        List<String> uniqueEmails = new ArrayList<>();
+        for(PlayerDivider p : pd){
+            if(!uniqueEmails.contains(p.getEmail())){
+                uniqueEmails.add(p.getEmail());
             }
         }
-        return connFound;
+        return (uniqueEmails.size() == availableSlots.size());
     }
 
-    private boolean accountQueued(List<PlayerConnection> queue, String email) {
+    public void delegatePacket(ClientPacket request) {
+        if (state != null) {
+            state.processClientPacket(playerFromToken(request.token), request);
+        }
+    }
+
+    private boolean accountQueued(List<PlayerDivider> queue, String email) {
         boolean emailFound = false;
-        for(PlayerConnection p : queue){
+        for(PlayerDivider p : queue){
             if (p.getEmail().equals(email)){
                 emailFound = true;
             }
@@ -239,22 +189,29 @@ public class ManagedGame {
         return emailFound;
     }
 
-    private List<PlayerConnection> monteCarloBalance(List<PlayerConnection> players) {
-        Map<String, Double> tempRating= new HashMap<>();
-        for(PlayerConnection pl : players){
-            //System.out.println(pl.email +  " " + userService.findUserByEmail(pl.email).getRating());
+    private List<PlayerDivider> monteCarloBalance(List<PlayerDivider> players) {
+        Map<String, Double> tempRating = new HashMap<>();
+        instantiateSpringContext();
+        System.out.println("players size" + players.size());
+        System.out.println(userService);
+        ObjectMapper mapper = new ObjectMapper();
+        for (PlayerDivider pl : players) {
+            System.out.println(pl.email + " " + userService.findUserByEmail(pl.email).getRating());
             tempRating.put(pl.email, userService.findUserByEmail(pl.email).getRating());
+            //Currently pl says email, but is actually a USERNAME, we need to fix that
+            User user = userService.findUserByUsername(pl.email);
+            //Correct the pl.email field.
+            pl.email = user.getEmail();
+            System.out.println(user.getEmail() + " " + user.getRating());
+            tempRating.put(pl.email, user.getRating());
         }
         final int MAX_MM = 5;
-        CandidateGame candidateGame= new CandidateGame();
-        for(int i=0; i<MAX_MM; i++){
-            //The final possibleSelection is still wrong, maybe trash this last list constructor
-            List<PlayerConnection> testOrder = new ArrayList<>(players);
-            Collections.shuffle(testOrder);
-            List<PlayerConnection> home = testOrder.subList(0, testOrder.size() / 2);
-            List<PlayerConnection> away = testOrder.subList(testOrder.size() / 2, testOrder.size());
-            candidateGame.suggestTeams(home, away, tempRating);
-        }
+        CandidateGame candidateGame = new CandidateGame();
+        for (int i = 0; i < MAX_MM; i++) {
+                //The final possibleSelection is still wrong, maybe trash this last list constructor
+                List<PlayerDivider> testOrder = new ArrayList<>(players);
+                Collections.shuffle(testOrder);
+            }
         return candidateGame.bestMonteCarloBalance(availableSlots);
     }
 
@@ -489,16 +446,5 @@ public class ManagedGame {
             this.availableSlots.add(c4);
             this.availableSlots.add(c5);
         }*/
-    }
-
-    public boolean gameContainsEmail(Collection<String> gameFor) {
-        for(String searchFor : gameFor){
-            for(PlayerConnection matches : this.clients){
-                if(matches.email.equals(searchFor)){
-                    return true;
-                }
-            }
-        }
-        return false;
     }
 }

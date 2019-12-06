@@ -196,11 +196,6 @@ public class User implements Serializable, UserDetails {
         this.enabled = s;
     }
 
-    @Override
-    public Collection<? extends GrantedAuthority> getAuthorities() {
-        return null;
-    }
-
     @Column(name = "rating")
     protected Double rating;
 
@@ -245,9 +240,6 @@ public class User implements Serializable, UserDetails {
 
     @Column(name = "goalassists")
     protected int goalassists;
-
-    @Column(name = "rebounds")
-    protected int rebounds;
 
     @Column(name = "rating_1v1")
     protected Double rating_1v1;
@@ -297,22 +289,6 @@ public class User implements Serializable, UserDetails {
     @Column(name = "rebounds_1v1")
     protected int rebounds_1v1;
 
-    public Integer getWins() {
-        return wins;
-    }
-
-    public void setWins(Integer wins) {
-        this.wins = wins;
-    }
-
-    public Integer getLosses() {
-        return losses;
-    }
-
-    public void setLosses(Integer losses) {
-        this.losses = losses;
-    }
-
     public int getTies() {
         return this.ties;
     }
@@ -325,48 +301,6 @@ public class User implements Serializable, UserDetails {
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return null;
     }
-
-    @Column(name = "wins")
-    protected Integer wins;
-
-    @Column(name = "losses")
-    protected Integer losses;
-
-    @Column(name = "goals")
-    protected int goals;
-
-    @Column(name = "sidegoals")
-    protected int sidegoals;
-
-    @Column(name = "points")
-    protected double points;
-
-    @Column(name = "steals")
-    protected int steals;
-
-    @Column(name = "blocks")
-    protected int blocks;
-
-    @Column(name = "passes")
-    protected int passes;
-
-    @Column(name = "kills")
-    protected int kills;
-
-    @Column(name = "deaths")
-    protected int deaths;
-
-    @Column(name = "turnovers")
-    protected int turnovers;
-
-    @Column(name = "killassists")
-    protected int killassists;
-
-    @Column(name = "goalassists")
-    protected int goalassists;
-
-    @Column(name = "rebounds")
-    protected int rebounds;
 
     public Integer getWins() {
         return wins;

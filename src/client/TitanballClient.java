@@ -1,11 +1,6 @@
 package client;
 
 import client.graphical.*;
-import com.esotericsoftware.kryo.Kryo;
-import com.esotericsoftware.kryo.KryoException;
-import com.esotericsoftware.kryonet.Client;
-import com.esotericsoftware.kryonet.Connection;
-import com.esotericsoftware.kryonet.Listener;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mashape.unirest.http.exceptions.UnirestException;
 import com.rits.cloning.Cloner;
@@ -21,11 +16,9 @@ import gameserver.entity.RangeCircle;
 import gameserver.entity.Titan;
 import gameserver.entity.TitanType;
 import gameserver.entity.minions.*;
-import gameserver.models.Game;
-import gameserver.targeting.ShapePayload;
 import gameserver.gamemanager.GamePhase;
+import gameserver.targeting.ShapePayload;
 import networking.ClientPacket;
-import networking.KryoRegistry;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
 import org.json.JSONObject;
@@ -57,11 +50,9 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
     public Instant gamestart = null;
     public Random rand;
     public Sound shotSound;
-    protected Client gameserverConn = new Client(8192 * 8, 32768 * 8);
     protected String gameID;
     protected GameEngine game;
     protected GamePhase phase = GamePhase.CREDITS;
-    protected Kryo kryo = gameserverConn.getKryo();
     protected boolean camFollow = true;
     protected String token, refresh;
     protected HttpClient loginClient;
@@ -322,11 +313,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         }
         if (phase == GamePhase.TRANSITIONAL) {
             consumeCursorSelectClasses();
-            try {
-                clientInitialize();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            clientInitialize(token);
         }
         if (phase == GamePhase.WAIT_FOR_GAME) {
             try {
@@ -526,53 +513,26 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         }
     }
 
-    public void clientInitialize() throws IOException {
+    public void clientInitialize(String token) {
+        crowdFrame = 1;
+        crowdFrameCount = 0;
         ballFrame = 0;
         ballFrameCounter = 0;
         camX = 500;
         camY = 300;
-        openConnection();
-    }
-
-    public void openConnection() throws IOException {
-        gameserverConn.start();
-        //gameserverConn.setHardy(true);
-        if (!gameserverConn.isConnected()) {
-            gameserverConn.connect(999999999, "zanzalaz.com", 54555);
-            //gameserverConn.connect(5000, "127.0.0.1", 54555);
-            gameserverConn.addListener(new Listener() {
-                public synchronized void received(Connection connection, Object object) {
-                    if (object instanceof Game) {
-                        game = (GameEngine) object;
-                        game.began = true;
-                        phase = game.phase;
-                        controlsHeld.gameID = gameID;
-                        controlsHeld.token = token;
-                        controlsHeld.masteries = masteries;
-                        repaint();
-                        try {
-                            controlsHeld.camX = camX;
-                            controlsHeld.camY = camY;
-                            gameserverConn.sendTCP(controlsHeld); //Automatically respond to the gameserver with tutorial when we get a new state
-                        } catch (KryoException e) {
-                            System.out.println("kryo end");
-                            System.out.println(game.ended);
-                        }
-                    } else {
-                        System.out.println("Didn't get a game from gameserver!");
-                    }
-                }
-            });
-            KryoRegistry.register(kryo);
-            ScheduledExecutorService exec = Executors.newScheduledThreadPool(1);
-            Runnable updateServer = () -> {
-                controlsHeld.gameID = gameID;
-                controlsHeld.token = token;
-                controlsHeld.masteries = masteries;
-                gameserverConn.sendTCP(controlsHeld);
-            };
-            exec.scheduleAtFixedRate(updateServer, 1, 30, TimeUnit.MILLISECONDS);
-        }
+        ScheduledExecutorService exec = Executors.newScheduledThreadPool(1);
+        Runnable updateServer = () -> {
+            System.out.println("trying to update");
+            controlsHeld.gameID = gameID;
+            controlsHeld.token = token;
+            controlsHeld.masteries = masteries;
+            this.game = (GameEngine) loginClient.update(controlsHeld);
+            this.gameID = this.game.gameId;
+            System.out.println(this.game);
+            System.out.println(this.gameID);
+            this.phase = game.phase;
+        };
+        exec.scheduleAtFixedRate(updateServer, 1, 100, TimeUnit.MILLISECONDS);
     }
 
     protected String requestOrQueueGame() throws UnirestException {

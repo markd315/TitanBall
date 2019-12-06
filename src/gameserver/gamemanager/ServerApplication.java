@@ -7,16 +7,10 @@ import authserver.matchmaking.Matchmaker;
 import authserver.matchmaking.Rating;
 import authserver.models.User;
 import authserver.users.PersistenceManager;
-import com.esotericsoftware.kryo.Kryo;
-import com.esotericsoftware.kryonet.Connection;
-import com.esotericsoftware.kryonet.Listener;
-import com.esotericsoftware.kryonet.Server;
 import gameserver.engine.GameEngine;
 import gameserver.engine.GameOptions;
 import gameserver.engine.TeamAffiliation;
 import gameserver.entity.Titan;
-import networking.ClientPacket;
-import networking.KryoRegistry;
 import networking.PlayerDivider;
 
 import java.io.File;
@@ -49,76 +43,22 @@ public class ServerApplication {
 
 
     public static void main(String[] args) throws IOException {
-        Server server = new Server(16384 * 8, 2048 * 8);
-        Kryo kryo = server.getKryo();
-        KryoRegistry.register(kryo);
-        server.start();
-        //gameserver.setHardy(true);
-        server.bind(54555);
-
         states = new HashMap<>();
-
-        server.addListener(new Listener() {
-            public void received(Connection connection, Object object) {
-                if (connection.getID() > 0) {
-                    if (object instanceof ClientPacket) {
-                        String token = ((ClientPacket) object).token;
-                        if (token == null) {
-                            //System.out.println("token null");
-                            return;
-                        }
-                        delegatePacket(connection, (ClientPacket) object);
-                    }
-                }
-            }
-        });
-        System.out.println("server listening 54555 for game changes");
     }
 
     public static void addNewGame(String id, GameOptions op, Collection<String> gameFor) {
         System.out.println("adding new game, id " + id);
-        cleanupCorruptStates(gameFor);
         states.put(id, new ManagedGame(id, op));
         System.out.println("game map size: " + states.size());
     }
 
-    private static void cleanupCorruptStates(Collection<String> gameFor) {
-        Set<String> rm = new HashSet<>();
-        for(String id : states.keySet()){
-            ManagedGame gt = states.get(id);
-            boolean userFound = gt.gameContainsEmail(gameFor);
-            if(userFound){
-                rm.add(id);
-            }
-        }
-        for(String id : rm){
-            System.out.println("removed a corrupt state! (somehow)");
-            states.remove(id);//avoid comod
-        }
-    }
 
-    public static void delegatePacket(Connection connection, ClientPacket packet) {
-        instantiateSpringContext();
-        checkGameExpiry();
-        //System.out.println("delegating from game " + packet.gameID);
-        //System.out.println("game map size: " + states.size());
-        if (states.containsKey(packet.gameID)) {
-            ManagedGame state = states.get(packet.gameID);
-            try {
-                //System.out.println("passing connection " + connection.getID() + " to game " + state.gameId);
-                state.delegatePacket(connection, packet);
-            } catch (IllegalArgumentException ex) {
-                //need a new game created, this should only be triggered if the same user tries to join a new game
-            }
-        }
-    }
-
-    private static void instantiateSpringContext() {
+    public static void instantiateSpringContext() {
         persistenceManager = SpringContextBridge.services().getPersistenceManager();
         matchmaker = SpringContextBridge.services().getMatchmaker();
     }
 
-    private static void checkGameExpiry() {
+    public static void checkGameExpiry() {
         Set<String> rm = new HashSet<>();
         for (String id : states.keySet()) {
             ManagedGame val = states.get(id);

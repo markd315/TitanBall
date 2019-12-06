@@ -4,7 +4,6 @@ package client;
  * */
 
 import client.forms.LoginForm;
-import com.esotericsoftware.kryonet.Client;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import gameserver.gamemanager.GamePhase;
@@ -31,10 +30,8 @@ public class TitanballWindow extends JFrame {
     }
 
     public void reset(boolean menu) throws IOException {
-        Client conn = null;
         boolean restarting = false;
         if (client != null) { //reset
-            conn = client.gameserverConn;
             remove(client);
             System.gc();
             restarting = true;
@@ -50,11 +47,7 @@ public class TitanballWindow extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setExtendedState(JFrame.MAXIMIZED_BOTH);
         setResizable(false);
-        if (client.gameserverConn == null) {
-            client.gameserverConn = conn;
-        }
         if(restarting){
-            client.openConnection();
             if(menu){
                 client.phase = GamePhase.SHOW_GAME_MODES;
                 client.initSurface(true); //convoluted, but we can only do this once

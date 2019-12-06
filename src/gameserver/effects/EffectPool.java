@@ -1,5 +1,6 @@
 package gameserver.effects;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import gameserver.effects.effects.Effect;
 import gameserver.engine.GameEngine;
 import gameserver.entity.Entity;
@@ -12,6 +13,13 @@ import java.util.ConcurrentModificationException;
 import java.util.List;
 
 public class EffectPool {
+    @JsonProperty
+    private List<Effect> pool;
+    @JsonProperty
+    private List<Entity> targetPool; //Wrappers around a list
+    @JsonProperty
+    private List<Titan> castBy;
+
     public EffectPool() {
         this.pool = new ArrayList<>();
         this.targetPool = new ArrayList<>();
@@ -115,10 +123,6 @@ public class EffectPool {
     public boolean isStunned(Titan t) {
         return hasEffect(t, EffectId.STUN) || hasEffect(t, EffectId.STEAL);
     }
-
-    private List<Effect> pool;
-    private List<Entity> targetPool; //Wrappers around a list
-    private List<Titan> castBy;
 
     public List<Effect> getEffects() {
         return pool;

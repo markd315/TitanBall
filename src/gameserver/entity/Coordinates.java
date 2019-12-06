@@ -1,6 +1,9 @@
 package gameserver.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class Coordinates {
+    @JsonProperty
     public double X, Y;
 
     public Coordinates(double x, double y) {

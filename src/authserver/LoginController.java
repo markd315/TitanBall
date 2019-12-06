@@ -13,6 +13,10 @@ import authserver.models.responses.JwtAuthenticationResponse;
 import authserver.models.responses.UserResponse;
 import authserver.users.identities.UserService;
 import authserver.users.premades.PremadeService;
+import com.rits.cloning.Cloner;
+import gameserver.gamemanager.ManagedGame;
+import gameserver.models.Game;
+import networking.ClientPacket;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -28,9 +32,10 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+
+import static gameserver.gamemanager.ServerApplication.checkGameExpiry;
+import static gameserver.gamemanager.ServerApplication.instantiateSpringContext;
 
 @RestController
 @CrossOrigin(exposedHeaders = "errors, content-type")
@@ -54,6 +59,33 @@ public class LoginController {
 
     @Autowired
     AuthenticationManager authenticationManager;
+
+    Map<UUID, ManagedGame> states = new HashMap<UUID, ManagedGame>();
+
+    @PostMapping("/ingame")
+    public ResponseEntity<Game> submitControls(@Valid @RequestBody ClientPacket controls) {
+        Game update = null;
+        if(controls.gameID !=null) {
+            ManagedGame state = states.get(controls.gameID);
+
+            if(state != null){
+                instantiateSpringContext();
+                checkGameExpiry();
+
+                //input
+                if (controls.token != null) {
+                    state.delegatePacket(controls);
+                }
+
+                //response
+                Cloner cloner = new Cloner();
+                state.anticheat(state.state);
+                update = cloner.deepClone(state.state);
+                update.underControl = state.state.titanSelected(state.playerFromToken(controls.token));
+            }
+        }
+        return new ResponseEntity<>(update, HttpStatus.OK);
+    }
 
     @PostMapping("/login")
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {

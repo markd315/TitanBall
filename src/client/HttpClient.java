@@ -5,6 +5,8 @@ import com.mashape.unirest.http.HttpResponse;
 import com.mashape.unirest.http.JsonNode;
 import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
+import gameserver.models.Game;
+import networking.ClientPacket;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.conn.ssl.TrustSelfSignedStrategy;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -17,6 +19,7 @@ import java.io.IOException;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
+import java.util.Optional;
 
 public class HttpClient {
 
@@ -82,11 +85,45 @@ public class HttpClient {
         return "uh oh";
     }
 
-    public int refresh() throws UnirestException {
-        return refresh(this.refreshToken);
+    public Game update(ClientPacket controlsHeld){
+        Optional<HttpResponse<JsonNode>> response;
+        response = updateRequest(controlsHeld);
+        while (!response.isPresent()) {
+            System.out.println("SENDING CONTROLS");
+            System.out.println(controlsHeld.toString());
+            response = updateRequest(controlsHeld);
+            System.out.println("Session update expired, refreshing token");
+            refresh(this.refreshToken);
+        }
+        ObjectMapper mapper = new ObjectMapper();
+        try {
+            return mapper.readValue(response.get().getBody().toString(), Game.class);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
-    public int refresh(String inputRt) throws UnirestException {
+    public Optional<HttpResponse<JsonNode>> updateRequest(ClientPacket controlsHeld) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            HttpResponse<JsonNode> response = Unirest.post(springEndpoint() + "ingame")
+                    .header("Authorization", "Bearer " + token)
+                    .header("Connection", "Keep-Alive")
+                    .header("Content-Type", "application/json")
+                    .header("Accept", "application/json")
+                    .body(mapper.writeValueAsString(controlsHeld))
+                    .asJson();
+            System.out.println("statusCode = " + response.getStatus());
+            System.out.println("gameId = " + gameId);
+            return Optional.of(response);
+        }catch (Exception e){
+            e.printStackTrace();
+            return Optional.empty();
+        }
+    }
+
+    public int refresh(String inputRt) {
         try {
             HttpResponse<JsonNode> response = Unirest.post(springEndpoint() + "refresh")
                     .header("Authorization", "Bearer " + inputRt)
@@ -129,11 +166,7 @@ public class HttpClient {
         while (leaveRequest() == 401) {
             token = null;
             System.out.println("Session expired, refreshing token");
-            try {
-                refresh(refreshToken);
-            } catch (UnirestException e) {
-                e.printStackTrace();
-            }
+            refresh(refreshToken);
         }
     }
 

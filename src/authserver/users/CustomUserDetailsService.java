@@ -1,6 +1,8 @@
 package authserver.users;
 
 import authserver.models.User;
+import authserver.users.identities.UserRepository;
+import authserver.users.identities.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -10,6 +12,8 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 public class CustomUserDetailsService implements UserDetailsService, UserService {
@@ -78,6 +82,11 @@ public class CustomUserDetailsService implements UserDetailsService, UserService
             return null;
         }
         return user;
+    }
+
+    @Override
+    public List<User> findAll() {
+        return userRepository.findAll();
     }
 
 }

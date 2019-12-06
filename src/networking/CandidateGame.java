@@ -6,10 +6,10 @@ import java.util.Map;
 
 public class CandidateGame {
 
-    private List<PlayerConnection> home, away;
+    private List<PlayerDivider> home, away;
     private double elogap = Double.MAX_VALUE;
 
-    public void suggestTeams(List<PlayerConnection> home, List<PlayerConnection> away, Map<String, Double>  ratingMap) {
+    public void suggestTeams(List<PlayerDivider> home, List<PlayerDivider> away, Map<String, Double>  ratingMap) {
         double elogap = Math.abs(avg(home, ratingMap) - avg(away, ratingMap));
         System.out.println("HOME");
         print(home);
@@ -27,23 +27,22 @@ public class CandidateGame {
         }
     }
 
-    private double avg(List<PlayerConnection> team, Map<String, Double> ratingMap) {
+    private double avg(List<PlayerDivider> team, Map<String, Double> ratingMap) {
         double avg = 0.0;
-        for(PlayerConnection pl : team){
+        for(PlayerDivider pl : team){
             avg+=ratingMap.get(pl.email);
         }
         return avg/team.size();
     }
 
-    public List<PlayerConnection> bestMonteCarloBalance(List<List<Integer>> availableSlots) {
-        ArrayList<PlayerConnection> combined = new ArrayList<>();
+    public List<PlayerDivider> bestMonteCarloBalance(List<List<Integer>> availableSlots) {
+        ArrayList<PlayerDivider> combined = new ArrayList<>();
         if(this.home != null){
             combined.addAll(this.home);
         }
         if(this.away != null){
             combined.addAll(this.away);
         }
-        //print(combined);
         for(int i=0; i<combined.size(); i++){
             System.out.println(combined.get(i).id + "" +combined.get(i).email +" to "+availableSlots.get(i).get(0));
             combined.get(i).setPossibleSelection(availableSlots.get(i));
@@ -51,8 +50,8 @@ public class CandidateGame {
         return combined;
     }
 
-    public void print(List<PlayerConnection> pairing) {
-        for(PlayerConnection pl : pairing){
+    public void print(List<PlayerDivider> pairing) {
+        for(PlayerDivider pl : pairing){
             System.out.println(pl.email);
         }
     }

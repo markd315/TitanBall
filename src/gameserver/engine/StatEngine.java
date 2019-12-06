@@ -1,5 +1,6 @@
 package gameserver.engine;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import gameserver.effects.EffectId;
 import gameserver.effects.EffectPool;
 import gameserver.effects.effects.Effect;
@@ -13,6 +14,8 @@ import static java.util.Arrays.stream;
 import static java.util.stream.Collectors.toMap;
 
 public class StatEngine {
+
+    @JsonProperty
     private List<Map<String, Double>> gamestats;
 
     public boolean statConditionalMet(PlayerDivider pl, StatEnum category, double threshold){

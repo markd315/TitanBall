@@ -1,17 +1,22 @@
 package gameserver.entity;
 
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import gameserver.effects.EffectId;
 import gameserver.effects.effects.DeadEffect;
 import gameserver.engine.GameEngine;
 import gameserver.engine.TeamAffiliation;
-import gameserver.models.Game;
 
 public class Entity extends Box {
+    @JsonProperty
     public double health, maxHealth;
+    @JsonProperty
     public TeamAffiliation team;
+    @JsonProperty
     public double speed = 5;
+    @JsonProperty
     public double armorRatio = 1.0;
+    @JsonProperty
     public double healReduce = 1.0;
 
     public Entity() {

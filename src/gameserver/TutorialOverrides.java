@@ -106,8 +106,7 @@ public class TutorialOverrides extends GameEngine {
 
     public void detectAndUpdateState() {
         this.began = true;
-        client = new PlayerDivider(Collections.singletonList(3));
-        client.setEmail("localhost");
+        client = new PlayerDivider(Collections.singletonList(3), "localhost");
         switch(tutorialPhase){
             case 1:
                 if(stats.statConditionalMet(client, StatEngine.StatEnum.REBOUND, 1)){

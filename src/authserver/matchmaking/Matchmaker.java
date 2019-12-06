@@ -5,20 +5,10 @@ import gameserver.engine.GameOptions;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
-import java.io.IOException;
 import java.util.*;
 
 @Component
 public class Matchmaker {
-
-    static {//Boot server for matchmaker
-        String[] args = new String[0];
-        try {
-            ServerApplication.main(args);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
 
     private void spawnGame(Collection<String> gameFor, GameOptions op) {
         UUID gameId = UUID.randomUUID();
@@ -34,7 +24,7 @@ public class Matchmaker {
 
     private Map<String, String> teamMemberWaitingPool = new HashMap<>();//user emails -> teamN
     private Map<String, String> teamWaitingPool = new HashMap<>();//teamN -> tournament code
-    private Map<String, String> teamGameMap = new HashMap<>();//user emails -> game id
+    public Map<String, String> teamGameMap = new HashMap<>();//user emails -> game id
 
     private int desperation = 0; //TODO increase to eventually sacrifice match quality
 
