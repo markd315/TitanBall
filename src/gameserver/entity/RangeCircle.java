@@ -35,12 +35,12 @@ public class RangeCircle {
         this.radius = radius;
     }
 
-    public Color getColor() {
-
+    public Color readColor() {
         return new Color(color[0], color[1], color[2], color[3]);
     }
 
-    public void setColor(Color color) {
+    //Dumb name so Jackson won't serialize
+    public void establishColor(Color color) {
         this.color[0] = color.getRed()/256.0f;
         this.color[1] = color.getGreen()/256.0f;
         this.color[2] = color.getBlue()/256.0f;

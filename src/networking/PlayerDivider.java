@@ -1,6 +1,5 @@
 package networking;
 
-import com.esotericsoftware.kryonet.Connection;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import gameserver.engine.GameEngine;
 
@@ -8,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class PlayerDivider {
+    //At some points early in execution, "email" is actually the username
     @JsonProperty
     public String email = "";
     @JsonProperty
@@ -68,9 +68,5 @@ public class PlayerDivider {
 
     public String getEmail(){
         return this.email;
-    }
-
-    public void setId(Connection connection) {
-        this.id = connection.getID();
     }
 }

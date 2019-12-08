@@ -83,13 +83,21 @@ public class JwtTokenProvider {
                 .setSigningKey(jwtSecret)
                 .parseClaimsJws(token)
                 .getBody();
-
+        System.out.println("parsing claims good");
+        System.out.println(claims.getSubject());
         return claims.getSubject();
     }
 
     public boolean validateToken(String authToken) {
         try {
-            Jws<Claims> claims = Jwts.parser().require("type","access").setSigningKey(jwtSecret).parseClaimsJws(authToken);
+            logger.info(authToken);
+            Jws<Claims> claims = Jwts.parser().setSigningKey(jwtSecret).parseClaimsJws(authToken);
+            String type = (String) claims.getBody().get("type");
+            logger.info(type);
+            logger.info(claims.getBody().getExpiration().toInstant().toString());
+            if(!type.equals("access")){
+                return false;
+            }
             return claims.getBody().getExpiration().toInstant().isAfter(Instant.now());
         } catch (MalformedJwtException ex) {
             logger.error("Invalid JWT token");
@@ -117,7 +125,11 @@ public class JwtTokenProvider {
 
     public boolean validateRefreshToken(String authToken) {
         try {
-            Jws<Claims> claims = Jwts.parser().require("type","refresh").setSigningKey(jwtSecret).parseClaimsJws(authToken);
+            Jws<Claims> claims = Jwts.parser().setSigningKey(jwtSecret).parseClaimsJws(authToken);
+            String type = (String) claims.getBody().get("type");
+            if(!type.equals("refresh")){
+                return false;
+            }
             return claims.getBody().getExpiration().toInstant().isAfter(Instant.now());
         } catch (MalformedJwtException ex) {
             logger.error("Invalid JWT token");

@@ -1,7 +1,7 @@
 package gameserver.targeting.core;
 
 
-import com.esotericsoftware.kryo.Kryo;
+import com.rits.cloning.Cloner;
 import gameserver.entity.Entity;
 import gameserver.entity.Titan;
 import gameserver.targeting.SelectorOffset;
@@ -57,7 +57,8 @@ public class Selector {
                 shapeAngle = 0.0;
                 break;
         }
-        Shape shape = new Kryo().copy(sizeDef);
+        Cloner cloner = new Cloner();
+        Shape shape = cloner.deepClone(sizeDef);
         AffineTransform rot = new AffineTransform();
         rot.translate(centerX - shape.getBounds().width / 2, centerY - shape.getBounds().height / 2);
         rot.rotate(shapeAngle); //Defaults to mouse angle unless it was changed

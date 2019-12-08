@@ -165,7 +165,7 @@ public class Ability {
                         new ShapePayload(new Rectangle((int) bounds.getX(), (int) bounds.getY(),
                                 (int) bounds.getWidth(), (int) bounds.getHeight())));
             }
-            context.colliders.get(context.colliders.size() - 1).setColor(caster);
+            context.colliders.get(context.colliders.size() - 1).bindColor(caster);
         }
         return true;
     }

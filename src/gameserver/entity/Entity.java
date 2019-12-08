@@ -1,12 +1,14 @@
 package gameserver.entity;
 
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import gameserver.effects.EffectId;
 import gameserver.effects.effects.DeadEffect;
 import gameserver.engine.GameEngine;
 import gameserver.engine.TeamAffiliation;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Entity extends Box {
     @JsonProperty
     public double health, maxHealth;

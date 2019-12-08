@@ -164,8 +164,7 @@ public class HttpClient {
 
     public void leave(){
         while (leaveRequest() == 401) {
-            token = null;
-            System.out.println("Session expired, refreshing token");
+            System.out.println("Session leave expired, refreshing token");
             refresh(refreshToken);
         }
     }
@@ -214,8 +213,7 @@ public class HttpClient {
 
     public void check() throws UnirestException {
         while (checkRequest() == 401) {
-            token = null;
-            System.out.println("Session expired, refreshing token");
+            System.out.println("Session check expired, refreshing token");
             refresh(refreshToken);
         }
     }

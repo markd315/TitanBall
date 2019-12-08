@@ -85,7 +85,7 @@ public class ShapePayload {
         return new Rectangle(xt, yt, wt, ht);
     }
 
-    public void setColor(Titan caster) {
+    public void bindColor(Titan caster) {
         if(caster.team == TeamAffiliation.HOME){
             setColor(Color.blue);
             return;

@@ -775,11 +775,11 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         }
         for (RangeCircle ri : clientCircles) { //draw these on top of enemies, but the shot underneath
             g2D.setStroke(new BasicStroke(RANGE_SIZE));
-            g2D.setColor(ri.getColor());
+            g2D.setColor(ri.readColor());
             Titan t = game.underControl;
             if (ri.getRadius() > 0) {
                 //don't show Artisan Suck with ball
-                if (t.getType() != TitanType.ARTISAN || t.possession == 0 || ri.getColor().getGreen() < 250) {
+                if (t.getType() != TitanType.ARTISAN || t.possession == 0 || ri.readColor().getGreen() < 250) {
                     int w = (int) (ri.getRadius() * 2 * t.rangeFactor);
                     int h = w;
                     int x = (int) t.X + (t.width / 2) - w / 2;
@@ -836,7 +836,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
                 w = (int) sconst.adjX(w);
                 Ellipse2D.Double ell = new Ellipse2D.Double(x, y, w, h);
                 ShapePayload c = new ShapePayload(ell);
-                g2D.setColor(ri.getColor());
+                g2D.setColor(ri.readColor());
                 g2D.draw(c.from());
             }
         }

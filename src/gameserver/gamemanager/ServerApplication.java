@@ -1,5 +1,6 @@
 package gameserver.gamemanager;
 
+import authserver.LoginApp;
 import authserver.SpringContextBridge;
 import authserver.jwt.JwtTokenProvider;
 import authserver.matchmaking.Match;
@@ -12,6 +13,7 @@ import gameserver.engine.GameOptions;
 import gameserver.engine.TeamAffiliation;
 import gameserver.entity.Titan;
 import networking.PlayerDivider;
+import org.springframework.boot.SpringApplication;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -44,6 +46,7 @@ public class ServerApplication {
 
     public static void main(String[] args) throws IOException {
         states = new HashMap<>();
+        SpringApplication.run(LoginApp.class, args);
     }
 
     public static void addNewGame(String id, GameOptions op, Collection<String> gameFor) {

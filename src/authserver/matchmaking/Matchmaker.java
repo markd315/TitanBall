@@ -39,6 +39,10 @@ public class Matchmaker {
         return "NOT QUEUED";
     }
 
+    public Map<String, String> getGameMap(){
+        return gameMap;
+    }
+
     private void makeMatches() {
         Set<String> gameFor = new HashSet<>();
         GameOptions op = null;

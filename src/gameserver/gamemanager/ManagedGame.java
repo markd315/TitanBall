@@ -4,7 +4,6 @@ import authserver.SpringContextBridge;
 import authserver.matchmaking.Matchmaker;
 import authserver.models.User;
 import authserver.users.identities.UserService;
-import com.esotericsoftware.kryonet.Connection;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import gameserver.Const;
@@ -28,9 +27,10 @@ public class ManagedGame {
 
     public GameEngine state;
     public String gameId;
-    List<PlayerDivider> clients = new ArrayList<>();
+    List<PlayerDivider> clients;
     public List<List<Integer>> availableSlots;
     int claimIndex = 0;
+
     private UserService userService;
 
     public ManagedGame() {
@@ -47,21 +47,14 @@ public class ManagedGame {
         }
     }
 
-    private PlayerDivider dividerFromConn(Connection connection) {
-        for(PlayerDivider pc : state.clients){
-            //System.out.println(pc.id);
-            if(connection.getID() == pc.id){
-                return pc;
-            }
-        }
-        return null;
-    }
-
     public PlayerDivider playerFromToken(String token){
         String email = Util.jwtExtractEmail(token);
         PlayerDivider pd = null;
-        for(PlayerDivider p : state.clients){
+        System.out.println("clients" + clients);
+        for(PlayerDivider p : clients){
+            System.out.println("need a email match for user " + p.getEmail());
             if(p.getEmail().equals(email)){
+                System.out.println("matched an email (phew)");
                 pd = p;
                 pd.setEmail(email);
             }
@@ -171,12 +164,6 @@ public class ManagedGame {
             }
         }
         return (uniqueEmails.size() == availableSlots.size());
-    }
-
-    public void delegatePacket(ClientPacket request) {
-        if (state != null) {
-            state.processClientPacket(playerFromToken(request.token), request);
-        }
     }
 
     private boolean accountQueued(List<PlayerDivider> queue, String email) {

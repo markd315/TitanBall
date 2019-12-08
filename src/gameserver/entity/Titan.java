@@ -1,6 +1,7 @@
 package gameserver.entity;
 
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import gameserver.Const;
 import gameserver.effects.EffectId;
@@ -15,6 +16,7 @@ import java.util.*;
 import static util.Util.typesafeNumeric;
 
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Titan extends Entity {
 
     @JsonProperty
