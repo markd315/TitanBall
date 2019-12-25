@@ -41,7 +41,7 @@ public class Ability {
                 case SUPPORT:
                     strat.stunByRadius(1500);
                     break;
-                case POST:
+                case GOLEM:
                     context.effectPool.addUniqueEffect(new CooldownE((int) (caster.cooldownFactor *18000), caster));
                     context.effectPool.addUniqueEffect(
                             new DefenseEffect((int) (caster.durationsFactor*5000), caster, 10));
@@ -51,7 +51,7 @@ public class Ability {
                     context.effectPool.addUniqueEffect(
                             new EmptyEffect((int) (caster.durationsFactor*2500), caster, EffectId.STEALTHED));
                     break;
-                case SLASHER:
+                case DASHER:
                     context.effectPool.addUniqueEffect(new CooldownE((int) (caster.cooldownFactor *20000), caster));
                     context.effectPool.addUniqueEffect(
                             new HideBallEffect((int) (caster.durationsFactor*3000), caster));
@@ -76,7 +76,7 @@ public class Ability {
             return false;
         } else if (!context.effectPool.hasEffect(caster, EffectId.COOLDOWN_R)) {
             switch (caster.getType()) {
-                case SLASHER:
+                case DASHER:
                     strat.ignite(5, 3, 0, 0);
                     break;
                 case MARKSMAN:
@@ -88,7 +88,7 @@ public class Ability {
                 case ARTISAN:
                     strat.spawnBallPortal();
                     break;
-                case POST:
+                case GOLEM:
                     strat.scatter();
                     break;
                 case RANGER:

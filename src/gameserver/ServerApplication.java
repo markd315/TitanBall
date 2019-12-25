@@ -11,6 +11,7 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryonet.Connection;
 import com.esotericsoftware.kryonet.Listener;
 import com.esotericsoftware.kryonet.Server;
+import gameserver.engine.GameOptions;
 import gameserver.engine.TeamAffiliation;
 import gameserver.entity.Titan;
 import networking.ClientPacket;
@@ -62,12 +63,9 @@ public class ServerApplication {
                     if (object instanceof ClientPacket) {
                         String token = ((ClientPacket) object).token;
                         if (token == null) {
+                            System.out.println("token null");
                             return;
                         }
-                        //disabled because secret not loading
-                        /*if(!tp.validateIgnoreExpiration(token, appSecret)){
-                            return;
-                        }*/
                         delegatePacket(connection, (ClientPacket) object);
                     }
                 }
@@ -76,16 +74,20 @@ public class ServerApplication {
         System.out.println("server listening 54555 for game changes");
     }
 
-    public static void addNewGame(String id) {
-        states.put(id, new GameTenant(id));
+    public static void addNewGame(String id, GameOptions op) {
+        System.out.println("adding new game, id " + id);
+        states.put(id, new GameTenant(id, op));
     }
 
     public static void delegatePacket(Connection connection, ClientPacket packet) {
         instantiateSpringContext();
         checkGameExpiry();
+        //System.out.println("delegating from game " + packet.gameID);
+        //System.out.println("game map size: " + states.size());
         if (states.containsKey(packet.gameID)) {
             GameTenant state = states.get(packet.gameID);
             try {
+                //System.out.println("passing connection " + connection.getID() + " to game " + state.gameId);
                 state.delegatePacket(connection, packet);
             } catch (IllegalArgumentException ex) {
                 //need a new game created, this should only be triggered if the same user tries to join a new game
@@ -102,21 +104,23 @@ public class ServerApplication {
         Set<String> rm = new HashSet<>();
         for (String id : states.keySet()) {
             GameTenant val = states.get(id);
-            if (val != null && val.state != null && val.state.ended) {
-                injectRatingsToPlayers(val.state);
-                for (PlayerDivider player : val.state.clients) {
-                    try {
-                        Titan t = val.state.titanSelected(player);
-                        if (t != null) {
-                            String className = t.getType().toString();
-                            persistenceManager.postgameStats(player.email, val.state.stats, className, player.wasVictorious, player.newRating);
+            if(val.options.toStringSrv().equals("/3/1/1/5/2/9999/10/12")) {//default public mode only for ratings
+                if (val != null && val.state != null && val.state.ended) {
+                    injectRatingsToPlayers(val.state);
+                    for (PlayerDivider player : val.state.clients) {
+                        try {
+                            Titan t = val.state.titanSelected(player);
+                            if (t != null) {
+                                String className = t.getType().toString();
+                                persistenceManager.postgameStats(player.email, val.state.stats, className, player.wasVictorious, player.newRating);
+                            }
+                        } catch (Exception e) {
+                            e.printStackTrace();
                         }
-                    } catch (Exception e) {
-                        e.printStackTrace();
                     }
+                    rm.add(id);
+                    matchmaker.endGame(id);
                 }
-                rm.add(id);
-                matchmaker.endGame(id);
             }
         }
         for (String id : rm) {

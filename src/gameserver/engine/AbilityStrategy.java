@@ -69,7 +69,7 @@ public class AbilityStrategy {
             double dx = Math.cos(Math.toRadians((ang)));
             double dy = Math.sin(Math.toRadians((ang)));
             if (!caster.collidesSolid(context, context.allSolids, (int) dx, (int) dy)) { //collision
-                caster.translateBounded(dx, dy);
+                caster.translateBounded(context, dx, dy);
             }
             limitt++;
         }
@@ -126,10 +126,10 @@ public class AbilityStrategy {
                 double dx = Math.cos(Math.toRadians((ang)));
                 double dy = Math.sin(Math.toRadians((ang)));
                 if (!e.collidesSolid(context, context.allSolids, 0, (int) dy)) { //collision
-                    e.translateBounded(0, dy);
+                    e.translateBounded(context, 0, dy);
                 }
                 if (!e.collidesSolid(context, context.allSolids, (int) dx, 0)) { //collision
-                    e.translateBounded(dx, 0);
+                    e.translateBounded(context, dx, 0);
                 }
                 limitt++;
             }
@@ -167,10 +167,10 @@ public class AbilityStrategy {
                 double dx = Math.cos(Math.toRadians((ang)));
                 double dy = Math.sin(Math.toRadians((ang)));
                 if (!e.collidesSolid(context, context.allSolids, 0, (int) dy)) { //collision
-                    e.translateBounded(0, dy);
+                    e.translateBounded(context, 0, dy);
                 }
                 if (!e.collidesSolid(context, context.allSolids, (int) dx, 0)) { //collision
-                    e.translateBounded(dx, 0);
+                    e.translateBounded(context, dx, 0);
                 }
             }
             limit++;
@@ -231,7 +231,7 @@ public class AbilityStrategy {
         corners = sel.getLatestColliderBounds();
         if (corners.getWidth() > 0) {
             context.effectPool.addUniqueEffect(new CooldownE((int) (caster.cooldownFactor *5500), caster));
-            context.entityPool.add(new Portal(TeamAffiliation.UNAFFILIATED, caster,
+            context.entityPool.add(new Portal(caster.team, caster,
                     context.entityPool, (int) corners.getX(), (int) corners.getY()));
         }
     }
@@ -292,7 +292,7 @@ public class AbilityStrategy {
     }
 
     public void stunByRadius(double durMillis) {
-        int range = (int) (160 * caster.rangeFactor);
+        int range = (int) (130 * caster.rangeFactor);
         int dur = (int) (durMillis * caster.durationsFactor);
         context.effectPool.addUniqueEffect(new CooldownE((int) (caster.cooldownFactor *7000), caster));
         shape = new Ellipse2D.Double(0, 0, range, range);
@@ -325,16 +325,17 @@ public class AbilityStrategy {
         context.effectPool.addUniqueEffect(new CooldownQ((int) (caster.cooldownFactor *5000), caster));
         shape = new Ellipse2D.Double(0, 0, caster.stealRad*2, caster.stealRad*2);
         sel = new Selector(shape, SelectorOffset.CAST_CENTER, 9999);
-        new Targeting(sel, all, unlimited, context)
+        new Targeting(sel, champions, unlimited, context)
                 .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
-        if (context.titanInPossession().isPresent()) {
+        if (context.titanInPossession().isPresent() &&
+                !context.titanInPossession().get().id.equals(caster.id)) {
+            //Change previous conditional to exclude teammates in prod.
             Titan tip = context.titanInPossession().get();
             Point2D.Double ball = new Point2D.Double(
                     (int) context.ball.X + context.ball.centerDist, (int) context.ball.Y + context.ball.centerDist);
             if (sel.getLatestColliderCircle().contains(ball) && context.ballVisible) {
                 context.stats.grant(context, tip, StatEngine.StatEnum.TURNOVERS);
                 context.stats.grant(context, caster, StatEngine.StatEnum.STEALS);
-
                 tip.possession = 0;
                 eff = new EmptyEffect(dur, tip, EffectId.STEAL);
                 context.effectPool.addStackingEffect(caster, eff);

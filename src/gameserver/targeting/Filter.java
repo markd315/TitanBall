@@ -63,14 +63,24 @@ public class Filter {
     }
 
     private boolean satisfiesTeam(TeamAffiliation in, Entity caster){
+        System.out.println(in);
+        System.out.println(caster.team);
+        System.out.println(this.team);
         if(this.team == TeamAffiliation.ANY){
             return true;
         }
         if(this.team == TeamAffiliation.SAME && caster.team == in){
             return true;
         }
-        if(this.team == TeamAffiliation.ENEMIES && !caster.team.equals(in)){
-            return true;
+        if(this.team == TeamAffiliation.ENEMIES){
+            if(caster.team == TeamAffiliation.HOME){
+                System.out.println("satisfies team");
+                return !in.equals(TeamAffiliation.HOME);
+            }
+            if(caster.team == TeamAffiliation.AWAY){
+                System.out.println("satisfies team");
+                return !in.equals(TeamAffiliation.AWAY);
+            }
         }
         if(this.team == TeamAffiliation.OPPONENT){
             //System.out.println(caster.team + "" + in);
@@ -93,7 +103,7 @@ public class Filter {
             if (this.type == TitanType.ANY) {
                 return true;
             }
-            if (this.type == TitanType.NOT_GUARDIAN && in != TitanType.GUARDIAN) {
+            if (this.type == TitanType.NOT_GUARDIAN && in != TitanType.GOALIE) {
                 return true;
             }
             return this.type == in;

@@ -65,7 +65,8 @@ public class EffectPool {
         for (int i = 0; i < pool.size(); i++) {
             Effect e = pool.get(i);
             if (e.getEffect() == id && caster.id.equals(castBy.get(i).id) && e.active) {
-                return false;
+                pool.remove(e);
+                i--;
             }
         }
         pool.add(eff);

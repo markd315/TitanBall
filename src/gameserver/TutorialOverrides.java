@@ -1,11 +1,9 @@
 package gameserver;
 
+import gameserver.engine.GameOptions;
 import gameserver.engine.StatEngine;
 import gameserver.engine.TeamAffiliation;
-import gameserver.entity.Box;
-import gameserver.entity.Entity;
-import gameserver.entity.Titan;
-import gameserver.entity.TitanType;
+import gameserver.entity.*;
 import networking.ClientPacket;
 import networking.PlayerDivider;
 
@@ -13,59 +11,48 @@ import java.util.*;
 
 public class TutorialOverrides extends GameEngine{
 
-    static Titan hGol = new Titan(HOME_HI_X, HOME_HI_Y, TeamAffiliation.HOME, TitanType.GUARDIAN);
-    static Titan awGol = new Titan(AWAY_HI_X, AWAY_HI_Y, TeamAffiliation.AWAY, TitanType.GUARDIAN);
+     Titan hGol = new Titan(HOME_HI_X, HOME_HI_Y, TeamAffiliation.HOME, TitanType.GOALIE);
+     Titan awGol = new Titan(AWAY_HI_X, AWAY_HI_Y, TeamAffiliation.AWAY, TitanType.GOALIE);
 
-    static public Titan[] playersRebound = {
+     public Titan[] playersRebound = {
             hGol,
             awGol,
             new Titan(MID_HOME, MID_WING_HOME, TeamAffiliation.HOME, TitanType.RANGER)
     };
 
-    static public Titan[] playersKill = {
+     public Titan[] playersKill = {
             hGol,
             awGol,
             new Titan(MID_HOME, MID_WING_HOME, TeamAffiliation.HOME, TitanType.RANGER),
-            new Titan(FIELD_LENGTH - MID_HOME, MID_WING_HOME, TeamAffiliation.AWAY, TitanType.POST)
+            new Titan(FIELD_LENGTH - MID_HOME, MID_WING_HOME, TeamAffiliation.AWAY, TitanType.GOLEM)
     };
 
-    static public Titan[] playersKick = {
+     public Titan[] playersKick = {
             hGol,
             awGol,
             new Titan(MID_HOME, MID_WING_HOME, TeamAffiliation.HOME, TitanType.RANGER),
-            new Titan(FIELD_LENGTH - MID_HOME, MID_WING_HOME, TeamAffiliation.AWAY, TitanType.POST),
+            new Titan(FIELD_LENGTH - MID_HOME, MID_WING_HOME, TeamAffiliation.AWAY, TitanType.GOLEM),
     };
 
-    static public Titan[] playersSteal = {
+     public Titan[] playersSteal = {
             hGol,
             awGol,
             new Titan(MID_HOME, MID_WING_HOME, TeamAffiliation.HOME, TitanType.RANGER),
-            new Titan(FIELD_LENGTH - MID_HOME, MID_WING_HOME, TeamAffiliation.AWAY, TitanType.POST),
+            new Titan(FIELD_LENGTH - MID_HOME, MID_WING_HOME, TeamAffiliation.AWAY, TitanType.GOLEM),
     };
 
-    static public Titan[] playersComboGoal = {
+     public Titan[] playersComboGoal = {
             hGol,
             awGol,
             new Titan(FIELD_LENGTH - DEFENDER_HOME, MID_WING_HOME, TeamAffiliation.HOME, TitanType.MARKSMAN),
     };
 
-    static Box ballDefault = new Box((int)BALL_X, (int)BALL_Y, 15, 15);
-    static Box ballSteal = new Box(FIELD_LENGTH - MID_HOME, MID_WING_HOME, 15, 15);
-    static Box ballScore = new Box(FIELD_LENGTH - DEFENDER_HOME - 50, MID_WING_HOME, 15, 15);
+     Box ballDefault = new Box((int)BALL_X, (int)BALL_Y, 15, 15);
+     Box ballSteal = new Box(FIELD_LENGTH - MID_HOME, MID_WING_HOME, 15, 15);
+     Box ballScore = new Box(FIELD_LENGTH - DEFENDER_HOME - 50, MID_WING_HOME, 15, 15);
 
-    static public Map<String, Titan[]> tutMap = new HashMap<>();
-    static public Map<String, Box> ballMap = new HashMap<>();
-
-    static{
-        tutMap.put("rebound", playersRebound);
-        tutMap.put("steal", playersSteal);
-        tutMap.put("abilities", playersKick);
-        tutMap.put("kill", playersKill);
-        tutMap.put("score", playersComboGoal);
-        ballMap.put("rebound", ballDefault);
-        ballMap.put("steal", ballSteal);
-        ballMap.put("score", ballScore);
-    }
+     public Map<String, Titan[]> tutMap = new HashMap<>();
+     public Map<String, Box> ballMap = new HashMap<>();
 
     public PlayerDivider client;
     private PlayerDivider cpuClient;
@@ -74,7 +61,15 @@ public class TutorialOverrides extends GameEngine{
     public int narrationPhase = 0;
 
     public TutorialOverrides(){
-        super(UUID.randomUUID().toString(), Collections.emptyList());
+        super(UUID.randomUUID().toString(), Collections.emptyList(), new GameOptions(new GameOptions().toString()));
+        tutMap.put("rebound", playersRebound);
+        tutMap.put("steal", playersSteal);
+        tutMap.put("abilities", playersKick);
+        tutMap.put("kill", playersKill);
+        tutMap.put("score", playersComboGoal);
+        ballMap.put("rebound", ballDefault);
+        ballMap.put("steal", ballSteal);
+        ballMap.put("score", ballScore);
         players = tutMap.get("rebound");
         client = clientFromTitan(players[2]);
         players[2].setVarsBasedOnType();
@@ -115,6 +110,9 @@ public class TutorialOverrides extends GameEngine{
             case 2:
                 if(stats.statConditionalMet(client, StatEngine.StatEnum.STEALS, 1)){
                     tutorialPhase++;
+                    players[2].X = MID_HOME;
+                    players[2].possession = 0;
+                    players[3].possession = 1;
                     players[3].setVarsBasedOnType();
                     players[3].setHealth(13);
                 }
@@ -123,6 +121,8 @@ public class TutorialOverrides extends GameEngine{
                 if(stats.statConditionalMet(client, StatEngine.StatEnum.KILLS, 1)){
                     this.underControl.possession = 0;
                     players[2].possession = 0;
+                    this.players[2].setType(TitanType.MARKSMAN);
+                    this.players[2].setVarsBasedOnType();
                     players = tutMap.get("score");
                     ball.setX(ballMap.get("score").X);
                     ball.setY(ballMap.get("score").Y);
@@ -131,8 +131,11 @@ public class TutorialOverrides extends GameEngine{
                 }
                 break;
             case 4:
+                this.players[2].setType(TitanType.MARKSMAN);
+                this.players[2].setVarsBasedOnType();
+                this.underControl.setType(TitanType.MARKSMAN);
+                this.underControl.setVarsBasedOnType();
                 if(stats.statConditionalMet(client, StatEngine.StatEnum.SIDEGOALS, 1)){
-                    tutReset();
                     players[2].setX(FIELD_LENGTH - DEFENDER_HOME);
                     players[2].setY(MID_WING_HOME);
                     this.players[0].possession = 0;
@@ -144,9 +147,14 @@ public class TutorialOverrides extends GameEngine{
                     this.underControl.possession = 0;
                     ball.setX(ballMap.get("score").X);
                     ball.setY(ballMap.get("score").Y);
+                    tutReset();
                 }
                 break;
             case 5:
+                this.players[2].setType(TitanType.MARKSMAN);
+                this.players[2].setVarsBasedOnType();
+                this.underControl.setType(TitanType.MARKSMAN);
+                this.underControl.setVarsBasedOnType();
                 if(stats.statConditionalMet(client, StatEngine.StatEnum.GOALS, 1)){
                     phase = 2;
                     /*players = tutMap.get("score");

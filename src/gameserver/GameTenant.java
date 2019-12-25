@@ -3,7 +3,10 @@ package gameserver;
 import authserver.SpringContextBridge;
 import authserver.users.UserService;
 import com.esotericsoftware.kryonet.Connection;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rits.cloning.Cloner;
+import gameserver.engine.GameOptions;
 import networking.CandidateGame;
 import networking.ClientPacket;
 import networking.PlayerConnection;
@@ -16,9 +19,9 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class GameTenant {
-    public static final ServerMode SERVER_MODE = ServerMode.TRUETWO;
+    public static final ServerMode SERVER_MODE = ServerMode.TRUETHREE;
     public static ServerMode serverMode = SERVER_MODE;
-    public static int PLAYERS; //instantiated in initialization block
+    protected GameOptions options;
 
     public GameEngine state;
     public String gameId;
@@ -29,15 +32,14 @@ public class GameTenant {
     public GameTenant() {
     }
 
-    static{
-        initializeMode();
-    }
 
     public void delegatePacket(Connection connection, ClientPacket request) {
+        //System.out.println(state);
         if (state == null || state.phase < 8) {
             addOrReplaceNewClient(connection, clients, request.token);
         }
         if (state != null) {
+            state.kickoff();
             PlayerDivider pd = dividerFromConn(connection);
             if(pd == null){//client rejoining under new connection ID
                 String email = Util.jwtExtractEmail(request.token);
@@ -82,6 +84,7 @@ public class GameTenant {
         boolean connFound = connectionQueued(queue, c);
         String email = Util.jwtExtractEmail(token);
         boolean emailFound = accountQueued(queue, email);
+        System.out.println(email + " c found" + connFound + " e found " + emailFound);
         if(!connFound){
             if(emailFound){ //rejoin unstarted game
                 for(PlayerConnection p : queue){
@@ -106,7 +109,7 @@ public class GameTenant {
     private void startGame(List<PlayerConnection> gameIncludedClients){
         System.out.println("starting full");
         List<PlayerDivider> players = playersFromConnections(gameIncludedClients);
-        state = new GameEngine(gameId, players); //Start the game
+        state = new GameEngine(gameId, players, options); //Start the game
         try {
             state.initializeServer();
             instantiateSpringContext();
@@ -124,11 +127,11 @@ public class GameTenant {
 
         System.out.println("reassigning client list on startgame");
         for(PlayerConnection p : clients){
-            System.out.println(p.toString());
+            //System.out.println(p.toString());
         }
         clients = gameIncludedClients;
         for(PlayerConnection p : clients){
-            System.out.println(p.toString());
+            //System.out.println(p.toString());
         }
         Runnable updateClients = () -> {
             //System.out.println("updating clients now");
@@ -184,7 +187,7 @@ public class GameTenant {
     private List<PlayerConnection> monteCarloBalance(List<PlayerConnection> players) {
         Map<String, Double> tempRating= new HashMap<>();
         for(PlayerConnection pl : players){
-            System.out.println(pl.email +  " " + userService.findUserByEmail(pl.email).getRating());
+            //System.out.println(pl.email +  " " + userService.findUserByEmail(pl.email).getRating());
             tempRating.put(pl.email, userService.findUserByEmail(pl.email).getRating());
         }
         final int MAX_MM = 5;
@@ -204,39 +207,18 @@ public class GameTenant {
         userService = SpringContextBridge.services().getUserService();
     }
 
-    public static void initializeMode() {
-        if (serverMode == ServerMode.ALL) {
-            PLAYERS = 1;
-        }
-        if (serverMode == ServerMode.TEAMS) {
-            PLAYERS = 2;
-        }
-        if (serverMode == ServerMode.SOLONOGOL) {
-            PLAYERS = 8;
-        }
-        if (serverMode == ServerMode.SOLOS) {
-            PLAYERS = 10;
-        }
-        if (serverMode == ServerMode.TWOS) {
-            PLAYERS = 4;
-        }
-        if (serverMode == ServerMode.THREES) {
-            PLAYERS = 6;
-        }
-        if (serverMode == ServerMode.TRUETWO) {
-            PLAYERS = 4;
-        }
-        if (serverMode == ServerMode.TRUETHREE) {
-            PLAYERS = 6;
-        }
-        if (serverMode == ServerMode.ONEVTWO) {
-            PLAYERS = 3;
-        }
-    }
 
-    public GameTenant(String id){
+    public GameTenant(String id, GameOptions op){
         this.gameId = id;
-        if(GameTenant.serverMode == ServerMode.TEAMS) {
+        this.options = op;
+        ObjectMapper mapper = new ObjectMapper();
+        try {
+            System.out.println("tenant options");
+            System.out.println(mapper.writeValueAsString(this.options));
+        } catch (JsonProcessingException e) {
+            e.printStackTrace();
+        }
+        if(op.playerIndex == 1 && false) { //player switching working, but disabled for now
             this.availableSlots = new ArrayList<>();
             ArrayList<Integer> c1 = new ArrayList<>();
             c1.add(4);
@@ -253,7 +235,18 @@ public class GameTenant {
             this.availableSlots.add(c1);
             this.availableSlots.add(c2);
         }
-        else if(GameTenant.serverMode == ServerMode.ALL) {
+        if(op.playerIndex == 1) {
+            this.availableSlots = new ArrayList<>();
+            ArrayList<Integer> c1 = new ArrayList<>();
+            c1.add(3);
+            c1.add(1);
+            ArrayList<Integer> c2 = new ArrayList<>();
+            c2.add(4);
+            c2.add(2);
+            this.availableSlots.add(c1);
+            this.availableSlots.add(c2);
+        }
+        else if(op.playerIndex == 0) {
             this.availableSlots = new ArrayList<>();
             List<Integer> c1 = new ArrayList<>();
             c1.add(4);
@@ -269,7 +262,7 @@ public class GameTenant {
             c1.add(2);
             this.availableSlots.add(c1);
         }
-        else if(GameTenant.serverMode == ServerMode.SOLOS) {
+        else if(op.playerIndex == 5) {
             this.availableSlots = new ArrayList<>();
             List<Integer> c1 = new ArrayList<>();
             List<Integer> c2 = new ArrayList<>();
@@ -302,7 +295,7 @@ public class GameTenant {
             this.availableSlots.add(c9);
             this.availableSlots.add(c10);
         }
-        else if(GameTenant.serverMode == ServerMode.SOLONOGOL){
+        else if(op.playerIndex == 4){
             this.availableSlots = new ArrayList<>();
             List<Integer> c3 = new ArrayList<>();
             List<Integer> c4 = new ArrayList<>();
@@ -332,7 +325,7 @@ public class GameTenant {
             this.availableSlots.add(c9);
             this.availableSlots.add(c10);
         }
-        else if(GameTenant.serverMode == ServerMode.THREES){
+        else if(op.playerIndex == 3 && false){ //pswitch disabled for now
             this.availableSlots = new ArrayList<>();
             List<Integer> c3 = new ArrayList<>();
             List<Integer> c4 = new ArrayList<>();
@@ -358,7 +351,7 @@ public class GameTenant {
             this.availableSlots.add(c7);
             this.availableSlots.add(c8);
         }
-        else if(GameTenant.serverMode == ServerMode.TWOS){
+        else if(op.playerIndex == 2 && false){ //disabled for now
             this.availableSlots = new ArrayList<>();
             List<Integer> c3 = new ArrayList<>();
             List<Integer> c4 = new ArrayList<>();
@@ -380,13 +373,13 @@ public class GameTenant {
             this.availableSlots.add(c5);
             this.availableSlots.add(c6);
         }
-        else if(GameTenant.serverMode == ServerMode.TRUETWO){
+        else if(op.playerIndex == 2){
             this.availableSlots = new ArrayList<>();
             List<Integer> c3 = new ArrayList<>();
             List<Integer> c4 = new ArrayList<>();
             List<Integer> c5 = new ArrayList<>();
             List<Integer> c6 = new ArrayList<>();
-            c3.add(3); //goalies are removed anyway if disabled for "true" 2v2
+            c3.add(3);
             c3.add(1);
             c4.add(4);
 
@@ -398,7 +391,7 @@ public class GameTenant {
             this.availableSlots.add(c5);
             this.availableSlots.add(c6);
         }
-        else if(GameTenant.serverMode == ServerMode.TRUETHREE){
+        else if(op.playerIndex == 3){
             this.availableSlots = new ArrayList<>();
             List<Integer> c3 = new ArrayList<>();
             List<Integer> c4 = new ArrayList<>();
@@ -422,7 +415,7 @@ public class GameTenant {
             this.availableSlots.add(c7);
             this.availableSlots.add(c8);
         }
-        else if(GameTenant.serverMode == ServerMode.ONEVTWO){
+        else if(GameTenant.serverMode == ServerMode.ONEVTWO){ //disabled for now
             this.availableSlots = new ArrayList<>();
             List<Integer> c3 = new ArrayList<>();
             List<Integer> c4 = new ArrayList<>();

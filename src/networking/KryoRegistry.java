@@ -1,12 +1,11 @@
 package networking;
 
-import client.GoalSprite;
-import client.Images;
-import client.StaticImage;
+import client.graphical.GoalSprite;
+import client.graphical.Images;
+import client.graphical.StaticImage;
 import com.esotericsoftware.kryo.Kryo;
 import gameserver.GameEngine;
 import gameserver.TutorialOverrides;
-import gameserver.TutorialTenant;
 import gameserver.effects.EffectId;
 import gameserver.effects.EffectPool;
 import gameserver.effects.cooldowns.CooldownCurve;
@@ -133,8 +132,8 @@ public class KryoRegistry {
         kryo.register(boolean.class);
         kryo.register(Random.class);
 
-        kryo.register(TutorialTenant.class);
         kryo.register(TutorialOverrides.class);
+        kryo.register(GameOptions.class);
         //Log.DEBUG();
         //Log.TRACE();
     }

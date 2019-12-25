@@ -2,6 +2,7 @@ package gameserver.entity;
 
 
 import gameserver.GameEngine;
+import gameserver.effects.EffectId;
 import gameserver.effects.effects.DeadEffect;
 import gameserver.engine.TeamAffiliation;
 import gameserver.models.Game;
@@ -75,9 +76,14 @@ public class Entity extends Box {
         return false;
     }
 
-    public void translateBounded(double dx, double dy) {
+    public void translateBounded(GameEngine context, double dx, double dy) {
         this.X+=dx;
         this.Y+=dy;
+        if(this instanceof Titan && context.effectPool.hasEffect((Titan) this, EffectId.DEAD)){
+            this.X = 99999;
+            this.Y = 99999;
+            return;
+        }
         if(this.X > Game.E_MAX_X){
             this.X = Game.E_MAX_X;
         }

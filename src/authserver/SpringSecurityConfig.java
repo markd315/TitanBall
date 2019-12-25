@@ -174,13 +174,13 @@ public class SpringSecurityConfig extends WebSecurityConfigurerAdapter {
 	 values(7,'u7', 'e7@gmail.com', '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.','USER', CURRENT_TIMESTAMP);
 
      insert into classes (id, role)
-	 values(1,'GUARDIAN');
+	 values(1,'GOALIE');
 	 insert into classes (id, role)
 	 values(2,'WARRIOR');
 	 insert into classes (id, role)
 	 values(3,'RANGER');
 	 insert into classes (id, role)
-	 values(4,'SLASHER');
+	 values(4,'DASHER');
 	 insert into classes (id, role)
 	 values(5,'MARKSMAN');
 	 insert into classes (id, role)
@@ -190,7 +190,7 @@ public class SpringSecurityConfig extends WebSecurityConfigurerAdapter {
 	 insert into classes (id, role)
 	 values(8,'ARTISAN');
 	 insert into classes (id, role)
-	 values(9,'POST');
+	 values(9,'GOLEM');
 	 insert into classes (id, role)
 	 values(10,'MAGE');
 	 insert into classes (id, role)

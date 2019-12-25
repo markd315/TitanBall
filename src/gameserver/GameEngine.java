@@ -1,7 +1,10 @@
 package gameserver;
 
 
-import client.GoalSprite;
+import client.graphical.GoalSprite;
+import client.graphical.ScreenConst;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rits.cloning.Cloner;
 import gameserver.effects.EffectId;
 import gameserver.engine.*;
@@ -29,18 +32,31 @@ public class GameEngine extends Game {
     protected static final double BALL_X = 1040;
     protected static final double BALL_Y = 605;
 
-    public GameEngine(String id, List<PlayerDivider> clients) {
+    public GameEngine(String id, List<PlayerDivider> clients, GameOptions options) {
         this.clients = clients;
+        System.out.println("options engine");
+        this.options = options;
+        ObjectMapper mapper = new ObjectMapper();
+        try {
+            System.out.println(mapper.writeValueAsString(this.options));
+        } catch (JsonProcessingException e) {
+            e.printStackTrace();
+        }
         cullUnmappedTitans();
-        if (GOALIE_DISABLED) {
+        if (options.goalieIndex == 0) {
             cullGoalies();
+        }else{
+            if(!(this instanceof TutorialOverrides)){
+                players[0].setVarsBasedOnType();
+                players[1].setVarsBasedOnType();
+            }
         }
         this.gameId = id;
         this.lastControlPacket = new ClientPacket[clients.size()];
     }
 
     protected void cullGoalies() {
-        if(!GOALIE_DISABLED){
+        if (!GOALIE_DISABLED) {
             GOALIE_DISABLED = true;
             players[0].possession = 0;
             players[1].possession = 0;
@@ -56,6 +72,7 @@ public class GameEngine extends Game {
                     }
                 }
                 p.possibleSelection.removeAll(rm);
+                p.selection = p.possibleSelection.get(0);
             }
         }
 
@@ -97,28 +114,26 @@ public class GameEngine extends Game {
     }
 
     protected void doHealthModification() {
-        if(hoopDmg) {
-            for (Entity e : allSolids) {
-                GoalHoop[] pains = getPainHoopsFromTeam(e.team);
-                for (GoalHoop pain : pains) {
-                    int d = (int) Point2D.distance(e.X + 35, e.Y + 35, pain.x + (pain.w / 2), pain.y + (pain.h / 2));
-                    double delta = (-67.0 / 432000000.0) * Math.pow(d, 3) +
-                            Math.pow(d, 2) * 1261.0 / 4320000.0 -
-                            (3817.0 / 21600.0) * d
-                            + 35;// -1.6×10^-8 x^3 + 0.000068 x^2 - 0.104 x + 52 //fits {{1500, -5}, {1000, 0}, {500, 15}, {250, 30}}
-                    //https://www.wolframalpha.com/input/?i=model+cubic&assumption=%7B%22F%22,+%22CubicFitCalculator%22,+%22data2%22%7D+-%3E%22%7B%7B1000,+-5%7D,+%7B400,1%7D,+%7B200,+10%7D,+%7B100,+20%7D%7D%22
-                    if (delta > 0) {
-                        if (delta > 20) {
-                            delta = 20;
-                        }
-                        e.damage(this, delta / 70.0);
-                    } else {
-                        if (delta < -5) {
-                            delta = -5;
-                        }
-                        if (e.team != TeamAffiliation.UNAFFILIATED && !e.teamPoss(this)) {
-                            e.heal(delta / -50.0);
-                        }
+        for (Entity e : players) {
+            GoalHoop[] pains = getPainHoopsFromTeam(e.team);
+            for (GoalHoop pain : pains) {
+                int d = (int) Point2D.distance(e.X + 35, e.Y + 35, pain.x + (pain.w / 2), pain.y + (pain.h / 2));
+                double delta = (-10051.0 / 146431200000.0) * Math.pow(d, 3) +
+                        Math.pow(d, 2) * 556391.0 / 4881040000.0 -
+                        (276389.0 / 4306800.0) * d
+                        + 13.82;//-(10051 x^3)/146431200000 + (556391 x^2)/4881040000 - (276389 x)/4306800 + 843475/61013≈-6.86397×10^-8 x^3 + 0.00011399 x^2 - 0.064175 x + 13.8245
+                //https://www.wolframalpha.com/input/?i=model+cubic&assumption=%7B%22F%22%2C+%22CubicFitCalculator%22%2C+%22data2%22%7D+-%3E%22%7B%7B1000%2C+-5%7D%2C+%7B400%2C2%7D%2C+%7B200%2C+5%7D%2C+%7B30%2C+12%7D%7D%22
+                if (delta > 0) {
+                    if (delta > 20) {
+                        delta = 20;
+                    }
+                    e.damage(this, delta / (1000.0 / Game.GAMETICK_MS));
+                } else {
+                    if (delta < -3) {
+                        delta = -3;
+                    }
+                    if (e.team != TeamAffiliation.UNAFFILIATED && !e.teamPoss(this) && hoopDmg) {
+                        e.heal(delta / (-1000.0 / Game.GAMETICK_MS));
                     }
                 }
             }
@@ -147,15 +162,15 @@ public class GameEngine extends Game {
     public void detectGoals() throws Exception {
         //If ball is in the air
         for (int n = players.length - 1; n >= 0; n--) {
-            if(players[n].actionState == Titan.TitanState.PASS
+            if (players[n].actionState == Titan.TitanState.PASS
                     && players[n].actionFrame > 10 &&
-                    players[n].actionFrame < 30){
+                    players[n].actionFrame < 30) {
                 return;
             }
         }
-        Rectangle ballBounds = new Rectangle((int) this.ball.X, (int) this.ball.Y, 15, 15);
+        Rectangle ballBounds = new Rectangle((int) this.ball.X, (int) this.ball.Y, 30, 30);
         for (GoalHoop goal : this.lowGoals) {
-            GoalSprite tempGoal = new GoalSprite(goal, 0, 0); //Just for using the g2d intersect method
+            GoalSprite tempGoal = new GoalSprite(goal, 0, 0, new ScreenConst(1920,1080)); //Just for using the g2d intersect method
             if (tempGoal.intersects(ballBounds) && goal.checkReady()) {
                 Team enemy, us;
                 if (goal.team == TeamAffiliation.HOME) {
@@ -185,7 +200,7 @@ public class GameEngine extends Game {
                 us = this.home;
                 enemy = this.away;
             }
-            GoalSprite tempGoal = new GoalSprite(hoop, 0, 0); //Just for using the g2d intersect method
+            GoalSprite tempGoal = new GoalSprite(hoop, 0, 0,new ScreenConst(1920,1080)); //Just for using the g2d intersect method
             if (tempGoal.intersects(ballBounds) && hoop.checkReady()) {
                 hoop.trigger();
                 //Cash in all ghost/combo points for a full point
@@ -208,18 +223,42 @@ public class GameEngine extends Game {
         }
     }
 
-    protected void minorHoopBounce(){
+
+    //TODO not production ready, could have bugs if the goalie is blocked from moving!
+    protected void goalieMinorHoopBounce() {
+        if(titanInPossession().isPresent() && titanInPossession().get().getType() == TitanType.GOALIE) {
+            for (GoalHoop goal : this.lowGoals) {
+                GoalSprite tempGoal = new GoalSprite(goal, 0, 0,new ScreenConst(1920,1080)); //Just for using the g2d intersect method
+                Rectangle2D ballBounds = ball.asRect();
+                while (tempGoal.intersects(ballBounds)) {
+                    ballBounds = ball.asRect();
+                    int wRad = (int) ((tempGoal.width - 1) / 2);
+                    int hRad = (int) ((tempGoal.height - 1) / 2);
+                    double ang = Util.degreesFromCoords(tempGoal.x + wRad - ball.X - 15, tempGoal.y + hRad - ball.Y - 15);
+                    ang += 180; //Run away, not towards
+                    double dx = Math.cos(Math.toRadians((ang)));
+                    double dy = Math.sin(Math.toRadians((ang)));
+                    titanInPossession().get().X += dx;
+                    titanInPossession().get().Y += dy;
+                }
+            }
+        }
+    }
+
+    protected void minorHoopBounce() {
         for (GoalHoop goal : this.lowGoals) {
-            GoalSprite tempGoal = new GoalSprite(goal, 0, 0); //Just for using the g2d intersect method
+            GoalSprite tempGoal = new GoalSprite(goal, 0, 0,new ScreenConst(1920,1080)); //Just for using the g2d intersect method
             Rectangle2D ballBounds = ball.asRect();
             while (tempGoal.intersects(ballBounds)) {
                 ballBounds = ball.asRect();
-                double ang = Util.degreesFromCoords(tempGoal.x + 11 - ball.X - 7, tempGoal.y + 43 - ball.Y - 7);
+                int wRad = (int) ((tempGoal.width - 1)/2);
+                int hRad = (int) ((tempGoal.height - 1)/2);
+                double ang = Util.degreesFromCoords(tempGoal.x + wRad - ball.X - 15, tempGoal.y + hRad - ball.Y - 15);
                 ang += 180; //Kick it away, not towards
                 double dx = Math.cos(Math.toRadians((ang)));
                 double dy = Math.sin(Math.toRadians((ang)));
-                ball.X+=dx;
-                ball.Y+=dy;
+                ball.X += dx;
+                ball.Y += dy;
             }
         }
     }
@@ -239,9 +278,8 @@ public class GameEngine extends Game {
         away.hasBall = false;
         goalVisible = false;
         ballVisible = true;
-        players[0].setVarsBasedOnType();
-        players[1].setVarsBasedOnType();
         for (Titan t : players) {
+            t.setVarsBasedOnType();
             t.actionState = Titan.TitanState.IDLE;
             t.actionFrame = 0;
         }
@@ -260,7 +298,7 @@ public class GameEngine extends Game {
 
     public void resetPosSel() {
         for (PlayerDivider client : clients) {
-            if(client != null){
+            if (client != null) {
                 client.setSelection(client.getPossibleSelection().get(0));
             }
         }
@@ -269,7 +307,7 @@ public class GameEngine extends Game {
         players[1].setX(AWAY_HI_X);
         players[0].setY(HOME_HI_Y);
         players[1].setY(AWAY_HI_Y);
-        if(GOALIE_DISABLED){
+        if (GOALIE_DISABLED) {
             players[0].setX(9999999);
             players[1].setX(9999999);
             players[0].setY(9999999);
@@ -279,6 +317,7 @@ public class GameEngine extends Game {
         int i = 2;
         int teamIndex = 0;
         for (; i < 2 + nonGoaliePerTeam; i++) {
+            players[i].isBoosting = false;
             players[i].team = TeamAffiliation.HOME; //unmap sometimes breaks this
             System.out.println("setting" + players[i].team + players[i].getType() + teamIndex);
             setPosition(players[i], teamIndex, nonGoaliePerTeam);
@@ -378,9 +417,9 @@ public class GameEngine extends Game {
 
     public void intersectAll() {
         for (int n = players.length - 1; n >= 0; n--) {
-            if(players[n].actionState == Titan.TitanState.PASS
+            if (players[n].actionState == Titan.TitanState.PASS
                     && players[n].actionFrame > 10 &&
-                    players[n].actionFrame < 30){
+                    players[n].actionFrame < 30) {
                 return;
             }
         }
@@ -402,11 +441,15 @@ public class GameEngine extends Game {
         lock();
         if (from != null) {
             Titan t = titanFromPacket(from);
+            if(t == null){
+                System.out.println("got passed a bad titan index! Possibly from another game?");
+                return;
+            }
             int btn = 0;
-            if(request.shotBtn){
+            if (request.shotBtn) {
                 btn = 1;
             }
-            if(request.passBtn){
+            if (request.passBtn) {
                 btn = 3;
             }
             if (request.posX != -1 && request.posY != -1 && btn != 0) {
@@ -414,32 +457,18 @@ public class GameEngine extends Game {
             }
             this.processProgramming(t, request);
             this.processKeys(request, from);
-            //moving select code to here allows class switch during game
-            if (!began) {
-                //System.out.println(from.toString() + " ready");
-                for (PlayerDivider client : clients) {
-                    if (client.id == from.id) {
-                        from.ready = true;
-                        int classSelIndex = client.possibleSelection.get(0) - 1;
-                        players[classSelIndex].setType(request.classSelection);
-                        if(request.masteries != null){
-                            request.masteries.applyMasteries(players[classSelIndex]);
-                        }
+            //System.out.println(from.toString() + " packet");
+            for (PlayerDivider client : clients) {
+                if (client.id == from.id) {
+                    from.ready = true;
+                    int classSelIndex = client.possibleSelection.get(0) - 1;
+                    players[classSelIndex].setType(request.classSelection);
+                    if (request.masteries != null) {
+                        request.masteries.applyMasteries(players[classSelIndex]);
                     }
                 }
-                for (PlayerDivider client : clients) {
-                    if (!client.ready) {
-                        unlock();
-                        return;
-                    }
-                }
-                began = true;
-                ScheduledExecutorService exec = Executors.newScheduledThreadPool(1);
-                TerminableExecutor terminableExecutor = new TerminableExecutor(this, exec);
-                exec.scheduleAtFixedRate(terminableExecutor, 0, GAMETICK_MS, TimeUnit.MILLISECONDS);
-
-                System.out.println("gametick kickoff should only run once");
             }
+            kickoff();
             intersectAll();
             try {
                 detectGoals();
@@ -451,12 +480,31 @@ public class GameEngine extends Game {
         unlock();
     }
 
-    protected Titan titanFromPacket(PlayerDivider conn) {
-        for (PlayerDivider p : clients) {
-            if (p.id == conn.id) {
-                return players[p.selection - 1];
-            }
+    protected void kickoff() {
+        if(!began) {
+            began = true;
+            /*for (PlayerDivider client : clients) {
+                if (!client.ready) {
+                    unlock();
+                    return;
+                }
+            }*/
+            ScheduledExecutorService exec = Executors.newScheduledThreadPool(1);
+            TerminableExecutor terminableExecutor = new TerminableExecutor(this, exec);
+            exec.scheduleAtFixedRate(terminableExecutor, 0, GAMETICK_MS, TimeUnit.MILLISECONDS);
+
+            System.out.println("gametick kickoff should only run once");
         }
+    }
+
+    protected Titan titanFromPacket(PlayerDivider conn) {
+        try{
+            for (PlayerDivider p : clients) {
+                if (p.id == conn.id) {
+                    return players[p.selection - 1];
+                }
+            }
+        }catch(Exception ex1){}
         return null;
     }
 
@@ -476,17 +524,16 @@ public class GameEngine extends Game {
     }
 
 
-
     protected void processKeys(ClientPacket controls, PlayerDivider from) {
         if (from != null) {
             Titan t = players[from.selection - 1];
             int clientIndex = clientIndex(from);
-            if(lastControlPacket == null || lastControlPacket.length ==0){
+            if (lastControlPacket == null || lastControlPacket.length == 0) {
                 lastControlPacket = new ClientPacket[1];
                 lastControlPacket[0] = new ClientPacket();
             }
             KeyDifferences controlsHeld = new KeyDifferences(controls, lastControlPacket[clientIndex]);
-            Cloner c  = new Cloner();
+            Cloner c = new Cloner();
             lastControlPacket[clientIndex] = c.deepClone(controls);
             boost(controlsHeld, t);
             if (controlsHeld.SWITCH == 1 && this.phase == 8 && t.actionState == Titan.TitanState.IDLE) {
@@ -559,23 +606,23 @@ public class GameEngine extends Game {
     }
 
     public void moveKeys(KeyDifferences controlsHeld, Titan t) {
-        if(!effectPool.hasEffect(t, EffectId.DEAD)){
+        if (!effectPool.hasEffect(t, EffectId.DEAD)) {
             if (controlsHeld.RIGHT == 1 || controlsHeld.UP == 1 || controlsHeld.LEFT == 1 || controlsHeld.DOWN == 1) {
                 t.programmed = false;
             }
-            if(controlsHeld.RIGHT == 1){
+            if (controlsHeld.RIGHT == 1) {
                 t.runLeft = 0;
                 t.moveMemL = false;
             }
-            if(controlsHeld.LEFT == 1){
+            if (controlsHeld.LEFT == 1) {
                 t.runRight = 0;
                 t.moveMemR = false;
             }
-            if(controlsHeld.UP == 1){
+            if (controlsHeld.UP == 1) {
                 t.runDown = 0;
                 t.moveMemD = false;
             }
-            if(controlsHeld.DOWN == 1){
+            if (controlsHeld.DOWN == 1) {
                 t.runUp = 0;
                 t.moveMemU = false;
             }
@@ -590,60 +637,56 @@ public class GameEngine extends Game {
                 if (t.X + 35 > toX + t.actualSpeed()) { //speed included to avoid jittery finish
                     t.runLeft = 1;
                     t.runRight = 0;
-                }
-                else if (t.X + 35< toX - t.actualSpeed()) {
+                } else if (t.X + 35 < toX - t.actualSpeed()) {
                     t.runRight = 1;
                     t.runLeft = 0;
-                }
-                else{ //Calm down once we arrive at click destination
+                } else { //Calm down once we arrive at click destination
                     t.runRight = 0;
                     t.runLeft = 0;
                 }
                 if (t.Y + 35 > toY + t.actualSpeed()) {
                     t.runUp = 1;
                     t.runDown = 0;
-                }
-                else if (t.Y + 35 < toY - t.actualSpeed()) {
+                } else if (t.Y + 35 < toY - t.actualSpeed()) {
                     t.runDown = 1;
                     t.runUp = 0;
-                }
-                else{
+                } else {
                     t.runUp = 0;
                     t.runDown = 0;
                 }
             } else {
                 if (controlsHeld.RIGHT == 1 && this.phase == 8) {
-                    if(t.actionState == Titan.TitanState.IDLE){
+                    if (t.actionState == Titan.TitanState.IDLE) {
                         t.runLeft = 0;
                         t.runRight = 1;
-                    }else{
+                    } else {
                         t.moveMemR = true;
                         t.moveMemL = false;
                     }
                 }
                 if (controlsHeld.LEFT == 1 && this.phase == 8) {
-                    if(t.actionState == Titan.TitanState.IDLE){
+                    if (t.actionState == Titan.TitanState.IDLE) {
                         t.runRight = 0;
                         t.runLeft = 1;
-                    }else{
+                    } else {
                         t.moveMemL = true;
                         t.moveMemR = false;
                     }
                 }
                 if (controlsHeld.UP == 1 && this.phase == 8) {
-                    if(t.actionState == Titan.TitanState.IDLE){
+                    if (t.actionState == Titan.TitanState.IDLE) {
                         t.runDown = 0;
                         t.runUp = 1;
-                    }else{
+                    } else {
                         t.moveMemU = true;
                         t.moveMemD = false;
                     }
                 }
                 if (controlsHeld.DOWN == 1 && this.phase == 8) {
-                    if(t.actionState == Titan.TitanState.IDLE){
+                    if (t.actionState == Titan.TitanState.IDLE) {
                         t.runUp = 0;
                         t.runDown = 1;
-                    }else{
+                    } else {
                         t.moveMemD = true;
                         t.moveMemU = false;
                     }
@@ -776,9 +819,9 @@ public class GameEngine extends Game {
                     }
                 } else {
                     if (t.fuel > 25.0) {
-                        t.fuel += .25;//regen bonus
+                        t.fuel += .18;//regen bonus
                     } else {
-                        t.fuel += .08;
+                        t.fuel += .07;
                     }
                     if (t.fuel > 100.0) {
                         t.fuel = 100.0;
@@ -811,17 +854,17 @@ public class GameEngine extends Game {
 
     private void gameDurationRuleChanges() throws Exception {
         final long FPS = 1000 / GAMETICK_MS;
-        if(framesSinceStart / FPS > GOALIE_DISABLE_TIME){
+        if ((options.goalieIndex == 1) && framesSinceStart / FPS > GOALIE_DISABLE_TIME) {
             cullGoalies();
         }
-        if(framesSinceStart / FPS > PAIN_DISABLE_TIME){
+        if (framesSinceStart / FPS > PAIN_DISABLE_TIME) {
             hoopDmg = false;
         }
-        if(framesSinceStart / FPS > SUDDEN_DEATH_TIME){
+        if (framesSinceStart / FPS > this.options.suddenDeathIndex * 60) {
             suddenDeath = true;
             checkWinCondition();
         }
-        if(framesSinceStart / FPS > TIE_TIME){
+        if (framesSinceStart / FPS > this.options.tieIndex * 60) {
             tieAble = true;
             checkWinCondition();
         }
@@ -853,7 +896,7 @@ public class GameEngine extends Game {
                 ball.X = (valuePlayerX + 35 - ball.centerDist);
                 ball.Y = (valuePlayerY + 35 - ball.centerDist);
             }
-            if(!GOALIE_DISABLED){
+            if (!GOALIE_DISABLED) {
                 if (numSel == 1) {//guardian exceptions
                     ball.X = (valuePlayerX + 57);
                     ball.Y = (valuePlayerY + 20);
@@ -909,7 +952,6 @@ public class GameEngine extends Game {
                 }
             }
         }
-        // }
     }
 
     protected void changePossessionStats(Titan lost, Titan gained) {
@@ -986,7 +1028,7 @@ public class GameEngine extends Game {
     protected void aiTactics(int pIndex, int minX, int maxX, int minY, int maxY) {
         Optional<Titan> tip = this.titanInPossession();
         //PlayerDivider client = clientFromIndex(pIndex);
-        if(pIndex < players.length){
+        if (pIndex < players.length) {
             Titan aiFor = players[pIndex]; //no sub1
             if (!anyClientSelected(pIndex + 1)) {
                 if (aiFor.X + 35 > (ball.X + ball.centerDist) && aiFor.X > minX) {
@@ -1070,13 +1112,34 @@ public class GameEngine extends Game {
             goalie.Y = 99999;
             return;
         }
-        if (effectPool.isRooted(goalie) || goalie.possession == 1) {
+        if (effectPool.isRooted(goalie)) {
             return;
         }
         int YMAX = GOALIE_Y_MAX, XMAX = GOALIE_XH_MAX, YMIN = GOALIE_Y_MIN, XMIN = GOALIE_XH_MIN;
         if (team == TeamAffiliation.AWAY) {
             XMAX = GOALIE_XA_MAX;
             XMIN = GOALIE_XA_MIN;
+        }
+        Rectangle ballBounds = new Rectangle((int) this.ball.X, (int) this.ball.Y, 30, 30);
+        for (GoalHoop goal : this.lowGoals) {
+            GoalSprite tempGoal = new GoalSprite(goal, 0, 0,new ScreenConst(1920,1080)); //Just for using the g2d intersect method
+            if (goalie.possession == 1 &&
+                    tempGoal.intersects(ballBounds) && goal.team.equals(TeamAffiliation.HOME)) {
+                if (!goalie.collidesSolid(this, allSolids, 0, (int) +goalie.speed)) {
+                    goalie.setX((int) (goalie.getX() + goalie.speed));
+                    if (goalie.getX() >  XMAX) goalie.setX(XMAX);
+                }
+            }
+            if (goalie.possession == 1 &&
+                    tempGoal.intersects(ballBounds) && goal.team.equals(TeamAffiliation.AWAY)) {
+                if (!goalie.collidesSolid(this, allSolids, 0, (int) - goalie.speed)) {
+                    goalie.setX((int) (goalie.getX() - goalie.speed));
+                    if (goalie.getX() <  XMIN) goalie.setX(XMIN);
+                }
+            }
+        }
+        if (goalie.possession == 1) {
+            return;
         }
         if (goalie.getY() + 35 < (ball.Y + ball.centerDist)) {
             if (!goalie.collidesSolid(this, allSolids, (int) goalie.speed, 0)) {
@@ -1106,11 +1169,8 @@ public class GameEngine extends Game {
 
     public void runRightAI(Titan t) {
         int maxX = 2070;
-        if (t.inactiveDir == 1 && !effectPool.isRooted(t)) {
+        if (t.inactiveDir == 1 && !effectPool.isRooted(t) && !effectPool.hasEffect(t, EffectId.DEAD)) {
             t.diagonalRunDir = 1;
-            System.out.println(allSolids);
-            System.out.println(allSolids[2]);
-            System.out.println(allSolids[2].team);
             if (!t.collidesSolid(this, allSolids, 0, (int) t.speed)) {
                 t.X += t.getSpeed();
                 if (t.X > maxX) t.X = maxX;
@@ -1126,7 +1186,7 @@ public class GameEngine extends Game {
 
     public void runLeftAI(Titan t) {
         int minX = -10;
-        if (t.inactiveDir == 2 && !effectPool.isRooted(t)) {
+        if (t.inactiveDir == 2 && !effectPool.isRooted(t) && !effectPool.hasEffect(t, EffectId.DEAD)) {
             if (!t.collidesSolid(this, allSolids, 0, (int) -t.speed)) {
                 t.diagonalRunDir = 2;
                 t.X -= t.getSpeed();
@@ -1142,7 +1202,7 @@ public class GameEngine extends Game {
     }
 
     public void runUpAI(Titan t) {
-        if (!effectPool.isRooted(t)) {
+        if (!effectPool.isRooted(t) && !effectPool.hasEffect(t, EffectId.DEAD)) {
             if (!t.collidesSolid(this, allSolids, (int) -t.speed, 0)) {
                 t.Y -= t.getSpeed();
                 t.runningFrameCounter += 1;
@@ -1181,7 +1241,7 @@ public class GameEngine extends Game {
                 players[1].setY((int) players[1].getY() - 4);
                 if (players[1].getY() < GOALIE_Y_MIN) players[1].setY(GOALIE_Y_MIN);
             }
-            int p= GOALIE_DISABLED ? 0 : 2;
+            int p = GOALIE_DISABLED ? 0 : 2;
             for (; p < players.length; p++) {
                 if (t.id.equals(players[p].id) && !effectPool.isRooted(t) &&
                         t.actionState == Titan.TitanState.IDLE) {
@@ -1190,7 +1250,7 @@ public class GameEngine extends Game {
                         if (t.X > ball.X) t.dirToBall = 2;
                         if (t.diagonalRunDir == 1) t.dirToBall = 1;
                         if (t.diagonalRunDir == 2) t.dirToBall = 2;
-                        t.translateBounded(0.0, -t.actualSpeed());
+                        t.translateBounded(this, 0.0, -t.actualSpeed());
                         t.runningFrameCounter += 1;
                         if (t.runningFrameCounter == 5) t.runningFrame = 1;
                         if (t.runningFrameCounter == 10) {
@@ -1213,7 +1273,7 @@ public class GameEngine extends Game {
                 players[1].setY((int) players[1].getY() + 4);
                 if (players[1].getY() > GOALIE_Y_MAX) players[1].setY(GOALIE_Y_MAX);
             }
-            int p= GOALIE_DISABLED ? 0 : 2;
+            int p = GOALIE_DISABLED ? 0 : 2;
             for (; p < players.length; p++) {
                 if (t.id.equals(players[p].id) && !effectPool.isRooted(t)
                         && t.actionState == Titan.TitanState.IDLE) {
@@ -1222,7 +1282,7 @@ public class GameEngine extends Game {
                         if (t.X > ball.X) t.dirToBall = 2;
                         if (t.diagonalRunDir == 1) t.dirToBall = 1;
                         if (t.diagonalRunDir == 2) t.dirToBall = 2;
-                        t.translateBounded(0.0, t.actualSpeed());
+                        t.translateBounded(this, 0.0, t.actualSpeed());
                         t.runningFrameCounter += 1;
                         if (t.runningFrameCounter == 5) t.runningFrame = 1;
                         if (t.runningFrameCounter == 10) {
@@ -1245,13 +1305,13 @@ public class GameEngine extends Game {
                 players[1].setX((int) players[1].getX() + 4);
                 if (players[1].getX() > GOALIE_XA_MAX) players[1].setX(GOALIE_XA_MAX);
             }
-            int p= GOALIE_DISABLED ? 0 : 2;
+            int p = GOALIE_DISABLED ? 0 : 2;
             for (; p < players.length; p++) {
                 if (t.id.equals(players[p].id) && !effectPool.isRooted(t)
                         && t.actionState == Titan.TitanState.IDLE) {
                     if (!t.collidesSolid(this, allSolids, 0, (int) t.speed)) {
                         t.diagonalRunDir = 1;
-                        t.translateBounded(t.actualSpeed(), 0.0);
+                        t.translateBounded(this, t.actualSpeed(), 0.0);
                         t.runningFrameCounter += 1;
                         if (t.runningFrameCounter == 5) t.runningFrame = 1;
                         if (t.runningFrameCounter == 10) {
@@ -1274,13 +1334,13 @@ public class GameEngine extends Game {
                 players[1].setX((int) players[1].getX() - 3);
                 if (players[1].getX() < GOALIE_XA_MIN) players[1].setX(GOALIE_XA_MIN);
             }
-            int p= GOALIE_DISABLED ? 0 : 2;
+            int p = GOALIE_DISABLED ? 0 : 2;
             for (; p < players.length; p++) {
                 if (t.id.equals(players[p].id) && !effectPool.isRooted(t)
                         && t.actionState == Titan.TitanState.IDLE) {
                     t.diagonalRunDir = 2;
                     if (!t.collidesSolid(this, allSolids, 0, (int) -t.speed)) {
-                        t.translateBounded(-t.actualSpeed(), 0.0);
+                        t.translateBounded(this, -t.actualSpeed(), 0.0);
                         t.runningFrameCounter += 1;
                         if (t.runningFrameCounter == 5) t.runningFrame = 1;
                         if (t.runningFrameCounter == 10) {
@@ -1309,7 +1369,7 @@ public class GameEngine extends Game {
             if (effectPool.isStunned(tip)) {
                 return;
             }
-            if (t.actionFrame == 0 && !t.getType().equals(TitanType.GUARDIAN)) {
+            if (t.actionFrame == 0 && !t.getType().equals(TitanType.GOALIE)) {
                 t.pushMove();
                 centerBall(t);
             }
@@ -1370,7 +1430,7 @@ public class GameEngine extends Game {
                 t.possession = 0;
                 setBallFromTip();
                 //Only check for lob intersections while near start or end
-                if(t.actionFrame < 8 || t.actionFrame > 30) {
+                if (t.actionFrame < 8 || t.actionFrame > 30) {
                     for (int i = 0; i < 8; i++) {
                         ball.X += 2.71 * xKickPow * tip.throwPower;
                         ball.Y -= 2.71 * yKickPow * tip.throwPower;
@@ -1379,7 +1439,7 @@ public class GameEngine extends Game {
                         detectGoals();
                         bounceWalls();
                     }
-                }else{
+                } else {
                     for (int i = 0; i < 8; i++) {
                         ball.X += 2.71 * xKickPow * tip.throwPower;
                         ball.Y -= 2.71 * yKickPow * tip.throwPower;
@@ -1546,8 +1606,10 @@ public class GameEngine extends Game {
     }
 
     void checkWinCondition() throws Exception {
-        //System.out.println("checking win cond");
-        if(!suddenDeath){
+        int SOFT_WIN = this.options.playToIndex;
+        int WIN_BY = this.options.winByIndex;
+        int HARD_WIN = this.options.hardWinIndex;
+        if (!suddenDeath) {
             if ((home.score >= SOFT_WIN && home.score - away.score >= WIN_BY) ||
                     home.score >= HARD_WIN) {
                 triggerWin(home);
@@ -1556,21 +1618,20 @@ public class GameEngine extends Game {
                     away.score >= HARD_WIN) {
                 triggerWin(away);
             }
-        }
-        else{
-            if(tieAble){
+        } else {
+            if (tieAble) {
                 triggerTie(away);
                 triggerTie(home);
-            }else{
-                if(extremeSuddenDeath){
-                    if (home.score > away.score){
+            } else {
+                if (extremeSuddenDeath) {
+                    if (home.score > away.score) {
                         triggerWin(home);
                     }
                     if (away.score > home.score) {
                         triggerWin(away);
                     }
-                }else{
-                    if ((int)home.score > (int) away.score) {
+                } else {
+                    if ((int) home.score > (int) away.score) {
                         triggerWin(home);
                     }
                     if ((int) away.score > (int) home.score) {

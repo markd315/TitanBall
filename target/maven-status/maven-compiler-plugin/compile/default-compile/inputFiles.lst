@@ -1,5 +1,6 @@
 C:\Users\markd\TitanBall\src\authserver\jwt\JwtAuthenticationEntryPoint.java
 C:\Users\markd\TitanBall\src\authserver\users\CustomUserDetailsService.java
+C:\Users\markd\TitanBall\src\client\graphical\Images.java
 C:\Users\markd\TitanBall\src\authserver\LoginApp.java
 C:\Users\markd\TitanBall\src\gameserver\engine\AbilityStrategy.java
 C:\Users\markd\TitanBall\src\authserver\models\User.java
@@ -16,7 +17,7 @@ C:\Users\markd\TitanBall\src\authserver\users\ClassService.java
 C:\Users\markd\TitanBall\src\gameserver\effects\cooldowns\CooldownR.java
 C:\Users\markd\TitanBall\src\gameserver\effects\effects\Effect.java
 C:\Users\markd\TitanBall\src\gameserver\entity\RangeCircle.java
-C:\Users\markd\TitanBall\src\client\GoalSprite.java
+C:\Users\markd\TitanBall\src\client\graphical\ScreenConst.java
 C:\Users\markd\TitanBall\src\authserver\users\ClassRepository.java
 C:\Users\markd\TitanBall\src\networking\KeyDifferences.java
 C:\Users\markd\TitanBall\src\networking\PlayerDivider.java
@@ -26,10 +27,10 @@ C:\Users\markd\TitanBall\src\authserver\models\ClassStat.java
 C:\Users\markd\TitanBall\src\client\HttpClient.java
 C:\Users\markd\TitanBall\src\networking\CandidateGame.java
 C:\Users\markd\TitanBall\src\gameserver\effects\effects\BombEffect.java
+C:\Users\markd\TitanBall\src\client\graphical\SelectClassSkins.java
 C:\Users\markd\TitanBall\src\gameserver\entity\minions\Portal.java
 C:\Users\markd\TitanBall\src\authserver\users\PersistenceManager.java
 C:\Users\markd\TitanBall\src\gameserver\models\Game.java
-C:\Users\markd\TitanBall\src\gameserver\TutorialTenant.java
 C:\Users\markd\TitanBall\src\authserver\LoginController.java
 C:\Users\markd\TitanBall\src\authserver\SpringContext.java
 C:\Users\markd\TitanBall\src\gameserver\targeting\ShapePayload.java
@@ -37,7 +38,6 @@ C:\Users\markd\TitanBall\src\gameserver\entity\Collidable.java
 C:\Users\markd\TitanBall\src\gameserver\effects\effects\SlowEffect.java
 C:\Users\markd\TitanBall\src\gameserver\entity\minions\Trap.java
 C:\Users\markd\TitanBall\src\gameserver\effects\effects\EmptyEffect.java
-C:\Users\markd\TitanBall\src\client\SelectClassSkins.java
 C:\Users\markd\TitanBall\src\gameserver\targeting\Filter.java
 C:\Users\markd\TitanBall\src\client\ChaosballClient.java
 C:\Users\markd\TitanBall\src\gameserver\effects\effects\FastEffect.java
@@ -46,11 +46,11 @@ C:\Users\markd\TitanBall\src\authserver\users\UserRepository.java
 C:\Users\markd\TitanBall\src\gameserver\entity\Entity.java
 C:\Users\markd\TitanBall\src\gameserver\targeting\Targeting.java
 C:\Users\markd\TitanBall\src\util\Util.java
-C:\Users\markd\TitanBall\src\client\ScreenConst.java
 C:\Users\markd\TitanBall\src\gameserver\targeting\DistanceFilter.java
 C:\Users\markd\TitanBall\src\authserver\models\DTO\UserDTO.java
 C:\Users\markd\TitanBall\src\gameserver\targeting\Limiter.java
 C:\Users\markd\TitanBall\src\networking\ClientPacket.java
+C:\Users\markd\TitanBall\src\client\graphical\GoalSprite.java
 C:\Users\markd\TitanBall\src\authserver\jwt\JwtTokenProvider.java
 C:\Users\markd\TitanBall\src\authserver\SpringContextBridge.java
 C:\Users\markd\TitanBall\src\authserver\models\responses\UserResponse.java
@@ -61,6 +61,7 @@ C:\Users\markd\TitanBall\src\gameserver\entity\minions\BallPortal.java
 C:\Users\markd\TitanBall\src\gameserver\ServerApplication.java
 C:\Users\markd\TitanBall\src\gameserver\engine\TeamAffiliation.java
 C:\Users\markd\TitanBall\src\client\forms\LoginListener.java
+C:\Users\markd\TitanBall\src\gameserver\engine\GameOptions.java
 C:\Users\markd\TitanBall\src\gameserver\engine\StatEngine.java
 C:\Users\markd\TitanBall\src\gameserver\entity\TitanType.java
 C:\Users\markd\TitanBall\src\gameserver\targeting\SelectorOffset.java
@@ -75,8 +76,6 @@ C:\Users\markd\TitanBall\src\gameserver\entity\Box.java
 C:\Users\markd\TitanBall\src\gameserver\effects\effects\HideBallEffect.java
 C:\Users\markd\TitanBall\src\authserver\SpringSecurityConfig.java
 C:\Users\markd\TitanBall\src\client\ChaosballWindow.java
-C:\Users\markd\TitanBall\src\client\Images.java
-C:\Users\markd\TitanBall\src\client\StaticImage.java
 C:\Users\markd\TitanBall\src\gameserver\effects\effects\FlareEffect.java
 C:\Users\markd\TitanBall\src\gameserver\entity\Titan.java
 C:\Users\markd\TitanBall\src\gameserver\GameEngine.java
@@ -89,6 +88,7 @@ C:\Users\markd\TitanBall\src\gameserver\effects\effects\BleedEffect.java
 C:\Users\markd\TitanBall\src\gameserver\engine\GoalHoop.java
 C:\Users\markd\TitanBall\src\authserver\matchmaking\Match.java
 C:\Users\markd\TitanBall\src\authserver\jwt\JwtAuthenticationFilter.java
+C:\Users\markd\TitanBall\src\client\graphical\StaticImage.java
 C:\Users\markd\TitanBall\src\gameserver\effects\EffectPool.java
 C:\Users\markd\TitanBall\src\authserver\matchmaking\Rating.java
 C:\Users\markd\TitanBall\src\gameserver\effects\effects\TestEffect.java

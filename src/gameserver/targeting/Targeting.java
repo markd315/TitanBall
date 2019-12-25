@@ -23,10 +23,9 @@ public class Targeting {
     public Targeting(Selector sel, Filter fil, Limiter lim, GameEngine context){
     //initialize and call children with entity array
         entities = new HashSet<>();
-        List<Entity> entityList = Arrays.asList(context.allSolids);
-        for(Entity e : entityList){
-            entities.add(e);
-        }
+        entities.addAll(context.entityPool);
+        //entities.addAll(context.allSolids);
+        entities.addAll(Arrays.asList(context.players));
         selector = sel;
         filter = fil;
         limiter = lim;
@@ -46,11 +45,20 @@ public class Targeting {
 
     public Set<Entity> process(int mX, int mY, Entity casting, int ballX, int ballY){
         //System.out.println("processing");
+        for(Entity e : entities){
+            //System.out.println("pool " + e.team + e.health);
+        }
         Set<Entity> ret = selector.select(entities, mX, mY, casting);
+        for(Entity e : ret){
+            //System.out.println("sel " + e.team + e.health);
+        }
         ret = filter.process(ret, casting);
+        for(Entity e : ret){
+            //System.out.println("fil " + e.team + e.health);
+        }
         ret = limiter.process(ret, casting, mX, mY, ballX, ballY);
         for(Entity e : ret){
-            //System.out.println("pro " + e.team + e.health);
+            //System.out.println("lim " + e.team + e.health);
         }
         return ret;
     }
