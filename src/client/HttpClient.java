@@ -81,18 +81,19 @@ public class HttpClient {
         }
     }
 
-    public void join() throws UnirestException {
-        while (joinRequest() == 401) {
+    public void join(String tournamentCode) throws UnirestException {
+        while (joinRequest(tournamentCode) == 401) {
             token = null;
             System.out.println("Session expired, refreshing token");
             refresh(refreshToken);
         }
     }
 
-    public int joinRequest() throws UnirestException {
+    public int joinRequest(String tournamentCode) throws UnirestException {
         try {
             HttpResponse<String> response = Unirest.get(springEndpoint() + "join")
                     .header("Authorization", "Bearer " + token)
+                    .queryString("tournamentCode", tournamentCode)
                     .asString();
             System.out.println("statusCode = " + response.getStatus());
             gameId = response.getBody();
@@ -103,15 +104,19 @@ public class HttpClient {
         }
     }
 
-    public void leave() throws UnirestException {
+    public void leave(){
         while (leaveRequest() == 401) {
             token = null;
             System.out.println("Session expired, refreshing token");
-            refresh(refreshToken);
+            try {
+                refresh(refreshToken);
+            } catch (UnirestException e) {
+                e.printStackTrace();
+            }
         }
     }
 
-    public int leaveRequest() throws UnirestException {
+    public int leaveRequest(){
         try {
             HttpResponse<String> response = Unirest.get(springEndpoint() + "leave")
                     .header("Authorization", "Bearer " + token)

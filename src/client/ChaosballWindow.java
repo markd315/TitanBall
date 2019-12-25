@@ -4,12 +4,16 @@ package client;
  * */
 
 import client.forms.LoginForm;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 
 import javax.swing.*;
 import java.awt.*;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Scanner;
 
 public class ChaosballWindow extends JFrame {
@@ -21,8 +25,20 @@ public class ChaosballWindow extends JFrame {
     }
 
     private void initUI() {
-        int xSize = 1920;
+        int xSize = 1920; //sane defaults
         int ySize = 1080;
+        ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+        try {
+            Map<String, String> keymap = mapper.readValue(new File("config.yaml"), HashMap.class);
+            xSize = Integer.parseInt(keymap.get("Xres").replaceAll("px",""));
+            ySize = Integer.parseInt(keymap.get("Yres").replaceAll("px",""));
+            double scl = Double.parseDouble(keymap.get("SCALE").replaceAll("%", ""));
+            xSize *= 1.5/(scl/100.0);
+            ySize *= 1.5/(scl/100.0);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
         ChaosballClient client = new ChaosballClient(xSize, ySize, loginClient);
         add(client);
 

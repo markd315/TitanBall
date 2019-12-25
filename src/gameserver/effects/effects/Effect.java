@@ -1,6 +1,6 @@
 package gameserver.effects.effects;
 
-import client.StaticImage;
+import client.graphical.StaticImage;
 import gameserver.GameEngine;
 import gameserver.effects.EffectId;
 import gameserver.entity.Entity;

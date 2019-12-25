@@ -1,8 +1,6 @@
 package gameserver.entity.minions;
 
 import gameserver.GameEngine;
-import gameserver.effects.EffectId;
-import gameserver.effects.effects.EmptyEffect;
 import gameserver.engine.TeamAffiliation;
 import gameserver.entity.Box;
 import gameserver.entity.Collidable;
@@ -20,8 +18,8 @@ public class Trap extends gameserver.entity.Entity implements Collidable {
         this.setY(y);
         this.width = 50;
         this.height = 50;
-        this.health = 50;
-        this.maxHealth = 50;
+        this.health = 15;
+        this.maxHealth = 15;
         this.solid = false;
     }
 
@@ -31,7 +29,7 @@ public class Trap extends gameserver.entity.Entity implements Collidable {
             Entity entity = (Entity) box;
             if (entity.team != this.team) {
                 Titan titan = context.titanByID(caster).get();
-                context.effectPool.addStackingEffect(titan, new EmptyEffect(5000, entity, EffectId.ATTACKED));
+                //context.effectPool.addCasterUniqueEffect(new EmptyEffect(5000, entity, EffectId.ATTACKED), titan);
                 entity.damage(context, 1.25);
             }
         }

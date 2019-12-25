@@ -34,17 +34,25 @@ public class DeadEffect extends Effect {
     public void onCease(GameEngine context) {
         if(on instanceof Titan) {
             if (on.team == TeamAffiliation.HOME) {
-                on.X = 133;
-                on.Y = 584;
+                on.X = context.homeHiGoal.x + (context.homeHiGoal.w / 2);
+                on.Y = context.homeHiGoal.y + (context.homeHiGoal.h / 2);
                 while (on.collidesSolid(context, context.allSolids)) {
-                    on.Y += 35;
+                    on.X -= 35;
+                    if(on.X < context.E_MIN_X){
+                        on.X = context.E_MIN_X;
+                        on.Y +=35;
+                    }
                 }
             }
             if (on.team == TeamAffiliation.AWAY) {
-                on.X = 1923;
-                on.Y = 584;
+                on.X = context.awayHiGoal.x + (context.awayHiGoal.w / 2.0);
+                on.Y = context.awayHiGoal.y + (context.awayHiGoal.h / 2.0);
                 while (on.collidesSolid(context, context.allSolids)) {
-                    on.Y += 35;
+                    on.X += 35;
+                    if(on.X > context.E_MAX_X){
+                        on.X = context.E_MAX_X;
+                        on.Y +=35;
+                    }
                 }
             }
             on.health = on.maxHealth;

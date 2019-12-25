@@ -1,5 +1,6 @@
 package gameserver.targeting;
 
+import client.graphical.ScreenConst;
 import gameserver.engine.TeamAffiliation;
 import gameserver.entity.Titan;
 import org.joda.time.Instant;
@@ -54,18 +55,26 @@ public class ShapePayload {
 
     }
 
-    public Shape fromWithCamera(int camX, int camY) {
+    public Shape fromWithCamera(int camX, int camY, ScreenConst sconst) {
         if(this.type == ShapeSelector.ELLIPSE){
-            return new Ellipse2D.Double(this.x - camX, this.y - camY, this.w, this.h);
+            double xt = sconst.adjX(x - camX);
+            double wt = sconst.adjX(w);
+            double yt = sconst.adjY(y - camY);
+            double ht = sconst.adjY(h);
+            return new Ellipse2D.Double(xt, yt, wt, ht);
         }
         if(this.type == ShapeSelector.TRI){
             for(int i=0; i<xp.length; i++){
-                this.xp[i] -= camX;
-                this.yp[i] -= camY;
+                this.xp[i] = (int) sconst.adjX(this.xp[i] - camX);
+                this.yp[i] = sconst.adjY(this.xp[i] - camY);
             }
             return new Polygon(this.xp, this.yp, 3);
         }
-        return new Rectangle(this.x - camX, this.y - camY, this.w, this.h);
+        int xt = (int) sconst.adjX(x - camX);
+        int wt = (int) sconst.adjX(w);
+        int yt = sconst.adjY(y - camY);
+        int ht = sconst.adjY(h);
+        return new Rectangle(xt, yt, wt, ht);
     }
 
     public void setColor(Titan caster) {

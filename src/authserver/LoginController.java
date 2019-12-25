@@ -126,8 +126,8 @@ public class LoginController {
     }
 
     @RequestMapping("/join")
-    public ResponseEntity<String> joinLobby(Authentication auth) throws IOException {
-        userPool.registerIntent(auth);
+    public ResponseEntity<String> joinLobby(Authentication auth, @RequestParam String tournamentCode) throws IOException {
+        userPool.registerIntent(auth, tournamentCode);
         return new ResponseEntity<>(userPool.findGame(auth), HttpStatus.OK);
     }
 
@@ -138,7 +138,7 @@ public class LoginController {
         if(!game.equals("NOT QUEUED")){
             return new ResponseEntity<>(game, HttpStatus.BAD_REQUEST);
         }
-        return new ResponseEntity<>("Successfully withdrawn", HttpStatus.BAD_REQUEST);
+        return new ResponseEntity<>("Successfully withdrawn", HttpStatus.OK);
     }
 
     @RequestMapping(value = "/stat", method = RequestMethod.POST)

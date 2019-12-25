@@ -3,6 +3,8 @@ package gameserver.engine;
 
 import org.joda.time.Instant;
 
+import java.awt.geom.Rectangle2D;
+
 public class GoalHoop{
     public Instant nextAvailable;
     public boolean onCooldown, frozen;
@@ -51,5 +53,9 @@ public class GoalHoop{
 
     public Instant getNextAvailable(){
         return nextAvailable;
+    }
+
+    public Rectangle2D asRect() {
+        return new Rectangle2D.Double(x, y, w, h);
     }
 }

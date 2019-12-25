@@ -26,8 +26,8 @@ public class Portal extends gameserver.entity.Entity implements Collidable {
         this.setY(y);
         this.width = 50;
         this.height = 50;
-        this.health = 40;
-        this.maxHealth = 40;
+        this.health = 20;
+        this.maxHealth = 20;
         this.solid = false;
         this.createdById = pl.id;
         this.createdAt = Instant.now();
@@ -77,7 +77,8 @@ public class Portal extends gameserver.entity.Entity implements Collidable {
     public void triggerCollide(GameEngine context, Box entity) {
         if (!this.isCooldown()) {
             Optional<Portal> p = findFriendlyPortal(context, this.createdById);
-            if (p.isPresent() && !p.get().isCooldown() && entity instanceof Titan) {
+            if (p.isPresent() && !p.get().isCooldown()
+                    && entity instanceof Titan && ((Titan) entity).team == p.get().team) {
                 this.triggerCd();
                 p.get().triggerCd();
                 int x = (int)p.get().getX() + 25 - 35;

@@ -1,16 +1,13 @@
 package gameserver.models;
 
-import networking.ClientPacket;
 import gameserver.effects.EffectPool;
-import gameserver.engine.GoalHoop;
-import gameserver.engine.StatEngine;
-import gameserver.engine.Team;
-import gameserver.engine.TeamAffiliation;
+import gameserver.engine.*;
 import gameserver.entity.Box;
 import gameserver.entity.Entity;
 import gameserver.entity.Titan;
 import gameserver.entity.TitanType;
 import gameserver.targeting.ShapePayload;
+import networking.ClientPacket;
 import networking.PlayerDivider;
 
 import java.util.ArrayList;
@@ -21,7 +18,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class Game {
     public String gameId;
     public UUID lastPossessed;
-    public static final double SOFT_WIN = 5.0, WIN_BY = 2.0, HARD_WIN = 999.0;
     public static final long GAMETICK_MS = 24;
     public List<PlayerDivider> clients;
     public ClientPacket[] lastControlPacket = null;
@@ -34,9 +30,9 @@ public class Game {
     public Titan underControl = null; //Only set by the gameserver right before pushing an update
     public boolean ended = false;
     public StatEngine stats = new StatEngine();
-    public static final int MAX_X = 2055;
+    public static final int MAX_X = 2048;
     public static final int E_MAX_X = 2030;
-    public static final int MAX_Y = 995;
+    public static final int MAX_Y = 988;
     public static final int E_MAX_Y = 950;
     public static final int MIN_X = 36;
     public static final int E_MIN_X = -10;
@@ -44,10 +40,10 @@ public class Game {
     public static final int E_MIN_Y = 170;
     public static final int GOALIE_Y_MAX = 890;
     public static final int GOALIE_Y_MIN = 290;
-    public static final int GOALIE_XH_MAX = 179;
-    public static final int GOALIE_XH_MIN = 43;
-    public static final int GOALIE_XA_MAX = 2002;
-    public static final int GOALIE_XA_MIN = 1866;
+    public static final int GOALIE_XH_MAX = 289;
+    public static final int GOALIE_XH_MIN = 133;
+    public static final int GOALIE_XA_MAX = 1912;
+    public static final int GOALIE_XA_MIN = 1776;
     protected static final int FIELD_LENGTH = 2050;
     protected static final int TOP_WING_ST = 0;
     protected static final int TOP_WING_END = 500;
@@ -64,7 +60,7 @@ public class Game {
     protected static final int BOT_WING_HOME = 887;
     protected static final int T_CIRCLE_WING_HOME = 450;
     protected static final int B_CIRCLE_WING_HOME = 750;
-    protected static final int DEFENDER_HOME = 325;
+    protected static final int DEFENDER_HOME = 455;
     protected static final int MID_HOME = 850;
     protected static final int FW_HOME = 900;
     public int framesSinceStart = 0;
@@ -74,8 +70,7 @@ public class Game {
     protected boolean tieAble = false;
     public final double GOALIE_DISABLE_TIME = 300.0; //300
     public final double PAIN_DISABLE_TIME = 420.0; //420
-    public final double SUDDEN_DEATH_TIME = 600.0; //600
-    public final double TIE_TIME = 720.0; //720
+    public GameOptions options;
 
     public EffectPool effectPool = new EffectPool();
     public List<Entity> entityPool = new ArrayList<>();
@@ -85,18 +80,18 @@ public class Game {
     public boolean began = false;
     public double xKickPow, yKickPow;
 
-    public static final int HOME_HI_X = 133;
+    public static final int HOME_HI_X = 223;
     public static final int HOME_HI_Y = 584;
-    public static final int AWAY_HI_X = 1923;
+    public static final int AWAY_HI_X = 1833;
     public static final int AWAY_HI_Y = 584;
 
-    Titan hGol = new Titan(0, 0, TeamAffiliation.HOME, TitanType.GUARDIAN);
-    Titan awGol = new Titan(1200, 400, TeamAffiliation.AWAY, TitanType.GUARDIAN);
+    Titan hGol = new Titan(0, 0, TeamAffiliation.HOME, TitanType.GOALIE);
+    Titan awGol = new Titan(1200, 400, TeamAffiliation.AWAY, TitanType.GOALIE);
 
     public Titan[] players = {hGol,
             awGol,
             new Titan(0, 0, TeamAffiliation.HOME, TitanType.WARRIOR),
-            new Titan(0, 0, TeamAffiliation.HOME, TitanType.SLASHER),
+            new Titan(0, 0, TeamAffiliation.HOME, TitanType.DASHER),
             new Titan(0, 0, TeamAffiliation.HOME, TitanType.MAGE),
             //warrior mage are bad somehow in goalie mode idx 2,4
             new Titan(0, 0, TeamAffiliation.HOME, TitanType.SUPPORT),
@@ -109,10 +104,10 @@ public class Game {
     public GoalHoop homeHiGoal = new GoalHoop(HOME_HI_X, HOME_HI_Y, 56, 70, TeamAffiliation.HOME);
     public GoalHoop awayHiGoal = new GoalHoop(AWAY_HI_X, AWAY_HI_Y, 56, 70, TeamAffiliation.AWAY);
     public GoalHoop[] hiGoals = {homeHiGoal, awayHiGoal};
-    public GoalHoop[] lowGoals = {new GoalHoop(189, 353, 23, 97, TeamAffiliation.HOME),
-            new GoalHoop(189, 789, 23, 97, TeamAffiliation.HOME),
-            new GoalHoop(1901, 353, 23, 97, TeamAffiliation.AWAY),
-            new GoalHoop(1901, 789, 23, 97, TeamAffiliation.AWAY)};
+    public GoalHoop[] lowGoals = {new GoalHoop(265, 348, 43, 107, TeamAffiliation.HOME),
+            new GoalHoop(265, 784, 43, 107, TeamAffiliation.HOME),
+            new GoalHoop(1815, 348, 43, 107, TeamAffiliation.AWAY),
+            new GoalHoop(1815, 784, 43, 107, TeamAffiliation.AWAY)};
     public Team away = new Team(TeamAffiliation.AWAY, 0.0, awayHiGoal, lowGoals[2], lowGoals[3]);
     public Team home = new Team(TeamAffiliation.HOME, 0.0, homeHiGoal, lowGoals[0], lowGoals[1],
             players);

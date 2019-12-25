@@ -21,10 +21,10 @@ public class ControlsConfig {
         ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
         try {
             if(useRtsConfig) {
-                keymap = mapper.readValue(new File("rts.yaml"), HashMap.class);
+                keymap = mapper.readValue(new File("ctrls_example_rts.yaml"), HashMap.class);
             }
             else {
-                keymap = mapper.readValue(new File("keys.yaml"), HashMap.class);
+                keymap = mapper.readValue(new File("config.yaml"), HashMap.class);
             }
 
         } catch (Exception e) {
@@ -39,6 +39,12 @@ public class ControlsConfig {
 
     //returns if detected, but also updates packet
     public boolean mapKeyPress(ChaosballClient client, ClientPacket prior, String newKey){
+        try{ //overrides for number/letters in config file
+            int i = Integer.parseInt(newKey);
+            if(i >= 48 && i <= 96){
+                newKey = "" + (char) i;
+            }
+        }catch(Exception ex1){}
         if(keymap.containsKey(newKey)){
             String value = keymap.get(newKey);
             switch(value){
@@ -102,6 +108,12 @@ public class ControlsConfig {
 
     //returns if detected, but also updates packet
     public boolean mapKeyRelease(ClientPacket prior, String newKey){
+        try{ //overrides for number/letters in config file
+            int i = Integer.parseInt(newKey);
+            if(i >= 48 && i <= 96){
+                newKey = "" + (char) i;
+            }
+        }catch(Exception ex1){}
         if(keymap.containsKey(newKey)){
             String value = keymap.get(newKey);
             switch(value){

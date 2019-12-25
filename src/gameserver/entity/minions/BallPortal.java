@@ -26,8 +26,8 @@ public class BallPortal extends Entity implements Collidable {
         this.setY(y);
         this.width = 50;
         this.height = 50;
-        this.health = 40;
-        this.maxHealth = 40;
+        this.health = 20;
+        this.maxHealth = 20;
         this.solid = false;
         this.createdById = pl.id;
         this.createdAt = Instant.now();

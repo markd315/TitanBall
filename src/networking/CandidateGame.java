@@ -1,6 +1,8 @@
 package networking;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 public class CandidateGame {
 
@@ -14,7 +16,7 @@ public class CandidateGame {
         System.out.println("AWAY");
         print(away);
         System.out.println(elogap);
-        if(elogap < this.elogap){
+        if(elogap < this.elogap || home.size() + away.size() < 2){
             System.out.println("updating optimum match");
             this.elogap = elogap;
             this.home = home;
@@ -35,9 +37,13 @@ public class CandidateGame {
 
     public List<PlayerConnection> bestMonteCarloBalance(List<List<Integer>> availableSlots) {
         ArrayList<PlayerConnection> combined = new ArrayList<>();
-        combined.addAll(this.home);
-        combined.addAll(this.away);
-        print(combined);
+        if(this.home != null){
+            combined.addAll(this.home);
+        }
+        if(this.away != null){
+            combined.addAll(this.away);
+        }
+        //print(combined);
         for(int i=0; i<combined.size(); i++){
             System.out.println(combined.get(i).id + "" +combined.get(i).email +" to "+availableSlots.get(i).get(0));
             combined.get(i).setPossibleSelection(availableSlots.get(i));
