@@ -341,17 +341,21 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
         }
         if (phase == 101) {
             this.game = tut;
-            updateFrameBall();
-            doDrawing(g2D); // do drawing of screen
-            displayBallArrow(g2D);
-            displayScore(g2D); // call the method to display the game score
-            updateNarration(tut);
             if(this.game.phase == 2){ //finish tutorial
                 exec.shutdown();
                 phase = this.game.phase;
                 this.game = null;
+                this.controlsHeld.classSelection = null;
                 this.tut = null;
                 Thread.yield();
+                return;
+            }
+            else{
+                updateFrameBall();
+                doDrawing(g2D); // do drawing of screen
+                displayBallArrow(g2D);
+                displayScore(g2D); // call the method to display the game score
+                updateNarration(tut);
             }
         }
         if (phase == 69) {
@@ -1141,6 +1145,15 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
     public void keyPressed(KeyEvent ke) {
         int key = ke.getKeyCode();
         // ONLY IF SET ON debugCamera =1
+        if (game != null && game.ended) {
+            System.out.println("looking");
+            if(key == KeyEvent.VK_BACK_SPACE || key == KeyEvent.VK_SPACE ||
+                    key == KeyEvent.VK_ESCAPE || key == KeyEvent.VK_ENTER){
+                System.out.println("trigd");
+                game = null;
+                phase = 2;
+            }
+        }
         if(phase == 69){
             if(key == KeyEvent.VK_BACK_SPACE || key == KeyEvent.VK_DELETE){
                 if(tournamentCode.length() > 0){
@@ -1201,6 +1214,9 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
         }
         if(key == KeyEvent.VK_ESCAPE && phase == 5){
             loginClient.leave();
+            phase = 2;
+        }
+        if(key == KeyEvent.VK_ESCAPE && phase == 3){
             phase = 2;
         }
         if (key == KeyEvent.VK_SPACE && (phase == 8 || phase == 9 || phase == 101) && keysEnabled) {
@@ -1369,8 +1385,9 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
         if (cursor == 7) controlsHeld.classSelection = TitanType.SUPPORT;
         if (cursor == 8) controlsHeld.classSelection = TitanType.STEALTH;
         if (cursor == 9) controlsHeld.classSelection = TitanType.GOLEM;
-        if (cursor == 10) controlsHeld.classSelection = TitanType.BUILDER;
+        if (cursor == 10) controlsHeld.classSelection= TitanType.BUILDER;
         if (cursor > 10) controlsHeld.classSelection = TitanType.GOALIE;
+        System.out.println(controlsHeld.classSelection);
         if (masteries != controlsHeld.masteries) {
             controlsHeld.masteries = masteries;
         }
@@ -1810,6 +1827,7 @@ public class ChaosballClient extends JPanel implements ActionListener, KeyListen
         @Override
         public void run() {
             if (context.ended) {
+                controlsHeld.classSelection = null;
                 System.out.println("suspending game thread");
                 exec.shutdown();
             } else {

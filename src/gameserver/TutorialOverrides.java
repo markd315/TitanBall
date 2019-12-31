@@ -153,9 +153,17 @@ public class TutorialOverrides extends GameEngine{
             case 5:
                 this.players[2].setType(TitanType.MARKSMAN);
                 this.players[2].setVarsBasedOnType();
-                this.underControl.setType(TitanType.MARKSMAN);
-                this.underControl.setVarsBasedOnType();
+                if(this.underControl != null){
+                    this.underControl.setType(TitanType.MARKSMAN);
+                    this.underControl.setVarsBasedOnType();
+                }
                 if(stats.statConditionalMet(client, StatEngine.StatEnum.GOALS, 1)){
+                    tutReset();
+                    this.underControl.setType(TitanType.GOALIE);
+                    this.underControl = null;
+                    this.began = false;
+                    this.lastControlPacket = null;
+                    this.client = null;
                     phase = 2;
                     /*players = tutMap.get("score");
                     ball.setX(ballMap.get("score").X);
