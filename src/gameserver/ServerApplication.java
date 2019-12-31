@@ -104,8 +104,8 @@ public class ServerApplication {
         Set<String> rm = new HashSet<>();
         for (String id : states.keySet()) {
             GameTenant val = states.get(id);
-            if(val.options.toStringSrv().equals("/3/1/1/5/2/9999/10/12")) {//default public mode only for ratings
-                if (val != null && val.state != null && val.state.ended) {
+            if (val.state != null && val.state.ended) {
+                if(val.options.toStringSrv().equals("/3/1/1/5/2/9999/10/12")) {//default public mode only for ratings
                     injectRatingsToPlayers(val.state);
                     for (PlayerDivider player : val.state.clients) {
                         try {
@@ -118,9 +118,9 @@ public class ServerApplication {
                             e.printStackTrace();
                         }
                     }
-                    rm.add(id);
-                    matchmaker.endGame(id);
                 }
+                rm.add(id);
+                matchmaker.endGame(id);
             }
         }
         for (String id : rm) {
