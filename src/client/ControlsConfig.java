@@ -2,6 +2,7 @@ package client;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import gameserver.engine.GameEngine;
 import gameserver.entity.Titan;
 import networking.ClientPacket;
 
@@ -21,10 +22,10 @@ public class ControlsConfig {
         ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
         try {
             if(useRtsConfig) {
-                keymap = mapper.readValue(new File("ctrls_example_rts.yaml"), HashMap.class);
+                keymap = mapper.readValue(new File("res/ctrls_example_rts.yaml"), HashMap.class);
             }
             else {
-                keymap = mapper.readValue(new File("config.yaml"), HashMap.class);
+                keymap = mapper.readValue(new File("res/config.yaml"), HashMap.class);
             }
 
         } catch (Exception e) {
@@ -33,12 +34,12 @@ public class ControlsConfig {
         }
     }
 
-    public boolean mapKeyPress(ChaosballClient client, ClientPacket prior, int newKey){
-        return mapKeyPress(client, prior, ""+newKey);
+    public boolean mapKeyPress(GameEngine game, ClientPacket prior, int newKey, Sound shotSound){
+        return mapKeyPress(game, prior, ""+newKey, shotSound);
     }
 
     //returns if detected, but also updates packet
-    public boolean mapKeyPress(ChaosballClient client, ClientPacket prior, String newKey){
+    public boolean mapKeyPress(GameEngine game, ClientPacket prior, String newKey, Sound shotSound){
         try{ //overrides for number/letters in config file
             int i = Integer.parseInt(newKey);
             if(i >= 48 && i <= 96){
@@ -55,16 +56,16 @@ public class ControlsConfig {
                     prior.R = true;
                     break;
                 case "SHOT":
-                    Optional<Titan> tip = client.game.titanInPossession();
-                    if(tip.isPresent() && tip.get().id.equals(client.game.underControl.id)) {
-                        client.shotSound.rewindStart();
+                    Optional<Titan> tip = game.titanInPossession();
+                    if(tip.isPresent() && tip.get().id.equals(game.underControl.id)) {
+                        shotSound.rewindStart();
                     }
                     prior.shotBtn = true;
                     break;
-                case "PASS":
-                    tip = client.game.titanInPossession();
-                    if(tip.isPresent() && tip.get().id.equals(client.game.underControl.id)) {
-                        client.shotSound.rewindStart();
+                case "LOB":
+                    tip = game.titanInPossession();
+                    if(tip.isPresent() && tip.get().id.equals(game.underControl.id)) {
+                        shotSound.rewindStart();
                     }
                     prior.passBtn = true;
                     break;
@@ -126,7 +127,7 @@ public class ControlsConfig {
                 case "SHOT":
                     prior.shotBtn = false;
                     break;
-                case "PASS":
+                case "LOB":
                     prior.passBtn = false;
                     break;
                 case "UP":

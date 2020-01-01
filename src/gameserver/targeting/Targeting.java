@@ -1,9 +1,12 @@
 package gameserver.targeting;
 
-import gameserver.GameEngine;
+import gameserver.engine.GameEngine;
 import gameserver.engine.TeamAffiliation;
 import gameserver.entity.Entity;
 import gameserver.entity.TitanType;
+import gameserver.targeting.core.Filter;
+import gameserver.targeting.core.Limiter;
+import gameserver.targeting.core.Selector;
 
 import java.util.*;
 

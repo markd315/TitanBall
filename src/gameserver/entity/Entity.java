@@ -1,7 +1,7 @@
 package gameserver.entity;
 
 
-import gameserver.GameEngine;
+import gameserver.engine.GameEngine;
 import gameserver.effects.EffectId;
 import gameserver.effects.effects.DeadEffect;
 import gameserver.engine.TeamAffiliation;

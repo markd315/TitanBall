@@ -1,9 +1,10 @@
-package gameserver.targeting;
+package gameserver.targeting.core;
 
 import gameserver.engine.TeamAffiliation;
 import gameserver.entity.Entity;
 import gameserver.entity.Titan;
 import gameserver.entity.TitanType;
+import gameserver.targeting.DistanceFilter;
 
 import java.awt.geom.Point2D;
 import java.util.Collections;

@@ -1,4 +1,4 @@
-package gameserver;
+package gameserver.tenancy;
 
 import authserver.SpringContextBridge;
 import authserver.jwt.JwtTokenProvider;
@@ -11,6 +11,7 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryonet.Connection;
 import com.esotericsoftware.kryonet.Listener;
 import com.esotericsoftware.kryonet.Server;
+import gameserver.engine.GameEngine;
 import gameserver.engine.GameOptions;
 import gameserver.engine.TeamAffiliation;
 import gameserver.entity.Titan;
@@ -25,7 +26,7 @@ import java.util.*;
 
 public class ServerApplication {
     public static final boolean PAYWALL = false;
-    static Map<String, GameTenant> states = null; //UUID onto game
+    static Map<String, GameTenant> states = null; //game UUID onto game
 
     static Matchmaker matchmaker;
 
@@ -74,9 +75,26 @@ public class ServerApplication {
         System.out.println("server listening 54555 for game changes");
     }
 
-    public static void addNewGame(String id, GameOptions op) {
+    public static void addNewGame(String id, GameOptions op, Set<String> gameFor) {
         System.out.println("adding new game, id " + id);
+        cleanupCorruptStates(gameFor);
         states.put(id, new GameTenant(id, op));
+        System.out.println("game map size: " + states.size());
+    }
+
+    private static void cleanupCorruptStates(Set<String> gameFor) {
+        Set<String> rm = new HashSet<>();
+        for(String id : states.keySet()){
+            GameTenant gt = states.get(id);
+            boolean userFound = gt.gameContainsEmail(gameFor);
+            if(userFound){
+                rm.add(id);
+            }
+        }
+        for(String id : rm){
+            System.out.println("removed a corrupt state! (somehow)");
+            states.remove(id);//avoid comod
+        }
     }
 
     public static void delegatePacket(Connection connection, ClientPacket packet) {

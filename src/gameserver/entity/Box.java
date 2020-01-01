@@ -1,6 +1,6 @@
 package gameserver.entity;
 
-import gameserver.GameEngine;
+import gameserver.engine.GameEngine;
 
 import java.awt.*;
 import java.awt.geom.Area;

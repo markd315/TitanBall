@@ -1,7 +1,8 @@
-package gameserver.targeting;
+package gameserver.targeting.core;
 
 
 import gameserver.entity.Entity;
+import gameserver.targeting.SortBy;
 
 import java.awt.geom.Point2D;
 import java.util.*;

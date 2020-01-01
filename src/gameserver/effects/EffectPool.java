@@ -1,6 +1,6 @@
 package gameserver.effects;
 
-import gameserver.GameEngine;
+import gameserver.engine.GameEngine;
 import gameserver.effects.effects.Effect;
 import gameserver.entity.Entity;
 import gameserver.entity.Titan;

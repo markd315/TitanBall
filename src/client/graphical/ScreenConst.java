@@ -1,6 +1,6 @@
 package client.graphical;
 
-import client.ChaosballClient;
+import client.TitanballClient;
 
 import java.awt.*;
 import java.awt.geom.AffineTransform;
@@ -56,7 +56,7 @@ public class ScreenConst {
         g2D.setFont(new Font(verdana.getName(), verdana.getStyle(), size));
     }
 
-    public void drawImage(Graphics2D g2D, Image image, int x, int y, ChaosballClient context) {
+    public void drawImage(Graphics2D g2D, Image image, int x, int y, TitanballClient context) {
         x = adjX(x);
         y = adjY(y);
         int w = image.getWidth(context);
@@ -82,7 +82,7 @@ public class ScreenConst {
         return bimage;
     }
 
-    public void drawImage(Graphics2D g2D, Image image, AffineTransform at, ChaosballClient context) {
+    public void drawImage(Graphics2D g2D, Image image, AffineTransform at, TitanballClient context) {
         double x = adjX((int) at.getTranslateX());
         double y = adjY((int) at.getTranslateY());
         at.setToTranslation(x, y);

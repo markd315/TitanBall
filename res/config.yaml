@@ -2,10 +2,12 @@
 Xres: 1920px
 Yres: 1080px
 SCALE: 150%
+rangewidth: 1px
+shotwidth: 30px #So that the entire collision radius for the ball is shown
 E: E
 R: R
 LMB: SHOT
-RMB: PASS
+RMB: LOB
 W: UP
 S: DOWN
 A: LEFT
@@ -23,7 +25,7 @@ I: INSTR
 1: E
 2: R
 O: SHOT
-P: PASS
+P: LOB
 #See link for key numbers in the left column
 #https://docs.oracle.com/javase/7/docs/api/constant-values.html#java.awt.event.KeyEvent.VK_O
 #Keys default to WASD Third-person-shooter style bindings

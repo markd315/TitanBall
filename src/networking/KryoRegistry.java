@@ -4,7 +4,7 @@ import client.graphical.GoalSprite;
 import client.graphical.Images;
 import client.graphical.StaticImage;
 import com.esotericsoftware.kryo.Kryo;
-import gameserver.GameEngine;
+import gameserver.engine.GameEngine;
 import gameserver.TutorialOverrides;
 import gameserver.effects.EffectId;
 import gameserver.effects.EffectPool;
@@ -22,6 +22,9 @@ import gameserver.entity.minions.Trap;
 import gameserver.entity.minions.Wall;
 import gameserver.models.Game;
 import gameserver.targeting.*;
+import gameserver.targeting.core.Filter;
+import gameserver.targeting.core.Limiter;
+import gameserver.targeting.core.Selector;
 import org.joda.time.Instant;
 
 import javax.swing.*;

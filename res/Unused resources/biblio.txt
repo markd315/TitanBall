@@ -1,7 +1,7 @@
 Run by specifying the main class as ChaosBallWindow
 
 ```
-java -cp Chaosball.jar client.ChaosballWindow
+java -cp Chaosball.jar client.TitanballWindow
 ```
 
 Or use the bash script, which will set your authentication and host details too.

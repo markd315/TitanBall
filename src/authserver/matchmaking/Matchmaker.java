@@ -1,6 +1,6 @@
 package authserver.matchmaking;
 
-import gameserver.ServerApplication;
+import gameserver.tenancy.ServerApplication;
 import gameserver.engine.GameOptions;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
@@ -10,6 +10,7 @@ import java.util.*;
 
 @Component
 public class Matchmaker {
+
     static{//Boot server for matchmaker
         String[] args = new String[0];
         try {
@@ -18,7 +19,16 @@ public class Matchmaker {
             e.printStackTrace();
         }
     }
-    private Map<String, String> waitingPool = new HashMap<>();//user emails
+
+    private void spawnGame(Set<String> gameFor, GameOptions op){
+        UUID gameId = UUID.randomUUID();
+        ServerApplication.addNewGame(gameId.toString(), op, gameFor);
+        for(String email : gameFor) {
+            gameMap.put(email, gameId.toString());
+        }
+    }
+
+    private Map<String, String> waitingPool = new HashMap<>();//user emails -> tournament code
     private Map<String, String> gameMap = new HashMap<>();//user emails -> game id
     private int desperation = 0; //TODO increase to eventually sacrifice match quality
 
@@ -71,18 +81,11 @@ public class Matchmaker {
         //only to avoid comod exception
         for(String s : gameFor){
             waitingPool.remove(s);
+            System.out.println("WAITING POOL SIZE: " + waitingPool.size());
         }
     }
 
-    private void spawnGame(Set<String> gameFor, GameOptions op){
-        UUID gameId = UUID.randomUUID();
-        for(String email : gameFor) {
-            gameMap.put(email, gameId.toString());
-        }
-        ServerApplication.addNewGame(gameId.toString(), op);
-    }
-
-    public void registerIntent(Authentication login, String tournamentCode) throws IOException {
+    public void registerIntent(Authentication login, String tournamentCode) {
         String email = login.getName();
         boolean contains = false;
         for(String e : waitingPool.keySet()){
@@ -98,6 +101,7 @@ public class Matchmaker {
 
     public void removeIntent(Authentication login){
         String email = login.getName();
+        System.out.println("DEREGISTERING " + email);
         String rm = null;
         for(String e : waitingPool.keySet()){
             if(e.equals(email)){
@@ -110,6 +114,16 @@ public class Matchmaker {
     }
 
     public void endGame(String id){
-        gameMap.values().removeIf(id::equals);
+        List<String> rm = new ArrayList<>();
+        for(String email : gameMap.keySet()){
+            if(gameMap.get(email)
+                    .equals(id)){
+                rm.add(email);
+            }
+        }
+        for(String email : rm){
+            System.out.println("ENDING AND FREEING " + email);
+            gameMap.remove(email);
+        }
     }
 }

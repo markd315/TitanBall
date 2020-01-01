@@ -1,16 +1,32 @@
-Run by specifying the main class as ChaosBallWindow
+To run with the launcher
 
 ```
-java -cp Chaosball.jar client.ChaosballWindow
+java -jar Titanball-Launcher/getdown.jar Titanball-Launcher
 ```
 
-Or use the bash script, which will set your authentication and host details too.
+IMPORTANT:
+On windows, it is LIKELY that you will not be able to play the game without modifying your firewall.
+Open an ADMINISTRATOR command prompt, and run this command. You should only need to do it once.
+Be sure to replace the last part of the command with the path to your own Java file.
+
+If you want to test whether you will be affected by this issue, go into tournament settings and run a single player game.
+If the game start counter goes deep into negative numbers with no change, your firewall configuration is blocking my server.
+
 ```
-./cball.sh (While in the folder with the jar and res folder)
+Netsh.exe advfirewall firewall add rule name="Titanball packets from server" protocol=udp dir=in enable=yes action=allow program="C:\Users\markd\Desktop\getdown\Titanball-Launcher\Titanball.jar"
 ```
 
+The client itself executes with the following code
+```
+java -cp Titanball.jar client.TitanballWindow
+```
 
-Made with love by Mark Davis, anything not specified was developed in-house.
+Or use the bash script
+```
+./start.sh (While in the folder with the jar and res folder)
+```
+
+Made with love by Mark Davis (contact: markd315@gmail.com), anything not specified below was developed in-house.
 
 Big thanks to:
 

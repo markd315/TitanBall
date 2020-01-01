@@ -66,6 +66,7 @@ public class SpringSecurityConfig extends WebSecurityConfigurerAdapter {
                 .permitAll()
                 .antMatchers("/login/**",
                         "/refresh/**",
+                        "/activate/**", //open for key param
                         "/renew/**")
                 .permitAll()
                 .antMatchers("/login/checkUsernameAvailability", "/login/checkEmailAvailability")

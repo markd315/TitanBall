@@ -1,6 +1,6 @@
 package gameserver.effects.effects;
 
-import gameserver.GameEngine;
+import gameserver.engine.GameEngine;
 import gameserver.effects.EffectId;
 import gameserver.entity.Entity;
 

@@ -1,7 +1,7 @@
 package gameserver.entity.minions;
 
 
-import gameserver.GameEngine;
+import gameserver.engine.GameEngine;
 import gameserver.engine.TeamAffiliation;
 import gameserver.entity.Box;
 import gameserver.entity.Collidable;

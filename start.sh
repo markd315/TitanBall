@@ -1,1 +1,1 @@
-java -cp Chaosball.jar client.ChaosballWindow
+java -cp Titanball.jar client.TitanballWindow

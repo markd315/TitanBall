@@ -1,7 +1,7 @@
 package networking;
 
 import com.esotericsoftware.kryonet.Connection;
-import gameserver.GameEngine;
+import gameserver.engine.GameEngine;
 
 import java.util.ArrayList;
 import java.util.List;

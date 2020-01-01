@@ -1,4 +1,4 @@
-package gameserver;
+package gameserver.tenancy;
 
 import authserver.SpringContextBridge;
 import authserver.users.UserService;
@@ -6,6 +6,7 @@ import com.esotericsoftware.kryonet.Connection;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rits.cloning.Cloner;
+import gameserver.engine.GameEngine;
 import gameserver.engine.GameOptions;
 import networking.CandidateGame;
 import networking.ClientPacket;
@@ -20,7 +21,7 @@ import java.util.concurrent.TimeUnit;
 
 public class GameTenant {
     public static final ServerMode SERVER_MODE = ServerMode.TRUETHREE;
-    public static ServerMode serverMode = SERVER_MODE;
+    public ServerMode serverMode = SERVER_MODE;
     protected GameOptions options;
 
     public GameEngine state;
@@ -98,6 +99,7 @@ public class GameTenant {
                 }
                 System.out.println("adding NEW client");
                 System.out.println(c.getRemoteAddressUDP());
+                //We should be sorting the connections when the game actually starts, so doesn't matter
                 queue.add(new PlayerConnection(nextUnclaimedSlot(), c, email));
             }
         }
@@ -109,15 +111,15 @@ public class GameTenant {
     private void startGame(List<PlayerConnection> gameIncludedClients){
         System.out.println("starting full");
         List<PlayerDivider> players = playersFromConnections(gameIncludedClients);
-        state = new GameEngine(gameId, players, options); //Start the game
+        state = new GameEngine(gameId, players, options, this); //Start the game
         try {
             state.initializeServer();
             instantiateSpringContext();
             gameIncludedClients = this.monteCarloBalance(gameIncludedClients);
-            int seconds = 5;
+            state.secondsToStart = 5;
             for(int i=0; i<5; i++){
                 Thread.sleep(1000);
-                seconds -=1;
+                state.secondsToStart -=1;
             }
         }
         catch (InterruptedException e) {
@@ -144,8 +146,7 @@ public class GameTenant {
                 client.getClient().sendUDP(update);
             });
         };
-
-        exec.scheduleAtFixedRate(updateClients, 1, 20, TimeUnit.MILLISECONDS);
+        exec.scheduleAtFixedRate(updateClients, 1, 50, TimeUnit.MILLISECONDS);
     }
 
 
@@ -415,6 +416,7 @@ public class GameTenant {
             this.availableSlots.add(c7);
             this.availableSlots.add(c8);
         }
+        /*
         else if(GameTenant.serverMode == ServerMode.ONEVTWO){ //disabled for now
             this.availableSlots = new ArrayList<>();
             List<Integer> c3 = new ArrayList<>();
@@ -430,6 +432,17 @@ public class GameTenant {
             this.availableSlots.add(c3);
             this.availableSlots.add(c4);
             this.availableSlots.add(c5);
+        }*/
+    }
+
+    public boolean gameContainsEmail(Set<String> gameFor) {
+        for(String searchFor : gameFor){
+            for(PlayerConnection matches : this.clients){
+                if(matches.email.equals(searchFor)){
+                    return true;
+                }
+            }
         }
+        return false;
     }
 }

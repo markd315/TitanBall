@@ -23,6 +23,7 @@ public class Game {
     public ClientPacket[] lastControlPacket = null;
     public static final int SPRITE_X_EMPTY = 50;
     public static final int SPRITE_Y_EMPTY = 18;
+    public int secondsToStart = 5;
     protected AtomicBoolean locked = new AtomicBoolean(false);
     public List<ShapePayload> colliders;
     public Entity[] allSolids;
@@ -127,7 +128,7 @@ public class Game {
         for (Titan t : players) {
             if (t.actionState == Titan.TitanState.SHOOT ||
                     t.actionState == Titan.TitanState.CURVE_RIGHT || t.actionState ==
-                    Titan.TitanState.CURVE_LEFT || t.actionState == Titan.TitanState.PASS) {
+                    Titan.TitanState.CURVE_LEFT || t.actionState == Titan.TitanState.LOB) {
                 return true;
             }
         }

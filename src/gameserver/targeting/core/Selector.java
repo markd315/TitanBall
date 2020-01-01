@@ -1,9 +1,10 @@
-package gameserver.targeting;
+package gameserver.targeting.core;
 
 
 import com.esotericsoftware.kryo.Kryo;
 import gameserver.entity.Entity;
 import gameserver.entity.Titan;
+import gameserver.targeting.SelectorOffset;
 import util.Util;
 
 import java.awt.*;

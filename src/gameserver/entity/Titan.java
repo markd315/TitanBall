@@ -1,6 +1,7 @@
 package gameserver.entity;
 
 
+import gameserver.engine.GameEngine;
 import gameserver.engine.TeamAffiliation;
 
 import java.awt.*;
@@ -40,6 +41,7 @@ public class Titan extends Entity {
     public double durationsFactor = 1.0;
     public double rangeFactor = 1.0;
     public boolean moveMemU, moveMemD, moveMemL, moveMemR;
+    public boolean resurrecting = false;
 
     private TitanType type;
 
@@ -155,8 +157,36 @@ public class Titan extends Entity {
                 : inspeed;
     }
 
+    public void resurrect(GameEngine context) {
+        this.actionState = TitanState.IDLE;
+        this.resurrecting = false;
+        if (this.team == TeamAffiliation.HOME) {
+            this.X = context.homeHiGoal.x + (context.homeHiGoal.w / 2);
+            this.Y = context.homeHiGoal.y + (context.homeHiGoal.h / 2);
+            while (this.collidesSolid(context, context.allSolids)) {
+                this.X -= 35;
+                if(this.X < context.E_MIN_X){
+                    this.X = context.E_MIN_X;
+                    this.Y +=35;
+                }
+            }
+        }
+        if (this.team == TeamAffiliation.AWAY) {
+            this.X = context.awayHiGoal.x + (context.awayHiGoal.w / 2.0);
+            this.Y = context.awayHiGoal.y + (context.awayHiGoal.h / 2.0);
+            while (this.collidesSolid(context, context.allSolids)) {
+                this.X += 35;
+                if(this.X > context.E_MAX_X){
+                    this.X = context.E_MAX_X;
+                    this.Y +=35;
+                }
+            }
+        }
+        this.health = this.maxHealth;
+    }
+
     public enum TitanState{
-        PASS, SHOOT, A1, A2, CURVE_LEFT, CURVE_RIGHT, STEAL, IDLE
+        LOB, SHOOT, A1, A2, CURVE_LEFT, CURVE_RIGHT, STEAL, IDLE, DEAD
     }
 
     public int runRight = 0;
@@ -199,11 +229,11 @@ public class Titan extends Entity {
         titanShoot.put(TitanType.ARTISAN, 1.15);
         titanShoot.put(TitanType.DASHER, 1.09);
         titanShoot.put(TitanType.STEALTH, 1.09);
-        titanShoot.put(TitanType.SUPPORT, 1.0);
-        titanShoot.put(TitanType.BUILDER, 0.96);
-        titanShoot.put(TitanType.RANGER, 0.74);
-        titanShoot.put(TitanType.MAGE, 0.74);
-        titanShoot.put(TitanType.WARRIOR, 0.69);
+        titanShoot.put(TitanType.SUPPORT, 1.02);
+        titanShoot.put(TitanType.BUILDER, 1.00);
+        titanShoot.put(TitanType.RANGER, 0.84);
+        titanShoot.put(TitanType.MAGE, 0.84);
+        titanShoot.put(TitanType.WARRIOR, 0.80);
         //titanShoot.put(TitanType.RECON, 0.8);
 
 
@@ -340,14 +370,18 @@ public class Titan extends Entity {
     }
 
     public void pushMove() {
-        this.moveMemU = this.runUp == 1;
-        this.moveMemD = this.runDown == 1;
-        this.moveMemL = this.runLeft == 1;
-        this.moveMemR = this.runRight == 1;
+        copyMove();
         this.runUp = 0;
         this.runDown = 0;
         this.runLeft = 0;
         this.runRight = 0;
+    }
+
+    public void copyMove() {
+        this.moveMemU = this.runUp == 1;
+        this.moveMemD = this.runDown == 1;
+        this.moveMemL = this.runLeft == 1;
+        this.moveMemR = this.runRight == 1;
     }
 
     public void popMove() {

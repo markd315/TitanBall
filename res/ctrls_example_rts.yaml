@@ -1,13 +1,15 @@
 ---
-Xres: 1920
-Yres: 1080
+Xres: 1920px
+Yres: 1080px
 SCALE: 150%
+rangewidth: 1px
+shotwidth: 30px #So that the entire collision radius for the ball is shown
 LMB: SHOT
 RMB: MV_CLICK
 32: CAM #Space
 Q: E
 W: R
-E: PASS
+E: LOB
 R: BOOST_LOCK
 T: STEAL
 Z: SWITCH
@@ -21,7 +23,7 @@ X: MV_CLICK
 C: MV_BALL
 I: INSTR
 O: SHOT
-P: PASS
+P: LOB
 #See link for key numbers in the left column
 #https://docs.oracle.com/javase/7/docs/api/constant-values.html#java.awt.event.KeyEvent.VK_T
 #Alternate RTS-style bindings provided with move-right-click for those used to games like LOL/DOTA

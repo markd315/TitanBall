@@ -2,6 +2,7 @@ package authserver;
 
 import authserver.jwt.JwtTokenProvider;
 import authserver.matchmaking.Matchmaker;
+import authserver.models.DTO.ActivationRequest;
 import authserver.models.DTO.LoginRequest;
 import authserver.models.DTO.RenewRequest;
 import authserver.models.DTO.UserDTO;
@@ -24,8 +25,6 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
 import java.io.IOException;
-
-import static util.Util.isRole;
 
 @RestController
 @CrossOrigin(exposedHeaders = "errors, content-type")
@@ -71,25 +70,18 @@ public class LoginController {
     }
 
     @PostMapping("/activate")
-    public ResponseEntity<?> activateUser(@Valid @RequestBody LoginRequest loginRequest, @RequestParam String key) throws Exception {
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        loginRequest.getUsernameOrEmail(),
-                        loginRequest.getPassword()
-                )
-        );
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+    public ResponseEntity<?> activateUser(@Valid @RequestBody ActivationRequest activationRequest) throws Exception {
         User user;
         try{
-            user = userService.findUserByEmail(loginRequest.getUsernameOrEmail());
+            user = userService.findUserByEmail(activationRequest.getUsernameOrEmail());
         }
         catch (Exception ex1){
-            user = userService.findUserByUsername(loginRequest.getUsernameOrEmail());
+            user = userService.findUserByUsername(activationRequest.getUsernameOrEmail());
         }
         if(user == null){
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
-        if(user.activate(key)){
+        if(user.activate(activationRequest.getKey())){
             user.setEnabled(true);
             user.renew(14);
             userService.saveUser(user);
@@ -150,9 +142,9 @@ public class LoginController {
     @RequestMapping(value = "", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<UserResponse> addUser(@RequestBody @Valid UserDTO userinput, BindingResult bindingResult, Authentication auth) throws Exception {
         HttpHeaders headers = new HttpHeaders();
-        if(!isRole(auth, "ADMIN")){
+        /*if(!isRole(auth, "ADMIN")){
             return new ResponseEntity<>(null, headers, HttpStatus.FORBIDDEN);
-        }
+        }*/
         User user = new User();
         if (bindingResult.hasErrors() || (userinput == null) || userinput.getUsername() == null || userinput.getPassword() == null) {
             //errors.addAllErrors(bindingResult);
@@ -164,6 +156,8 @@ public class LoginController {
         user.setPassword(hashed);
         user.setEmail(userinput.getEmail());
         user.setRole(userinput.getRole());
+        //TODO send activation code to email, don't just log it. Use work code?
+        System.out.println("Activation: " + user.getActivation());
         if(user.getRole() == null){
             user.setRole("USER");//default
         }

@@ -13,7 +13,6 @@ public class Team {
     List<GoalHoop> toScore = new ArrayList<>();
     List<Titan> players = new ArrayList<>();
     public Team(TeamAffiliation which, double score, Object... playersAndHoops){
-        allTeams.add(this);
         this.score = score;
         this.which = which;
         for(Object g : playersAndHoops){
@@ -25,29 +24,6 @@ public class Team {
             }
         }
     }
-
-    public Team readEnemyTeam(){
-
-        for(int i=0; i < allTeams.size(); i++){
-            if(!allTeams.get(i).equals(this)){
-                return allTeams.get(i);
-            }
-        }
-        return null;
-    }
-
-    public static Team getTeamFromAffilitation(TeamAffiliation enumerated){
-
-
-        for(int i=0; i < allTeams.size(); i++){
-            if(allTeams.get(i).which == enumerated){
-                return allTeams.get(i);
-            }
-        }
-        return null;
-    }
-
-    public static List<Team> allTeams = new ArrayList<>();
 
     public Team(){
     }
