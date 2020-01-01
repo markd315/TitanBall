@@ -1,0 +1,31 @@
+---
+Xres: 1920px
+Yres: 1080px
+SCALE: 150%
+rangewidth: 1px
+shotwidth: 30px #So that the entire collision radius for the ball is shown
+E: E
+R: R
+LMB: SHOT
+RMB: LOB
+W: UP
+S: DOWN
+A: LEFT
+D: RIGHT
+32: CAM #Space
+Q: STEAL
+Z: SWITCH
+3: BOOST
+4: BOOST_LOCK
+F: BOOST
+G: BOOST_LOCK
+X: MV_CLICK
+C: MV_BALL
+I: INSTR
+1: E
+2: R
+O: SHOT
+P: LOB
+#See link for key numbers in the left column
+#https://docs.oracle.com/javase/7/docs/api/constant-values.html#java.awt.event.KeyEvent.VK_O
+#Keys default to WASD Third-person-shooter style bindings

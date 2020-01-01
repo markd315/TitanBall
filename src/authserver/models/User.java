@@ -1,6 +1,6 @@
 package authserver.models;
 
-import gameserver.ServerApplication;
+import gameserver.tenancy.ServerApplication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import util.Util;
@@ -82,6 +82,7 @@ public class User implements Serializable, UserDetails {
         this.rating = 1000.0;
         this.wins = 0;
         this.losses = 0;
+        this.ties = 0;
         this.goals = 0;
         this.points = 0.0;
         this.steals = 0;
@@ -100,7 +101,6 @@ public class User implements Serializable, UserDetails {
         java.sql.Timestamp currentTimestamp = new java.sql.Timestamp(now.getTime());
         this.subExp = currentTimestamp;
         this.activation = Util.randomKey();
-        //TODO send email activation
     }
 
     public User(String username, String pwEncoded){

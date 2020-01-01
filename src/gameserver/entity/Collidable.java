@@ -1,6 +1,6 @@
 package gameserver.entity;
 
-import gameserver.GameEngine;
+import gameserver.engine.GameEngine;
 
 public interface Collidable {
 

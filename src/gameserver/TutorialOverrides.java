@@ -1,5 +1,6 @@
 package gameserver;
 
+import gameserver.engine.GameEngine;
 import gameserver.engine.GameOptions;
 import gameserver.engine.StatEngine;
 import gameserver.engine.TeamAffiliation;
@@ -9,7 +10,7 @@ import networking.PlayerDivider;
 
 import java.util.*;
 
-public class TutorialOverrides extends GameEngine{
+public class TutorialOverrides extends GameEngine {
 
      Titan hGol = new Titan(HOME_HI_X, HOME_HI_Y, TeamAffiliation.HOME, TitanType.GOALIE);
      Titan awGol = new Titan(AWAY_HI_X, AWAY_HI_Y, TeamAffiliation.AWAY, TitanType.GOALIE);
@@ -218,7 +219,7 @@ public class TutorialOverrides extends GameEngine{
                 if (t.runUp == 1) runUpCtrl(t);
                 if (t.runDown == 1) runDownCtrl(t);
                 if (t.actionState == Titan.TitanState.SHOOT) shootingBall(t);
-                else if (t.actionState == Titan.TitanState.PASS) lobbingBall(t);
+                else if (t.actionState == Titan.TitanState.LOB) lobbingBall(t);
                 else if (t.actionState == Titan.TitanState.CURVE_LEFT) curve(t, 1);
                 else if (t.actionState == Titan.TitanState.CURVE_RIGHT) curve(t, -1);
                 if (t.actionState == Titan.TitanState.A1) attack1(t);

@@ -1,7 +1,7 @@
 package gameserver.effects.cooldowns;
 
 
-import gameserver.GameEngine;
+import gameserver.engine.GameEngine;
 import gameserver.effects.EffectId;
 import gameserver.effects.effects.Effect;
 import gameserver.entity.Entity;

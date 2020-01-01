@@ -1,6 +1,6 @@
 package gameserver.entity.minions;
 
-import gameserver.GameEngine;
+import gameserver.engine.GameEngine;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
 import gameserver.engine.TeamAffiliation;

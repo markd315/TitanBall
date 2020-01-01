@@ -1,6 +1,5 @@
 package gameserver.engine;
 
-import gameserver.GameEngine;
 import gameserver.effects.EffectId;
 import gameserver.effects.cooldowns.CooldownCurve;
 import gameserver.effects.cooldowns.CooldownE;
@@ -14,7 +13,13 @@ import gameserver.entity.minions.BallPortal;
 import gameserver.entity.minions.Portal;
 import gameserver.entity.minions.Trap;
 import gameserver.entity.minions.Wall;
-import gameserver.targeting.*;
+import gameserver.models.Game;
+import gameserver.targeting.SelectorOffset;
+import gameserver.targeting.SortBy;
+import gameserver.targeting.Targeting;
+import gameserver.targeting.core.Filter;
+import gameserver.targeting.core.Limiter;
+import gameserver.targeting.core.Selector;
 import util.Util;
 
 import java.awt.*;
@@ -34,17 +39,17 @@ public class AbilityStrategy {
     protected GameEngine context;
     protected Titan caster;
     protected int x, y;
-    static Filter friendly = new Filter(TeamAffiliation.SAME, TitanType.ANY, false);
-    static Filter friendlyIncSelf = new Filter(TeamAffiliation.SAME, TitanType.ANY, true);
-    static Filter champions = new Filter(TeamAffiliation.OPPONENT, TitanType.ANY, false);
-    static Filter championsNoGoalie = new Filter(TeamAffiliation.OPPONENT, TitanType.ANY, false);
-    static Filter enemiesIncMinions = new Filter(TeamAffiliation.ENEMIES, TitanType.ANY, false);
-    static Filter all = new Filter(TeamAffiliation.ANY, TitanType.ANY, true);
-    static Filter notFriendly = new Filter(TeamAffiliation.ENEMIES, TitanType.ANY_ENTITY, false);
+    static final Filter friendly = new Filter(TeamAffiliation.SAME, TitanType.ANY, false);
+    static final Filter friendlyIncSelf = new Filter(TeamAffiliation.SAME, TitanType.ANY, true);
+    static final Filter champions = new Filter(TeamAffiliation.OPPONENT, TitanType.ANY, false);
+    static final Filter championsNoGoalie = new Filter(TeamAffiliation.OPPONENT, TitanType.ANY, false);
+    static final Filter enemiesIncMinions = new Filter(TeamAffiliation.ENEMIES, TitanType.ANY, false);
+    static final Filter all = new Filter(TeamAffiliation.ANY, TitanType.ANY, true);
+    static final Filter notFriendly = new Filter(TeamAffiliation.ENEMIES, TitanType.ANY_ENTITY, false);
 
-    static Limiter nearest = new Limiter(SortBy.NEAREST, 1);
-    static Limiter unlimited = new Limiter(SortBy.NEAREST, 999);
-    static Limiter mouseNear = new Limiter(SortBy.NEAREST_MOUSE, 1);
+    static final Limiter nearest = new Limiter(SortBy.NEAREST, 1);
+    static final Limiter unlimited = new Limiter(SortBy.NEAREST, 999);
+    static final Limiter mouseNear = new Limiter(SortBy.NEAREST_MOUSE, 1);
 
     public AbilityStrategy(GameEngine context, Titan caster){
         this.context = context;
@@ -144,10 +149,35 @@ public class AbilityStrategy {
         //To update the region to caster loc
         sel.select(Collections.EMPTY_SET, x, y, caster);
         corners = sel.getLatestColliderBounds();
-        if (corners.getWidth() > 0) {
+        if (corners.getWidth() > 0 && inBoundsNotRedzone(corners)) {
             context.effectPool.addUniqueEffect(new CooldownR((int) (caster.cooldownFactor *3500), caster));
             context.entityPool.add(new Wall(context, (int) corners.getX(), (int) corners.getY()));
         }
+    }
+
+    private boolean inBoundsNotRedzone(Rectangle corners) {
+        System.out.println(corners.toString());
+        Rectangle goalH = new Rectangle(Game.GOALIE_XH_MIN+50,
+                (Game.GOALIE_Y_MIN+24),
+                Game.GOALIE_XH_MAX - Game.GOALIE_XH_MIN,
+                Game.GOALIE_Y_MAX - (Game.GOALIE_Y_MIN) + 10);
+        Rectangle goalA = new Rectangle(Game.GOALIE_XA_MIN - 8,
+                (Game.GOALIE_Y_MIN+24),
+                Game.GOALIE_XA_MAX - Game.GOALIE_XA_MIN + 34,
+                Game.GOALIE_Y_MAX - (Game.GOALIE_Y_MIN) + 10);
+        if(goalA.intersects(corners) || goalH.intersects(corners)
+            || goalA.contains(corners) || goalH.contains(corners)){
+            System.out.println("redzone");
+            return false; //redzone
+        }
+        return inBounds(corners);
+    }
+
+    private boolean inBounds(Rectangle corners){
+        Rectangle bounds = new Rectangle(Game.MIN_X, Game.MIN_Y,
+                Game.MAX_X - Game.MIN_X,
+                Game.MAX_Y - Game.MIN_Y);
+        return corners.intersects(bounds) || bounds.contains(corners);
     }
 
     public void scatter() {
@@ -184,7 +214,7 @@ public class AbilityStrategy {
                 range);
         sel.select(Collections.EMPTY_SET, x, y, caster);
         corners = sel.getLatestColliderBounds();
-        if (corners.getWidth() > 0) {
+        if (corners.getWidth() > 0 && inBoundsNotRedzone(corners)) {
             context.effectPool.addUniqueEffect(new CooldownR((int) (caster.cooldownFactor *7000), caster));
             context.entityPool.add(new BallPortal(TeamAffiliation.UNAFFILIATED, caster,
                     context.entityPool, (int) corners.getX(), (int) corners.getY()));
@@ -229,7 +259,7 @@ public class AbilityStrategy {
                 range);
         sel.select(Collections.EMPTY_SET, x, y, caster);
         corners = sel.getLatestColliderBounds();
-        if (corners.getWidth() > 0) {
+        if (corners.getWidth() > 0 && inBoundsNotRedzone(corners)) {
             context.effectPool.addUniqueEffect(new CooldownE((int) (caster.cooldownFactor *5500), caster));
             context.entityPool.add(new Portal(caster.team, caster,
                     context.entityPool, (int) corners.getX(), (int) corners.getY()));
@@ -244,7 +274,7 @@ public class AbilityStrategy {
         //To update the region to caster loc
         sel.select(Collections.EMPTY_SET, x, y, caster);
         corners = sel.getLatestColliderBounds();
-        if (corners.getWidth() > 0) {
+        if (corners.getWidth() > 0 && inBoundsNotRedzone(corners)) {
             context.effectPool.addUniqueEffect(new CooldownE((int) (caster.cooldownFactor *15000), caster));
             context.entityPool.add(new Trap(caster, (int) corners.getX(), (int) corners.getY()));
         }

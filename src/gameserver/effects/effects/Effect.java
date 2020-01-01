@@ -1,7 +1,7 @@
 package gameserver.effects.effects;
 
 import client.graphical.StaticImage;
-import gameserver.GameEngine;
+import gameserver.engine.GameEngine;
 import gameserver.effects.EffectId;
 import gameserver.entity.Entity;
 import org.joda.time.Duration;
