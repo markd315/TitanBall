@@ -46,7 +46,7 @@ public class Titan extends Entity {
     private TitanType type;
 
     public ArrayList<RangeCircle> rangeIndicators = new ArrayList<>();
-    public double boostFactor = 1.3;
+    public double boostFactor = 1.15;
 
     public Titan(int x, int y, TeamAffiliation team, TitanType type){
         super(team);
@@ -81,9 +81,9 @@ public class Titan extends Entity {
                 this.rangeIndicators.addAll(titanRange.get(this.type));
             }
             if(type == TitanType.DASHER){
-                this.boostFactor = 2.0;
+                this.boostFactor = 1.25;
             }else{
-                this.boostFactor = 1.3;
+                this.boostFactor = 1.15;
             }
         }
     }
@@ -205,7 +205,7 @@ public class Titan extends Entity {
         titanSpeed.put(TitanType.BUILDER, 4.75);
         titanSpeed.put(TitanType.DASHER, 4.7); //Has a 1.5x as effective boost, so this is pretty solid
         titanSpeed.put(TitanType.GOLEM, 4.5);
-        titanSpeed.put(TitanType.GOALIE, 4.5);
+        titanSpeed.put(TitanType.GOALIE, 2.75);
         //titanSpeed.put(TitanType.RECON, 7);
 
 

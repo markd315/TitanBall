@@ -44,7 +44,7 @@ public class Entity extends Box {
     }
 
     private void die(GameEngine context) {
-        context.effectPool.addUniqueEffect(new DeadEffect(4000, this));
+        context.effectPool.addUniqueEffect(new DeadEffect(4000, this, context));
     }
 
     public void setHealth(int health) {

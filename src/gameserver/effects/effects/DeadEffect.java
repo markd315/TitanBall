@@ -1,28 +1,42 @@
 package gameserver.effects.effects;
 
-import gameserver.engine.GameEngine;
 import gameserver.effects.EffectId;
+import gameserver.engine.GameEngine;
 import gameserver.engine.StatEngine;
 import gameserver.entity.Entity;
 import gameserver.entity.Titan;
+import gameserver.models.Game;
 
 public class DeadEffect extends Effect {
 
-    public DeadEffect(int durationMillis, Entity e){
+    public DeadEffect(int durationMillis, Entity e, Game context){
         super(EffectId.DEAD, e, durationMillis);
+        if(e instanceof Titan) {
+            Titan t = (Titan) e;
+            if(t.possession == 1){
+                t.possession = 0;
+                context.lastPossessed = null;
+                //context.ball.X = t.X + 35 - context.ball.centerDist;
+                //context.ball.Y = t.Y + 35 - context.ball.centerDist;
+            }
+        }
     }
 
     @Override
     public void onActivate(GameEngine context) {
         if(on instanceof Titan) {
             Titan t = (Titan) on;
-            t.actionState = Titan.TitanState.DEAD;
             if(t.possession == 1){
-                context.lastPossessed = null;
                 t.possession = 0;
-                context.ball.X = t.X + 35 - context.ball.centerDist;
-                context.ball.Y = t.Y + 35 - context.ball.centerDist;
+                context.lastPossessed = null;
+                //context.ball.X = t.X + 35 - context.ball.centerDist;
+                //context.ball.Y = t.Y + 35 - context.ball.centerDist;
             }
+            t.runUp = 0;
+            t.runDown = 0;
+            t.runLeft = 0;
+            t.runRight = 0;
+            t.actionState = Titan.TitanState.DEAD;
             context.stats.grant(context.clientFromTitan((on)), StatEngine.StatEnum.DEATHS);
             context.stats.grantKillAssists(context, (Titan) on, context.effectPool);
         }

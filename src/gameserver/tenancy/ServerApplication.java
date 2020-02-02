@@ -54,7 +54,7 @@ public class ServerApplication {
         KryoRegistry.register(kryo);
         server.start();
         //gameserver.setHardy(true);
-        server.bind(54555, 54556);
+        server.bind(54555);
 
         states = new HashMap<>();
 

@@ -5,16 +5,36 @@ java -jar Titanball-Launcher/getdown.jar Titanball-Launcher
 ```
 
 IMPORTANT:
-On windows, it is LIKELY that you will not be able to play the game without modifying your firewall.
-Open an ADMINISTRATOR command prompt, and run this command. You should only need to do it once.
+It is LIKELY that you will not be able to play the game without modifying your firewall.
+Open an ADMINISTRATOR command prompt, and run these commands. You should only need to do it once.
 Be sure to replace the last part of the command with the path to your own Java file.
 
 If you want to test whether you will be affected by this issue, go into tournament settings and run a single player game.
 If the game start counter goes deep into negative numbers with no change, your firewall configuration is blocking my server.
 
+Also turn on network discovery this way!
+Control Panel\Network and Internet\Network and Sharing Center
+
+INET6 / WindowsSelectorProvider
+localport
+/10.0.0.96:50116
+
+remote port
+zanzalaz.com/18.189.118.238:54556
+
 ```
-Netsh.exe advfirewall firewall add rule name="Titanball packets from server" protocol=udp dir=in enable=yes action=allow program="C:\Users\markd\Desktop\getdown\Titanball-Launcher\Titanball.jar"
+Netsh.exe advfirewall firewall add rule name="Titanball packets from server 1" protocol=udp dir=in enable=yes action=allow program="C:\Users\markd\Desktop\getdown\Titanball-Launcher\Titanball.jar"
+Netsh.exe advfirewall firewall add rule name="Titanball packets from server 2" protocol=udp dir=in enable=yes action=allow localport=49152-65535 program="java.exe"
+Netsh.exe advfirewall firewall add rule name="Titanball packets from server 3" protocol=udp dir=in enable=yes action=allow localport=49152-65535
 ```
+
+we may need udp OUT as well as in!
+
+(probably not this)
+It seems that behind the scenes, my PC is using the Bonjour service for network discovery to allow UDP packets through the firewall.
+May want to have clients try this.
+https://download.info.apple.com/Mac_OS_X/061-8098.20100603.gthyu/BonjourPSSetup.exe
+localport=5353 (not according to wireshark though!)
 
 The client itself executes with the following code
 ```

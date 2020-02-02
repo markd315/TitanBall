@@ -156,18 +156,16 @@ public class AbilityStrategy {
     }
 
     private boolean inBoundsNotRedzone(Rectangle corners) {
-        System.out.println(corners.toString());
         Rectangle goalH = new Rectangle(Game.GOALIE_XH_MIN+50,
                 (Game.GOALIE_Y_MIN+24),
                 Game.GOALIE_XH_MAX - Game.GOALIE_XH_MIN,
                 Game.GOALIE_Y_MAX - (Game.GOALIE_Y_MIN) + 10);
-        Rectangle goalA = new Rectangle(Game.GOALIE_XA_MIN - 8,
+        Rectangle goalA = new Rectangle(Game.GOALIE_XA_MIN - 4,
                 (Game.GOALIE_Y_MIN+24),
-                Game.GOALIE_XA_MAX - Game.GOALIE_XA_MIN + 34,
+                Game.GOALIE_XA_MAX - Game.GOALIE_XA_MIN + 29,
                 Game.GOALIE_Y_MAX - (Game.GOALIE_Y_MIN) + 10);
         if(goalA.intersects(corners) || goalH.intersects(corners)
             || goalA.contains(corners) || goalH.contains(corners)){
-            System.out.println("redzone");
             return false; //redzone
         }
         return inBounds(corners);
@@ -216,8 +214,9 @@ public class AbilityStrategy {
         corners = sel.getLatestColliderBounds();
         if (corners.getWidth() > 0 && inBoundsNotRedzone(corners)) {
             context.effectPool.addUniqueEffect(new CooldownR((int) (caster.cooldownFactor *7000), caster));
-            context.entityPool.add(new BallPortal(TeamAffiliation.UNAFFILIATED, caster,
-                    context.entityPool, (int) corners.getX(), (int) corners.getY()));
+            context.entityPool.add(new BallPortal(TeamAffiliation.UNAFFILIATED, caster, context.entityPool,
+                    (int) corners.getX(),
+                    (int) corners.getY()));
         }
     }
 

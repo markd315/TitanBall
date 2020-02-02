@@ -65,7 +65,6 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
     protected int phase;
     protected Kryo kryo = gameserverConn.getKryo();
     protected boolean camFollow = true;
-    protected boolean keysEnabled = true;
     protected String token, refresh;
     protected HttpClient loginClient;
     protected boolean instructionToggle = false;
@@ -170,17 +169,6 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
     }
 
     private void createListeners() {
-        addFocusListener(new FocusAdapter() {
-            @Override
-            public void focusGained(FocusEvent aE) {
-                keysEnabled = true;
-            }
-
-            @Override
-            public void focusLost(FocusEvent aE) {
-                keysEnabled = false;
-            }
-        });
         MouseMotionListener mouseMvtListener = new MouseMotionListener() {
             @Override
             public void mouseDragged(MouseEvent e) {
@@ -203,8 +191,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         MouseListener mouseListener = new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent event) {
-                System.out.println(keysEnabled + "" + phase);
-                if (keysEnabled && (phase == 8 || phase == 101) ) {
+                if (phase == 8 || phase == 101) {
                     controlsHeld.posX = sconst.invertMouseX(event.getPoint().x);
                     controlsHeld.posY = sconst.invertMouseY(event.getPoint().y);
                     if (event.getButton() == 1) {
@@ -220,10 +207,8 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
 
             @Override
             public void mouseReleased(MouseEvent e) {
-                if (keysEnabled) {
                     controlsConfig.mapKeyRelease(controlsHeld, "LMB");
                     controlsConfig.mapKeyRelease(controlsHeld, "RMB");
-                }
             }
         };
         addMouseListener(mouseListener);
@@ -255,6 +240,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         if (game != null && game.ended) {
             Team team = teamFromUnderControl();
             Team enemy = enemyFromUnderControl();
+            loginClient.leave();
             if (team.score > enemy.score) {
                 sconst.drawImage(g2D, victory.getImage(), sconst.RESULT_IMG_X, sconst.RESULT_IMG_Y, this);
             } else if(team.score == enemy.score){
@@ -362,6 +348,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
             if(this.game.phase == 2){ //finish tutorial
                 try {
                     parentWindow.reset(true);
+                    controlsHeld.classSelection = null;
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -509,7 +496,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         gameserverConn.start();
         //gameserverConn.setHardy(true);
         if( !gameserverConn.isConnected()){
-            gameserverConn.connect(999999999, "zanzalaz.com", 54555, 54556);
+            gameserverConn.connect(999999999, "zanzalaz.com", 54555);
             //gameserverConn.connect(5000, "127.0.0.1", 54555);
             gameserverConn.addListener(new Listener() {
                 public synchronized void received(Connection connection, Object object) {
@@ -998,7 +985,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
             }
             if (e instanceof BallPortal) {
                 BallPortal p = (BallPortal) e;
-                if (p.isCooldown()) {
+                if (p.isCooldown(game.now)) {
                     f1 = bportalcd.getImage();
                     f2 = bportalcd.getImage();
                 } else {
@@ -1008,7 +995,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
             }
             if (e instanceof Portal) {
                 Portal p = (Portal) e;
-                if (p.isCooldown()) {
+                if (p.isCooldown(game.now)) {
                     f1 = portalcd.getImage();
                     f2 = portalcd.getImage();
                 } else {
@@ -1083,20 +1070,20 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         }
         if (e instanceof Portal) {
             Portal p = (Portal) e;
-            if (p.isCooldown()) {
+            if (p.isCooldown(game.now)) {
                 System.out.println();
-                double durSpent = p.cooldownPercentOver();
+                double durSpent = p.cooldownPercentOver(game.now);
                 setColorBasedOnPercent(g2D, durSpent, false);
-                Rectangle durBar = new Rectangle((int) e.X + xOffset - camX, (int) e.Y - 1 - camY, (int) durSpent / 2, 2);
+                Rectangle durBar = new Rectangle((int) e.X + xOffset - camX, (int) e.Y - 1 - camY, (int) sconst.adjX(durSpent*2/3), sconst.adjY(2));
                 g2D.fill(durBar);
             }
         }
         if (e instanceof BallPortal) {
             BallPortal p = (BallPortal) e;
-            if (p.isCooldown()) {
-                double durSpent = p.cooldownPercentOver();
+            if (p.isCooldown(game.now)) {
+                double durSpent = p.cooldownPercentOver(game.now);
                 setColorBasedOnPercent(g2D, durSpent, false);
-                Rectangle durBar = new Rectangle((int) e.X + xOffset - camX, (int) e.Y - 1 - camY, (int) durSpent / 2, 2);
+                Rectangle durBar = new Rectangle((int) e.X + xOffset - camX, (int) e.Y - 1 - camY, (int) sconst.adjX(durSpent*2/3), sconst.adjY(2));
                 g2D.fill(durBar);
             }
         }
@@ -1212,16 +1199,16 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
             return;
         }
         if (debugCamera == 1) {
-            if (key == KeyEvent.VK_RIGHT && phase == 8 && keysEnabled) {
+            if (key == KeyEvent.VK_RIGHT && phase == 8) {
                 camX += 10;
             }
-            if (key == KeyEvent.VK_LEFT && phase == 8 && keysEnabled) {
+            if (key == KeyEvent.VK_LEFT && phase == 8) {
                 camX -= 10;
             }
-            if (key == KeyEvent.VK_UP && phase == 8 && keysEnabled) {
+            if (key == KeyEvent.VK_UP && phase == 8) {
                 camY -= 10;
             }
-            if (key == KeyEvent.VK_DOWN && phase == 8 && keysEnabled) {
+            if (key == KeyEvent.VK_DOWN && phase == 8) {
                 camY += 10;
             }
         }
@@ -1240,12 +1227,12 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         if(key == KeyEvent.VK_ESCAPE && phase == 3){
             phase = 2;
         }
-        if (key == KeyEvent.VK_SPACE && (phase == 8 || phase == 9 || phase == 101) && keysEnabled) {
+        if (key == KeyEvent.VK_SPACE && (phase == 8 || phase == 9 || phase == 101)) {
             camFollow = !camFollow;
             controlsHeld.CAM = true;
             //TODO play restart ding/click
         }
-        if ((phase == 8 && keysEnabled) || phase == 101) {
+        if ((phase == 8) || phase == 101) {
             controlsConfig.mapKeyPress(this.game, controlsHeld, key, this.shotSound);
             //shotSound.rewindStart();
             if (controlsConfig.toggleInstructions("" + key)) {
@@ -1255,23 +1242,43 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         classKeys(key);
     }
 
+    @Override
+    public void keyReleased(KeyEvent ke) {
+        int key = ke.getKeyCode();
+        if (phase == 8 || phase == 101 ) {
+            controlsConfig.mapKeyRelease(controlsHeld, "" + key);
+            //shotSound.rewindStart();
+            if (controlsConfig.toggleInstructions("" + key)) {
+                instructionToggle = false;
+            }
+            if (controlsConfig.movKey("" + key)) {
+                for (Titan p : game.players) {
+                    //todo only for controlled
+                    p.runningFrame = 0;
+                    p.diagonalRunDir = 0;
+                }
+            }
+        }
+    }
+
+
     private void classKeys(int key) {
-        if ((key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) && keysEnabled) {
+        if ((key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A)) {
             if (phase == 2) {
                 cursor -= 1;
             }
         }
-        if ((key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) && keysEnabled) {
+        if ((key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D)) {
             if (phase == 2) {
                 cursor += 1;
             }
         }
-        if ((key == KeyEvent.VK_UP || key == KeyEvent.VK_W) && keysEnabled) {
+        if ((key == KeyEvent.VK_UP || key == KeyEvent.VK_W)) {
             if (phase == 2) {
                 cursor -= 4;
             }
         }
-        if ((key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S) && keysEnabled) {
+        if ((key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S)) {
             if (phase == 2) {
                 cursor += 4;
             }
@@ -1280,31 +1287,31 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
 
     private boolean stateControls(int key) {
         if ((key == KeyEvent.VK_SPACE || key == KeyEvent.VK_ENTER)
-                && phase == 0 && keysEnabled) {
+                && phase == 0) {
             controlsHeld.CAM = true;
             phase = 1;
             return true;
         }
         if ((key == KeyEvent.VK_SPACE || key == KeyEvent.VK_ENTER)
-                && phase == 1 && keysEnabled) {
+                && phase == 1) {
             phase = 2;
             controlsHeld.CAM = true;
             return true;
         }
         if ((key == KeyEvent.VK_SPACE || key == KeyEvent.VK_ENTER)
-                && phase == 2 && keysEnabled) {
+                && phase == 2) {
             controlsHeld.CAM = true;
             phase = 3;
             return true;
         }
         if ((key == KeyEvent.VK_SPACE || key == KeyEvent.VK_ENTER)
-                && phase == 3 && keysEnabled) {
+                && phase == 3) {
             phase = 4;
             controlsHeld.CAM = true;
             return true;
         }
         if ((key == KeyEvent.VK_SPACE || key == KeyEvent.VK_ENTER)
-                && phase == 4 && keysEnabled) {
+                && phase == 4) {
             phase = 6;
             controlsHeld.CAM = true;
             return true;
@@ -1313,22 +1320,22 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
     }
 
     protected boolean masteriesKeys(int key) {
-        if ((key == KeyEvent.VK_UP || key == KeyEvent.VK_W) && phase == 3 && keysEnabled) {
+        if ((key == KeyEvent.VK_UP || key == KeyEvent.VK_W) && phase == 3) {
             masteriesIndex--;
             if (masteriesIndex < 0) {
                 masteriesIndex = 8;
             }
         }
-        if ((key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S) && phase == 3 && keysEnabled) {
+        if ((key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S) && phase == 3) {
             masteriesIndex++;
             if (masteriesIndex > 8) {
                 masteriesIndex = 0;
             }
         }
-        if ((key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) && phase == 3 && keysEnabled) {
+        if ((key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) && phase == 3) {
             masteryDelta(masteriesIndex, 1);
         }
-        if ((key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) && phase == 3 && keysEnabled) {
+        if ((key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) && phase == 3) {
             masteryDelta(masteriesIndex, -1);
         }
         return false;
@@ -1369,25 +1376,6 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         if (!masteries.validate()) {
             System.out.println("detected invalid mastery settings");
             masteries = oldMasteries;
-        }
-    }
-
-    @Override
-    public void keyReleased(KeyEvent ke) {
-        int key = ke.getKeyCode();
-        if (phase == 8 || phase == 101 && keysEnabled) {
-            controlsConfig.mapKeyRelease(controlsHeld, "" + key);
-            //shotSound.rewindStart();
-            if (controlsConfig.toggleInstructions("" + key)) {
-                instructionToggle = false;
-            }
-            if (controlsConfig.movKey("" + key)) {
-                for (Titan p : game.players) {
-                    //todo only for controlled
-                    p.runningFrame = 0;
-                    p.diagonalRunDir = 0;
-                }
-            }
         }
     }
 
@@ -1624,7 +1612,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         }
         else if(timer >= game.PAIN_DISABLE_TIME - WARN && timer < game.PAIN_DISABLE_TIME - FWARN){
             g2D.setColor(new Color(.9f, .9f, 0f, .6f));
-            bottomText = "HOOP PROXIMITY DMG DISABLING WARNING";
+            bottomText = "DEFENSE HEAL DISABLING WARNING";
         }
         else if(timer >= game.PAIN_DISABLE_TIME - FWARN && timer < game.PAIN_DISABLE_TIME){
             g2D.setColor(new Color(1f,0f, 0f, .6f));
