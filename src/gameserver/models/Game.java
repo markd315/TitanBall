@@ -9,6 +9,7 @@ import gameserver.entity.TitanType;
 import gameserver.targeting.ShapePayload;
 import networking.ClientPacket;
 import networking.PlayerDivider;
+import org.joda.time.Instant;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,6 +25,7 @@ public class Game {
     public static final int SPRITE_X_EMPTY = 50;
     public static final int SPRITE_Y_EMPTY = 18;
     public int secondsToStart = 5;
+    public Instant now;
     protected AtomicBoolean locked = new AtomicBoolean(false);
     public List<ShapePayload> colliders;
     public Entity[] allSolids;

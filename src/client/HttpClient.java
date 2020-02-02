@@ -20,7 +20,7 @@ public class HttpClient {
 
     public String token, refreshToken = null;
     public String gameId;
-    public final int PORT = 443;
+    public final int PORT = 444;
     public String springEndpoint() {
         return "https://zanzalaz.com:" + PORT + "/";
     }

@@ -12,6 +12,7 @@ import networking.CandidateGame;
 import networking.ClientPacket;
 import networking.PlayerConnection;
 import networking.PlayerDivider;
+import org.joda.time.Instant;
 import util.Util;
 
 import java.util.*;
@@ -98,7 +99,7 @@ public class GameTenant {
                     System.out.println(p.toString());
                 }
                 System.out.println("adding NEW client");
-                System.out.println(c.getRemoteAddressUDP());
+                System.out.println(c.getRemoteAddressTCP());
                 //We should be sorting the connections when the game actually starts, so doesn't matter
                 queue.add(new PlayerConnection(nextUnclaimedSlot(), c, email));
             }
@@ -143,7 +144,8 @@ public class GameTenant {
                 Cloner cloner= new Cloner();
                 GameEngine update = cloner.deepClone(state);
                 update.underControl = state.titanSelected(pd);
-                client.getClient().sendUDP(update);
+                update.now = Instant.now();
+                client.getClient().sendTCP(update);
             });
         };
         exec.scheduleAtFixedRate(updateClients, 1, 50, TimeUnit.MILLISECONDS);

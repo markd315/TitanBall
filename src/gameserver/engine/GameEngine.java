@@ -6,7 +6,6 @@ import client.graphical.ScreenConst;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rits.cloning.Cloner;
-import gameserver.tenancy.GameTenant;
 import gameserver.TutorialOverrides;
 import gameserver.effects.EffectId;
 import gameserver.entity.Box;
@@ -14,9 +13,11 @@ import gameserver.entity.Entity;
 import gameserver.entity.Titan;
 import gameserver.entity.TitanType;
 import gameserver.models.Game;
+import gameserver.tenancy.GameTenant;
 import networking.ClientPacket;
 import networking.KeyDifferences;
 import networking.PlayerDivider;
+import org.joda.time.Instant;
 import util.Util;
 
 import java.awt.*;
@@ -29,10 +30,11 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class GameEngine extends Game {
+    private static boolean logs = false;
     private static final double SHOT_FREEZE_RATIO = .4;
     protected boolean GOALIE_DISABLED = false;
-    protected static final double BALL_X = 1040;
-    protected static final double BALL_Y = 605;
+    protected static final double BALL_X = 1042;
+    protected static final double BALL_Y = 603;
     protected Ability ability = new Ability();
 
     public GameEngine(String id, List<PlayerDivider> clients, GameOptions options) {
@@ -96,7 +98,7 @@ public class GameEngine extends Game {
             if (!found) {
                 Titan t = players[i];
                 rm.add(t);
-                System.out.println("unmapped titan " + t.team + t.getType() + t.id);
+                //System.out.println("unmapped titan " + t.team + t.getType() + t.id);
             }
         }
         List<Titan> temp = new LinkedList<>(Arrays.asList(players));
@@ -335,7 +337,10 @@ public class GameEngine extends Game {
             //System.out.println("setting" + players[i].team + players[i].getType() + teamIndex);
             setPosition(players[i], teamIndex, nonGoaliePerTeam);
             if (away.score > home.score) {
-                players[i].X += 50;//possession bonus for losing
+                players[i].X += 75;//possession bonus for losing
+            }
+            if (away.score < home.score) {
+                players[i].X -= 75;//possession bonus for losing
             }
             teamIndex++;
         }
@@ -344,10 +349,13 @@ public class GameEngine extends Game {
             players[i].team = TeamAffiliation.AWAY; //unmap sometimes breaks this
             setPosition(players[i], teamIndex, nonGoaliePerTeam);
             System.out.println("setting" + players[i].team + players[i].getType() + teamIndex);
+            players[i].X = FIELD_LENGTH - players[i].X - 4; //reflect across X mid (with pixel adjustment idk why)
             if (away.score > home.score) {
-                players[i].X += 50;//possession bonus for losing
+                players[i].X += 100;//possession bonus for losing
             }
-            players[i].X = FIELD_LENGTH - players[i].X; //reflect across X mid
+            if (away.score < home.score) {
+                players[i].X -= 100;//possession bonus for losing
+            }
             teamIndex++;
         }
     }
@@ -430,8 +438,12 @@ public class GameEngine extends Game {
 
     public void intersectAll() {
         for (int n = players.length - 1; n >= 0; n--) {
+            int EXEMPT_FRAME = 2;
+            if(effectPool.hasEffect(players[n], EffectId.SHOOT)){
+                EXEMPT_FRAME = 1; //prevent blowing through adjacent opponent as marksman
+            }
             if (players[n].actionState == Titan.TitanState.SHOOT
-                    && players[n].actionFrame < 2) {
+                    && players[n].actionFrame < EXEMPT_FRAME) {
                 return;
             }
             if (players[n].actionState == Titan.TitanState.CURVE_LEFT
@@ -465,6 +477,15 @@ public class GameEngine extends Game {
     public void processClientPacket(PlayerDivider from, ClientPacket request) {
         lock();
         if (from != null) {
+            if(logs){
+                System.out.println(from.toString() + " packet");
+                ObjectMapper mapper = new ObjectMapper();
+                try {
+                    System.out.println(mapper.writeValueAsString(request));
+                } catch (JsonProcessingException e) {
+                    e.printStackTrace();
+                }
+            }
             Titan t = titanFromPacket(from);
             if (t == null) {
                 System.out.println("got passed a bad titan index! Possibly from another game?");
@@ -482,7 +503,6 @@ public class GameEngine extends Game {
             }
             this.processProgramming(t, request);
             this.processKeys(request, from);
-            //System.out.println(from.toString() + " packet");
             for (PlayerDivider client : clients) {
                 if (client.id == from.id) {
                     from.ready = true;
@@ -827,6 +847,7 @@ public class GameEngine extends Game {
     public void gameTick() throws Exception {
         //System.out.println("tock " + began + ended);
         lock();
+        this.now = Instant.now();
         if (began && !ended) {
             try {
                 framesSinceStart++;
@@ -845,6 +866,9 @@ public class GameEngine extends Game {
                 e.printStackTrace();
             }
             for (Titan t : players) {
+                if(t.isBoosting && t.possession == 1){
+                    t.isBoosting = false;
+                }
                 if (t.isBoosting) {
                     t.fuel -= .5;
                     if (t.fuel < 0) {
@@ -931,7 +955,7 @@ public class GameEngine extends Game {
     }
 
     protected void updateBallIfPossessed(Titan t, int numSel) {
-        if (t.possession == 1) {
+        if (t.possession == 1 && !effectPool.hasEffect(t, EffectId.DEAD)) {
             int valuePlayerX = (int) t.X;
             int valuePlayerY = (int) t.Y;
             if (GOALIE_DISABLED || (numSel != 1 && numSel != 2)) {
@@ -1212,7 +1236,6 @@ public class GameEngine extends Game {
         if (t.inactiveDir == 1 && !effectPool.isRooted(t) && !effectPool.hasEffect(t, EffectId.DEAD)) {
             t.diagonalRunDir = 1;
             if (!t.collidesSolid(this, allSolids, 0, (int) t.speed)) {
-                t.X += t.getSpeed();
                 if (t.X > maxX) t.X = maxX;
                 t.runningFrameCounter += 1;
                 if (t.runningFrameCounter == 5) t.runningFrame = 1;
@@ -1229,7 +1252,6 @@ public class GameEngine extends Game {
         if (t.inactiveDir == 2 && !effectPool.isRooted(t) && !effectPool.hasEffect(t, EffectId.DEAD)) {
             if (!t.collidesSolid(this, allSolids, 0, (int) -t.speed)) {
                 t.diagonalRunDir = 2;
-                t.X -= t.getSpeed();
                 if (t.X < minX) t.X = minX;
                 t.runningFrameCounter += 1;
                 if (t.runningFrameCounter == 5) t.runningFrame = 1;
@@ -1244,7 +1266,6 @@ public class GameEngine extends Game {
     public void runUpAI(Titan t) {
         if (!effectPool.isRooted(t) && !effectPool.hasEffect(t, EffectId.DEAD)) {
             if (!t.collidesSolid(this, allSolids, (int) -t.speed, 0)) {
-                t.Y -= t.getSpeed();
                 t.runningFrameCounter += 1;
                 if (t.runningFrameCounter == 5) t.runningFrame = 1;
                 if (t.runningFrameCounter == 10) {
@@ -1259,7 +1280,6 @@ public class GameEngine extends Game {
     public void runDownAI(Titan t) {
         if (!effectPool.isRooted(t)) {
             if (!t.collidesSolid(this, allSolids, (int) t.speed, 0)) {
-                t.Y += t.getSpeed();
                 t.runningFrameCounter += 1;
                 if (t.runningFrameCounter == 5) t.runningFrame = 1;
                 if (t.runningFrameCounter == 10) {

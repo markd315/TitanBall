@@ -73,7 +73,8 @@ public class TutorialOverrides extends GameEngine {
         ballMap.put("score", ballScore);
         players = tutMap.get("rebound");
         client = clientFromTitan(players[2]);
-        players[2].setVarsBasedOnType();
+        //players[2].setVarsBasedOnType();
+        //tutReset();
     }
 
     public void tutReset() {
@@ -88,7 +89,12 @@ public class TutorialOverrides extends GameEngine {
             players[3].possession = 0;
         }
 
-        this.lastControlPacket[0] = new ClientPacket();
+        if(this.lastControlPacket.length > 0){
+            this.lastControlPacket[0] = new ClientPacket();
+        }else{
+            this.lastControlPacket = new ClientPacket[1];
+            this.lastControlPacket[0] = new ClientPacket();
+        }
 
         stats.reset();
         client = clientFromTitan(this.underControl);

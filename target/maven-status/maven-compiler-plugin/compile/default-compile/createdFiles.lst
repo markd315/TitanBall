@@ -1,3 +1,4 @@
+gameserver\engine\GameEngine.class
 authserver\SpringContext.class
 gameserver\effects\cooldowns\CooldownE.class
 authserver\models\ClassStat.class
@@ -7,6 +8,7 @@ gameserver\engine\Masteries.class
 networking\KryoRegistry.class
 gameserver\effects\effects\TestEffect.class
 client\TitanballClient$3.class
+gameserver\engine\GameEngine$TerminableExecutor.class
 gameserver\entity\minions\Portal.class
 gameserver\engine\StatEngine.class
 gameserver\effects\effects\DefenseEffect.class
@@ -39,7 +41,6 @@ gameserver\effects\effects\EmptyEffect.class
 client\TitanballWindow.class
 authserver\matchmaking\Matchmaker.class
 gameserver\engine\AbilityStrategy.class
-client\TitanballClient$4.class
 gameserver\engine\Team.class
 gameserver\entity\Titan.class
 gameserver\targeting\ShapePayload$ShapeSelector.class
@@ -54,6 +55,7 @@ client\graphical\ScreenConst.class
 gameserver\models\Game.class
 gameserver\engine\Ability$1.class
 gameserver\entity\Entity.class
+gameserver\tenancy\GameTenant.class
 gameserver\TutorialOverrides.class
 gameserver\effects\effects\HealEffect.class
 authserver\SpringContextBridge.class

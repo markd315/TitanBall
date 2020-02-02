@@ -5,3 +5,8 @@ Titanball.iml
 Titanball Launcher.zip
 /out
 session.jwt
+build.gradle
+gradle/
+gradlew
+gradlew.bat
+settings.gradle
