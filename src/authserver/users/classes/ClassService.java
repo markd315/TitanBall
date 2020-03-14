@@ -1,4 +1,4 @@
-package authserver.users;
+package authserver.users.classes;
 
 import authserver.models.ClassStat;
 

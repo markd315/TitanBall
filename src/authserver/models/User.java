@@ -31,9 +31,6 @@ public class User implements Serializable, UserDetails {
     @Column(name = "password")
     protected String password;
 
-    @Column(name = "rating")
-    protected Double rating;
-
     @Column(name = "created")
     protected Timestamp createdAt;
 
@@ -95,6 +92,22 @@ public class User implements Serializable, UserDetails {
         this.killassists = 0;
         this.goalassists = 0;
         this.rebounds = 0;
+        this.rating_1v1 = 1000.0;
+        this.wins_1v1 = 0;
+        this.losses_1v1 = 0;
+        this.ties_1v1 = 0;
+        this.goals_1v1 = 0;
+        this.points_1v1 = 0.0;
+        this.steals_1v1 = 0;
+        this.blocks_1v1 = 0;
+        this.sidegoals_1v1 = 0;
+        this.kills_1v1 = 0;
+        this.deaths_1v1 = 0;
+        this.passes_1v1 = 0;
+        this.turnovers_1v1 = 0;
+        this.killassists_1v1 = 0;
+        this.goalassists_1v1 = 0;
+        this.rebounds_1v1 = 0;
         this.enabled = false;
         Calendar calendar = Calendar.getInstance();
         java.util.Date now = calendar.getTime();
@@ -185,6 +198,9 @@ public class User implements Serializable, UserDetails {
         return null;
     }
 
+    @Column(name = "rating")
+    protected Double rating;
+
     @Column(name = "wins")
     protected Integer wins;
 
@@ -229,6 +245,54 @@ public class User implements Serializable, UserDetails {
 
     @Column(name = "rebounds")
     protected int rebounds;
+
+    @Column(name = "rating_1v1")
+    protected Double rating_1v1;
+
+    @Column(name = "wins_1v1")
+    protected Integer wins_1v1;
+
+    @Column(name = "losses_1v1")
+    protected Integer losses_1v1;
+
+    @Column(name = "ties_1v1")
+    protected Integer ties_1v1;
+
+    @Column(name = "goals_1v1")
+    protected int goals_1v1;
+
+    @Column(name = "sidegoals_1v1")
+    protected int sidegoals_1v1;
+
+    @Column(name = "points_1v1")
+    protected double points_1v1;
+
+    @Column(name = "steals_1v1")
+    protected int steals_1v1;
+
+    @Column(name = "blocks_1v1")
+    protected int blocks_1v1;
+
+    @Column(name = "passes_1v1")
+    protected int passes_1v1;
+
+    @Column(name = "kills_1v1")
+    protected int kills_1v1;
+
+    @Column(name = "deaths_1v1")
+    protected int deaths_1v1;
+
+    @Column(name = "turnovers_1v1")
+    protected int turnovers_1v1;
+
+    @Column(name = "killassists_1v1")
+    protected int killassists_1v1;
+
+    @Column(name = "goalassists_1v1")
+    protected int goalassists_1v1;
+
+    @Column(name = "rebounds_1v1")
+    protected int rebounds_1v1;
 
     public Integer getWins() {
         return wins;
@@ -348,5 +412,133 @@ public class User implements Serializable, UserDetails {
 
     public void setRebounds(int rebounds) {
         this.rebounds = rebounds;
+    }
+
+    public Double getRating_1v1() {
+        return rating_1v1;
+    }
+
+    public void setRating_1v1(Double rating_1v1) {
+        this.rating_1v1 = rating_1v1;
+    }
+
+    public Integer getWins_1v1() {
+        return wins_1v1;
+    }
+
+    public void setWins_1v1(Integer wins_1v1) {
+        this.wins_1v1 = wins_1v1;
+    }
+
+    public Integer getLosses_1v1() {
+        return losses_1v1;
+    }
+
+    public void setLosses_1v1(Integer losses_1v1) {
+        this.losses_1v1 = losses_1v1;
+    }
+
+    public Integer getTies_1v1() {
+        return ties_1v1;
+    }
+
+    public void setTies_1v1(Integer ties_1v1) {
+        this.ties_1v1 = ties_1v1;
+    }
+
+    public int getGoals_1v1() {
+        return goals_1v1;
+    }
+
+    public void setGoals_1v1(int goals_1v1) {
+        this.goals_1v1 = goals_1v1;
+    }
+
+    public int getSidegoals_1v1() {
+        return sidegoals_1v1;
+    }
+
+    public void setSidegoals_1v1(int sidegoals_1v1) {
+        this.sidegoals_1v1 = sidegoals_1v1;
+    }
+
+    public double getPoints_1v1() {
+        return points_1v1;
+    }
+
+    public void setPoints_1v1(double points_1v1) {
+        this.points_1v1 = points_1v1;
+    }
+
+    public int getSteals_1v1() {
+        return steals_1v1;
+    }
+
+    public void setSteals_1v1(int steals_1v1) {
+        this.steals_1v1 = steals_1v1;
+    }
+
+    public int getBlocks_1v1() {
+        return blocks_1v1;
+    }
+
+    public void setBlocks_1v1(int blocks_1v1) {
+        this.blocks_1v1 = blocks_1v1;
+    }
+
+    public int getPasses_1v1() {
+        return passes_1v1;
+    }
+
+    public void setPasses_1v1(int passes_1v1) {
+        this.passes_1v1 = passes_1v1;
+    }
+
+    public int getKills_1v1() {
+        return kills_1v1;
+    }
+
+    public void setKills_1v1(int kills_1v1) {
+        this.kills_1v1 = kills_1v1;
+    }
+
+    public int getDeaths_1v1() {
+        return deaths_1v1;
+    }
+
+    public void setDeaths_1v1(int deaths_1v1) {
+        this.deaths_1v1 = deaths_1v1;
+    }
+
+    public int getTurnovers_1v1() {
+        return turnovers_1v1;
+    }
+
+    public void setTurnovers_1v1(int turnovers_1v1) {
+        this.turnovers_1v1 = turnovers_1v1;
+    }
+
+    public int getKillassists_1v1() {
+        return killassists_1v1;
+    }
+
+    public void setKillassists_1v1(int killassists_1v1) {
+        this.killassists_1v1 = killassists_1v1;
+    }
+
+    public int getGoalassists_1v1() {
+        return goalassists_1v1;
+    }
+
+    public void setGoalassists_1v1(int goalassists_1v1) {
+        this.goalassists_1v1 = goalassists_1v1;
+    }
+
+    public int getRebounds_1v1() {
+        return rebounds_1v1;
+    }
+
+    public void setRebounds_1v1(int rebounds_1v1) {
+        this.rebounds_1v1 = rebounds_1v1;
     }
 }

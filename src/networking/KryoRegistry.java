@@ -89,6 +89,7 @@ public class KryoRegistry {
         kryo.register(Team.class);
         kryo.register(ShapePayload.class);
         kryo.register(ShapePayload.ShapeSelector.class);
+        kryo.register(ClientPacket.ARTISAN_SHOT.class);
         kryo.register(ClientPacket.class);
         kryo.register(EffectPool.class);
         kryo.register(Selector.class);

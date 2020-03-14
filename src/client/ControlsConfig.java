@@ -4,12 +4,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import gameserver.engine.GameEngine;
 import gameserver.entity.Titan;
+import gameserver.entity.TitanType;
 import networking.ClientPacket;
 
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+
+import static networking.ClientPacket.ARTISAN_SHOT.*;
 
 public class ControlsConfig {
 
@@ -50,6 +53,19 @@ public class ControlsConfig {
             String value = keymap.get(newKey);
             switch(value){
                 case "E":
+                    if(game.underControl.getType() == TitanType.ARTISAN && game.underControl.possession == 1){
+                        switch(prior.artisanShot){
+                            case LEFT:
+                                prior.artisanShot = RIGHT;
+                                break;
+                            case RIGHT:
+                                prior.artisanShot = SHOT;
+                                break;
+                            case SHOT:
+                                prior.artisanShot = LEFT;
+                                break;
+                        }
+                    }
                     prior.E = true;
                     break;
                 case "R":

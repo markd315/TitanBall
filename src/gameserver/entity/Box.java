@@ -66,7 +66,7 @@ public class Box extends Coordinates{
         }
         boolean ret = false;
         for (Box collCheck : solids) {
-            if (collCheck.id != this.id &&
+            if (collCheck != null && collCheck.id != this.id &&
                     (!(collCheck instanceof Entity) || (((Entity) collCheck).health > 0))) {
                 if (collCheck instanceof Titan) {
                     //Titans don't take up their full hitboxes. Mostly.
@@ -96,6 +96,20 @@ public class Box extends Coordinates{
             return true;
         }
         return false;
+    }
+
+    public boolean intersectCircle(double x2, double y2, double r2)
+    {
+        double r1 = (this.width + this.height) / 4.0;
+        double centerX = (- this.width/2.0) + this.X;
+        double centerY = (- this.height/2.0) + this.Y;
+        double distSq = (centerX - x2) * (centerX - x2) +
+                (centerY - y2) * (centerY - y2);
+        double radSumSq = (r1 + r2) * (r1 + r2);
+        if (distSq >= radSumSq)
+            return false;
+        else
+            return true;
     }
 
     public Rectangle2D asRect() {

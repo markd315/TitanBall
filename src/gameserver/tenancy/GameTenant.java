@@ -1,7 +1,7 @@
 package gameserver.tenancy;
 
 import authserver.SpringContextBridge;
-import authserver.users.UserService;
+import authserver.users.identities.UserService;
 import com.esotericsoftware.kryonet.Connection;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -437,7 +437,7 @@ public class GameTenant {
         }*/
     }
 
-    public boolean gameContainsEmail(Set<String> gameFor) {
+    public boolean gameContainsEmail(Collection<String> gameFor) {
         for(String searchFor : gameFor){
             for(PlayerConnection matches : this.clients){
                 if(matches.email.equals(searchFor)){

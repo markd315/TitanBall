@@ -114,21 +114,21 @@ public class GameOptions {
     public String toStringSrv(){
         StringBuilder sb = new StringBuilder();
         sb.append("/");
-        sb.append(playersVal);
+        sb.append(playerIndex);
         sb.append("/");
-        sb.append(bestOfVal);
+        sb.append(bestOfIndex);
         sb.append("/");
-        sb.append(goalieVal);
+        sb.append(goalieIndex);
         sb.append("/");
-        sb.append(playToVal);
+        sb.append(playToIndex);
         sb.append("/");
-        sb.append(winByVal);
+        sb.append(winByIndex);
         sb.append("/");
-        sb.append(hardWinVal);
+        sb.append(hardWinIndex);
         sb.append("/");
-        sb.append(suddenDeathVal);
+        sb.append(suddenDeathIndex);
         sb.append("/");
-        sb.append(tieVal);
+        sb.append(tieIndex);
         return new String(sb);
     }
 

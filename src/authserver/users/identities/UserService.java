@@ -1,6 +1,8 @@
-package authserver.users;
+package authserver.users.identities;
 
 import authserver.models.User;
+
+import java.util.List;
 
 public interface UserService {
 
@@ -8,5 +10,5 @@ public interface UserService {
     void deleteUser(User user) throws Exception;
     User findUserByUsername(String username);
     User findUserByEmail(String username);
-
+    List<User> findAll();
 }

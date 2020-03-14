@@ -1,9 +1,12 @@
 package util;
 
+import gameserver.engine.GoalHoop;
+import gameserver.entity.Entity;
 import org.json.JSONObject;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 
+import java.awt.geom.Point2D;
 import java.io.*;
 import java.util.Base64;
 import java.util.Random;
@@ -18,6 +21,14 @@ public class Util {
             return ((Double) o);
         }
         else throw new IllegalArgumentException("Unrecognized numeric type");
+    }
+
+    public static double dist(
+            double x1,
+            double y1,
+            double x2,
+            double y2) {
+        return Math.sqrt((y2 - y1) * (y2 - y1) + (x2 - x1) * (x2 - x1));
     }
 
     public static double degreesFromCoords(double xClick, double yClick) {
@@ -90,5 +101,17 @@ public class Util {
             s+=c;
         }
         return s;
+    }
+
+    public static double calculatePain(Entity e, GoalHoop pain) {
+        int d = (int) Point2D.distance(e.X + 35, e.Y + 35,
+                pain.x + (pain.w / 2.0),
+                pain.y + (pain.h / 2.0));
+        return (-10051.0 / 146431200000.0) * Math.pow(d, 3) +
+                Math.pow(d, 2) * 556391.0 / 4881040000.0 -
+                (276389.0 / 4306800.0) * d
+                + 13.82;//-(10051 x^3)/146431200000 + (556391 x^2)/4881040000 - (276389 x)/4306800 + 843475/61013≈-6.86397×10^-8 x^3 + 0.00011399 x^2 - 0.064175 x + 13.8245
+        //https://www.wolframalpha.com/input/?i=model+cubic&assumption=%7B%22F%22%2C+%22CubicFitCalculator%22%2C+%22data2%22%7D+-%3E%22%7B%7B1000%2C+-5%7D%2C+%7B400%2C2%7D%2C+%7B200%2C+5%7D%2C+%7B30%2C+12%7D%7D%22
+
     }
 }

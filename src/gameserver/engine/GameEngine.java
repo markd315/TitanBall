@@ -8,6 +8,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rits.cloning.Cloner;
 import gameserver.TutorialOverrides;
 import gameserver.effects.EffectId;
+import gameserver.effects.cooldowns.CooldownCurve;
+import gameserver.effects.effects.Effect;
 import gameserver.entity.Box;
 import gameserver.entity.Entity;
 import gameserver.entity.Titan;
@@ -21,7 +23,6 @@ import org.joda.time.Instant;
 import util.Util;
 
 import java.awt.*;
-import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.util.List;
 import java.util.*;
@@ -47,6 +48,7 @@ public class GameEngine extends Game {
             e.printStackTrace();
         }
         cullUnmappedTitans();
+        System.out.println("goalieoptions " + options.goalieIndex);
         if (options.goalieIndex == 0) {
             cullGoalies();
         } else {
@@ -125,16 +127,11 @@ public class GameEngine extends Game {
         for (Entity e : allSolids) {
             double factor = (1000.0 / Game.GAMETICK_MS);
             if(!(e instanceof Titan)){
-                factor*=15.0;
+                factor*=5.0; //so that buildings drain slower
             }
             GoalHoop[] pains = getPainHoopsFromTeam(e.team);
             for (GoalHoop pain : pains) {
-                int d = (int) Point2D.distance(e.X + 35, e.Y + 35, pain.x + (pain.w / 2), pain.y + (pain.h / 2));
-                double delta = (-10051.0 / 146431200000.0) * Math.pow(d, 3) +
-                        Math.pow(d, 2) * 556391.0 / 4881040000.0 -
-                        (276389.0 / 4306800.0) * d
-                        + 13.82;//-(10051 x^3)/146431200000 + (556391 x^2)/4881040000 - (276389 x)/4306800 + 843475/61013≈-6.86397×10^-8 x^3 + 0.00011399 x^2 - 0.064175 x + 13.8245
-                //https://www.wolframalpha.com/input/?i=model+cubic&assumption=%7B%22F%22%2C+%22CubicFitCalculator%22%2C+%22data2%22%7D+-%3E%22%7B%7B1000%2C+-5%7D%2C+%7B400%2C2%7D%2C+%7B200%2C+5%7D%2C+%7B30%2C+12%7D%7D%22
+                double delta = Util.calculatePain(e, pain);
                 if (delta > 0) {
                     if (delta > 20) {
                         delta = 20;
@@ -152,7 +149,7 @@ public class GameEngine extends Game {
         }
     }
 
-    protected GoalHoop[] getPainHoopsFromTeam(TeamAffiliation team) {
+    public GoalHoop[] getPainHoopsFromTeam(TeamAffiliation team) {
         GoalHoop[] ret = new GoalHoop[1];
         if (team == TeamAffiliation.UNAFFILIATED) {
             ret = new GoalHoop[2];
@@ -463,6 +460,8 @@ public class GameEngine extends Game {
         for (int n = players.length - 1; n >= 0; n--) {
             intersectBall(n + 1, (int) players[n].X, (int) players[n].Y);
         }
+        Entity[] arr = new Entity[1];
+        ball.collidesSolid(this, entityPool.toArray(arr));
     }
 
     public boolean anyClientSelected(int n) {
@@ -499,6 +498,12 @@ public class GameEngine extends Game {
                 btn = 3;
             }
             if (request.posX != -1 && request.posY != -1 && btn != 0) {
+                if(request.artisanShot == ClientPacket.ARTISAN_SHOT.LEFT){
+                    btn = 4;
+                }
+                if(request.artisanShot == ClientPacket.ARTISAN_SHOT.RIGHT){
+                    btn = 5;
+                }
                 this.serverMouseRoutine(t, request.posX, request.posY, btn, request.camX, request.camY);
             }
             this.processProgramming(t, request);
@@ -866,7 +871,7 @@ public class GameEngine extends Game {
                 e.printStackTrace();
             }
             for (Titan t : players) {
-                if(t.isBoosting && t.possession == 1){
+                if(t.isBoosting && t.possession == 1 && t.getType() != TitanType.DASHER){
                     t.isBoosting = false;
                 }
                 if (t.isBoosting) {
@@ -888,6 +893,7 @@ public class GameEngine extends Game {
                 if (t.runLeft == 1) runLeftCtrl(t);
                 if (t.runUp == 1) runUpCtrl(t);
                 if (t.runDown == 1) runDownCtrl(t);
+                unhideBallIfHidden(t);
                 if (t.actionState == Titan.TitanState.SHOOT) shootingBall(t);
                 else if (t.actionState == Titan.TitanState.LOB) lobbingBall(t);
                 else if (t.actionState == Titan.TitanState.CURVE_LEFT) curve(t, 1);
@@ -908,6 +914,24 @@ public class GameEngine extends Game {
         if (ball.Y > GameEngine.MAX_Y) ball.Y = GameEngine.MAX_Y;
         resurrectAll();
         unlock();
+    }
+
+    private void unhideBallIfHidden(Titan t) {
+        if(t.getType().equals(TitanType.DASHER) && effectPool.hasEffect(t, EffectId.HIDE_BALL) &&
+                (t.actionState == Titan.TitanState.SHOOT ||
+                        t.actionState == Titan.TitanState.LOB ||
+                        t.actionState == Titan.TitanState.CURVE_LEFT ||
+                        t.actionState == Titan.TitanState.CURVE_RIGHT)){
+            ballVisible = true;
+            lastPossessed = t.id;
+            Set<Effect> rm = new HashSet<>();
+            for(Effect ef : effectPool.getEffects()){
+                if(ef.on.id.equals(t.id) && ef.effect.equals(EffectId.HIDE_BALL)){
+                    rm.add(ef);
+                }
+            }
+            effectPool.getEffects().removeAll(rm);
+        }
     }
 
     private void resurrectAll() {
@@ -1075,9 +1099,15 @@ public class GameEngine extends Game {
             } else if (phase == 8 && btn == 3) {
                 t.actionState = Titan.TitanState.LOB;
             } else if (phase == 8 && btn == 4) {
-                t.actionState = Titan.TitanState.CURVE_LEFT;
+                if(!effectPool.hasEffect(t, EffectId.COOLDOWN_CURVE)){
+                    t.actionState = Titan.TitanState.CURVE_LEFT;
+                    effectPool.addUniqueEffect(new CooldownCurve(5000, t));
+                }
             } else if (phase == 8 && btn == 5) {
-                t.actionState = Titan.TitanState.CURVE_RIGHT;
+                if(!effectPool.hasEffect(t, EffectId.COOLDOWN_CURVE)){
+                    t.actionState = Titan.TitanState.CURVE_RIGHT;
+                    effectPool.addUniqueEffect(new CooldownCurve(5000, t));
+                }
             }
             int xClick = (int) ((clickX - ball.X) + camX - ball.centerDist); //mid sprite, plus account for locations
             int yClick = (int) (-1 * ((clickY - ball.Y) + camY - ball.centerDist)); //same, plus flip Y axis for coordinate plane

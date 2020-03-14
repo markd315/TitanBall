@@ -2,24 +2,25 @@ package gameserver.entity.minions;
 
 import gameserver.engine.GameEngine;
 import gameserver.engine.TeamAffiliation;
-import gameserver.entity.Box;
-import gameserver.entity.Collidable;
-import gameserver.entity.Entity;
-import gameserver.entity.Titan;
+import gameserver.entity.*;
 import org.joda.time.Instant;
+import util.Util;
 
+import java.awt.*;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 public class Portal extends gameserver.entity.Entity implements Collidable {
 
-    private static int COOLDOWN_MS = 10000;
+    private static final int COOLDOWN_MS = 10000;
+    private static final int MAX_RANGE = 600;
     private UUID createdById;
+    public RangeCircle rangeCircle;
     private Instant createdAt;//only used serverside so clock skew is irrelevant
     private Instant cdUntil;
 
-    public Portal(TeamAffiliation team, Titan pl, List<Entity> pool, int x, int y) {
+    public Portal(TeamAffiliation team, Titan pl, List<Entity> pool, int x, int y, GameEngine context) {
         super(team);
         this.setX(x);
         this.setY(y);
@@ -31,6 +32,17 @@ public class Portal extends gameserver.entity.Entity implements Collidable {
         this.createdById = pl.id;
         this.createdAt = Instant.now();//only used serverside so clock skew is irrelevant
         removeOldestPortal(pool, pl);
+        RetObj secondCanStayIfRange = oldestP(pool, pl);
+        if(! isPlaceableRangeCheck(context, pl.id)){
+            if(secondCanStayIfRange.curr > 0){
+                pool.remove(secondCanStayIfRange.bp);
+            }
+        }else{
+            if(secondCanStayIfRange.bp != null){
+                secondCanStayIfRange.bp.rangeCircle = null;
+            }
+        }
+        this.rangeCircle = new RangeCircle(Color.RED, MAX_RANGE);
     }
 
     public boolean isCooldown(Instant now) {
@@ -38,22 +50,37 @@ public class Portal extends gameserver.entity.Entity implements Collidable {
     }
 
     private void removeOldestPortal(List<Entity> pool, Titan player) {
+        RetObj oldestP = oldestP(pool, player);
+        if (oldestP.bp != null && oldestP.curr > 1) {
+            pool.remove(oldestP.bp);
+        }
+    }
+
+    private RetObj oldestP(List<Entity> pool, Titan player){
         Portal oldestP = null;
-        int currentPortals = 0;
+        int currentBallPortals = 0;
         for (Entity e : pool) {
             if (e instanceof Portal && e.getHealth() > 0) {
                 Portal p = (Portal) e;
                 if (player.id.equals(p.createdById)) {
-                    currentPortals += 1;
+                    currentBallPortals += 1;
                     if (oldestP == null || p.createdAt.isBefore(oldestP.createdAt)) {
                         oldestP = p;
                     }
                 }
             }
         }
-        if (oldestP != null && currentPortals > 1) {
-            pool.remove(oldestP);
+        return new RetObj(oldestP, currentBallPortals);
+    }
+
+    private boolean isPlaceableRangeCheck(GameEngine context, UUID creator){
+        Optional<Portal> friendly = findFriendlyPortal(context, creator);
+        if(!friendly.isPresent()){
+            return true;
         }
+        double dist = Util.dist(friendly.get().X, friendly.get().Y,
+                this.X, this.Y);
+        return dist < MAX_RANGE;
     }
 
     private Optional<Portal> findFriendlyPortal(GameEngine context, UUID creator) {
@@ -106,5 +133,18 @@ public class Portal extends gameserver.entity.Entity implements Collidable {
 
     public Portal() {
         super(TeamAffiliation.UNAFFILIATED);
+    }
+
+    public UUID getCreatedById() {
+        return createdById;
+    }
+
+    private class RetObj{
+        private RetObj(Portal bp, int curr){
+            this.bp = bp;
+            this.curr = curr;
+        }
+        Portal bp;
+        int curr;
     }
 }
