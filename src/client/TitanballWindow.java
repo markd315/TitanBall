@@ -60,7 +60,7 @@ public class TitanballWindow extends JFrame {
         if(restarting){
             client.openConnection();
             if(menu){
-                client.phase = 2;
+                client.phase = 15;
                 client.initSurface(true); //convoluted, but we can only do this once
             }
         }

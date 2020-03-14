@@ -171,7 +171,7 @@ public class TutorialOverrides extends GameEngine {
                     this.began = false;
                     this.lastControlPacket = null;
                     this.client = null;
-                    phase = 2;
+                    phase = 15;
                     /*players = tutMap.get("score");
                     ball.setX(ballMap.get("score").X);
                     ball.setY(ballMap.get("score").Y);

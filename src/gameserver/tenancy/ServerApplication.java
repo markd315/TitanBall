@@ -64,7 +64,7 @@ public class ServerApplication {
                     if (object instanceof ClientPacket) {
                         String token = ((ClientPacket) object).token;
                         if (token == null) {
-                            System.out.println("token null");
+                            //System.out.println("token null");
                             return;
                         }
                         delegatePacket(connection, (ClientPacket) object);
@@ -75,14 +75,14 @@ public class ServerApplication {
         System.out.println("server listening 54555 for game changes");
     }
 
-    public static void addNewGame(String id, GameOptions op, Set<String> gameFor) {
+    public static void addNewGame(String id, GameOptions op, Collection<String> gameFor) {
         System.out.println("adding new game, id " + id);
         cleanupCorruptStates(gameFor);
         states.put(id, new GameTenant(id, op));
         System.out.println("game map size: " + states.size());
     }
 
-    private static void cleanupCorruptStates(Set<String> gameFor) {
+    private static void cleanupCorruptStates(Collection<String> gameFor) {
         Set<String> rm = new HashSet<>();
         for(String id : states.keySet()){
             GameTenant gt = states.get(id);
@@ -123,6 +123,8 @@ public class ServerApplication {
         for (String id : states.keySet()) {
             GameTenant val = states.get(id);
             if (val.state != null && val.state.ended) {
+                System.out.println("ENDING GAME");
+                System.out.println(val.options.toStringSrv());
                 if(val.options.toStringSrv().equals("/3/1/1/5/2/9999/10/12")) {//default public mode only for ratings
                     injectRatingsToPlayers(val.state);
                     for (PlayerDivider player : val.state.clients) {
@@ -131,6 +133,21 @@ public class ServerApplication {
                             if (t != null) {
                                 String className = t.getType().toString();
                                 persistenceManager.postgameStats(player.email, val.state.stats, className, player.wasVictorious, player.newRating);
+                            }
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+                if(val.options.toStringSrv().equals("/1/1/1/5/2/9999/10/12")) {//1v1 ratings mode
+                    inject1v1RatingsToPlayers(val.state);//This method is new
+                    for (PlayerDivider player : val.state.clients) {
+                        try {
+                            Titan t = val.state.titanSelected(player);
+                            if (t != null) {
+                                String className = t.getType().toString();
+                                //This method is new
+                                persistenceManager.postgameStats1v1(player.email, val.state.stats, className, player.wasVictorious, player.newRating);
                             }
                         } catch (Exception e) {
                             e.printStackTrace();
@@ -157,6 +174,31 @@ public class ServerApplication {
                 home.add(oldRating);
             } else {
                 oldRating.setRating(persistence.getRating());
+                away.add(oldRating);
+            }
+        }
+        Rating<String> homeRating = new Rating<>(home, "home", 0);
+        Rating<String> awayRating = new Rating<>(away, "away", 0);
+        Match<User> match = new Match(homeRating, awayRating, state.home.score - state.away.score);
+        //System.out.println(match.winMargin + "");
+        match.injectAverage(home, away);
+        for (PlayerDivider pl : state.clients) {
+            updatePlayerRating(pl, home);
+            updatePlayerRating(pl, away);
+        }
+    }
+
+    private static void inject1v1RatingsToPlayers(GameEngine state) {
+        List<Rating> home = new ArrayList<>(), away = new ArrayList<>();
+        for (PlayerDivider pl : state.clients) {
+            User persistence = persistenceManager.userService.findUserByEmail(pl.email);
+            //System.out.println("got user " + persistence.getEmail() + persistence.getRating());
+            Rating<User> oldRating = new Rating<>(persistence, persistence.getLosses_1v1() + persistence.getWins_1v1());
+            if (state.players[pl.getSelection() - 1].team == TeamAffiliation.HOME) {
+                oldRating.setRating(persistence.getRating_1v1());
+                home.add(oldRating);
+            } else {
+                oldRating.setRating(persistence.getRating_1v1());
                 away.add(oldRating);
             }
         }

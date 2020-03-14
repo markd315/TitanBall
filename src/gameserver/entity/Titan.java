@@ -81,9 +81,9 @@ public class Titan extends Entity {
                 this.rangeIndicators.addAll(titanRange.get(this.type));
             }
             if(type == TitanType.DASHER){
-                this.boostFactor = 1.25;
+                this.boostFactor = 1.45;
             }else{
-                this.boostFactor = 1.15;
+                this.boostFactor = 1.33;
             }
         }
     }

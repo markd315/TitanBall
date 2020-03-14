@@ -9,7 +9,6 @@ import com.esotericsoftware.kryonet.Listener;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mashape.unirest.http.exceptions.UnirestException;
 import com.rits.cloning.Cloner;
-import gameserver.engine.GameEngine;
 import gameserver.TutorialOverrides;
 import gameserver.effects.EffectId;
 import gameserver.effects.cooldowns.CooldownE;
@@ -118,6 +117,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
     private boolean codeHide = false;
     private GameOptions tourneyOptions = new GameOptions();
     private int tourneyIndex = 0;
+    private boolean alreadyLeftGame = false;
 
     public TitanballClient(TitanballWindow titanballWindow, int xSize, int ySize, HttpClient loginClient, Map<String, String> keymap, boolean createListeners) {
         this.parentWindow = titanballWindow;
@@ -217,14 +217,6 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         button.addMouseListener(mouseListener);
     }
 
-    public void setAuth(String token, String refresh) {
-        this.token = token;
-        this.refresh = refresh;
-        loginClient = new HttpClient();
-        loginClient.token = token;
-        loginClient.refreshToken = refresh;
-    }
-
     public int indexSelected() {
         for (int i = 0; i < game.players.length; i++) {
             if (game.players[i].id.equals(game.underControl.id)) {
@@ -240,7 +232,10 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         if (game != null && game.ended) {
             Team team = teamFromUnderControl();
             Team enemy = enemyFromUnderControl();
-            loginClient.leave();
+            if(!alreadyLeftGame){
+                loginClient.leave();
+                alreadyLeftGame = true;
+            }
             if (team.score > enemy.score) {
                 sconst.drawImage(g2D, victory.getImage(), sconst.RESULT_IMG_X, sconst.RESULT_IMG_Y, this);
             } else if(team.score == enemy.score){
@@ -251,20 +246,15 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
             gameEndStatsAndRanks(g2D, game.underControl);
             return;
         }
-        if(phase < 8 || phase == 69){
+        if(phase < 8 || phase == 69 || phase == 15 || phase == 2){
             repaint();
             //Not getting any packets to trigger a redraw yet
         }
         if (phase == 0) creditPanel(g2D);
         if (phase == 1) tutorial(g2D);
+        if (phase == 15) showGameModes(g2D);
         if (phase == 2) drawClassScreen(g2D); //Attack screen settings starting here!
         if (phase == 3) {
-            if (cursor == 13) {
-                phase = 100;
-            }
-            if (cursor == 14) {
-                phase = 69;
-            }
             if(tournamentCode.equals("")){
                 tourneyOptions = new GameOptions();
                 tournamentCode = tourneyOptions.toString();
@@ -345,7 +335,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
             repaint();
             updateFrameBall();
             updateNarration(tut);
-            if(this.game.phase == 2){ //finish tutorial
+            if(this.game.phase == 15){ //finish tutorial
                 try {
                     parentWindow.reset(true);
                     controlsHeld.classSelection = null;
@@ -675,6 +665,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
             }
             g2D.draw(goal);
         }
+        drawPainHealIndicator(g2D, game);
         ArrayList<RangeCircle> clientCircles = new ArrayList<>();
         for (RangeCircle ri : game.underControl.rangeIndicators) {
             clientCircles.add(ri);
@@ -716,32 +707,36 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
             g2D.setColor(Color.YELLOW);
             reflectDraw(lobCatch, mx, my, g2D);
             g2D.draw(lobCatch);
-
-            Line2D shot = new Line2D.Double(ox + (LOB_DIST * pow * Math.cos(angle)),
-                    oy + (LOB_DIST * pow * Math.sin(angle)),
-                    ox + (SHOT_DIST * pow * Math.cos(angle)),
-                    oy + (SHOT_DIST * pow * Math.sin(angle)));
-            g2D.setColor(new Color(.65f, 0f, 0f));
-            reflectDraw(shot, mx, my, g2D);
-            g2D.draw(shot);
-            g2D.setStroke(new BasicStroke(RANGE_SIZE));
+            if(this.controlsHeld.artisanShot == ClientPacket.ARTISAN_SHOT.SHOT){
+                Line2D shot = new Line2D.Double(ox + (LOB_DIST * pow * Math.cos(angle)),
+                        oy + (LOB_DIST * pow * Math.sin(angle)),
+                        ox + (SHOT_DIST * pow * Math.cos(angle)),
+                        oy + (SHOT_DIST * pow * Math.sin(angle)));
+                g2D.setColor(new Color(.65f, 0f, 0f));
+                reflectDraw(shot, mx, my, g2D);
+                g2D.draw(shot);
+            }
             double Q_CURVE_A = sconst.adjX(310);
             double Q_CURVE_B = sconst.adjX(186);
             if (game.underControl.possession == 1 && game.underControl.getType() == TitanType.ARTISAN) {
-                QuadCurve2D eL = new QuadCurve2D.Double(ox, oy,
-                        ox + (Q_CURVE_A * pow * Math.cos(angle - .97)),
-                        oy + (Q_CURVE_A * pow * Math.sin(angle - .97)),
-                        ox + (Q_CURVE_B * pow * Math.cos(angle)),
-                        oy + (Q_CURVE_B * pow * Math.sin(angle)));
-                QuadCurve2D eR = new QuadCurve2D.Double(ox, oy,
-                        ox + (Q_CURVE_A * pow * Math.cos(angle + .97)),
-                        oy + (Q_CURVE_A * pow * Math.sin(angle + .97)),
-                        ox + (Q_CURVE_B * pow * Math.cos(angle)),
-                        oy + (Q_CURVE_B * pow * Math.sin(angle)));
-                g2D.setColor(Color.GREEN);
-                g2D.draw(eL);
-                g2D.setColor(new Color(.45f, .0f, .85f));
-                g2D.draw(eR);
+                if(this.controlsHeld.artisanShot == ClientPacket.ARTISAN_SHOT.LEFT) {
+                    QuadCurve2D eL = new QuadCurve2D.Double(ox, oy,
+                            ox + (Q_CURVE_A * pow * Math.cos(angle - .97)),
+                            oy + (Q_CURVE_A * pow * Math.sin(angle - .97)),
+                            ox + (Q_CURVE_B * pow * Math.cos(angle)),
+                            oy + (Q_CURVE_B * pow * Math.sin(angle)));
+                    g2D.setColor(Color.GREEN);
+                    g2D.draw(eL);
+                }
+                if(this.controlsHeld.artisanShot == ClientPacket.ARTISAN_SHOT.RIGHT) {
+                    QuadCurve2D eR = new QuadCurve2D.Double(ox, oy,
+                            ox + (Q_CURVE_A * pow * Math.cos(angle + .97)),
+                            oy + (Q_CURVE_A * pow * Math.sin(angle + .97)),
+                            ox + (Q_CURVE_B * pow * Math.cos(angle)),
+                            oy + (Q_CURVE_B * pow * Math.sin(angle)));
+                    g2D.setColor(new Color(.45f, .0f, .85f));
+                    g2D.draw(eR);
+                }
             }
         } else {
             RangeCircle steal = new RangeCircle(
@@ -773,7 +768,8 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
             g2D.setColor(ri.getColor());
             Titan t = game.underControl;
             if (ri.getRadius() > 0) {
-                if (t.getType() != TitanType.ARTISAN || t.possession == 0) {
+                //don't show Artisan Suck with ball
+                if (t.getType() != TitanType.ARTISAN || t.possession == 0 || ri.getColor().getGreen() < 250) {
                     int w = (int) (ri.getRadius() * 2 * t.rangeFactor);
                     int h = w;
                     int x = (int) t.X + (t.width / 2) - w / 2;
@@ -788,6 +784,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
                 }
             }
         }
+        drawPortalRanges(g2D);
         if (game.goalVisible == true) {
             g2D.drawImage(goalScored.getImage(), sconst.GOAL_TXT_X, sconst.GOAL_TXT_Y, this);
         }
@@ -825,6 +822,65 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
                 g2D.draw(b);
             }
         }
+    }
+
+    private void drawPortalRanges(Graphics2D g2D) {
+        for(Entity e : game.entityPool){
+            RangeCircle ri = null;
+            if(e instanceof BallPortal && game.underControl.id.equals(((BallPortal) e).getCreatedById())){
+                ri = ((BallPortal) e).rangeCircle;
+            }
+            if(e instanceof Portal && game.underControl.id.equals(((Portal) e).getCreatedById())){
+                ri = ((Portal) e).rangeCircle;
+            }
+            if(ri != null){
+                int w = (int) (ri.getRadius() * 2);
+                int h = w;
+                int x = (int) e.X + (e.width / 2) - w / 2;
+                int y = (int) e.Y + (e.height / 2) - h / 2;
+                x = (int) sconst.adjX(x - camX);
+                y = sconst.adjY(y - camY);
+                h = sconst.adjY(h);
+                w = (int) sconst.adjX(w);
+                Ellipse2D.Double ell = new Ellipse2D.Double(x, y, w, h);
+                ShapePayload c = new ShapePayload(ell);
+                g2D.setColor(ri.getColor());
+                g2D.draw(c.from());
+            }
+        }
+    }
+
+    private void drawPainHealIndicator(Graphics2D g2D, GameEngine game) {
+        for (int sel = 1; sel <= game.players.length; sel++) {
+            if (indexSelected() == sel) {
+                Titan e = game.players[sel - 1];
+                GoalHoop[] pains = game.getPainHoopsFromTeam(e.team);
+                for (GoalHoop pain : pains) {
+                    double delta = Util.calculatePain(e, pain);
+                    g2D.setStroke(new BasicStroke(4.0f));
+                    if (delta > 0) {
+                        double percent = 75 - (7.5*delta);
+                        if(percent < 0){
+                            percent = 0.1;
+                        }
+                        setColorBasedOnPercent(g2D, percent, false);
+                        g2D.drawLine(0,0,1920,0);
+                    }
+                    final double FPS = 1000 / GAMETICK_MS;
+                    double time = (game.framesSinceStart / FPS);
+                    time = (int)(time*10.0) / 10.0;
+                    if (delta < -3 && time < game.PAIN_DISABLE_TIME) {
+                        if(e.possession == 1){
+                            g2D.setColor(Color.BLUE);
+                        }else{
+                            g2D.setColor(Color.GREEN);
+                        }
+                        g2D.drawLine(0,0,1920,0);
+                    }
+                }
+            }
+        }
+
     }
 
     private boolean ballLobMode() {
@@ -1092,6 +1148,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
     public void classFacts(Graphics2D g2D) {
         updateSelected();
         if(controlsHeld.classSelection != TitanType.GOALIE){
+            System.out.println(controlsHeld.classSelection);
             double speed = Titan.normalOutOfTenFromStat(Titan.titanSpeed, controlsHeld.classSelection);
             double hp = Titan.normalOutOfTenFromStat(Titan.titanHealth, controlsHeld.classSelection);
             double shoot = Titan.normalOutOfTenFromStat(Titan.titanShoot, controlsHeld.classSelection);
@@ -1159,10 +1216,16 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-                phase = 2;
+                phase = 15;
             }
         }
+        if(key == KeyEvent.VK_ESCAPE && phase == 2){
+            phase = 15;
+        }
         if(phase == 69){
+            if(key == KeyEvent.VK_ESCAPE){
+                phase = 15;
+            }
             if(key == KeyEvent.VK_BACK_SPACE || key == KeyEvent.VK_DELETE){
                 if(tournamentCode.length() > 0){
                     tournamentCode = tournamentCode.substring(0, tournamentCode.length() - 1);
@@ -1267,9 +1330,15 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
             if (phase == 2) {
                 cursor -= 1;
             }
+            if (phase == 15) {
+                cursor -= 1;
+            }
         }
         if ((key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D)) {
             if (phase == 2) {
+                cursor += 1;
+            }
+            if (phase == 15) {
                 cursor += 1;
             }
         }
@@ -1277,10 +1346,16 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
             if (phase == 2) {
                 cursor -= 4;
             }
+            if (phase == 15) {
+                cursor -= 1;
+            }
         }
         if ((key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S)) {
             if (phase == 2) {
                 cursor += 4;
+            }
+            if (phase == 15) {
+                cursor += 1;
             }
         }
     }
@@ -1294,8 +1369,36 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         }
         if ((key == KeyEvent.VK_SPACE || key == KeyEvent.VK_ENTER)
                 && phase == 1) {
-            phase = 2;
+            phase = 15;
             controlsHeld.CAM = true;
+            return true;
+        }
+        if ((key == KeyEvent.VK_SPACE || key == KeyEvent.VK_ENTER)
+                && phase == 15) {
+            controlsHeld.CAM = true;
+            switch(cursor){
+                case 0:
+                    phase = 2;
+                    cursor = 1;
+                    tourneyOptions = new GameOptions();
+                    tournamentCode = tourneyOptions.toString();
+                    return true;
+                case 1:
+                    phase = 2;
+                    cursor = 1;
+                    tourneyOptions = new GameOptions();
+                    tourneyOptions.playerIndex = 4;
+                    tournamentCode = tourneyOptions.toString();
+                    return true;
+                case 2:
+                    phase = 69;
+                    cursor = 1;
+                    return true;
+                case 3:
+                    phase = 100;
+                    cursor = 1;
+                    return true;
+            }
             return true;
         }
         if ((key == KeyEvent.VK_SPACE || key == KeyEvent.VK_ENTER)
@@ -1762,6 +1865,63 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         }
     }
 
+    private void showGameModes(Graphics2D g2D) {
+        if(hasFocus()) {
+            tut = null;
+            game = null;
+            tut4.rewindStop();
+            if (cursor > 3) {
+                cursor = 0;
+            }
+            if (cursor < 0) {
+                cursor = 3;
+            }
+
+            if (cursor == 0) sconst.drawImage(g2D, classCursor.getImage(), 250, 245, 1.8, 1, this);
+            if (cursor == 1) sconst.drawImage(g2D, classCursor.getImage(), 250, 365, 1.8, 1, this);
+            if (cursor == 2) sconst.drawImage(g2D, classCursor.getImage(), 250, 485, 1.8, 1, this);
+            if (cursor == 3) sconst.drawImage(g2D, classCursor.getImage(), 250, 605, 1.8, 1, this);
+
+            sconst.setFont(g2D, new Font("Verdana", Font.PLAIN, 24));
+            g2D.setColor(new Color(1f, 0f, 0f));
+            sconst.drawString(g2D, "Navigate Options with W (up) S (down), confirm with SPACE", 350, 155);
+            sconst.drawString(g2D, "RANKED 3v3", 260, 300);
+            g2D.setColor(new Color(1f, .5f, 0f));
+            sconst.drawString(g2D, "RANKED 1v1", 260, 420);
+            g2D.setColor(new Color(0f, 1f, 0f));
+            sconst.drawString(g2D, "CUSTOM GAME", 260, 540);
+            g2D.setColor(new Color(0f, 0f, 1f));
+            sconst.drawString(g2D, "TUTORIAL", 260, 660);
+
+            drawTrophies(g2D);
+
+        } else {
+            g2D.setColor(new Color(1f, 0f, 0f));
+            sconst.setFont(g2D, new Font("Verdana", Font.PLAIN, 32));
+            sconst.drawString(g2D,"APP LOST FOCUS (AFTER GAME USUALLY)", 10, 132);
+            sconst.drawString(g2D,"ALT TAB OUT AND THEN BACK IN TO RESTORE KEY LISTENERS", 10, 280);
+        }
+    }
+
+    private void drawTrophies(Graphics2D g2D) {
+        String rankname = "res/Court/rnk/" +
+                loginClient.getRank3v3().toString().toLowerCase()  + ".png";
+        String rank1v1name = "res/Court/rnk/" +
+                loginClient.getRank1v1().toString().toLowerCase()  + ".png";
+        StaticImage trophy = new StaticImage();
+        trophy.loadImage(rankname);
+        StaticImage trophy1v1 = new StaticImage();
+        trophy1v1.loadImage(rank1v1name);
+        sconst.drawImage(g2D, trophy.getImage(), 453, 265, 1, 1, this);
+        sconst.drawImage(g2D, trophy1v1.getImage(), 453, 385, 1, 1, this);
+        if(loginClient.getTopten() <= 10){
+            sconst.drawString(g2D, ""+ loginClient.getTopten(), 453, 265);
+        }
+        if(loginClient.getTopten1v1() <= 10){
+            sconst.drawString(g2D,""+ loginClient.getTopten1v1(), 453, 385);
+        }
+    }
+
     protected void drawClassScreen(Graphics2D g2D) {
         if(hasFocus()) {
             tut = null;
@@ -1797,7 +1957,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
             //sconst.drawImage(g2D, SelectClassSkins.pullImage(TitanType.GOLEM, staticFrame), 560, 440, this);
             //sconst.drawImage(g2D, SelectClassSkins.pullImage(TitanType.GOLEM, staticFrame), 760, 440, this);
             if (cursor > 16) {
-                cursor %= 16;
+                cursor %= 10;
             }
             if (cursor <= 0) {
                 cursor = -1 * (cursor);
@@ -1821,14 +1981,6 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
             if (cursor == 14) sconst.drawImage(g2D, classCursor.getImage(), 355, 515, this);
             if (cursor == 15) sconst.drawImage(g2D, classCursor.getImage(), 555, 515, this);
             if (cursor == 16) sconst.drawImage(g2D, classCursor.getImage(), 755, 515, this);
-
-            g2D.setColor(new Color(0f, 0f, 1f));
-            sconst.setFont(g2D, new Font("Verdana", Font.PLAIN, 16));
-            sconst.drawString(g2D, "TUTORIAL", 169, 555);
-
-            g2D.setColor(new Color(1f, 0f, 0f));
-            sconst.setFont(g2D, new Font("Verdana", Font.PLAIN, 14));
-            sconst.drawString(g2D, "TOURNAMENT", 362, 555);
         } else {
             g2D.setColor(new Color(1f, 0f, 0f));
             sconst.setFont(g2D, new Font("Verdana", Font.PLAIN, 32));

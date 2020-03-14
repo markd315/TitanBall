@@ -6,10 +6,13 @@ import authserver.models.DTO.ActivationRequest;
 import authserver.models.DTO.LoginRequest;
 import authserver.models.DTO.RenewRequest;
 import authserver.models.DTO.UserDTO;
+import authserver.models.Premade;
+import authserver.models.PremadeDTO;
 import authserver.models.User;
 import authserver.models.responses.JwtAuthenticationResponse;
 import authserver.models.responses.UserResponse;
-import authserver.users.UserService;
+import authserver.users.identities.UserService;
+import authserver.users.premades.PremadeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -25,6 +28,9 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 
 @RestController
 @CrossOrigin(exposedHeaders = "errors, content-type")
@@ -36,6 +42,9 @@ public class LoginController {
 
     @Autowired
     UserService userService;
+
+    @Autowired
+    PremadeService premadeService;
 
     @Autowired
     Matchmaker userPool;
@@ -118,8 +127,9 @@ public class LoginController {
     }
 
     @RequestMapping("/join")
-    public ResponseEntity<String> joinLobby(Authentication auth, @RequestParam String tournamentCode) throws IOException {
-        userPool.registerIntent(auth, tournamentCode);
+    public ResponseEntity<String> joinLobby(Authentication auth,
+              @RequestParam String tournamentCode, @RequestParam(required = false) String teamname) throws IOException {
+        userPool.registerIntent(auth, tournamentCode, teamname);
         return new ResponseEntity<>(userPool.findGame(auth), HttpStatus.OK);
     }
 
@@ -135,8 +145,28 @@ public class LoginController {
 
     @RequestMapping(value = "/stat", method = RequestMethod.POST)
     public ResponseEntity<UserResponse> userStats(@RequestBody @Valid UserDTO userinput) {
-        User user = userService.findUserByUsername(userinput.getUsername());
-        return new ResponseEntity<>(new UserResponse(user), HttpStatus.OK);
+        User user = userService.findUserByEmail(userinput.getEmail());
+        List<User> rate3v3 = userService.findAll();
+        rate3v3.sort((User o1, User o2) -> (int) (o2.getRating()- o1.getRating()));
+        List<User> rate1v1 = new ArrayList<>();
+        rate1v1.addAll(rate3v3);
+        rate1v1.sort((User o1, User o2) -> (int) (o2.getRating_1v1()- o1.getRating_1v1()));
+        int rating = 999;
+        for(int i=0; i< rate3v3.size(); i++){
+            //System.out.println("hit");
+            //System.out.println(user.getEmail());
+            //System.out.println(rate3v3.get(i).getEmail());
+            if(rate3v3.get(i).getEmail().equals(user.getEmail())){
+                rating = i+1;
+            }
+        }
+        int rating1v1 = 999;
+        for(int i=0; i< rate1v1.size(); i++){
+            if(rate1v1.get(i).getEmail().equals(user.getEmail())){
+                rating1v1 = i+1;
+            }
+        }
+        return new ResponseEntity<>(new UserResponse(user, rating, rating1v1), HttpStatus.OK);
     }
 
     @RequestMapping(value = "", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
@@ -149,7 +179,7 @@ public class LoginController {
         if (bindingResult.hasErrors() || (userinput == null) || userinput.getUsername() == null || userinput.getPassword() == null) {
             //errors.addAllErrors(bindingResult);
             //headers.add("errors", errors.toJSON());
-            return new ResponseEntity<>(new UserResponse(user), headers, HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>(new UserResponse(user, 999, 999), headers, HttpStatus.BAD_REQUEST);
         }
         user.setUsername(userinput.getUsername());
         String hashed = passwordEncoder.encode(userinput.getPassword());
@@ -163,11 +193,46 @@ public class LoginController {
         }
 
         this.userService.saveUser(user);
-        return new ResponseEntity<>(new UserResponse(user), headers, HttpStatus.CREATED);
+        return new ResponseEntity<>(new UserResponse(user, 999, 999), headers, HttpStatus.CREATED);
     }
 
+    @RequestMapping(value = "/teamcheck", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    public ResponseEntity<Premade> checkTeam(
+            @RequestBody PremadeDTO input, Authentication auth) {
+        String email = auth.getName();
+        //return code and body
+        Optional<Premade> getback = this.premadeService.findPremadeByTeamname(input.teamname);
+        if(getback.isPresent()){
+            Premade pm = getback.get();
+            if(email.equals(pm.getTopuser()) ||
+                    email.equals(pm.getMiduser()) ||
+                    email.equals(pm.getBotuser())){
+                return new ResponseEntity<>(getback.get(), HttpStatus.CREATED);
+            }
+            return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+        }else{
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+    }
 
-
+    @RequestMapping(value = "/teamup", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    public ResponseEntity<Premade> registerTeam(
+            @RequestBody @Valid PremadeDTO input, Authentication auth) {
+        if(input.teamname == null || input.teamname.equals("")){
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
+        String username = auth.getName();
+        Premade premade = new Premade(input);
+        try {
+            this.premadeService.enterTeamDetails(premade, username);
+        } catch (Exception e) {
+            return new ResponseEntity<>(HttpStatus.CONFLICT);
+        }
+        //return code and body
+        Optional<Premade> getback = this.premadeService.findPremadeByTeamname(premade.getTeamname());
+        return getback.map(value -> new ResponseEntity<>(value, HttpStatus.CREATED))
+                .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
+    }
 }
 
 // URL: ec2-18-223-131-64.us-east-2.compute.amazonaws.com:8080/usersAPI/login

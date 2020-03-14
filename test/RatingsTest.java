@@ -117,4 +117,99 @@ public class RatingsTest {
         assert (h1.getRating() - originalH1) == (h2.getRating() - originalH2);
         assert (h2.getRating() > a2.getRating());
     }
+
+    @Test
+    public void recentWinsAwarded(){
+        Rating<String> wMany = new Rating<>("ha", 0);
+        Rating<String> lMany = new Rating<>("aa", 0);
+        simulateManyGames(5, 5, 150, wMany, lMany);
+        System.out.println(wMany.getRating()-lMany.getRating());
+        assert lMany.getRating()>wMany.getRating();
+    }
+
+    @Test
+    public void winrate70Awarded(){
+        Rating<String> wMany = new Rating<>("ha", 0);
+        Rating<String> lMany = new Rating<>("aa", 0);
+        simulateManyGames(7, 3, 5, wMany, lMany);
+
+        System.out.println(wMany.getRating());
+        assert wMany.getRating()>lMany.getRating();
+        System.out.println("winExpectancy "+ wMany.getWinOdds(lMany));
+
+        wMany = new Rating<>("ha", 0);
+        lMany = new Rating<>("aa", 0);
+        simulateManyGames(3, 7, 5, lMany, wMany);
+
+        System.out.println(wMany.getRating());
+        assert wMany.getRating()>lMany.getRating();
+        System.out.println("winExpectancy "+ wMany.getWinOdds(lMany));
+    }
+
+    @Test
+    public void winrate95Awarded(){
+        Rating<String> wMany = new Rating<>("ha", 0);
+        Rating<String> lMany = new Rating<>("aa", 0);
+        simulateManyGames(95, 5, 1, wMany, lMany);
+
+        System.out.println(wMany.getRating());
+        assert wMany.getRating()>lMany.getRating();
+        System.out.println("winExpectancy "+ wMany.getWinOdds(lMany));
+
+        wMany = new Rating<>("ha", 0);
+        lMany = new Rating<>("aa", 0);
+        simulateManyGames(5, 95, 1, lMany, wMany);
+
+        System.out.println(wMany.getRating());
+        assert wMany.getRating()>lMany.getRating();
+        System.out.println("winExpectancy "+ wMany.getWinOdds(lMany));
+    }
+
+    @Test
+    public void eventuallyHeavilyFavoredIsntFavored(){
+        Rating<String> wMany = new Rating<>("ha", 0);
+        Rating<String> lMany = new Rating<>("aa", 0);
+        simulateManyGames(500, 30, 1, wMany, lMany);
+
+        System.out.println(wMany.getRating());
+        assert lMany.getRating()>wMany.getRating();
+        System.out.println("winExpectancy "+ wMany.getWinOdds(lMany));
+    }
+
+    @Test
+    public void ladderingHarderOpponentsHeavilyRewarded(){
+        Rating<String> wMany = new Rating<>("ha", 0);
+        Rating<String> lMany = new Rating<>("aa", 0);
+        simulateManyGames(9, 1, 10, wMany, lMany);
+
+        Rating<String> ww = new Rating<>("ww", 0);
+        Rating<String> ll = new Rating<>("ll", 1000.0, 0);
+        simulateManyGames(9, 1, 2, ww, ll);
+        System.out.println(ww.rating);
+        ll = new Rating<>("ll", 1104.0, 0);
+        simulateManyGames(9, 1, 2, ww, ll);
+        System.out.println(ww.rating);
+        ll = new Rating<>("ll", 1208.0, 0);
+        simulateManyGames(9, 1, 2, ww, ll);
+        System.out.println(ww.rating);
+        ll = new Rating<>("ll", 1312.0, 0);
+        simulateManyGames(9, 1, 2, ww, ll);
+        System.out.println(ww.rating);
+        ll = new Rating<>("ll", 1416.0, 0);
+        simulateManyGames(9, 1, 2, ww, ll);
+        System.out.println(ww.rating);
+
+        assert ww.getRating() > wMany.getRating();
+    }
+
+    private void simulateManyGames(int t1Wins, int t2Wins, int repetitions, Rating<String> wMany, Rating<String> lMany){
+        for(int i=0; i< repetitions; i++){
+            for(int j=0; j < t1Wins; j++){
+                new Match<>(wMany, lMany, 2.5);
+            }
+            for(int j=0; j < t2Wins; j++){
+                new Match<>(lMany, wMany, 2.5);
+            }
+        }
+    }
 }

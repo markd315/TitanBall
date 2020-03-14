@@ -2,7 +2,7 @@ package authserver;
 
 import authserver.jwt.JwtAuthenticationEntryPoint;
 import authserver.jwt.JwtAuthenticationFilter;
-import authserver.users.CustomUserDetailsService;
+import authserver.users.identities.CustomUserDetailsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

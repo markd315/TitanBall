@@ -5,7 +5,11 @@ java -jar Titanball-Launcher/getdown.jar Titanball-Launcher
 ```
 
 IMPORTANT:
-It is LIKELY that you will not be able to play the game without modifying your firewall.
+It is LIKELY that on Mac, your keylisteners will get stuck down occasionally. Symptoms of this include working mouse keybinds, but no working keyboard keybinds.
+Run `defaults write -g ApplePressAndHoldEnabled -bool false` in a command-line to fix it permanently.
+
+
+It is POSSIBLE that you will not be able to play the game without modifying your firewall.
 Open an ADMINISTRATOR command prompt, and run these commands. You should only need to do it once.
 Be sure to replace the last part of the command with the path to your own Java file.
 
@@ -38,13 +42,12 @@ localport=5353 (not according to wireshark though!)
 
 The client itself executes with the following code
 ```
+defaults write -g ApplePressAndHoldEnabled -bool false
 java -cp Titanball.jar client.TitanballWindow
 ```
 
 Or use the bash script
-```
-./start.sh (While in the folder with the jar and res folder)
-```
+`./start.sh` (While in the folder with the jar and res folder)
 
 Made with love by Mark Davis (contact: markd315@gmail.com), anything not specified below was developed in-house.
 
@@ -69,3 +72,4 @@ Slasher and Artisan sprites generated with http://gaurav.munjal.us/Universal-LPC
 
 Ball downsized from https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Basketball_Clipart.svg/1035px-Basketball_Clipart.svg.png
 
+Ranked medals from http://pixeljoint.com/pixelart/26524.htm

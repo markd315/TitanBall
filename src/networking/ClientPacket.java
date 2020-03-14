@@ -21,4 +21,10 @@ public class ClientPacket implements Serializable {
     public Masteries masteries;
     public String token;
     public String gameID;
+    public enum ARTISAN_SHOT{
+        SHOT,
+        RIGHT,
+        LEFT
+    }
+    public ARTISAN_SHOT artisanShot = ARTISAN_SHOT.SHOT;
 }

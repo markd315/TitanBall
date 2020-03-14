@@ -1,9 +1,10 @@
-package authserver.users;
+package authserver.users.identities;
 
 import authserver.models.User;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.repository.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface UserRepository extends Repository<User, Integer> {
@@ -13,5 +14,6 @@ public interface UserRepository extends Repository<User, Integer> {
     User findByEmail(String email) throws DataAccessException;
     Optional<User> findByUsernameOrEmail(String usernameOrEmail, String usernameOrEmail1);
     Optional<User> findById(Long id);
+    List<User> findAll();
 }
 

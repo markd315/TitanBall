@@ -21,6 +21,12 @@ public class Rating<E>
         this.gamesRecorded = gamesRecorded;
     }
 
+    public Rating(E id, double rating, int gamesRecorded) {
+        this.id = id;
+        this.rating = rating;
+        this.gamesRecorded = gamesRecorded;
+    }
+
     public Rating(List<Rating> ratings, E id, int gamesRecorded) {
         this.rating = 0;
         for(Rating r : ratings){

@@ -6,10 +6,9 @@ import gameserver.effects.effects.DefenseEffect;
 import gameserver.effects.effects.EmptyEffect;
 import gameserver.effects.effects.HideBallEffect;
 import gameserver.entity.Titan;
-import gameserver.entity.TitanType;
 import gameserver.models.Game;
-import gameserver.targeting.core.Selector;
 import gameserver.targeting.ShapePayload;
+import gameserver.targeting.core.Selector;
 
 import java.awt.*;
 import java.awt.geom.Ellipse2D;
@@ -17,11 +16,7 @@ import java.awt.geom.Ellipse2D;
 public class Ability {
     public boolean castE(GameEngine context, Titan caster) throws NullPointerException {
         AbilityStrategy strat = new AbilityStrategy(context, caster);
-        if (caster.getType() == TitanType.ARTISAN && caster.possession == 1 &&
-                !context.effectPool.hasEffect(caster, EffectId.COOLDOWN_CURVE)) {
-            strat.curveBall(4);
-            return false;
-        } else if (!context.effectPool.hasEffect(caster, EffectId.COOLDOWN_E)) {
+        if (!context.effectPool.hasEffect(caster, EffectId.COOLDOWN_E)) {
             switch (caster.getType()) {
                 case MAGE:
                     strat.spawnPortal();
@@ -33,7 +28,9 @@ public class Ability {
                     strat.slow();
                     break;
                 case ARTISAN:
-                    strat.suckBall();
+                    if(caster.possession == 0){
+                        strat.suckBall();
+                    }
                     break;
                 case SUPPORT:
                     strat.stunByRadius(1500);
@@ -50,9 +47,9 @@ public class Ability {
                     break;
                 case DASHER:
                     if(caster.possession == 1){
-                        context.effectPool.addUniqueEffect(new CooldownE((int) (caster.cooldownFactor *20000), caster));
+                        context.effectPool.addUniqueEffect(new CooldownE((int) (caster.cooldownFactor *9000), caster));
                         context.effectPool.addUniqueEffect(
-                                new HideBallEffect((int) (caster.durationsFactor*3000), caster));
+                                new HideBallEffect((int) (caster.durationsFactor*500), caster));
                     }
                     break;
                 case RANGER:
@@ -69,11 +66,7 @@ public class Ability {
 
     public boolean castR(GameEngine context, Titan caster) throws NullPointerException {
         AbilityStrategy strat = new AbilityStrategy(context, caster);
-        if (caster.getType() == TitanType.ARTISAN && caster.possession == 1 &&
-                !context.effectPool.hasEffect(caster, EffectId.COOLDOWN_CURVE)) {
-            strat.curveBall(5);
-            return false;
-        } else if (!context.effectPool.hasEffect(caster, EffectId.COOLDOWN_R)) {
+        if (!context.effectPool.hasEffect(caster, EffectId.COOLDOWN_R)) {
             switch (caster.getType()) {
                 case DASHER:
                     strat.ignite(5, 3, 0, 0);
@@ -97,13 +90,13 @@ public class Ability {
                     strat.ignite(20, 3, .45, .45);
                     break;
                 case WARRIOR:
-                    strat.parameterizedFlash(28, 140);
+                    strat.parameterizedFlash(23, 140);
                     break;
                 case BUILDER:
                     strat.wall();
                     break;
                 case STEALTH:
-                    strat.parameterizedFlash(28, 100);
+                    strat.parameterizedFlash(21, 100);
                     break;
             }
             return injectColliders(context, strat, caster);

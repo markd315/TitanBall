@@ -57,10 +57,14 @@ public class ScreenConst {
     }
 
     public void drawImage(Graphics2D g2D, Image image, int x, int y, TitanballClient context) {
+        drawImage(g2D, image, x, y, 1.0, 1.0, context);
+    }
+
+    public void drawImage(Graphics2D g2D, Image image, int x, int y, double wMult, double hMult, TitanballClient context) {
         x = adjX(x);
         y = adjY(y);
-        int w = image.getWidth(context);
-        int h = image.getHeight(context);
+        int w = (int) (image.getWidth(context) * wMult);
+        int h = (int) (image.getHeight(context) * hMult);
         BufferedImage bi = Images.resize(toBi(image), adjX(w), adjY(h));
         g2D.drawImage(bi, x, y, context);
     }

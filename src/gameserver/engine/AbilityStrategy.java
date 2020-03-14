@@ -1,7 +1,6 @@
 package gameserver.engine;
 
 import gameserver.effects.EffectId;
-import gameserver.effects.cooldowns.CooldownCurve;
 import gameserver.effects.cooldowns.CooldownE;
 import gameserver.effects.cooldowns.CooldownQ;
 import gameserver.effects.cooldowns.CooldownR;
@@ -24,7 +23,6 @@ import util.Util;
 
 import java.awt.*;
 import java.awt.geom.Ellipse2D;
-import java.awt.geom.Point2D;
 import java.util.Collections;
 import java.util.Set;
 
@@ -216,7 +214,7 @@ public class AbilityStrategy {
             context.effectPool.addUniqueEffect(new CooldownR((int) (caster.cooldownFactor *7000), caster));
             context.entityPool.add(new BallPortal(TeamAffiliation.UNAFFILIATED, caster, context.entityPool,
                     (int) corners.getX(),
-                    (int) corners.getY()));
+                    (int) corners.getY(), context));
         }
     }
 
@@ -242,15 +240,6 @@ public class AbilityStrategy {
                 new ShootEffect(dur, caster, 1.5));
     }
 
-    public void curveBall(int btnCode){
-        context.effectPool.addUniqueEffect(new CooldownCurve((int) (caster.cooldownFactor *7000), caster));
-        Rectangle shape = new Rectangle(0, 0, 15, 15);
-        Selector sel = new Selector(shape, SelectorOffset.CAST_TO_MOUSE, 300);
-        new Targeting(sel, champions, nearest, context)
-                .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
-        context.serverMouseRoutine(caster, x, y, btnCode, 0, 0);
-    }
-
     public void spawnPortal() {
         int range = (int) (200 * caster.rangeFactor);
         shape = new Rectangle(0, 0, 50, 50);
@@ -260,8 +249,9 @@ public class AbilityStrategy {
         corners = sel.getLatestColliderBounds();
         if (corners.getWidth() > 0 && inBoundsNotRedzone(corners)) {
             context.effectPool.addUniqueEffect(new CooldownE((int) (caster.cooldownFactor *5500), caster));
+            System.out.println("-1 hit");
             context.entityPool.add(new Portal(caster.team, caster,
-                    context.entityPool, (int) corners.getX(), (int) corners.getY()));
+                    context.entityPool, (int) corners.getX(), (int) corners.getY(), context));
         }
     }
 
@@ -360,9 +350,10 @@ public class AbilityStrategy {
                 !context.titanInPossession().get().id.equals(caster.id)) {
             //Change previous conditional to exclude teammates in prod.
             Titan tip = context.titanInPossession().get();
-            Point2D.Double ball = new Point2D.Double(
-                    (int) context.ball.X + context.ball.centerDist, (int) context.ball.Y + context.ball.centerDist);
-            if (sel.getLatestColliderCircle().contains(ball) && context.ballVisible) {
+            double x = sel.getLatestColliderCircle().x;
+            double y = sel.getLatestColliderCircle().y;
+            double r = sel.getLatestColliderCircle().height / 2.0;
+            if (context.ball.intersectCircle(x, y, r) && context.ballVisible) {
                 context.stats.grant(context, tip, StatEngine.StatEnum.TURNOVERS);
                 context.stats.grant(context, caster, StatEngine.StatEnum.STEALS);
                 tip.possession = 0;

@@ -2,24 +2,25 @@ package gameserver.entity.minions;
 
 import gameserver.engine.GameEngine;
 import gameserver.engine.TeamAffiliation;
-import gameserver.entity.Box;
-import gameserver.entity.Collidable;
-import gameserver.entity.Entity;
-import gameserver.entity.Titan;
+import gameserver.entity.*;
 import org.joda.time.Instant;
+import util.Util;
 
+import java.awt.*;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 public class BallPortal extends Entity implements Collidable {
 
-    private static int COOLDOWN_MS = 8000;
+    private static final int COOLDOWN_MS = 8000;
+    public RangeCircle rangeCircle;
+    private static final int MAX_RANGE = 450;
     private UUID createdById;
     private Instant createdAt;//only used serverside so clock skew is irrelevant
     private Instant cdUntil;
 
-    public BallPortal(TeamAffiliation team, Titan pl, List<Entity> pool, int x, int y) {
+    public BallPortal(TeamAffiliation team, Titan pl, List<Entity> pool, int x, int y, GameEngine context) {
         super(team);
         this.setX(x);
         this.setY(y);
@@ -31,6 +32,17 @@ public class BallPortal extends Entity implements Collidable {
         this.createdById = pl.id;
         this.createdAt = Instant.now(); //only used serverside so clock skew is irrelevant
         removeOldestBallPortal(pool, pl);
+        RetObj secondCanStayIfRange = oldestP(pool, pl);
+        if(! isPlaceableRangeCheck(context, pl.id)){
+            if(secondCanStayIfRange.curr > 0){
+                pool.remove(secondCanStayIfRange.bp);
+            }
+        }else{
+            if(secondCanStayIfRange.bp != null){
+                secondCanStayIfRange.bp.rangeCircle = null;
+            }
+        }
+        this.rangeCircle = new RangeCircle(Color.RED, MAX_RANGE);
     }
 
     public boolean isCooldown(Instant now) {
@@ -38,6 +50,13 @@ public class BallPortal extends Entity implements Collidable {
     }
 
     private void removeOldestBallPortal(List<Entity> pool, Titan player) {
+        RetObj oldestP = oldestP(pool, player);
+        if (oldestP.bp != null && oldestP.curr > 1) {
+            pool.remove(oldestP.bp);
+        }
+    }
+
+    private RetObj oldestP(List<Entity> pool, Titan player){
         BallPortal oldestP = null;
         int currentBallPortals = 0;
         for (Entity e : pool) {
@@ -51,9 +70,17 @@ public class BallPortal extends Entity implements Collidable {
                 }
             }
         }
-        if (oldestP != null && currentBallPortals > 1) {
-            pool.remove(oldestP);
+        return new RetObj(oldestP, currentBallPortals);
+    }
+
+    private boolean isPlaceableRangeCheck(GameEngine context, UUID creator){
+        Optional<BallPortal> friendly = findFriendlyBallPortal(context, creator);
+        if(!friendly.isPresent()){
+            return true;
         }
+        double dist = Util.dist(friendly.get().X, friendly.get().Y,
+                this.X, this.Y);
+        return dist < MAX_RANGE;
     }
 
     private Optional<BallPortal> findFriendlyBallPortal(GameEngine context, UUID creator) {
@@ -105,5 +132,18 @@ public class BallPortal extends Entity implements Collidable {
 
     public BallPortal() {
         super(TeamAffiliation.UNAFFILIATED);
+    }
+
+    public UUID getCreatedById() {
+        return createdById;
+    }
+
+    private class RetObj{
+        private RetObj(BallPortal bp, int curr){
+            this.bp = bp;
+            this.curr = curr;
+        }
+        BallPortal bp;
+        int curr;
     }
 }
