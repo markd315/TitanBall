@@ -25,7 +25,6 @@ gameserver\entity\minions\BallPortal.class
 gameserver\entity\minions\Portal$1.class
 gameserver\engine\StatEngine$StatEnum.class
 client\TitanballClient.class
-gameserver\effects\effects\FastEffect.class
 gameserver\entity\minions\Wall.class
 client\ControlsConfig.class
 util\Util.class
@@ -42,7 +41,6 @@ gameserver\effects\cooldowns\CooldownR.class
 gameserver\tenancy\ServerApplication.class
 gameserver\effects\effects\BleedEffect.class
 gameserver\entity\minions\Trap.class
-gameserver\effects\effects\SlowEffect.class
 authserver\users\PersistenceManager.class
 gameserver\effects\effects\EmptyEffect.class
 authserver\jwt\JwtTokenProvider.class
@@ -61,6 +59,7 @@ gameserver\engine\GameOptions.class
 gameserver\effects\effects\FlareEffect.class
 client\TitanballClient$TerminableExecutor.class
 client\graphical\ScreenConst.class
+gameserver\effects\effects\RatioEffect.class
 gameserver\models\Game.class
 gameserver\engine\Ability$1.class
 gameserver\entity\Entity.class

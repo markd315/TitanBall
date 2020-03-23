@@ -35,17 +35,18 @@ C:\Users\markd\TitanBall\src\gameserver\entity\minions\Portal.java
 C:\Users\markd\TitanBall\src\authserver\users\PersistenceManager.java
 C:\Users\markd\TitanBall\src\authserver\users\premades\PremadeService.java
 C:\Users\markd\TitanBall\src\gameserver\models\Game.java
+C:\Users\markd\TitanBall\src\gameserver\entity\minions\Cage.java
+C:\Users\markd\TitanBall\src\gameserver\entity\minions\Tickable.java
 C:\Users\markd\TitanBall\src\authserver\LoginController.java
 C:\Users\markd\TitanBall\src\authserver\SpringContext.java
 C:\Users\markd\TitanBall\src\gameserver\targeting\ShapePayload.java
 C:\Users\markd\TitanBall\src\gameserver\entity\Collidable.java
-C:\Users\markd\TitanBall\src\gameserver\effects\effects\SlowEffect.java
+C:\Users\markd\TitanBall\src\gameserver\entity\minions\Wolf.java
 C:\Users\markd\TitanBall\src\gameserver\entity\minions\Trap.java
 C:\Users\markd\TitanBall\src\gameserver\effects\effects\EmptyEffect.java
 C:\Users\markd\TitanBall\src\authserver\users\premades\PremadeRepository.java
 C:\Users\markd\TitanBall\src\authserver\models\PremadeDTO.java
 C:\Users\markd\TitanBall\src\gameserver\targeting\core\Limiter.java
-C:\Users\markd\TitanBall\src\gameserver\effects\effects\FastEffect.java
 C:\Users\markd\TitanBall\src\gameserver\TutorialOverrides.java
 C:\Users\markd\TitanBall\src\client\TitanballClient.java
 C:\Users\markd\TitanBall\src\gameserver\entity\Entity.java
@@ -63,6 +64,7 @@ C:\Users\markd\TitanBall\src\authserver\users\identities\UserService.java
 C:\Users\markd\TitanBall\src\authserver\users\identities\CustomUserDetailsService.java
 C:\Users\markd\TitanBall\src\networking\KryoRegistry.java
 C:\Users\markd\TitanBall\src\gameserver\targeting\core\Selector.java
+C:\Users\markd\TitanBall\src\gameserver\entity\minions\Fire.java
 C:\Users\markd\TitanBall\src\authserver\models\DTO\LoginRequest.java
 C:\Users\markd\TitanBall\src\gameserver\engine\Masteries.java
 C:\Users\markd\TitanBall\src\gameserver\entity\minions\BallPortal.java
@@ -86,6 +88,7 @@ C:\Users\markd\TitanBall\src\gameserver\effects\effects\FlareEffect.java
 C:\Users\markd\TitanBall\src\gameserver\entity\Titan.java
 C:\Users\markd\TitanBall\src\gameserver\effects\effects\HealEffect.java
 C:\Users\markd\TitanBall\src\gameserver\effects\effects\DeadEffect.java
+C:\Users\markd\TitanBall\src\gameserver\effects\effects\RatioEffect.java
 C:\Users\markd\TitanBall\src\authserver\models\Premade.java
 C:\Users\markd\TitanBall\src\client\Sound.java
 C:\Users\markd\TitanBall\src\gameserver\effects\effects\DefenseEffect.java

@@ -13,7 +13,7 @@ public class Wall extends gameserver.entity.Entity implements Collidable {
         this.setX(x);
         this.setY(y);
         this.width = 30;
-        this.height = 30;
+        this.height = 120;
         this.health = 5;
         this.maxHealth = 5;
         this.solid = true;

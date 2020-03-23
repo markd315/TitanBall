@@ -1,11 +1,13 @@
 package gameserver.effects;
 
-import gameserver.engine.GameEngine;
 import gameserver.effects.effects.Effect;
+import gameserver.engine.GameEngine;
 import gameserver.entity.Entity;
 import gameserver.entity.Titan;
+import org.joda.time.Instant;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.ConcurrentModificationException;
 import java.util.List;
 
@@ -36,10 +38,6 @@ public class EffectPool {
             }
         }
         return false;
-    }
-
-    public boolean addSingletonEffect(Effect eff) {
-        return addSingletonEffect(null, eff);
     }
 
     public boolean addSingletonEffect(Titan caster, Effect eff) {
@@ -75,16 +73,31 @@ public class EffectPool {
         return true;
     }
 
-    public boolean addUniqueEffect(Titan caster, Effect eff) {
-        //One of this per target
+    public boolean addUniqueEffect(Titan caster, Effect eff, GameEngine context) {
+        //One of this per target-caster pair, renews if duplicates found
         EffectId id = eff.getEffect();
         Entity target = eff.on;
+        List<Integer> rm = new ArrayList<>();
         for (int i = 0; i < pool.size(); i++) {
             Effect e = pool.get(i);
             Entity t = targetPool.get(i);
-            if (e.getEffect() == id && t.id.equals(target.id) && e.active) {
-                return false;
+            Entity cb = castBy.get(i);
+            if (e.getEffect() == id &&
+                    t != null &&
+                    t.id.equals(target.id) &&
+                    (cb == null || caster == null || cb.id.equals(caster.id)) &&
+                    e.end.isAfter(Instant.now())) {
+                rm.add(i);
             }
+        }
+        Collections.reverse(rm);
+        for(Integer i : rm){
+            Effect toKill = pool.get(i);
+            System.out.println("ceasing trap");
+            toKill.onCease(context);
+            pool.remove(toKill);
+            targetPool.remove(i.intValue());
+            castBy.remove(i.intValue());
         }
         pool.add(eff);
         targetPool.add(target);
@@ -92,8 +105,8 @@ public class EffectPool {
         return true;
     }
 
-    public boolean addUniqueEffect(Effect eff) {
-        return addUniqueEffect(null, eff);
+    public boolean addUniqueEffect(Effect eff, GameEngine context) {
+        return addUniqueEffect(null, eff, context);
     }
 
     public boolean addStackingEffect(Effect eff) {

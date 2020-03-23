@@ -24,7 +24,10 @@ public class BombEffect extends Effect {
 
     @Override
     public void onCease(GameEngine context) {
-        on.damage(context, eventualDamage);
+        if(!ceased){
+            on.damage(context, eventualDamage);
+            ceased = true;
+        }
     }
 
     @Override

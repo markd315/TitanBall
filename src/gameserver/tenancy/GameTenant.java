@@ -6,8 +6,11 @@ import com.esotericsoftware.kryonet.Connection;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rits.cloning.Cloner;
+import gameserver.effects.EffectId;
+import gameserver.effects.EffectPool;
 import gameserver.engine.GameEngine;
 import gameserver.engine.GameOptions;
+import gameserver.entity.Titan;
 import networking.CandidateGame;
 import networking.ClientPacket;
 import networking.PlayerConnection;
@@ -145,10 +148,38 @@ public class GameTenant {
                 GameEngine update = cloner.deepClone(state);
                 update.underControl = state.titanSelected(pd);
                 update.now = Instant.now();
-                client.getClient().sendTCP(update);
+                client.getClient().sendTCP(anticheat(update));
             });
         };
         exec.scheduleAtFixedRate(updateClients, 1, 50, TimeUnit.MILLISECONDS);
+    }
+
+    private GameEngine anticheat(GameEngine update) {
+        Titan underControl = update.underControl;
+        EffectPool fx = update.effectPool;
+        if(fx.hasEffect(underControl, EffectId.BLIND)){
+            for(Titan player : update.players){
+                if(!player.id.equals(underControl)){
+                    censor(player);
+                }
+            }
+            update.ball.X = 9999;
+            update.ball.Y = 9999;
+        }
+        for(Titan player : update.players){
+            if(fx.hasEffect(player, EffectId.STEALTHED)
+            && !fx.hasEffect(player, EffectId.FLARE)){
+                if(player.team != underControl.team){
+                    censor(player);
+                }
+            }
+        }
+        return update;
+    }
+
+    private void censor(Titan player) {
+        player.X = 99999;
+        player.Y = 99999;
     }
 
 

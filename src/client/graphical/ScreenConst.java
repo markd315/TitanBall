@@ -4,6 +4,7 @@ import client.TitanballClient;
 
 import java.awt.*;
 import java.awt.geom.AffineTransform;
+import java.awt.geom.Ellipse2D;
 import java.awt.image.BufferedImage;
 
 public class ScreenConst {
@@ -12,9 +13,7 @@ public class ScreenConst {
         this.Y = ySize;
         RESULT_IMG_X = adjX(300);
         RESULT_IMG_Y = adjY(200);
-        STATS_Y = adjY(425);
         STATS_FONT = adjY(18);
-        STATS_X = adjX(310);
         STATS_MEDAL = 290;
         BALL_PTR_X = 40;
         BALL_PTR_Y = 18;
@@ -51,8 +50,7 @@ public class ScreenConst {
 
     public void setFont(Graphics2D g2D, Font verdana) {
         int size = verdana.getSize();
-        size = adjY(size);
-        size = adjX(size); //just doing one seems to leave it too big?
+        size = adjY(size);//doing both X and Y seems to leave it too big?
         g2D.setFont(new Font(verdana.getName(), verdana.getStyle(), size));
     }
 
@@ -123,9 +121,7 @@ public class ScreenConst {
 
     public final int RESULT_IMG_X;
     public final int RESULT_IMG_Y;
-    public final int STATS_Y;
     public final int STATS_FONT;
-    public final int STATS_X;
     public final double STATS_MEDAL;
     public final int BALL_PTR_X;
     public final int BALL_PTR_Y;
@@ -159,5 +155,21 @@ public class ScreenConst {
         goal.x = adjX(goal.x);
         goal.y = adjY((int) goal.y);
         g2D.draw(goal);
+    }
+
+    public void fill(Graphics2D g2D, Rectangle rectangle) {
+        rectangle = new Rectangle((int) adjX(rectangle.getX()),
+                adjY((int) rectangle.getY()),
+                (int) adjX(rectangle.getWidth()),
+                adjY((int) rectangle.getHeight()));
+        g2D.fill(rectangle);
+    }
+
+    public void fill(Graphics2D g2D, Ellipse2D.Double ell) {
+        ell = new Ellipse2D.Double(adjX(ell.getX()),
+                adjY((int) ell.getY()),
+                adjX(ell.getWidth()),
+                adjY((int) ell.getHeight()));
+        g2D.fill(ell);
     }
 }

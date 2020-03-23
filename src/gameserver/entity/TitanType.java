@@ -3,6 +3,7 @@ package gameserver.entity;
 public enum TitanType {
     GOALIE, WARRIOR, RANGER, DASHER, MARKSMAN, STEALTH, /*RECON,*/
     SUPPORT, ARTISAN, GOLEM, MAGE, BUILDER,
+    GRENADIER, HOUNDMASTER,
     ANY, NOT_GUARDIAN, ANY_ENTITY
 }
 

@@ -47,13 +47,20 @@ public class DeadEffect extends Effect {
     @Override
     public void onCease(GameEngine context) {
         if(on instanceof Titan) {
-            ((Titan) on).resurrecting = true;
+            if(!ceased){
+                ((Titan) on).resurrecting = true;
+                ceased = true;
+            }
         }
     }
 
     @Override
     public void onTick(GameEngine context) {
         on.setHealth(-99999);
+        if(on instanceof Titan){
+            on.X = 9499999;
+            on.Y = 9499999;
+        }
         on.X = 9999999;
         on.Y = 9999999;
     }

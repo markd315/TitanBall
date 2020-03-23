@@ -113,6 +113,8 @@ public abstract class Effect {
 
     public EffectId effect;
 
+    public boolean ceased = false;
+
     public Instant begin, end;
 
     public int duration, delay;

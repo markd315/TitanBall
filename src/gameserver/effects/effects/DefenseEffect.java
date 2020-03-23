@@ -24,7 +24,10 @@ public class DefenseEffect extends Effect {
 
     @Override
     public void onCease(GameEngine context) {
-        on.armorRatio/=armorRatio;
+        if(!ceased){
+            on.armorRatio/=armorRatio;
+            ceased = true;
+        }
     }
 
     @Override

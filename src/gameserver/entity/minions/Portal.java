@@ -123,7 +123,6 @@ public class Portal extends gameserver.entity.Entity implements Collidable {
             double cdActivated = cdUntil.getMillis() - COOLDOWN_MS;
             double nowNormalized = now.getMillis() - cdActivated;
             double percent = nowNormalized*100.0 / ((double)COOLDOWN_MS);
-            System.out.println(percent);
             return percent;
         }
         else{
