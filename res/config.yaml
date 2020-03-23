@@ -2,6 +2,7 @@
 Xres: 1920px
 Yres: 1080px
 SCALE: 150%
+theme: dark
 rangewidth: 1px
 shotwidth: 30px #So that the entire collision radius for the ball is shown
 E: E
@@ -13,6 +14,7 @@ S: DOWN
 A: LEFT
 D: RIGHT
 32: CAM #Space
+#L: FULL_SC #This doesn't work consistently
 Q: STEAL
 Z: SWITCH
 3: BOOST

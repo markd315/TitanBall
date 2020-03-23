@@ -107,11 +107,11 @@ public class Util {
         int d = (int) Point2D.distance(e.X + 35, e.Y + 35,
                 pain.x + (pain.w / 2.0),
                 pain.y + (pain.h / 2.0));
-        return (-10051.0 / 146431200000.0) * Math.pow(d, 3) +
-                Math.pow(d, 2) * 556391.0 / 4881040000.0 -
-                (276389.0 / 4306800.0) * d
-                + 13.82;//-(10051 x^3)/146431200000 + (556391 x^2)/4881040000 - (276389 x)/4306800 + 843475/61013≈-6.86397×10^-8 x^3 + 0.00011399 x^2 - 0.064175 x + 13.8245
-        //https://www.wolframalpha.com/input/?i=model+cubic&assumption=%7B%22F%22%2C+%22CubicFitCalculator%22%2C+%22data2%22%7D+-%3E%22%7B%7B1000%2C+-5%7D%2C+%7B400%2C2%7D%2C+%7B200%2C+5%7D%2C+%7B30%2C+12%7D%7D%22
-
+        return (-3.96893 / 100000000.0) * Math.pow(d, 3) // e-8
+                + Math.pow(d, 2) * 0.0000603779
+                - (0.0326137) * d
+                + 6.92514;
+        //0 at 710 distance
+        //https://www.wolframalpha.com/input/?i=model+cubic&assumption=%7B%22F%22%2C+%22CubicFitCalculator%22%2C+%22data2%22%7D+-%3E%22%7B%7B1000%2C+-5%7D%2C+%7B400%2C1%7D%2C+%7B200%2C+2.5%7D%2C+%7B30%2C+6%7D%7D%22
     }
 }

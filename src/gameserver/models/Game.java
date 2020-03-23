@@ -41,12 +41,12 @@ public class Game {
     public static final int E_MIN_X = -10;
     public static final int MIN_Y = 232;
     public static final int E_MIN_Y = 170;
-    public static final int GOALIE_Y_MAX = 890;
-    public static final int GOALIE_Y_MIN = 290;
-    public static final int GOALIE_XH_MAX = 289;
-    public static final int GOALIE_XH_MIN = 133;
-    public static final int GOALIE_XA_MAX = 1912;
-    public static final int GOALIE_XA_MIN = 1776;
+    public static final int GOALIE_Y_MAX = 897;
+    public static final int GOALIE_Y_MIN = 297;
+    public static final int GOALIE_XH_MAX = 329;
+    public static final int GOALIE_XH_MIN = 173;
+    public static final int GOALIE_XA_MAX = 1872;
+    public static final int GOALIE_XA_MIN = 1736;
     protected static final int FIELD_LENGTH = 2050;
     protected static final int TOP_WING_ST = 0;
     protected static final int TOP_WING_END = 500;
@@ -58,9 +58,9 @@ public class Game {
     protected static final int MID_RETREAT = 550;
     protected static final int FW_CREEP = 1850;
     protected static final int FW_RETREAT = 1250;
-    protected static final int TOP_WING_HOME = 287;
-    protected static final int MID_WING_HOME = 587;
-    protected static final int BOT_WING_HOME = 887;
+    protected static final int TOP_WING_HOME = 295;
+    protected static final int MID_WING_HOME = 595;
+    protected static final int BOT_WING_HOME = 895;
     protected static final int T_CIRCLE_WING_HOME = 450;
     protected static final int B_CIRCLE_WING_HOME = 750;
     protected static final int DEFENDER_HOME = 455;
@@ -72,9 +72,8 @@ public class Game {
     protected boolean extremeSuddenDeath = false;
     protected boolean tieAble = false;
     public final double GOALIE_DISABLE_TIME = 300.0; //300
-    public final double PAIN_DISABLE_TIME = 420.0; //420
+    public final double PAIN_DISABLE_TIME = 9999999.0; //420
     public GameOptions options;
-
     public EffectPool effectPool = new EffectPool();
     public List<Entity> entityPool = new ArrayList<>();
     public boolean ballVisible, inGame, goalVisible;
@@ -83,10 +82,10 @@ public class Game {
     public boolean began = false;
     public double xKickPow, yKickPow;
 
-    public static final int HOME_HI_X = 223;
-    public static final int HOME_HI_Y = 584;
-    public static final int AWAY_HI_X = 1833;
-    public static final int AWAY_HI_Y = 584;
+    public static final int HOME_HI_X = 256;
+    public static final int HOME_HI_Y = 583;
+    public static final int AWAY_HI_X = 1786;
+    public static final int AWAY_HI_Y = 583;
 
     Titan hGol = new Titan(0, 0, TeamAffiliation.HOME, TitanType.GOALIE);
     Titan awGol = new Titan(1200, 400, TeamAffiliation.AWAY, TitanType.GOALIE);
@@ -104,13 +103,13 @@ public class Game {
             new Titan(0, 0, TeamAffiliation.AWAY, TitanType.MARKSMAN),
             new Titan(0, 0, TeamAffiliation.AWAY, TitanType.STEALTH) //bugfix where not displayed
     };
-    public GoalHoop homeHiGoal = new GoalHoop(HOME_HI_X, HOME_HI_Y, 56, 70, TeamAffiliation.HOME);
-    public GoalHoop awayHiGoal = new GoalHoop(AWAY_HI_X, AWAY_HI_Y, 56, 70, TeamAffiliation.AWAY);
+    public GoalHoop homeHiGoal = new GoalHoop(HOME_HI_X, HOME_HI_Y, 70, 84, TeamAffiliation.HOME);
+    public GoalHoop awayHiGoal = new GoalHoop(AWAY_HI_X, AWAY_HI_Y, 70, 84, TeamAffiliation.AWAY);
     public GoalHoop[] hiGoals = {homeHiGoal, awayHiGoal};
-    public GoalHoop[] lowGoals = {new GoalHoop(265, 348, 43, 107, TeamAffiliation.HOME),
-            new GoalHoop(265, 784, 43, 107, TeamAffiliation.HOME),
-            new GoalHoop(1815, 348, 43, 107, TeamAffiliation.AWAY),
-            new GoalHoop(1815, 784, 43, 107, TeamAffiliation.AWAY)};
+    public GoalHoop[] lowGoals = {new GoalHoop(305, 354, 43, 107, TeamAffiliation.HOME),
+            new GoalHoop(305, 790, 43, 107, TeamAffiliation.HOME),
+            new GoalHoop(1775, 354, 43, 107, TeamAffiliation.AWAY),
+            new GoalHoop(1775, 790, 43, 107, TeamAffiliation.AWAY)};
     public Team away = new Team(TeamAffiliation.AWAY, 0.0, awayHiGoal, lowGoals[2], lowGoals[3]);
     public Team home = new Team(TeamAffiliation.HOME, 0.0, homeHiGoal, lowGoals[0], lowGoals[1],
             players);

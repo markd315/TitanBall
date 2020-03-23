@@ -17,7 +17,11 @@ public class HideBallEffect extends Effect {
 
     @Override
     public void onCease(GameEngine context) {
-        context.ballVisible = true;
+        if(!ceased){
+            context.ballVisible = true;
+            context.lastPossessed = null;
+            ceased = true;
+        }
     }
 
     @Override

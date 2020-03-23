@@ -59,7 +59,7 @@ mage sprites from https://opengameart.org/content/sorlo-ultimate-smash-friends
 
 builder from https://www.deviantart.com/agentmidnight/art/Engy-Man-Sprites-and-Hats-190830428
 
-marksman, support, demoman (not used) from AgentMidnight on DeviantArt
+marksman, support, grenadier from AgentMidnight on DeviantArt
 
 Warrior by FireMinstrel on NewGrounds
 
@@ -68,8 +68,14 @@ https://lionheart963.itch.io/flying-eye-creature
 
 Post/tank from https://opengameart.org/content/lpc-golem
 
-Slasher and Artisan sprites generated with http://gaurav.munjal.us/Universal-LPC-Spritesheet-Character-Generator
+Slasher, Artisan, Houndmaster sprites generated with http://gaurav.munjal.us/Universal-LPC-Spritesheet-Character-Generator
+
+Stephen "Redstrike" Challener and William Thomsonj for the wolf sprite https://opengameart.org/content/lpc-wolf-animation
+
+Molotov sprite from cgman at http://spritefx.blogspot.com/2013/04/fire-sprites.html
 
 Ball downsized from https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Basketball_Clipart.svg/1035px-Basketball_Clipart.svg.png
 
 Ranked medals from http://pixeljoint.com/pixelart/26524.htm
+
+I made the cage for the wolves myself, apparently it was too specific.

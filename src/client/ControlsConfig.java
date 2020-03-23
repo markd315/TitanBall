@@ -192,6 +192,15 @@ public class ControlsConfig {
         }
         return false;
     }
+    public boolean fullScreen(String newKey){
+        if(keymap.containsKey(newKey)){
+            if(keymap.get(newKey).equals("FULL_SC")){
+                return true;
+            }
+        }
+        return false;
+    }
+
 
     public boolean movKey(String newKey){
         if(keymap.containsKey(newKey)){

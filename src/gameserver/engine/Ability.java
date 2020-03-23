@@ -36,27 +36,35 @@ public class Ability {
                     strat.stunByRadius(1500);
                     break;
                 case GOLEM:
-                    context.effectPool.addUniqueEffect(new CooldownE((int) (caster.cooldownFactor *18000), caster));
+                    context.effectPool.addUniqueEffect(new CooldownE((int) (caster.cooldownFactor *18000), caster), context);
                     context.effectPool.addUniqueEffect(
-                            new DefenseEffect((int) (caster.durationsFactor*5000), caster, 10));
+                            new DefenseEffect((int) (caster.durationsFactor*5000), caster, 10), context);
                     break;
                 case STEALTH:
-                    context.effectPool.addUniqueEffect(new CooldownE((int) (caster.cooldownFactor *15000), caster));
+                    context.effectPool.addUniqueEffect(new CooldownE((int) (caster.cooldownFactor *15000), caster), context);
                     context.effectPool.addUniqueEffect(
-                            new EmptyEffect((int) (caster.durationsFactor*2500), caster, EffectId.STEALTHED));
+                            new EmptyEffect((int) (caster.durationsFactor*2500), caster, EffectId.STEALTHED), context);
                     break;
                 case DASHER:
                     if(caster.possession == 1){
-                        context.effectPool.addUniqueEffect(new CooldownE((int) (caster.cooldownFactor *9000), caster));
+                        context.effectPool.addUniqueEffect(new CooldownE((int) (caster.cooldownFactor *9000), caster), context);
                         context.effectPool.addUniqueEffect(
-                                new HideBallEffect((int) (caster.durationsFactor*500), caster));
+                                new HideBallEffect((int) (caster.durationsFactor*1200), caster), context);
                     }
                     break;
                 case RANGER:
-                    strat.shootArrow();
+                    strat.shootArrow(18.0, 4000.0);
+                    //4.5 DPS
                     break;
                 case WARRIOR:
-                    strat.circleSlash();
+                    //6.0 DPS
+                    strat.circleSlash(30.0, 5000.0);
+                    break;
+                case HOUNDMASTER:
+                    strat.spawnCage();
+                    break;
+                case GRENADIER:
+                    strat.flashbang(1200);
                     break;
             }
             return injectColliders(context, strat, caster);
@@ -87,7 +95,11 @@ public class Ability {
                     strat.kick();
                     break;
                 case MAGE:
-                    strat.ignite(20, 3, .45, .45);
+                    strat.ignite(20, 2.0, 5, .40);
+                    //41 ticks per second
+                    //16.4 tick DPS + 5 initial
+                    //37.8 TD every 20 seconds
+                    //1.89 DPS
                     break;
                 case WARRIOR:
                     strat.parameterizedFlash(23, 140);
@@ -97,6 +109,12 @@ public class Ability {
                     break;
                 case STEALTH:
                     strat.parameterizedFlash(21, 100);
+                    break;
+                case HOUNDMASTER:
+                    strat.releaseCages();
+                    break;
+                case GRENADIER:
+                    strat.molotov();
                     break;
             }
             return injectColliders(context, strat, caster);

@@ -101,7 +101,7 @@ public class BallPortal extends Entity implements Collidable {
 
     @Override
     public void triggerCollide(GameEngine context, Box entity) {
-        if (!this.isCooldown(context.now)) {
+        if (!this.isCooldown(context.now) && !context.anyPoss()) {
             Optional<BallPortal> p = findFriendlyBallPortal(context, this.createdById);
             if(!context.ball.id.equals(entity.id)){
                 return;
@@ -122,7 +122,6 @@ public class BallPortal extends Entity implements Collidable {
             double cdActivated = cdUntil.getMillis() - COOLDOWN_MS;
             double nowNormalized = now.getMillis() - cdActivated;
             double percent = nowNormalized*100.0 / ((double)COOLDOWN_MS);
-            System.out.println(percent);
             return percent;
         }
         else{

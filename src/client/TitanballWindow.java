@@ -18,9 +18,11 @@ import java.util.Scanner;
 
 public class TitanballWindow extends JFrame {
     private static HttpClient loginClient;
-    private int xSize, ySize;
+    private int xSize = 1920, ySize = 1080;
+    private double scl = 1.5;
     private HashMap<String, String> keymap;
     private TitanballClient client = null;
+    private boolean darkTheme = false;
 
     public TitanballWindow(HttpClient loginClient) {
         this.loginClient = loginClient;
@@ -40,18 +42,11 @@ public class TitanballWindow extends JFrame {
             setUndecorated(true);
         }
         //reconstruct
-        client = new TitanballClient(this, xSize, ySize, loginClient, keymap, !restarting);
+        client = new TitanballClient(this, xSize, ySize, scl, loginClient, keymap, !restarting, darkTheme);
 
         add(client);
-
-        //GraphicsConfiguration config = this.getGraphicsConfiguration();
-        //Rectangle usableBounds = SunGraphicsEnvironment.getUsableBounds(config.getDevice());
         setSize(xSize, ySize);
-        //setAlwaysOnTop(true);
-        //setOpaque(false);
-        //getContentPane().add(BorderLayout.CENTER, this);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        //setLocationRelativeTo(null);
         setExtendedState(JFrame.MAXIMIZED_BOTH);
         setResizable(false);
         if (client.gameserverConn == null) {
@@ -66,17 +61,30 @@ public class TitanballWindow extends JFrame {
         }
     }
 
+    public void toggleFullscreen(boolean fullscreen){
+        setResizable(!fullscreen);
+        if(!fullscreen){
+            setExtendedState(JFrame.NORMAL);
+            setSize((int)(1920*.7), (int)(1080*.7));
+        }else{
+            setExtendedState(JFrame.MAXIMIZED_BOTH);
+
+        }
+    }
+
     private void initUI() {
-        xSize = 1920; //sane defaults
-        ySize = 1080;
         ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
         try {
             keymap = mapper.readValue(new File("res/config.yaml"), HashMap.class);
             xSize = Integer.parseInt(keymap.get("Xres").replaceAll("px", ""));
             ySize = Integer.parseInt(keymap.get("Yres").replaceAll("px", ""));
-            double scl = Double.parseDouble(keymap.get("SCALE").replaceAll("%", ""));
-            xSize *= 1.5 / (scl / 100.0);
-            ySize *= 1.5 / (scl / 100.0);
+            scl = Double.parseDouble(keymap.get("SCALE").replaceAll("%", "")) / 100.0;
+            xSize *= 1.5 / (scl);
+            ySize *= 1.5 / (scl);
+            String theme = keymap.get("theme");
+            if(theme.toLowerCase().equals("dark")){
+                this.darkTheme = true;
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }

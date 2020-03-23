@@ -17,7 +17,10 @@ public class TestEffect extends Effect {
 
     @Override
     public void onCease(GameEngine context) {
-        System.out.println("ceased");
+        if(!ceased){
+            System.out.println("ceased");
+            ceased = true;
+        }
     }
 
     @Override

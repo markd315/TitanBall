@@ -55,6 +55,12 @@ public class SelectClassSkins extends Images {
         if(type == TitanType.BUILDER){
             cursor = 11;
         }
+        if(type == TitanType.HOUNDMASTER){
+            cursor = 12;
+        }
+        if(type == TitanType.GRENADIER){
+            cursor = 13;
+        }
         String imageKey = decodeImage(cursor, frame);
         if (cache.containsKey(imageKey)){
             return cache.get(imageKey);
@@ -151,8 +157,14 @@ public class SelectClassSkins extends Images {
                 sprite = "Mage";
                 break;
             case 11:
-            default:
                 sprite = "Builder";
+                break;
+            case 12:
+                sprite = "Houndmaster";
+                break;
+            case 13:
+            default:
+                sprite = "Grenadier";
                 break;
         }
         String fileName = "res/Sprite"+sprite+"/"+frameCode+".png";

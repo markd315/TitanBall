@@ -192,7 +192,7 @@ public class TutorialOverrides extends GameEngine {
                 detectAndUpdateState();
                 List<Entity> tempSolids = new ArrayList<>();
                 tempSolids.addAll(Arrays.asList(this.players));
-                trimEntities(this.entityPool);
+                tickEntities(this.entityPool);
                 tempSolids.addAll(this.entityPool);
                 allSolids = tempSolids.toArray(new Entity[tempSolids.size()]);
                 updateBallIfPossessed();
