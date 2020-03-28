@@ -101,14 +101,12 @@ public class StatEngine {
         HashMap<String, Double> attackTimeMap = new HashMap();
         for (int i = 0; i < effectPool.getEffects().size(); i++) {
             Effect eff = effectPool.getEffects().get(i);
-            System.out.println(eff.getPercentLeft());
             Titan castBy = effectPool.getCastBy().get(i);
             //TODO Make sure caster is set by whatever call we do!
             if (castBy == null) {
                 continue;
             }
             for (Titan t : context.players) {
-                System.out.println(t.id);
                 if (castBy != null) {
                     System.out.println("" + castBy.getType().toString());
                     if (eff.on.id.equals(dead.id) &&

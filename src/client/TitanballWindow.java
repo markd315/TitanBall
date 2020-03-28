@@ -7,6 +7,7 @@ import client.forms.LoginForm;
 import com.esotericsoftware.kryonet.Client;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import gameserver.tenancy.GamePhase;
 
 import javax.swing.*;
 import java.awt.*;
@@ -55,7 +56,7 @@ public class TitanballWindow extends JFrame {
         if(restarting){
             client.openConnection();
             if(menu){
-                client.phase = 15;
+                client.phase = GamePhase.SHOW_GAME_MODES;
                 client.initSurface(true); //convoluted, but we can only do this once
             }
         }

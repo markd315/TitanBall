@@ -4,7 +4,11 @@ import gameserver.engine.GameEngine;
 import gameserver.engine.GameOptions;
 import gameserver.engine.StatEngine;
 import gameserver.engine.TeamAffiliation;
-import gameserver.entity.*;
+import gameserver.entity.Box;
+import gameserver.entity.Entity;
+import gameserver.entity.Titan;
+import gameserver.entity.TitanType;
+import gameserver.tenancy.GamePhase;
 import networking.ClientPacket;
 import networking.PlayerDivider;
 
@@ -48,7 +52,7 @@ public class TutorialOverrides extends GameEngine {
             new Titan(FIELD_LENGTH - DEFENDER_HOME, MID_WING_HOME, TeamAffiliation.HOME, TitanType.MARKSMAN),
     };
 
-     Box ballDefault = new Box((int)BALL_X, (int)BALL_Y, 15, 15);
+     Box ballDefault = new Box((int)c.BALL_X, (int)c.BALL_Y, 15, 15);
      Box ballSteal = new Box(FIELD_LENGTH - MID_HOME, MID_WING_HOME, 15, 15);
      Box ballScore = new Box(FIELD_LENGTH - DEFENDER_HOME - 50, MID_WING_HOME, 15, 15);
 
@@ -171,7 +175,7 @@ public class TutorialOverrides extends GameEngine {
                     this.began = false;
                     this.lastControlPacket = null;
                     this.client = null;
-                    phase = 15;
+                    phase = GamePhase.SHOW_GAME_MODES;
                     /*players = tutMap.get("score");
                     ball.setX(ballMap.get("score").X);
                     ball.setY(ballMap.get("score").Y);
@@ -224,6 +228,7 @@ public class TutorialOverrides extends GameEngine {
                 if (t.runLeft == 1) runLeftCtrl(t);
                 if (t.runUp == 1) runUpCtrl(t);
                 if (t.runDown == 1) runDownCtrl(t);
+                programmedCtrl(t);
                 if (t.actionState == Titan.TitanState.SHOOT) shootingBall(t);
                 else if (t.actionState == Titan.TitanState.LOB) lobbingBall(t);
                 else if (t.actionState == Titan.TitanState.CURVE_LEFT) curve(t, 1);
@@ -238,10 +243,10 @@ public class TutorialOverrides extends GameEngine {
             intersectAll();
             detectGoals();
         }
-        if (ball.X < GameEngine.MIN_X) ball.X = GameEngine.MIN_X;
-        if (ball.X > GameEngine.MAX_X) ball.X = GameEngine.MAX_X;
-        if (ball.Y < GameEngine.MIN_Y) ball.Y = GameEngine.MIN_Y;
-        if (ball.Y > GameEngine.MAX_Y) ball.Y = GameEngine.MAX_Y;
+        if (ball.X < c.MIN_X) ball.X = c.MIN_X;
+        if (ball.X > c.MAX_X) ball.X = c.MAX_X;
+        if (ball.Y < c.MIN_Y) ball.Y = c.MIN_Y;
+        if (ball.Y > c.MAX_Y) ball.Y = c.MAX_Y;
         unlock();
     }
 }

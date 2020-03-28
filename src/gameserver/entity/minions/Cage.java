@@ -1,5 +1,6 @@
 package gameserver.entity.minions;
 
+import gameserver.Const;
 import gameserver.engine.GameEngine;
 import gameserver.engine.TeamAffiliation;
 import gameserver.entity.Entity;
@@ -9,6 +10,7 @@ import java.util.UUID;
 
 public class Cage extends Entity {
     private UUID createdById;
+    public Const c;
 
     public Cage(TeamAffiliation team, Titan pl, int x, int y, GameEngine context) {
         super(team);
@@ -16,8 +18,9 @@ public class Cage extends Entity {
         this.setY(y);
         this.width = 70;
         this.height = 70;
-        this.health = 5;
-        this.maxHealth = 5;
+        this.c = context.c;
+        this.health = c.getI("cage.hp");
+        this.maxHealth = this.health;
         this.solid = true;
         this.createdById = pl.id;
         while(this.collidesSolid(context, context.allSolids)){

@@ -93,7 +93,6 @@ public class EffectPool {
         Collections.reverse(rm);
         for(Integer i : rm){
             Effect toKill = pool.get(i);
-            System.out.println("ceasing trap");
             toKill.onCease(context);
             pool.remove(toKill);
             targetPool.remove(i.intValue());

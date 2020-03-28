@@ -193,7 +193,7 @@ public class HttpClient {
                     .header("Authorization", "Bearer " + token)
                     .asString();
             System.out.println("statusCode = " + response.getStatus());
-            gameId = response.getBody();
+            this.gameId = response.getBody();
             System.out.println("gameId = " + gameId);
             return response.getStatus();
         }

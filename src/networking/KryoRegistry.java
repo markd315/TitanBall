@@ -4,6 +4,7 @@ import client.graphical.GoalSprite;
 import client.graphical.Images;
 import client.graphical.StaticImage;
 import com.esotericsoftware.kryo.Kryo;
+import gameserver.Const;
 import gameserver.TutorialOverrides;
 import gameserver.effects.EffectId;
 import gameserver.effects.EffectPool;
@@ -21,7 +22,9 @@ import gameserver.targeting.*;
 import gameserver.targeting.core.Filter;
 import gameserver.targeting.core.Limiter;
 import gameserver.targeting.core.Selector;
+import gameserver.tenancy.GamePhase;
 import org.joda.time.Instant;
+import util.ConstOperations;
 
 import javax.swing.*;
 import java.awt.event.MouseEvent;
@@ -133,6 +136,9 @@ public class KryoRegistry {
         kryo.register(boolean.class);
         kryo.register(boolean.class);
         kryo.register(Random.class);
+        kryo.register(Const.class);
+        kryo.register(ConstOperations.class);
+        kryo.register(GamePhase.class);
 
         kryo.register(TutorialOverrides.class);
         kryo.register(GameOptions.class);

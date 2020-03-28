@@ -61,10 +61,11 @@ public class ServerApplication {
         server.addListener(new Listener() {
             public void received(Connection connection, Object object) {
                 if (connection.getID() > 0) {
+                    System.out.println("got a packet");
                     if (object instanceof ClientPacket) {
                         String token = ((ClientPacket) object).token;
                         if (token == null) {
-                            //System.out.println("token null");
+                            System.out.println("token null");
                             return;
                         }
                         delegatePacket(connection, (ClientPacket) object);

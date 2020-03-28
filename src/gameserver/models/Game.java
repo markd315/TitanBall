@@ -1,5 +1,6 @@
 package gameserver.models;
 
+import gameserver.Const;
 import gameserver.effects.EffectPool;
 import gameserver.engine.*;
 import gameserver.entity.Box;
@@ -7,6 +8,7 @@ import gameserver.entity.Entity;
 import gameserver.entity.Titan;
 import gameserver.entity.TitanType;
 import gameserver.targeting.ShapePayload;
+import gameserver.tenancy.GamePhase;
 import networking.ClientPacket;
 import networking.PlayerDivider;
 import org.joda.time.Instant;
@@ -19,12 +21,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class Game {
     public String gameId;
     public UUID lastPossessed;
-    public static final long GAMETICK_MS = 24;
+    public Const c = new Const("res/game.cfg");
+    public final int GAMETICK_MS = c.GAMETICK_MS;
     public List<PlayerDivider> clients;
     public ClientPacket[] lastControlPacket = null;
-    public static final int SPRITE_X_EMPTY = 50;
-    public static final int SPRITE_Y_EMPTY = 18;
-    public int secondsToStart = 5;
+    public final int SPRITE_X_EMPTY = c.getI("titan.hitbox.empty.x");
+    public final int SPRITE_Y_EMPTY = c.getI("titan.hitbox.empty.y");
+    public double secondsToStart = c.getD("server.startDelay");
     public Instant now;
     protected AtomicBoolean locked = new AtomicBoolean(false);
     public List<ShapePayload> colliders;
@@ -33,59 +36,33 @@ public class Game {
     public Titan underControl = null; //Only set by the gameserver right before pushing an update
     public boolean ended = false;
     public StatEngine stats = new StatEngine();
-    public static final int MAX_X = 2048;
-    public static final int E_MAX_X = 2030;
-    public static final int MAX_Y = 988;
-    public static final int E_MAX_Y = 950;
-    public static final int MIN_X = 36;
-    public static final int E_MIN_X = -10;
-    public static final int MIN_Y = 232;
-    public static final int E_MIN_Y = 170;
-    public static final int GOALIE_Y_MAX = 897;
-    public static final int GOALIE_Y_MIN = 297;
-    public static final int GOALIE_XH_MAX = 329;
-    public static final int GOALIE_XH_MIN = 173;
-    public static final int GOALIE_XA_MAX = 1872;
-    public static final int GOALIE_XA_MIN = 1736;
-    protected static final int FIELD_LENGTH = 2050;
-    protected static final int TOP_WING_ST = 0;
-    protected static final int TOP_WING_END = 500;
-    protected static final int BOT_WING_ST = 700;
-    protected static final int BOT_WING_END = 9999;
-    protected static final int DEFENDER_CREEP = 650;
-    protected static final int DEFENDER_RETREAT = 0;
-    protected static final int MID_CREEP = 1550;
-    protected static final int MID_RETREAT = 550;
-    protected static final int FW_CREEP = 1850;
-    protected static final int FW_RETREAT = 1250;
-    protected static final int TOP_WING_HOME = 295;
-    protected static final int MID_WING_HOME = 595;
-    protected static final int BOT_WING_HOME = 895;
-    protected static final int T_CIRCLE_WING_HOME = 450;
-    protected static final int B_CIRCLE_WING_HOME = 750;
-    protected static final int DEFENDER_HOME = 470;
-    protected static final int MID_HOME = 850;
-    protected static final int FW_HOME = 900;
+    protected final int FIELD_LENGTH = c.getI("pos.field");
+    protected final int TOP_WING_HOME = c.getI("pos.top.y");
+    protected final int MID_WING_HOME = c.getI("pos.mid.y");
+    protected final int BOT_WING_HOME = c.getI("pos.bot.y");
+    protected final int DEFENDER_HOME = c.getI("pos.def.x");
+    protected final int MID_HOME = c.getI("pos.mid.x");
+    protected final int FW_HOME = c.getI("pos.fw.x");
     public int framesSinceStart = 0;
     protected boolean hoopDmg = true;
     protected boolean suddenDeath = false;
     protected boolean extremeSuddenDeath = false;
     protected boolean tieAble = false;
-    public final double GOALIE_DISABLE_TIME = 300.0; //300
+    public final double GOALIE_DISABLE_TIME = c.getD("goalie.disable.time");
     public final double PAIN_DISABLE_TIME = 9999999.0; //420
     public GameOptions options;
     public EffectPool effectPool = new EffectPool();
     public List<Entity> entityPool = new ArrayList<>();
     public boolean ballVisible, inGame, goalVisible;
 
-    public int phase;
+    public GamePhase phase;
     public boolean began = false;
     public double xKickPow, yKickPow;
 
-    public static final int HOME_HI_X = 256;
-    public static final int HOME_HI_Y = 583;
-    public static final int AWAY_HI_X = 1786;
-    public static final int AWAY_HI_Y = 583;
+    public final int HOME_HI_X = c.getI("goal.home.hi.x");
+    public final int HOME_HI_Y = c.getI("goal.hi.y");
+    public final int AWAY_HI_X = c.getI("goal.away.hi.x");
+    public final int AWAY_HI_Y = c.getI("goal.hi.y");
 
     Titan hGol = new Titan(0, 0, TeamAffiliation.HOME, TitanType.GOALIE);
     Titan awGol = new Titan(1200, 400, TeamAffiliation.AWAY, TitanType.GOALIE);
@@ -93,28 +70,29 @@ public class Game {
     public Titan[] players = {hGol,
             awGol,
             new Titan(0, 0, TeamAffiliation.HOME, TitanType.WARRIOR),
-            new Titan(0, 0, TeamAffiliation.HOME, TitanType.DASHER),
+            new Titan(0, 0, TeamAffiliation.HOME, TitanType.BUILDER),
             new Titan(0, 0, TeamAffiliation.HOME, TitanType.MAGE),
-            //warrior mage are bad somehow in goalie mode idx 2,4
             new Titan(0, 0, TeamAffiliation.HOME, TitanType.SUPPORT),
+            new Titan(0, 0, TeamAffiliation.HOME, TitanType.DASHER),
 
-            new Titan(0, 0, TeamAffiliation.AWAY, TitanType.RANGER),
             new Titan(0, 0, TeamAffiliation.AWAY, TitanType.ARTISAN),
+            new Titan(0, 0, TeamAffiliation.AWAY, TitanType.RANGER),
+            new Titan(0, 0, TeamAffiliation.AWAY, TitanType.HOUNDMASTER),
+            new Titan(0, 0, TeamAffiliation.AWAY, TitanType.STEALTH),
             new Titan(0, 0, TeamAffiliation.AWAY, TitanType.MARKSMAN),
-            new Titan(0, 0, TeamAffiliation.AWAY, TitanType.STEALTH) //bugfix where not displayed
     };
-    public GoalHoop homeHiGoal = new GoalHoop(HOME_HI_X, HOME_HI_Y, 70, 84, TeamAffiliation.HOME);
-    public GoalHoop awayHiGoal = new GoalHoop(AWAY_HI_X, AWAY_HI_Y, 70, 84, TeamAffiliation.AWAY);
+    public GoalHoop homeHiGoal = new GoalHoop(HOME_HI_X, HOME_HI_Y, c.getI("goal.hi.width"), c.getI("goal.hi.height"), TeamAffiliation.HOME);
+    public GoalHoop awayHiGoal = new GoalHoop(AWAY_HI_X, AWAY_HI_Y, c.getI("goal.hi.width"), c.getI("goal.hi.height"), TeamAffiliation.AWAY);
     public GoalHoop[] hiGoals = {homeHiGoal, awayHiGoal};
-    public GoalHoop[] lowGoals = {new GoalHoop(305, 354, 43, 107, TeamAffiliation.HOME),
-            new GoalHoop(305, 790, 43, 107, TeamAffiliation.HOME),
-            new GoalHoop(1775, 354, 43, 107, TeamAffiliation.AWAY),
-            new GoalHoop(1775, 790, 43, 107, TeamAffiliation.AWAY)};
+    public GoalHoop[] lowGoals = {new GoalHoop(c.getI("goal.home.low.x"), c.getI("goal.low.y"), c.getI("goal.low.width"), c.getI("goal.low.height"), TeamAffiliation.HOME),
+            new GoalHoop(c.getI("goal.home.low.x"), c.getI("goal.low2.y"), c.getI("goal.low.width"), c.getI("goal.low.height"), TeamAffiliation.HOME),
+            new GoalHoop(c.getI("goal.away.low.x"), c.getI("goal.low.y"), c.getI("goal.low.width"), c.getI("goal.low.height"), TeamAffiliation.AWAY),
+            new GoalHoop(c.getI("goal.away.low.x"), c.getI("goal.low2.y"), c.getI("goal.low.width"), c.getI("goal.low.height"), TeamAffiliation.AWAY)};
     public Team away = new Team(TeamAffiliation.AWAY, 0.0, awayHiGoal, lowGoals[2], lowGoals[3]);
     public Team home = new Team(TeamAffiliation.HOME, 0.0, homeHiGoal, lowGoals[0], lowGoals[1],
             players);
 
-    public Box ball = new Box(0, 0, 30, 30);
+    public Box ball = new Box(0, 0, c.getI("ball.w"), c.getI("ball.h"));
 
     public boolean anyPoss() {
         for (Titan t : players) {
@@ -162,4 +140,17 @@ public class Game {
         }
         this.colliders.removeAll(rm);
     }
+    //used for legacy AI only
+    protected final int TOP_WING_ST = 0;
+    protected final int TOP_WING_END = 500;
+    protected final int BOT_WING_ST = 700;
+    protected final int BOT_WING_END = 9999;
+    protected final int DEFENDER_CREEP = 650;
+    protected final int DEFENDER_RETREAT = 0;
+    protected final int MID_CREEP = 1550;
+    protected final int MID_RETREAT = 550;
+    protected final int FW_CREEP = 1850;
+    protected final int FW_RETREAT = 1250;
+    protected final int T_CIRCLE_WING_HOME = 450;
+    protected final int B_CIRCLE_WING_HOME = 750;
 }

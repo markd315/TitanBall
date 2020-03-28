@@ -12,10 +12,10 @@ public class Wall extends gameserver.entity.Entity implements Collidable {
         this.team = TeamAffiliation.UNAFFILIATED;
         this.setX(x);
         this.setY(y);
-        this.width = 30;
+        this.width = 12;
         this.height = 120;
-        this.health = 5;
-        this.maxHealth = 5;
+        this.health = 4;
+        this.maxHealth = 4;
         this.solid = true;
         while(this.collidesSolid(context, context.allSolids)){
             this.setY((int)this.Y +1);

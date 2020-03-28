@@ -13,8 +13,8 @@ import java.util.UUID;
 
 public class Portal extends gameserver.entity.Entity implements Collidable {
 
-    private static final int COOLDOWN_MS = 10000;
-    private static final int MAX_RANGE = 600;
+    private int COOLDOWN_MS;
+    private int MAX_RANGE;
     private UUID createdById;
     public RangeCircle rangeCircle;
     private Instant createdAt;//only used serverside so clock skew is irrelevant
@@ -22,6 +22,8 @@ public class Portal extends gameserver.entity.Entity implements Collidable {
 
     public Portal(TeamAffiliation team, Titan pl, List<Entity> pool, int x, int y, GameEngine context) {
         super(team);
+        this.COOLDOWN_MS = context.c.getI("portal.cdms");
+        this.MAX_RANGE = context.c.getI("portal.range");
         this.setX(x);
         this.setY(y);
         this.width = 50;

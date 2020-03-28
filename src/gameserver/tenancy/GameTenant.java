@@ -6,6 +6,7 @@ import com.esotericsoftware.kryonet.Connection;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rits.cloning.Cloner;
+import gameserver.Const;
 import gameserver.effects.EffectId;
 import gameserver.effects.EffectPool;
 import gameserver.engine.GameEngine;
@@ -28,6 +29,7 @@ public class GameTenant {
     public static final ServerMode SERVER_MODE = ServerMode.TRUETHREE;
     public ServerMode serverMode = SERVER_MODE;
     protected GameOptions options;
+    protected Const c = new Const("res/game.cfg");
 
     public GameEngine state;
     public String gameId;
@@ -40,8 +42,7 @@ public class GameTenant {
 
 
     public void delegatePacket(Connection connection, ClientPacket request) {
-        //System.out.println(state);
-        if (state == null || state.phase < 8) {
+        if (state == null || state.phase.getCode() < 8) {
             addOrReplaceNewClient(connection, clients, request.token);
         }
         if (state != null) {
@@ -121,7 +122,7 @@ public class GameTenant {
             state.initializeServer();
             instantiateSpringContext();
             gameIncludedClients = this.monteCarloBalance(gameIncludedClients);
-            state.secondsToStart = 5;
+            state.secondsToStart = c.getD("server.startDelay");
             for(int i=0; i<5; i++){
                 Thread.sleep(1000);
                 state.secondsToStart -=1;
@@ -297,16 +298,18 @@ public class GameTenant {
         else if(op.playerIndex == 0) {
             this.availableSlots = new ArrayList<>();
             List<Integer> c1 = new ArrayList<>();
-            c1.add(4);
             c1.add(3);
+            c1.add(4);
             c1.add(5);
             c1.add(6);
+            c1.add(7);
             c1.add(1);
 
             c1.add(8);
-            c1.add(7);
             c1.add(9);
             c1.add(10);
+            c1.add(11);
+            c1.add(12);
             c1.add(2);
             this.availableSlots.add(c1);
         }

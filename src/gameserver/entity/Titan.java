@@ -1,6 +1,7 @@
 package gameserver.entity;
 
 
+import gameserver.Const;
 import gameserver.effects.EffectId;
 import gameserver.effects.effects.Effect;
 import gameserver.effects.effects.RatioEffect;
@@ -181,8 +182,8 @@ public class Titan extends Entity {
             this.Y = context.homeHiGoal.y + (context.homeHiGoal.h / 2);
             while (this.collidesSolid(context, context.allSolids)) {
                 this.X -= 35;
-                if(this.X < context.E_MIN_X){
-                    this.X = context.E_MIN_X;
+                if(this.X < context.c.E_MIN_X){
+                    this.X = context.c.E_MIN_X;
                     this.Y +=35;
                 }
             }
@@ -192,8 +193,8 @@ public class Titan extends Entity {
             this.Y = context.awayHiGoal.y + (context.awayHiGoal.h / 2.0);
             while (this.collidesSolid(context, context.allSolids)) {
                 this.X += 35;
-                if(this.X > context.E_MAX_X){
-                    this.X = context.E_MAX_X;
+                if(this.X > context.c.E_MAX_X){
+                    this.X = context.c.E_MAX_X;
                     this.Y +=35;
                 }
             }
@@ -211,6 +212,7 @@ public class Titan extends Entity {
     public int runDown = 0;
 
     static{
+        Const c = new Const("res/game.cfg");
         titanSpeed.put(TitanType.SUPPORT, 5.5);
         titanSpeed.put(TitanType.WARRIOR, 5.5);
         titanSpeed.put(TitanType.ARTISAN, 5.3);
@@ -333,31 +335,31 @@ public class Titan extends Entity {
         HashSet<RangeCircle> warrior= new HashSet<>();
         HashSet<RangeCircle> artisan= new HashSet<>();
         HashSet<RangeCircle> grenadier= new HashSet<>();
-        mage.add(e(200));
-        mage.add(r(250));
-        builder.add(e(200));
-        builder.add(r(250));
-        support.add(e(65));
-        support.add(r(250));
-        ranger.add(e(250));
-        ranger.add(r(60));
-        warrior.add(e(100));
-        warrior.add(r(140));
-        artisan.add(e(140));
-        artisan.add(r(200));
-        grenadier.add(e(130));
-        grenadier.add(r(140));
+        mage.add(e(c.getI("titan.portal.range")));
+        mage.add(r(c.getI("titan.ignite.range")));
+        builder.add(e(c.getI("titan.trap.range")));
+        builder.add(r(c.getI("titan.wall.range")));
+        support.add(e(c.getI("titan.stun.range") / 2));
+        support.add(r(c.getI("titan.heal.range")));
+        ranger.add(e(c.getI("titan.arrow.range")));
+        ranger.add(r(c.getI("titan.kick.range")));
+        warrior.add(e(c.getI("titan.slash.range")/2));
+        warrior.add(r(c.getI("titan.flash.warrior.dist")));
+        artisan.add(e(c.getI("titan.suck.range") /2));
+        artisan.add(r(c.getI("titan.bportal.range")));
+        grenadier.add(e(c.getI("titan.flashbang.range") /2));
+        grenadier.add(r(c.getI("titan.molotov.range")));
         titanRange.put(TitanType.MAGE, mage);
         titanRange.put(TitanType.RANGER, ranger);
-        titanRange.put(TitanType.MARKSMAN, Collections.singleton(e(150)));
-        titanRange.put(TitanType.DASHER, Collections.singleton(r(250)));
-        titanRange.put(TitanType.GOLEM, Collections.singleton(r(90)));
+        titanRange.put(TitanType.MARKSMAN, Collections.singleton(e(c.getI("titan.ice.range"))));
+        titanRange.put(TitanType.DASHER, Collections.singleton(r(c.getI("titan.ignite.range"))));
+        titanRange.put(TitanType.GOLEM, Collections.singleton(r(c.getI("titan.scatter.range")/2)));
         titanRange.put(TitanType.BUILDER, builder);
         titanRange.put(TitanType.WARRIOR, warrior);
-        titanRange.put(TitanType.STEALTH, Collections.singleton(r(100)));
+        titanRange.put(TitanType.STEALTH, Collections.singleton(r(c.getI("titan.flash.stealth.dist"))));
         titanRange.put(TitanType.SUPPORT, support);
         titanRange.put(TitanType.ARTISAN, artisan);
-        titanRange.put(TitanType.HOUNDMASTER,  Collections.singleton(e(120)));
+        titanRange.put(TitanType.HOUNDMASTER,  Collections.singleton(e(c.getI("titan.cage.range"))));
         titanRange.put(TitanType.GRENADIER, grenadier);
 
         titanText.put(TitanType.MAGE, "DAMAGE ignite enemies and warp players around the map with portals");
