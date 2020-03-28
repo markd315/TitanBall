@@ -171,12 +171,8 @@ public class GameEngine extends Game {
 
     public void detectGoals() throws Exception {
         //If ball is in the air
-        for (int n = players.length - 1; n >= 0; n--) {
-            if (players[n].actionState == Titan.TitanState.LOB
-                    && players[n].actionFrame > 10 &&
-                    players[n].actionFrame < 30) {
-                return;
-            }
+        if(contactExemptBall()){
+            return;
         }
         Rectangle ballBounds = new Rectangle((int) this.ball.X, (int) this.ball.Y, 30, 30);
         for (GoalHoop goal : this.lowGoals) {
@@ -434,6 +430,17 @@ public class GameEngine extends Game {
     }
 
     public void intersectAll() {
+        if(contactExemptBall()){
+            return;
+        }
+        for (int n = players.length - 1; n >= 0; n--) {
+            intersectBall(n + 1, (int) players[n].X, (int) players[n].Y);
+        }
+        Entity[] arr = new Entity[1];
+        ball.collidesSolid(this, entityPool.toArray(arr));
+    }
+
+    public boolean contactExemptBall() {
         for (int n = players.length - 1; n >= 0; n--) {
             int EXEMPT_FRAME = 2;
             if(effectPool.hasEffect(players[n], EffectId.SHOOT)){
@@ -441,27 +448,23 @@ public class GameEngine extends Game {
             }
             if (players[n].actionState == Titan.TitanState.SHOOT
                     && players[n].actionFrame < EXEMPT_FRAME) {
-                return;
+                return true;
             }
             if (players[n].actionState == Titan.TitanState.CURVE_LEFT
                     && players[n].actionFrame < 2) {
-                return;
+                return true;
             }
             if (players[n].actionState == Titan.TitanState.CURVE_RIGHT
                     && players[n].actionFrame < 2) {
-                return;
+                return true;
             }
             if (players[n].actionState == Titan.TitanState.LOB
                     && players[n].actionFrame >= 9
                     && players[n].actionFrame <= 30) {
-                return;
+                return true;
             }
         }
-        for (int n = players.length - 1; n >= 0; n--) {
-            intersectBall(n + 1, (int) players[n].X, (int) players[n].Y);
-        }
-        Entity[] arr = new Entity[1];
-        ball.collidesSolid(this, entityPool.toArray(arr));
+        return false;
     }
 
     public boolean anyClientSelected(int n) {
@@ -1457,9 +1460,9 @@ public class GameEngine extends Game {
         if (t.actionFrame < t.kickingFrames) {
             t.possession = 0;
             setBallFromTip();
-            for (int i = 0; i < 8; i++) {
-                ball.X += 5.89 * xKickPow * t.throwPower;
-                ball.Y -= 5.89 * yKickPow * t.throwPower;
+            for (int i = 0; i < 400; i++) {
+                ball.X += .1178 * xKickPow * t.throwPower;
+                ball.Y -= .1178 * yKickPow * t.throwPower;
                 intersectAll();
                 detectGoals();
                 bounceWalls();
@@ -1493,9 +1496,9 @@ public class GameEngine extends Game {
             setBallFromTip();
             //Only check for lob intersections while near start or end
             if (t.actionFrame < 9 || t.actionFrame > 30) {
-                for (int i = 0; i < 8; i++) {
-                    ball.X += 2.71 * xKickPow * t.throwPower;
-                    ball.Y -= 2.71 * yKickPow * t.throwPower;
+                for (int i = 0; i < 400; i++) {
+                    ball.X += 0.0542 * xKickPow * t.throwPower;
+                    ball.Y -= 0.0542 * yKickPow * t.throwPower;
                     intersectAll();
                     detectGoals();
                     bounceWalls();
@@ -1525,13 +1528,19 @@ public class GameEngine extends Game {
     }
 
     public void bounceWalls() {
-        Box[] temp = new Box[entityPool.size()];
+        Entity[] temp = new Entity[entityPool.size()];
         entityPool.toArray(temp);
-        if (ball.collidesSolid(this, temp, 0, 0)) {
-            //System.out.println("wall");
-            xKickPow = -xKickPow;
-            yKickPow = -yKickPow;
+        Optional<Box> coll = ball.collidesSolidWhich(this, temp);
+        if(coll.isPresent() && !contactExemptBall()){
+            if(coll.get().ballNearestEdgeisX(ball)){
+                //System.out.println("wall");
+                xKickPow = -xKickPow;
+            }
+            else{
+                yKickPow = -yKickPow;
+            }
         }
+        //Major wall boundaries are not exempt from contact.
         if (ball.X > GameEngine.MAX_X) xKickPow = -xKickPow;
         if (ball.X < GameEngine.MIN_X) xKickPow = -xKickPow;
         if (ball.Y < GameEngine.MIN_Y) yKickPow = -yKickPow;
@@ -1563,9 +1572,9 @@ public class GameEngine extends Game {
             angle += curveFactor * 6.8;
             double tempXPow = Math.cos(Math.toRadians(angle));
             double tempYPow = Math.sin(Math.toRadians(angle));
-            for (int i = 0; i < 8; i++) {
-                ball.X += 2.95 * tempXPow * t.throwPower;
-                ball.Y -= 2.95 * tempYPow * t.throwPower;
+            for (int i = 0; i < 400; i++) {
+                ball.X += .059 * tempXPow * t.throwPower;
+                ball.Y -= .059 * tempYPow * t.throwPower;
                 intersectAll();
                 detectGoals();
                 bounceWalls();

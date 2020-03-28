@@ -10,6 +10,7 @@ import gameserver.effects.EffectId;
 import gameserver.effects.EffectPool;
 import gameserver.engine.GameEngine;
 import gameserver.engine.GameOptions;
+import gameserver.entity.Entity;
 import gameserver.entity.Titan;
 import networking.CandidateGame;
 import networking.ClientPacket;
@@ -163,6 +164,11 @@ public class GameTenant {
                     censor(player);
                 }
             }
+            for(Entity ent : update.entityPool){
+                if(!ent.id.equals(underControl)){
+                    censor(ent);
+                }
+            }
             update.ball.X = 9999;
             update.ball.Y = 9999;
         }
@@ -174,10 +180,18 @@ public class GameTenant {
                 }
             }
         }
+        for(Entity entity : update.entityPool){
+            if(fx.hasEffect(entity, EffectId.STEALTHED)
+                    && !fx.hasEffect(entity, EffectId.FLARE)){
+                if(entity.team != underControl.team){
+                    censor(entity);
+                }
+            }
+        }
         return update;
     }
 
-    private void censor(Titan player) {
+    private void censor(Entity player) {
         player.X = 99999;
         player.Y = 99999;
     }

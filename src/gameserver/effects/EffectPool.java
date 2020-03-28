@@ -133,7 +133,7 @@ public class EffectPool {
         return castBy;
     }
 
-    public boolean hasEffect(Titan target, EffectId queryType) {
+    public boolean hasEffect(Entity target, EffectId queryType) {
         for (int i = 0; i < pool.size(); i++) {
             if (pool.get(i).getEffect() == queryType
                     && (targetPool.get(i).id.equals(target.id) || pool.get(i).on.id.equals(target.id))) {
@@ -207,6 +207,19 @@ public class EffectPool {
                 }
             }
         }
+    }
+
+    public String toString(){
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < pool.size(); i++) {
+            sb.append(pool.get(i).effect + " lasting " + pool.get(i).getDuration());
+            sb.append(" on " + getOn().get(i).id + getOn().get(i).team);
+            if(getCastBy().get(i) != null){
+                sb.append(" by " + getCastBy().get(i).id + getCastBy().get(i).team);
+            }
+            sb.append("\n");
+        }
+        return sb.toString();
     }
 
     public void cullOnly(Effect e) {
