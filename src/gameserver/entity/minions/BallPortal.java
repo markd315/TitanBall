@@ -101,7 +101,7 @@ public class BallPortal extends Entity implements Collidable {
 
     @Override
     public void triggerCollide(GameEngine context, Box entity) {
-        if (!this.isCooldown(context.now) && !context.anyPoss()) {
+        if (!this.isCooldown(context.now) && !context.anyPoss() && !context.contactExemptBall()) {
             Optional<BallPortal> p = findFriendlyBallPortal(context, this.createdById);
             if(!context.ball.id.equals(entity.id)){
                 return;

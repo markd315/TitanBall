@@ -270,7 +270,7 @@ public class AbilityStrategy {
         if (corners.getWidth() > 0 && inBoundsNotRedzone(corners)) {
             context.effectPool.addUniqueEffect(
                     new CooldownE((int) (caster.cooldownFactor *15000), caster), context);
-            context.entityPool.add(new Trap(caster, (int) corners.getX(), (int) corners.getY()));
+            context.entityPool.add(new Trap(caster, context, (int) corners.getX(), (int) corners.getY()));
         }
     }
 

@@ -550,6 +550,8 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
                         controlsHeld.masteries = masteries;
                         repaint();
                         try {
+                            controlsHeld.camX = camX;
+                            controlsHeld.camY = camY;
                             gameserverConn.sendTCP(controlsHeld); //Automatically respond to the gameserver with tutorial when we get a new state
                         } catch (KryoException e) {
                             System.out.println("kryo end");
@@ -729,9 +731,9 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
             oy = sconst.adjY((int)oy);
             double angle = Math.toRadians(Util.degreesFromCoords(mx - game.underControl.X - 35,
                     my - game.underControl.Y - 35));
-            final double LOB_DIST = sconst.adjX(212);
-            final double SHOT_DIST = sconst.adjX(324);
-            final double BALL_HALF = sconst.adjX(30);
+            final double LOB_DIST = sconst.adjX(230);
+            final double SHOT_DIST = sconst.adjX(316);
+            final double BALL_HALF = sconst.adjX(15);
             Line2D lobBlock = new Line2D.Double(ox,
                     oy,
                     ox + ((.2 * LOB_DIST * pow +BALL_HALF) * Math.cos(angle)),
@@ -1077,8 +1079,9 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         }
     }
 
-    protected boolean invisible(Titan t) {
-        return game.effectPool.hasEffect(t, EffectId.STEALTHED) && !game.effectPool.hasEffect(t, EffectId.FLARE);
+    protected boolean invisible(Entity t) {
+        boolean opp = this.game.underControl.team != t.team;
+        return opp && game.effectPool.hasEffect(t, EffectId.STEALTHED) && !game.effectPool.hasEffect(t, EffectId.FLARE);
     }
 
     protected void drawNontitans(Graphics2D g2D, java.util.List<Entity> draw) {
@@ -1148,12 +1151,13 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
                 }
                 f2 = f1;
             }
-            if (staticFrame % 2 == 1) {
-                sconst.drawImage(g2D, f1, (int) e.getX() - camX, (int) e.getY() - camY, this);
-            } else {
-                sconst.drawImage(g2D, f2, (int) e.getX() - camX, (int) e.getY() - camY, this);
+            if(!invisible(e)){
+                if (staticFrame % 2 == 1) {
+                    sconst.drawImage(g2D, f1, (int) e.getX() - camX, (int) e.getY() - camY, this);
+                } else {
+                    sconst.drawImage(g2D, f2, (int) e.getX() - camX, (int) e.getY() - camY, this);
+                }
             }
-
         }
     }
 
@@ -1162,15 +1166,30 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         for (Titan t : game.players) {
             offset.put(t.id, -22);
         }
+        for (Entity t : game.entityPool) {
+            offset.put(t.id, -5);
+        }
         for (int i = 0; i < game.effectPool.getEffects().size(); i++) {
             Effect e = game.effectPool.getEffects().get(i);
             Entity en = game.effectPool.getOn().get(i);
-            if (en instanceof Titan && !e.toString().contains("COOLDOWN") && !e.toString().contains("ATTACKED")) {
-                Titan t = (Titan) en;
-                if (offset.containsKey(t.id) && !invisible(t)) {
-                    sconst.drawImage(g2D, e.getIconSmall(), (int) t.X + offset.get(t.id) - camX, (int) t.Y - 29 - camY, this);
-                    offset.put(t.id, offset.get(t.id) + 16);
+            //TODO evaluate whether or not to display cooldowns
+            if (/*!e.toString().contains("COOLDOWN") &&*/ !e.toString().contains("ATTACKED")) {
+                if(en instanceof Titan){
+                    Titan t = (Titan) en;
+                    if (offset.containsKey(t.id) && !invisible(t)) {
+                        sconst.drawImage(g2D, e.getIconSmall(), (int) t.X + offset.get(t.id) - camX,
+                                (int) t.Y - 29 - camY, this);
+                        offset.put(t.id, offset.get(t.id) + 16);
+                    }
                 }
+                else{
+                    if (offset.containsKey(en.id) && !invisible(en)) {
+                        sconst.drawImage(g2D, e.getIconSmall(), (int) en.X + offset.get(en.id) - camX,
+                                (int) en.Y - 25 - camY, this);
+                        offset.put(en.id, offset.get(en.id) + 16);
+                    }
+                }
+
             }
         }
     }
@@ -1186,52 +1205,56 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
             xOffset = -21;
         }
         if (e instanceof Titan) {
-            int x = (int) sconst.adjX((int) e.X + xOffset - camX);
-            int y = sconst.adjY((int) e.Y - 13 - camY);
-            Rectangle healthBar = new Rectangle(x, y,
-                    (int) sconst.adjX(100), sconst.adjY(15));
-            g2D.fill(healthBar);
-            int hpPercentage = (int) (100 * e.health / e.maxHealth);
-            y = sconst.adjY((int) e.Y - 10 - camY);
-            Rectangle healthStat = new Rectangle(x,
-                    y,
-                    (int) sconst.adjX(hpPercentage), sconst.adjY(8));
-            setColorBasedOnPercent(g2D, hpPercentage, false);
-            g2D.fill(healthStat);
-            Titan t = (Titan) e;
-            if (t.fuel > 25) {
-                g2D.setColor(new Color(1f, .50f, .1f));
-            } else {
-                g2D.setColor(new Color(0.7f, 0f, 0f));
+            if(!invisible(e)){
+                int x = (int) sconst.adjX((int) e.X + xOffset - camX);
+                int y = sconst.adjY((int) e.Y - 13 - camY);
+                Rectangle healthBar = new Rectangle(x, y,
+                        (int) sconst.adjX(100), sconst.adjY(15));
+                g2D.fill(healthBar);
+                int hpPercentage = (int) (100 * e.health / e.maxHealth);
+                y = sconst.adjY((int) e.Y - 10 - camY);
+                Rectangle healthStat = new Rectangle(x,
+                        y,
+                        (int) sconst.adjX(hpPercentage), sconst.adjY(8));
+                setColorBasedOnPercent(g2D, hpPercentage, false);
+                g2D.fill(healthStat);
+                Titan t = (Titan) e;
+                if (t.fuel > 25) {
+                    g2D.setColor(new Color(1f, .50f, .1f));
+                } else {
+                    g2D.setColor(new Color(0.7f, 0f, 0f));
+                }
+                y = sconst.adjY((int) e.Y - 4 - camY);
+                Rectangle buustStat = new Rectangle(x, y,
+                        (int) sconst.adjX((int) t.fuel),
+                        sconst.adjY(3));
+                g2D.fill(buustStat);
             }
-            y = sconst.adjY((int) e.Y - 4 - camY);
-            Rectangle buustStat = new Rectangle(x, y,
-                    (int) sconst.adjX((int) t.fuel),
-                    sconst.adjY(3));
-            g2D.fill(buustStat);
         }else{
-            g2D.setColor(Color.DARK_GRAY);
-            xOffset = -9;
-            if (e.team == TeamAffiliation.AWAY) {
-                g2D.setColor(Color.WHITE);
-                xOffset = -5;
+            if(!invisible(e)) {
+                g2D.setColor(Color.DARK_GRAY);
+                xOffset = -9;
+                if (e.team == TeamAffiliation.AWAY) {
+                    g2D.setColor(Color.WHITE);
+                    xOffset = -5;
+                }
+                if (e.team == TeamAffiliation.HOME) {
+                    g2D.setColor(Color.BLUE);
+                    xOffset = -5;
+                }
+                int x = (int) sconst.adjX((int) e.X + xOffset - camX);
+                int y = sconst.adjY((int) e.Y - 9 - camY);
+                Rectangle healthBar = new Rectangle(x, y,
+                        (int) sconst.adjX(66), sconst.adjY(8));
+                g2D.fill(healthBar);
+                int hpPercentage = (int) (100 * e.health / e.maxHealth);
+                y = sconst.adjY((int) e.Y - 8 - camY);
+                Rectangle healthStat = new Rectangle(x,
+                        y,
+                        (int) sconst.adjX(hpPercentage * 2 / 3), sconst.adjY(5));
+                setColorBasedOnPercent(g2D, hpPercentage, false);
+                g2D.fill(healthStat);
             }
-            if (e.team == TeamAffiliation.HOME) {
-                g2D.setColor(Color.BLUE);
-                xOffset = -5;
-            }
-            int x = (int) sconst.adjX((int) e.X + xOffset - camX);
-            int y = sconst.adjY((int) e.Y - 9 - camY);
-            Rectangle healthBar = new Rectangle(x, y,
-                    (int) sconst.adjX(66), sconst.adjY(8));
-            g2D.fill(healthBar);
-            int hpPercentage = (int) (100 * e.health / e.maxHealth);
-            y = sconst.adjY((int) e.Y - 8 - camY);
-            Rectangle healthStat = new Rectangle(x,
-                    y,
-                    (int) sconst.adjX(hpPercentage*2/3), sconst.adjY(5));
-            setColorBasedOnPercent(g2D, hpPercentage, false);
-            g2D.fill(healthStat);
         }
         if (e instanceof Portal) {
             Portal p = (Portal) e;

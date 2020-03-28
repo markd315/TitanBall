@@ -6,6 +6,7 @@ import java.awt.*;
 import java.awt.geom.Area;
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.Rectangle2D;
+import java.util.Optional;
 import java.util.UUID;
 
 public class Box extends Coordinates{
@@ -28,6 +29,11 @@ public class Box extends Coordinates{
     public boolean collidesSolid(GameEngine context, Entity[] solids) {
         return collidesSolid(context, solids, 0, 0);
     }
+
+    public Optional<Box> collidesSolidWhich(GameEngine context, Entity[] solids) {
+        return collidesSolidWhich(context, solids, 0, 0);
+    }
+
 
     public boolean collidesAny(GameEngine context, Box[] boxes, int yd, int xd){
         Shape cmp = new Rectangle((int)this.X + xd, (int)this.Y + yd, this.width, this.height);
@@ -59,12 +65,17 @@ public class Box extends Coordinates{
     }
 
     public boolean collidesSolid(GameEngine context, Box[] solids, int yd, int xd) {
+        Optional<Box> tmp = collidesSolidWhich(context, solids, yd, xd);
+        return tmp.isPresent();
+    }
+
+    public Optional<Box> collidesSolidWhich(GameEngine context, Box[] solids, int yd, int xd) {
         Shape cmp = new Rectangle((int)this.X + xd, (int)this.Y + yd, this.width, this.height);
         if (this instanceof Titan) {
             cmp = new Ellipse2D.Double(this.X + xd + GameEngine.SPRITE_X_EMPTY/2, this.Y + yd + GameEngine.SPRITE_Y_EMPTY/2,
                     this.width - GameEngine.SPRITE_X_EMPTY, this.height - GameEngine.SPRITE_Y_EMPTY);
         }
-        boolean ret = false;
+        Optional<Box> ret = Optional.empty();
         for (Box collCheck : solids) {
             if (collCheck != null && collCheck.id != this.id &&
                     (!(collCheck instanceof Entity) || (((Entity) collCheck).health > 0))) {
@@ -76,12 +87,15 @@ public class Box extends Coordinates{
                     Area cmpa = new Area(cmp);
                     inter.intersect(cmpa);
                     if (!inter.isEmpty()) {
-                        return performIntersection(context, collCheck);
+                        if(performIntersection(context, collCheck)){
+                            return Optional.of(collCheck);
+                        }
                     }
                 } else if (cmp.intersects(new Rectangle((int)collCheck.X, (int)collCheck.Y, collCheck.width, collCheck.height))) {
-                    return performIntersection(context, collCheck);
+                    if(performIntersection(context, collCheck)){
+                        return Optional.of(collCheck);
+                    }
                 }
-
             }
         }
         return ret;
@@ -114,5 +128,13 @@ public class Box extends Coordinates{
 
     public Rectangle2D asRect() {
         return new Rectangle((int)this.X, (int)this.Y, this.width, this.height);
+    }
+
+    public boolean ballNearestEdgeisX(Box ball) {
+        double x1 = Math.abs(ball.X - this.X);
+        double x2 = Math.abs((ball.X + ball.width ) - (this.X + this.width));
+        double y1 = Math.abs(ball.Y - this.Y);
+        double y2 = Math.abs((ball.Y + ball.height ) - (this.Y + this.height));
+        return (x1 < y1 && x1 < y2) || (x2 < y1 && x2 < y2);
     }
 }

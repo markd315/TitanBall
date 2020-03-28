@@ -63,7 +63,7 @@ public class Game {
     protected static final int BOT_WING_HOME = 895;
     protected static final int T_CIRCLE_WING_HOME = 450;
     protected static final int B_CIRCLE_WING_HOME = 750;
-    protected static final int DEFENDER_HOME = 455;
+    protected static final int DEFENDER_HOME = 470;
     protected static final int MID_HOME = 850;
     protected static final int FW_HOME = 900;
     public int framesSinceStart = 0;
