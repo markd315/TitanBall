@@ -39,7 +39,6 @@ public class Util {
             yClick = 1;
         }
         double add = 0.0;
-
         if(xClick < 0.0){
             add = 180;
         }

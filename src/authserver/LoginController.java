@@ -216,13 +216,13 @@ public class LoginController {
     }
 
     @RequestMapping(value = "/teamup", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
-    public ResponseEntity<Premade> registerTeam(
-            @RequestBody @Valid PremadeDTO input, Authentication auth) {
+    public ResponseEntity<Premade> registerTeam(@RequestBody @Valid PremadeDTO input,
+                                                Authentication auth, @RequestParam(required = false) boolean queue) {
         if(input.teamname == null || input.teamname.equals("")){
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
         String username = auth.getName();
-        Premade premade = new Premade(input);
+        Premade premade = new Premade(input, queue ? username : "");
         try {
             this.premadeService.enterTeamDetails(premade, username);
         } catch (Exception e) {

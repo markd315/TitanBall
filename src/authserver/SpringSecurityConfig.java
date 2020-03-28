@@ -133,7 +133,25 @@ public class SpringSecurityConfig extends WebSecurityConfigurerAdapter {
 	    turnovers int default 0,
 	    killassists int default 0,
 	    goalassists int default 0,
-	    rebounds int default 0
+	    rebounds int default 0,
+	    rating_1v1 double default 1000.0,
+	    wins_1v1 int default 0,
+	    losses_1v1 int default 0,
+	    goals_1v1 int default 0,
+	    points_1v1 double default 0.0,
+        sidegoals_1v1 int default 0,
+        blocks_1v1 int default 0,
+        steals_1v1 int default 0,
+        passes_1v1 int default 0,
+        kills_1v1 int default 0,
+        deaths_1v1 int default 0,
+	    turnovers_1v1 int default 0,
+	    killassists_1v1 int default 0,
+	    goalassists_1v1 int default 0,
+	    rebounds_1v1 int default 0,
+	    activation varchar(10),
+	    subexpiration timestamp,
+	    enabled boolean
 	);
 
 	CREATE TABLE classes (
@@ -141,6 +159,7 @@ public class SpringSecurityConfig extends WebSecurityConfigurerAdapter {
 	    role varchar(32),
 	    wins int default 0,
 	    losses int default 0,
+	    ties int default 0,
 	    goals int default 0,
 	    points double default 0.0,
         sidegoals int default 0,
@@ -155,46 +174,26 @@ public class SpringSecurityConfig extends WebSecurityConfigurerAdapter {
 	    rebounds int default 0
 	);
 
-	insert into users (id, username, email, password, role, created)
-	 values(8,'markd315', 'markd315@gmail.com', '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.','ADMIN', CURRENT_TIMESTAMP);
-	insert into users (id, username, email, password, role, created)
-	 values(9,'mattbuster', 'mattbuster@gmail.com', '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.','USER', CURRENT_TIMESTAMP);
-    insert into users (id, username, email, password, role, created)
-	 values(1,'u1', 'e1@gmail.com', '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.','USER', CURRENT_TIMESTAMP);
-    insert into users (id, username, email, password, role, created)
-	 values(2,'u2', 'e2@gmail.com', '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.','USER', CURRENT_TIMESTAMP);
-    insert into users (id, username, email, password, role, created)
-	 values(3,'u3', 'e3@gmail.com', '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.','USER', CURRENT_TIMESTAMP);
-	 insert into users (id, username, email, password, role, created)
-	 values(4,'u4', 'e4@gmail.com', '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.','USER', CURRENT_TIMESTAMP);
-	 insert into users (id, username, email, password, role, created)
-	 values(5,'u5', 'e5@gmail.com', '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.','USER', CURRENT_TIMESTAMP);
-	 insert into users (id, username, email, password, role, created)
-	 values(6,'u6', 'e6@gmail.com', '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.','USER', CURRENT_TIMESTAMP);
-	 insert into users (id, username, email, password, role, created)
-	 values(7,'u7', 'e7@gmail.com', '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.','USER', CURRENT_TIMESTAMP);
+	insert into users (id, username, email, password, role, created) values(8,'markd315', 'markd315@gmail.com', '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.','ADMIN', CURRENT_TIMESTAMP);
+	insert into users (id, username, email, password, role, created) values(9,'mattbuster', 'mattbuster@gmail.com', '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.','USER', CURRENT_TIMESTAMP);
+    insert into users (id, username, email, password, role, created) values(1,'u1', 'e1@gmail.com', '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.','USER', CURRENT_TIMESTAMP);
+    insert into users (id, username, email, password, role, created) values(2,'u2', 'e2@gmail.com', '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.','USER', CURRENT_TIMESTAMP);
+    insert into users (id, username, email, password, role, created) values(3,'u3', 'e3@gmail.com', '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.','USER', CURRENT_TIMESTAMP);
+	insert into users (id, username, email, password, role, created) values(4,'u4', 'e4@gmail.com', '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.','USER', CURRENT_TIMESTAMP);
+	insert into users (id, username, email, password, role, created) values(5,'u5', 'e5@gmail.com', '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.','USER', CURRENT_TIMESTAMP);
+	insert into users (id, username, email, password, role, created) values(6,'u6', 'e6@gmail.com', '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.','USER', CURRENT_TIMESTAMP);
+	insert into users (id, username, email, password, role, created) values(7,'u7', 'e7@gmail.com', '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.','USER', CURRENT_TIMESTAMP);
 
-     insert into classes (id, role)
-	 values(1,'GOALIE');
-	 insert into classes (id, role)
-	 values(2,'WARRIOR');
-	 insert into classes (id, role)
-	 values(3,'RANGER');
-	 insert into classes (id, role)
-	 values(4,'DASHER');
-	 insert into classes (id, role)
-	 values(5,'MARKSMAN');
-	 insert into classes (id, role)
-	 values(6,'STEALTH');
-	 insert into classes (id, role)
-	 values(7,'SUPPORT');
-	 insert into classes (id, role)
-	 values(8,'ARTISAN');
-	 insert into classes (id, role)
-	 values(9,'GOLEM');
-	 insert into classes (id, role)
-	 values(10,'MAGE');
-	 insert into classes (id, role)
-	 values(11,'BUILDER');
+     insert into classes (id, role) values(1,'GOALIE');
+	 insert into classes (id, role) values(2,'WARRIOR');
+	 insert into classes (id, role) values(3,'RANGER');
+	 insert into classes (id, role) values(4,'DASHER');
+	 insert into classes (id, role) values(5,'MARKSMAN');
+	 insert into classes (id, role) values(6,'STEALTH');
+	 insert into classes (id, role) values(7,'SUPPORT');
+	 insert into classes (id, role) values(8,'ARTISAN');
+	 insert into classes (id, role) values(9,'GOLEM');
+	 insert into classes (id, role) values(10,'MAGE');
+	 insert into classes (id, role) values(11,'BUILDER');
     //'pass' is the test password
  */

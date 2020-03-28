@@ -6,10 +6,11 @@ import java.awt.*;
 import java.awt.geom.Area;
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.Rectangle2D;
+import java.io.Serializable;
 import java.util.Optional;
 import java.util.UUID;
 
-public class Box extends Coordinates{
+public class Box extends Coordinates  implements Serializable {
     public int width, height;
     public boolean solid;
     public UUID id;
@@ -38,8 +39,8 @@ public class Box extends Coordinates{
     public boolean collidesAny(GameEngine context, Box[] boxes, int yd, int xd){
         Shape cmp = new Rectangle((int)this.X + xd, (int)this.Y + yd, this.width, this.height);
         if (this instanceof Titan) {
-            cmp = new Rectangle((int)(this.X + xd + GameEngine.SPRITE_X_EMPTY/2), (int)(this.Y + yd + GameEngine.SPRITE_Y_EMPTY/2),
-                    this.width - GameEngine.SPRITE_X_EMPTY, this.height - GameEngine.SPRITE_Y_EMPTY);
+            cmp = new Rectangle((int)(this.X + xd + context.SPRITE_X_EMPTY/2), (int)(this.Y + yd + context.SPRITE_Y_EMPTY/2),
+                    this.width - context.SPRITE_X_EMPTY, this.height - context.SPRITE_Y_EMPTY);
         }
         boolean ret = false;
         for (Box collCheck : boxes) {
@@ -48,8 +49,8 @@ public class Box extends Coordinates{
                 if (collCheck instanceof Titan) {
                     //Titans don't take up their full hitboxes. Mostly.
                     //It's twice as much because we only adjust the "collCheck" collider
-                    Area inter = new Area(new Rectangle((int)collCheck.X + GameEngine.SPRITE_X_EMPTY/2, (int)collCheck.Y + GameEngine.SPRITE_Y_EMPTY/2,
-                            collCheck.width - GameEngine.SPRITE_X_EMPTY, collCheck.height - GameEngine.SPRITE_Y_EMPTY));
+                    Area inter = new Area(new Rectangle((int)collCheck.X + context.SPRITE_X_EMPTY/2, (int)collCheck.Y + context.SPRITE_Y_EMPTY/2,
+                            collCheck.width - context.SPRITE_X_EMPTY, collCheck.height - context.SPRITE_Y_EMPTY));
                     Area cmpa = new Area(cmp);
                     inter.intersect(cmpa);
                     if (!inter.isEmpty()) {
@@ -64,16 +65,16 @@ public class Box extends Coordinates{
         return ret;
     }
 
-    public boolean collidesSolid(GameEngine context, Box[] solids, int yd, int xd) {
+    public boolean collidesSolid(GameEngine context, Box[] solids, double yd, double xd) {
         Optional<Box> tmp = collidesSolidWhich(context, solids, yd, xd);
         return tmp.isPresent();
     }
 
-    public Optional<Box> collidesSolidWhich(GameEngine context, Box[] solids, int yd, int xd) {
-        Shape cmp = new Rectangle((int)this.X + xd, (int)this.Y + yd, this.width, this.height);
+    public Optional<Box> collidesSolidWhich(GameEngine context, Box[] solids, double yd, double xd) {
+        Shape cmp = new Rectangle.Double(this.X + xd, this.Y + yd, this.width, this.height);
         if (this instanceof Titan) {
-            cmp = new Ellipse2D.Double(this.X + xd + GameEngine.SPRITE_X_EMPTY/2, this.Y + yd + GameEngine.SPRITE_Y_EMPTY/2,
-                    this.width - GameEngine.SPRITE_X_EMPTY, this.height - GameEngine.SPRITE_Y_EMPTY);
+            cmp = new Ellipse2D.Double(this.X + xd + context.SPRITE_X_EMPTY/2, this.Y + yd + context.SPRITE_Y_EMPTY/2,
+                    this.width - context.SPRITE_X_EMPTY, this.height - context.SPRITE_Y_EMPTY);
         }
         Optional<Box> ret = Optional.empty();
         for (Box collCheck : solids) {
@@ -82,8 +83,8 @@ public class Box extends Coordinates{
                 if (collCheck instanceof Titan) {
                     //Titans don't take up their full hitboxes. Mostly.
                     //It's twice as much because we only adjust the "collCheck" collider
-                    Area inter = new Area(new Rectangle((int)collCheck.X + GameEngine.SPRITE_X_EMPTY/2, (int)collCheck.Y + GameEngine.SPRITE_Y_EMPTY/2,
-                            collCheck.width - GameEngine.SPRITE_X_EMPTY, collCheck.height - GameEngine.SPRITE_Y_EMPTY));
+                    Area inter = new Area(new Rectangle((int)collCheck.X + context.SPRITE_X_EMPTY/2, (int)collCheck.Y + context.SPRITE_Y_EMPTY/2,
+                            collCheck.width - context.SPRITE_X_EMPTY, collCheck.height - context.SPRITE_Y_EMPTY));
                     Area cmpa = new Area(cmp);
                     inter.intersect(cmpa);
                     if (!inter.isEmpty()) {

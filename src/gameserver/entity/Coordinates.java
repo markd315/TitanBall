@@ -1,6 +1,8 @@
 package gameserver.entity;
 
-public class Coordinates {
+import java.io.Serializable;
+
+public class Coordinates  implements Serializable {
     public double X, Y;
 
     public Coordinates(double x, double y) {

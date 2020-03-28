@@ -4,7 +4,9 @@ import gameserver.engine.GameEngine;
 import gameserver.effects.EffectId;
 import gameserver.entity.Entity;
 
-public class BleedEffect extends Effect {
+import java.io.Serializable;
+
+public class BleedEffect extends Effect implements Serializable {
 
     private double initialDamage, recurringDamage;
 

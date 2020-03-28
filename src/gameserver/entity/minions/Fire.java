@@ -1,5 +1,6 @@
 package gameserver.entity.minions;
 
+import gameserver.Const;
 import gameserver.effects.effects.FlareEffect;
 import gameserver.engine.GameEngine;
 import gameserver.engine.TeamAffiliation;
@@ -8,9 +9,12 @@ import gameserver.entity.Collidable;
 import gameserver.entity.Entity;
 import gameserver.entity.Titan;
 
-public class Fire extends gameserver.entity.Entity implements Collidable {
+import java.io.Serializable;
+
+public class Fire extends gameserver.entity.Entity implements Collidable, Serializable {
 
     private String caster;
+    private static Const c = new Const("res/game.cfg");
 
     public Fire(Titan caster, int x, int y) {
         super(caster.team);
@@ -19,8 +23,8 @@ public class Fire extends gameserver.entity.Entity implements Collidable {
         this.setY(y);
         this.width = 140;
         this.height = 140;
-        this.health = 15;
-        this.maxHealth = 15;
+        this.health = c.getD("titan.molotov.hp");
+        this.maxHealth = health;
         this.solid = false;
     }
 
@@ -30,7 +34,10 @@ public class Fire extends gameserver.entity.Entity implements Collidable {
             Entity entity = (Entity) box;
             if (entity.team != this.team) {
                 context.effectPool.addUniqueEffect(new FlareEffect(
-                        1500, entity, 1.0, 0.2), context);
+                        c.getI("titan.molotov.dur"),
+                        entity, c.getD("titan.molotov.initd"),
+                        c.getD("titan.molotov.recurd")),
+                        context);
             }
         }
     }

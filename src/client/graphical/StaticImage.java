@@ -5,7 +5,10 @@ import java.awt.*;
 public class StaticImage extends Images {
     public Image image;
     public StaticImage() {
-	}	
+    }
+    public StaticImage(Image image) {
+        this.image = image;
+    }
     public void loadImage(String imageName) {
         ImageIcon rsi = new ImageIcon(imageName);
         image = rsi.getImage();

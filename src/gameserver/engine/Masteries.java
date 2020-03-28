@@ -3,10 +3,11 @@ package gameserver.engine;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import gameserver.entity.Titan;
 
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
-public class Masteries {
+public class Masteries  implements Serializable {
 
     public Masteries() {
         this.health = 2;

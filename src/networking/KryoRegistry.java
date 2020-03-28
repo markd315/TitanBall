@@ -4,6 +4,7 @@ import client.graphical.GoalSprite;
 import client.graphical.Images;
 import client.graphical.StaticImage;
 import com.esotericsoftware.kryo.Kryo;
+import gameserver.Const;
 import gameserver.TutorialOverrides;
 import gameserver.effects.EffectId;
 import gameserver.effects.EffectPool;
@@ -13,23 +14,20 @@ import gameserver.effects.cooldowns.CooldownQ;
 import gameserver.effects.cooldowns.CooldownR;
 import gameserver.effects.effects.*;
 import gameserver.engine.*;
-import gameserver.entity.Box;
 import gameserver.entity.*;
 import gameserver.entity.minions.*;
+import gameserver.gamemanager.GamePhase;
 import gameserver.models.Game;
 import gameserver.targeting.*;
 import gameserver.targeting.core.Filter;
 import gameserver.targeting.core.Limiter;
 import gameserver.targeting.core.Selector;
 import org.joda.time.Instant;
+import util.ConstOperations;
 
-import javax.swing.*;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
-import java.awt.event.MouseMotionListener;
-import java.awt.image.BufferedImage;
-import java.util.Timer;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class KryoRegistry {
@@ -103,12 +101,8 @@ public class KryoRegistry {
         kryo.register(StaticImage.class);
         kryo.register(Images.class);
         kryo.register(RangeCircle.class);
-        kryo.register(java.awt.Color.class);
         kryo.register(StatEngine.class);
 
-        kryo.register(MouseEvent.class);
-        kryo.register(MouseListener.class);
-        kryo.register(MouseMotionListener.class);
         kryo.register(UUID.class, uSer);
         kryo.register(AtomicBoolean.class, aSer);
         kryo.register(Instant.class);
@@ -117,12 +111,8 @@ public class KryoRegistry {
         kryo.register(java.util.List.class);
         kryo.register(Map.class);
         kryo.register(HashMap.class);
-        kryo.register(Optional.class);
         kryo.register(String.class);
-        kryo.register(Timer.class);
         kryo.register(java.util.HashSet.class);
-        kryo.register(ImageIcon.class);
-        kryo.register(BufferedImage.class);
 
         kryo.register(byte[].class);
         kryo.register(int[].class);
@@ -132,7 +122,9 @@ public class KryoRegistry {
         kryo.register(double.class);
         kryo.register(boolean.class);
         kryo.register(boolean.class);
-        kryo.register(Random.class);
+        kryo.register(Const.class);
+        kryo.register(ConstOperations.class);
+        kryo.register(GamePhase.class);
 
         kryo.register(TutorialOverrides.class);
         kryo.register(GameOptions.class);

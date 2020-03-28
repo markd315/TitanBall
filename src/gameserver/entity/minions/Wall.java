@@ -6,16 +6,18 @@ import gameserver.engine.TeamAffiliation;
 import gameserver.entity.Box;
 import gameserver.entity.Collidable;
 
-public class Wall extends gameserver.entity.Entity implements Collidable {
+import java.io.Serializable;
+
+public class Wall extends gameserver.entity.Entity implements Collidable, Serializable {
 
     public Wall(GameEngine context, int x, int y) {
         this.team = TeamAffiliation.UNAFFILIATED;
         this.setX(x);
         this.setY(y);
-        this.width = 30;
+        this.width = 12;
         this.height = 120;
-        this.health = 5;
-        this.maxHealth = 5;
+        this.health = 4;
+        this.maxHealth = 4;
         this.solid = true;
         while(this.collidesSolid(context, context.allSolids)){
             this.setY((int)this.Y +1);

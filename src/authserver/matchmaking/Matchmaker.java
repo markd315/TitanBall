@@ -1,6 +1,6 @@
 package authserver.matchmaking;
 
-import gameserver.tenancy.ServerApplication;
+import gameserver.gamemanager.ServerApplication;
 import gameserver.engine.GameOptions;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
@@ -24,6 +24,7 @@ public class Matchmaker {
         UUID gameId = UUID.randomUUID();
         ServerApplication.addNewGame(gameId.toString(), op, gameFor);
         for (String email : gameFor) {
+            System.out.println("gamemap " + email + gameId.toString());
             gameMap.put(email, gameId.toString());
         }
     }
@@ -62,25 +63,22 @@ public class Matchmaker {
                 }
             }
             int players = 4;
-            try { //how the hell does this work
-                System.out.println("try");
+            try{
                 op = new GameOptions(val);
                 players = op.playerIndex * 2;
-                if (players == 0) {
-                    System.out.println("reset");
+                if(players == 0){
                     players = 1;
                 }
-            } catch (Exception ex1) {
+            }catch(Exception ex1){
                 System.out.println("catch");
             }
-            System.out.println("finally" + players);
-            if (count >= players) {
+            if(count >= players){
                 int gameMembers = 0;
-                for (String email : waitingPool.keySet()) {
-                    if (waitingPool.get(email).equals(val)) {
+                for(String email : waitingPool.keySet()){
+                    if(waitingPool.get(email).equals(val)) {
                         gameFor.add(email);
                         gameMembers++;
-                        if (gameMembers == players) {
+                        if(gameMembers == players){
                             break;
                         }
                     }

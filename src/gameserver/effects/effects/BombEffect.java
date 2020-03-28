@@ -4,7 +4,9 @@ import gameserver.engine.GameEngine;
 import gameserver.effects.EffectId;
 import gameserver.entity.Entity;
 
-public class BombEffect extends Effect {
+import java.io.Serializable;
+
+public class BombEffect extends Effect implements Serializable {
 
     private double eventualDamage;
 

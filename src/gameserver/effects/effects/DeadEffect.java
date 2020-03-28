@@ -7,7 +7,9 @@ import gameserver.entity.Entity;
 import gameserver.entity.Titan;
 import gameserver.models.Game;
 
-public class DeadEffect extends Effect {
+import java.io.Serializable;
+
+public class DeadEffect extends Effect implements Serializable {
 
     public DeadEffect(int durationMillis, Entity e, Game context){
         super(EffectId.DEAD, e, durationMillis);

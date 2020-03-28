@@ -1,5 +1,6 @@
 package gameserver.engine;
 
+import gameserver.Const;
 import gameserver.effects.EffectId;
 import gameserver.effects.cooldowns.CooldownE;
 import gameserver.effects.effects.DefenseEffect;
@@ -12,10 +13,12 @@ import gameserver.targeting.core.Selector;
 
 import java.awt.*;
 import java.awt.geom.Ellipse2D;
+import java.io.Serializable;
 
-public class Ability {
+public class Ability implements Serializable {
     public boolean castE(GameEngine context, Titan caster) throws NullPointerException {
         AbilityStrategy strat = new AbilityStrategy(context, caster);
+        Const c = strat.c;
         if (!context.effectPool.hasEffect(caster, EffectId.COOLDOWN_E)) {
             switch (caster.getType()) {
                 case MAGE:
@@ -33,38 +36,39 @@ public class Ability {
                     }
                     break;
                 case SUPPORT:
-                    strat.stunByRadius(1500);
+                    strat.stunByRadius(c.getI("titan.stun.cdms"));
                     break;
                 case GOLEM:
-                    context.effectPool.addUniqueEffect(new CooldownE((int) (caster.cooldownFactor *18000), caster), context);
+                    context.effectPool.addUniqueEffect(new CooldownE((int) (caster.cooldownFactor *c.getI("titan.shield.cdms")), caster), context);
                     context.effectPool.addUniqueEffect(
-                            new DefenseEffect((int) (caster.durationsFactor*5000), caster, 10), context);
+                            new DefenseEffect((int) (caster.durationsFactor*c.getI("titan.shield.dur")),
+                                    caster, caster.durationsFactor*c.getI("titan.shield.ratio")), context);
                     break;
                 case STEALTH:
-                    context.effectPool.addUniqueEffect(new CooldownE((int) (caster.cooldownFactor *15000), caster), context);
+                    context.effectPool.addUniqueEffect(new CooldownE((int) (caster.cooldownFactor *c.getI("titan.stealth.cdms")), caster), context);
                     context.effectPool.addUniqueEffect(
-                            new EmptyEffect((int) (caster.durationsFactor*2500), caster, EffectId.STEALTHED), context);
+                            new EmptyEffect((int) (caster.durationsFactor*c.getI("titan.stealth.dur")), caster, EffectId.STEALTHED), context);
                     break;
                 case DASHER:
                     if(caster.possession == 1){
-                        context.effectPool.addUniqueEffect(new CooldownE((int) (caster.cooldownFactor *9000), caster), context);
+                        context.effectPool.addUniqueEffect(new CooldownE((int) (caster.cooldownFactor *c.getI("titan.hide.cdms")), caster), context);
                         context.effectPool.addUniqueEffect(
-                                new HideBallEffect((int) (caster.durationsFactor*1200), caster), context);
+                                new HideBallEffect((int) (caster.durationsFactor*c.getI("titan.hide.dur")), caster), context);
                     }
                     break;
                 case RANGER:
-                    strat.shootArrow(18.0, 4000.0);
+                    strat.shootArrow(c.getI("titan.arrow.dmg"), c.getI("titan.arrow.cdms"));
                     //4.5 DPS
                     break;
                 case WARRIOR:
                     //6.0 DPS
-                    strat.circleSlash(30.0, 5000.0);
+                    strat.circleSlash(c.getI("titan.slash.dmg"), c.getI("titan.slash.cdms"));
                     break;
                 case HOUNDMASTER:
                     strat.spawnCage();
                     break;
                 case GRENADIER:
-                    strat.flashbang(1200);
+                    strat.flashbang(c.getI("titan.flashbang.dur"));
                     break;
             }
             return injectColliders(context, strat, caster);
@@ -77,7 +81,10 @@ public class Ability {
         if (!context.effectPool.hasEffect(caster, EffectId.COOLDOWN_R)) {
             switch (caster.getType()) {
                 case DASHER:
-                    strat.ignite(5, 3, 0, 0);
+                    strat.ignite(context.c.getD("titan.flare.cds"),
+                            context.c.getD("titan.flare.dur"),
+                            context.c.getD("titan.flare.initd"),
+                            context.c.getD("titan.flare.recurd"));
                     break;
                 case MARKSMAN:
                     strat.chargeShot();
@@ -89,26 +96,35 @@ public class Ability {
                     strat.spawnBallPortal();
                     break;
                 case GOLEM:
-                    strat.scatter();
+                    strat.scatter(context.c.getI("titan.scatter.range"),
+                            context.c.getI("titan.scatter.dist"),
+                            context.c.getI("titan.scatter.cdms"));
                     break;
                 case RANGER:
-                    strat.kick();
+                    strat.scatter(context.c.getI("titan.kick.range"),
+                            context.c.getI("titan.kick.dist"),
+                            context.c.getI("titan.kick.cdms"));
                     break;
                 case MAGE:
-                    strat.ignite(20, 2.0, 5, .40);
+                    strat.ignite(context.c.getD("titan.ignite.cds"),
+                            context.c.getD("titan.ignite.dur"),
+                            context.c.getD("titan.ignite.initd"),
+                            context.c.getD("titan.ignite.recurd"));
                     //41 ticks per second
                     //16.4 tick DPS + 5 initial
                     //37.8 TD every 20 seconds
                     //1.89 DPS
                     break;
                 case WARRIOR:
-                    strat.parameterizedFlash(23, 140);
+                    strat.parameterizedFlash(context.c.getI("titan.flash.warrior.cds"),
+                            context.c.getI("titan.flash.warrior.dist"));
                     break;
                 case BUILDER:
                     strat.wall();
                     break;
                 case STEALTH:
-                    strat.parameterizedFlash(21, 100);
+                    strat.parameterizedFlash(context.c.getI("titan.flash.stealth.cds"),
+                            context.c.getI("titan.flash.stealth.dist"));
                     break;
                 case HOUNDMASTER:
                     strat.releaseCages();

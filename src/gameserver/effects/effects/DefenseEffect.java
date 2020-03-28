@@ -4,7 +4,9 @@ import gameserver.engine.GameEngine;
 import gameserver.effects.EffectId;
 import gameserver.entity.Entity;
 
-public class DefenseEffect extends Effect {
+import java.io.Serializable;
+
+public class DefenseEffect extends Effect implements Serializable {
     double armorRatio;
 
     public DefenseEffect(int durationMillis, Entity e){

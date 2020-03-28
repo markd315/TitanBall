@@ -1,6 +1,6 @@
 package authserver.models;
 
-import gameserver.tenancy.ServerApplication;
+import gameserver.gamemanager.ServerApplication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import util.Util;

@@ -2,6 +2,7 @@
 Xres: 1920px
 Yres: 1080px
 SCALE: 150%
+theme: dark
 rangewidth: 1px
 shotwidth: 30px #So that the entire collision radius for the ball is shown
 LMB: SHOT

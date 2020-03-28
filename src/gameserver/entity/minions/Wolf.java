@@ -1,19 +1,22 @@
 package gameserver.entity.minions;
 
+import gameserver.Const;
 import gameserver.engine.GameEngine;
 import gameserver.engine.TeamAffiliation;
 import gameserver.entity.Titan;
 import util.Util;
 
+import java.io.Serializable;
 import java.util.UUID;
 
-public class Wolf extends gameserver.entity.Entity implements Tickable {
+public class Wolf extends gameserver.entity.Entity implements Tickable, Serializable {
     public int wolfPower;
     public boolean facingRight = false;
     private UUID createdById;
 
-    private static double MOVE_SPEED = 2.3;
-    private static final double BITE_DIST = 22.0;
+    private double MOVE_SPEED;
+    private double BITE_DIST;
+    private Const c;
 
     public Wolf(Cage source, int numCages) {
         this.team = source.team;
@@ -22,11 +25,13 @@ public class Wolf extends gameserver.entity.Entity implements Tickable {
         this.height = 35;
         this.setX(source.X + source.width/2 - this.width/2);
         this.setY(source.Y + source.height/2 - this.height/2);
-        this.health = 8;
-        this.maxHealth = 8;
+        this.c = source.c;
+        this.health = c.getI("wolf.hp");
+        this.maxHealth = this.health;
         this.solid = false;
         this.wolfPower = numCages;
-        System.out.println("power " + this.wolfPower);
+        this.MOVE_SPEED = c.getD("wolf.spd");
+        this.BITE_DIST = c.getD("wolf.range");
     }
 
     @Override
@@ -55,13 +60,13 @@ public class Wolf extends gameserver.entity.Entity implements Tickable {
 
     private void bite(GameEngine context, Titan nearest) {
         if(this.wolfPower == 1){
-            nearest.damage(context, .25);
+            nearest.damage(context, c.getD("wolf.dmg.1"));
         }
         if(this.wolfPower > 1 && this.wolfPower < 3){
-            nearest.damage(context, .35);
+            nearest.damage(context, c.getD("wolf.dmg.2"));
         }
         if(this.wolfPower >= 3 && this.wolfPower < 5){
-            nearest.damage(context, 1.5);
+            nearest.damage(context, c.getD("wolf.dmg.3"));
         }
         if(this.wolfPower >= 5){
             nearest.damage(context, this.wolfPower);

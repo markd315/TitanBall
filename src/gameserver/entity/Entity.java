@@ -1,13 +1,14 @@
 package gameserver.entity;
 
 
-import gameserver.engine.GameEngine;
 import gameserver.effects.EffectId;
 import gameserver.effects.effects.DeadEffect;
+import gameserver.engine.GameEngine;
 import gameserver.engine.TeamAffiliation;
-import gameserver.models.Game;
 
-public class Entity extends Box {
+import java.io.Serializable;
+
+public class Entity extends Box  implements Serializable {
     public double health, maxHealth;
     public TeamAffiliation team;
     public double speed = 5;
@@ -84,17 +85,43 @@ public class Entity extends Box {
             this.Y = 99999;
             return;
         }
-        if(this.X > Game.E_MAX_X){
-            this.X = Game.E_MAX_X;
+        if(this instanceof Titan && ((Titan) this).getType() == TitanType.GOALIE){
+            if(this.team == TeamAffiliation.HOME ){
+                if(this.X > context.c.GOALIE_XH_MAX){
+                    this.X = context.c.GOALIE_XH_MAX;
+                }
+                if(this.X < context.c.GOALIE_XH_MIN){
+                    this.X = context.c.GOALIE_XH_MIN;
+                }
+            }else{
+                if(this.X > context.c.GOALIE_XA_MAX){
+                    this.X = context.c.GOALIE_XA_MAX;
+                }
+                if(this.X < context.c.GOALIE_XA_MIN){
+                    this.X = context.c.GOALIE_XA_MIN;
+                }
+            }
+            if(this.Y > context.c.GOALIE_Y_MAX){
+                this.Y = context.c.GOALIE_Y_MAX;
+            }
+            if(this.Y < context.c.GOALIE_Y_MIN){
+                this.Y = context.c.GOALIE_Y_MIN;
+            }
         }
-        if(this.X < Game.E_MIN_X){
-            this.X = Game.E_MIN_X;
+        else{
+            if(this.X > context.c.E_MAX_X){
+                this.X = context.c.E_MAX_X;
+            }
+            if(this.X < context.c.E_MIN_X){
+                this.X = context.c.E_MIN_X;
+            }
+            if(this.Y > context.c.E_MAX_Y){
+                this.Y = context.c.E_MAX_Y;
+            }
+            if(this.Y < context.c.E_MIN_Y){
+                this.Y = context.c.E_MIN_Y;
+            }
         }
-        if(this.Y > Game.E_MAX_Y){
-            this.Y = Game.E_MAX_Y;
-        }
-        if(this.Y < Game.E_MIN_Y){
-            this.Y = Game.E_MIN_Y;
-        }
+
     }
 }

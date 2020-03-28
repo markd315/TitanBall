@@ -7,21 +7,24 @@ import org.joda.time.Instant;
 import util.Util;
 
 import java.awt.*;
+import java.io.Serializable;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-public class BallPortal extends Entity implements Collidable {
+public class BallPortal extends Entity implements Collidable, Serializable {
 
-    private static final int COOLDOWN_MS = 8000;
+    private int COOLDOWN_MS;
     public RangeCircle rangeCircle;
-    private static final int MAX_RANGE = 450;
+    private int MAX_RANGE;
     private UUID createdById;
     private Instant createdAt;//only used serverside so clock skew is irrelevant
     private Instant cdUntil;
 
     public BallPortal(TeamAffiliation team, Titan pl, List<Entity> pool, int x, int y, GameEngine context) {
         super(team);
+        this.COOLDOWN_MS = context.c.getI("bportal.cdms");
+        this.MAX_RANGE = context.c.getI("bportal.range");
         this.setX(x);
         this.setY(y);
         this.width = 50;

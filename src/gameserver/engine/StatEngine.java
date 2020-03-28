@@ -7,12 +7,13 @@ import gameserver.entity.Titan;
 import networking.PlayerDivider;
 import org.json.JSONObject;
 
+import java.io.Serializable;
 import java.util.*;
 
 import static java.util.Arrays.stream;
 import static java.util.stream.Collectors.toMap;
 
-public class StatEngine {
+public class StatEngine  implements Serializable {
     private List<Map<String, Double>> gamestats;
 
     public boolean statConditionalMet(PlayerDivider pl, StatEnum category, double threshold){
@@ -101,14 +102,12 @@ public class StatEngine {
         HashMap<String, Double> attackTimeMap = new HashMap();
         for (int i = 0; i < effectPool.getEffects().size(); i++) {
             Effect eff = effectPool.getEffects().get(i);
-            System.out.println(eff.getPercentLeft());
             Titan castBy = effectPool.getCastBy().get(i);
             //TODO Make sure caster is set by whatever call we do!
             if (castBy == null) {
                 continue;
             }
             for (Titan t : context.players) {
-                System.out.println(t.id);
                 if (castBy != null) {
                     System.out.println("" + castBy.getType().toString());
                     if (eff.on.id.equals(dead.id) &&

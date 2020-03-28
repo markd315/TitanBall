@@ -37,12 +37,28 @@ public class Premade implements Serializable{
     @Column(name = "topconfirmed")
     protected boolean topConfirmed;
 
-    public Premade(PremadeDTO input) {
+    @Column(name = "botqueued")
+    protected boolean botQueued;
+    @Column(name = "midqueued")
+    protected boolean midQueued;
+    @Column(name = "topqueued")
+    protected boolean topQueued;
+
+    public Premade(PremadeDTO input, String callerQueued) {
         this();
         this.teamname = input.teamname;
         this.topuser = input.top;
         this.miduser = input.mid;
         this.botuser = input.bot;
+        if(callerQueued.equals(input.top)){
+            topQueued = !topQueued;
+        }
+        if(callerQueued.equals(input.mid)){
+            midQueued = !midQueued;
+        }
+        if(callerQueued.equals(input.bot)){
+            botQueued = !botQueued;
+        }
     }
 
     public boolean confirmAs(String by) throws InsufficientResourcesException {

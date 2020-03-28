@@ -10,19 +10,20 @@ import gameserver.entity.Collidable;
 import gameserver.entity.Entity;
 import gameserver.entity.Titan;
 
-public class Trap extends gameserver.entity.Entity implements Collidable {
+import java.io.Serializable;
 
+public class Trap extends gameserver.entity.Entity implements Collidable, Serializable {
     public Trap(Titan caster, GameEngine context, int x, int y) {
         super(caster.team);
         this.setX(x);
         this.setY(y);
         this.width = 100;
         this.height = 100;
-        this.health = 15;
-        this.maxHealth = 15;
+        this.health = 8;
+        this.maxHealth = 8;
         this.solid = false;
         context.effectPool.addUniqueEffect(
-                new EmptyEffect(15000, this, EffectId.STEALTHED),
+                new EmptyEffect(context.c.getI("trap.stealth.dur"), this, EffectId.STEALTHED),
                 context);
     }
 
@@ -35,7 +36,7 @@ public class Trap extends gameserver.entity.Entity implements Collidable {
                     context.effectPool.cullAllOn(context, this);
                 }
                 context.effectPool.addUniqueEffect(
-                        new RatioEffect(200, entity, EffectId.SLOW, 1.35), context);
+                        new RatioEffect(context.c.getI("trap.dur"), entity, EffectId.SLOW, context.c.getD("trap.ratio")), context);
             }
         }
     }

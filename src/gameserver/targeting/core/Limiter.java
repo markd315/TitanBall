@@ -5,9 +5,10 @@ import gameserver.entity.Entity;
 import gameserver.targeting.SortBy;
 
 import java.awt.geom.Point2D;
+import java.io.Serializable;
 import java.util.*;
 
-public class Limiter {
+public class Limiter  implements Serializable {
     private final SortBy method;
     private final int limit;
 

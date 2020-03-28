@@ -7,8 +7,9 @@ import org.joda.time.Instant;
 
 import java.awt.*;
 import java.awt.geom.Ellipse2D;
+import java.io.Serializable;
 
-public class ShapePayload {
+public class ShapePayload  implements Serializable {
     private static final int COLLIDER_DISP_MS = 400;
     int x, y, w, h;
     double rot;

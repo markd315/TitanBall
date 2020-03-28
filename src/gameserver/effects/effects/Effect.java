@@ -9,8 +9,9 @@ import org.joda.time.Instant;
 
 import java.awt.*;
 import java.awt.image.RescaleOp;
+import java.io.Serializable;
 
-public abstract class Effect {
+public abstract class Effect implements Serializable {
 
     public Entity on;
     public StaticImage icon;

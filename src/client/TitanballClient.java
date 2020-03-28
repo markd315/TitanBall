@@ -9,6 +9,7 @@ import com.esotericsoftware.kryonet.Listener;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mashape.unirest.http.exceptions.UnirestException;
 import com.rits.cloning.Cloner;
+import gameserver.Const;
 import gameserver.TutorialOverrides;
 import gameserver.effects.EffectId;
 import gameserver.effects.cooldowns.CooldownE;
@@ -22,6 +23,7 @@ import gameserver.entity.TitanType;
 import gameserver.entity.minions.*;
 import gameserver.models.Game;
 import gameserver.targeting.ShapePayload;
+import gameserver.gamemanager.GamePhase;
 import networking.ClientPacket;
 import networking.KryoRegistry;
 import org.joda.time.Duration;
@@ -44,14 +46,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import static gameserver.models.Game.GAMETICK_MS;
-
 public class TitanballClient extends JPanel implements ActionListener, KeyListener {
     protected final ScreenConst sconst;
     protected final BufferedImage ballLobTexture;
     private final TitanballWindow parentWindow;
     private int RANGE_SIZE = 0;
-    private int SHOT_WIDTH =0;
+    private int SHOT_WIDTH = 0;
     public ClientPacket controlsHeld = new ClientPacket();
     public Timer timer = new Timer(25, this);
     public Instant gamestart = null;
@@ -60,7 +60,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
     protected Client gameserverConn = new Client(8192 * 8, 32768 * 8);
     protected String gameID;
     protected GameEngine game;
-    protected int phase;
+    protected GamePhase phase = GamePhase.CREDITS;
     protected Kryo kryo = gameserverConn.getKryo();
     protected boolean camFollow = true;
     protected String token, refresh;
@@ -128,10 +128,10 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
     private boolean codeHide = false;
     private GameOptions tourneyOptions = new GameOptions();
     private int tourneyIndex = 0;
-    private boolean alreadyLeftGame = false;
     private boolean fullScreen = true;
     private double scl;
     private boolean darkTheme = false;
+    private boolean queued = false;
 
     public TitanballClient(TitanballWindow titanballWindow, int xSize, int ySize, double scl, HttpClient loginClient, Map<String, String> keymap, boolean createListeners, boolean darkTheme) {
         this.darkTheme = darkTheme;
@@ -139,59 +139,57 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         this.xSize = xSize;
         this.ySize = ySize;
         this.scl = scl;
-        RANGE_SIZE = Integer.parseInt(keymap.get("rangewidth").replaceAll("px",""));
-        SHOT_WIDTH = Integer.parseInt(keymap.get("shotwidth").replaceAll("px",""));
+        RANGE_SIZE = Integer.parseInt(keymap.get("rangewidth").replaceAll("px", ""));
+        SHOT_WIDTH = Integer.parseInt(keymap.get("shotwidth").replaceAll("px", ""));
         sconst = new ScreenConst(xSize, ySize);
         this.loginClient = loginClient;
-        intro.loadImage("res/Court/logo2.png");
-        ballTexture.loadImage("res/Court/ballA.png");
-        ballBTexture.loadImage("res/Court/ballB.png");
+        sconst.loadImage(intro, "res/Court/logo2.png", this);
+        sconst.loadImage(ballTexture, "res/Court/ballA.png", this);
+        sconst.loadImage(ballBTexture, "res/Court/ballB.png", this);
         BufferedImage tmp = Images.getBufferedFrom(ballTexture.image, 30, 30);
         ballLobTexture = Images.resize(tmp, 45, 45);
-        ballFTexture.loadImage("res/Court/ballFA.png");
-        ballFBTexture.loadImage("res/Court/ballFB.png");
-        ballPtr.loadImage("res/Court/ballptr.png");
-        ballFPtr.loadImage("res/Court/ballfptr.png");
-
-        select.loadImage("res/Court/selectClass.png");
-        classCursor.loadImage("res/Court/draft/cursorflag.png");
-        lobby.loadImage("res/Court/lobby.png");
-        field.loadImage("res/Court/field.png");
-        selector.loadImage("res/Court/select.png");
-        backdrop.loadImage("res/Court/backdrop.png");
-        goalScored.loadImage("res/Court/goal.png");
-        victory.loadImage("res/Court/victory.png");
-        tie.loadImage("res/Court/tie.png");
-        defeat.loadImage("res/Court/defeat.png");
-        if(darkTheme){
-            tutorial.loadImage("res/Court/tutorial_whitetxt.png");
-        }else{
-            tutorial.loadImage("res/Court/tutorial.png");
+        sconst.loadImage(ballFTexture, "res/Court/ballFA.png", this);
+        sconst.loadImage(ballFBTexture, "res/Court/ballFB.png", this);
+        sconst.loadImage(ballPtr, "res/Court/ballptr.png", this);
+        sconst.loadImage(ballFPtr, "res/Court/ballfptr.png", this);
+        sconst.loadImage(select, "res/Court/selectClass.png", this);
+        sconst.loadImage(lobby, "res/Court/lobby.png", this);
+        sconst.loadImage(field, "res/Court/field.png", this);
+        sconst.loadImage(selector, "res/Court/select.png", this);
+        sconst.loadImage(backdrop, "res/Court/backdrop.png", this);
+        sconst.loadImage(goalScored, "res/Court/goal.png", this);
+        sconst.loadImage(victory, "res/Court/victory.png", this);
+        sconst.loadImage(tie, "res/Court/tie.png", this);
+        sconst.loadImage(defeat, "res/Court/defeat.png", this);
+        if (darkTheme) {
+            sconst.loadImage(tutorial, "res/Court/tutorial_whitetxt.png", this);
+        } else {
+            sconst.loadImage(tutorial, "res/Court/tutorial.png", this);
         }
-        wall.loadImage("res/Court/wall.png");
-        portal1.loadImage("res/Court/portal.png");
-        portal2.loadImage("res/Court/portal2.png");
-        portalcd.loadImage("res/Court/portalcd.png");
+        sconst.loadImage(wall, "res/Court/wall.png", this);
+        sconst.loadImage(portal1, "res/Court/portal.png", this);
+        sconst.loadImage(portal2, "res/Court/portal2.png", this);
+        sconst.loadImage(portalcd, "res/Court/portalcd.png", this);
 
-        bportal1.loadImage("res/Court/ballp.png");
-        bportal2.loadImage("res/Court/ballp2.png");
-        bportalcd.loadImage("res/Court/ballpcd.png");
+        sconst.loadImage(bportal1, "res/Court/ballp.png", this);
+        sconst.loadImage(bportal2, "res/Court/ballp2.png", this);
+        sconst.loadImage(bportalcd, "res/Court/ballpcd.png", this);
 
-        fire1.loadImage("res/Court/fireA.png");
-        fire2.loadImage("res/Court/fireB.png");
-        cage.loadImage("res/Court/caged.png");
+        sconst.loadImage(fire1, "res/Court/fireA.png", this);
+        sconst.loadImage(fire2, "res/Court/fireB.png", this);
+        sconst.loadImage(cage, "res/Court/caged.png", this);
 
-        trap1.loadImage("res/Court/trap.png");
-        trap2.loadImage("res/Court/trap2.png");
+        sconst.loadImage(trap1, "res/Court/trap.png", this);
+        sconst.loadImage(trap2, "res/Court/trap2.png", this);
 
-        wolf1L.loadImage("res/Wolf/wolfL.png");
-        wolf2L.loadImage("res/Wolf/wolf2L.png");
-        wolf3L.loadImage("res/Wolf/wolf3L.png");
-        wolf5L.loadImage("res/Wolf/wolf5L.png");
-        wolf1R.loadImage("res/Wolf/wolfR.png");
-        wolf2R.loadImage("res/Wolf/wolf2R.png");
-        wolf3R.loadImage("res/Wolf/wolf3R.png");
-        wolf5R.loadImage("res/Wolf/wolf5R.png");
+        sconst.loadImage(wolf1L, "res/Wolf/wolfL.png", this);
+        sconst.loadImage(wolf2L, "res/Wolf/wolf2L.png", this);
+        sconst.loadImage(wolf3L, "res/Wolf/wolf3L.png", this);
+        sconst.loadImage(wolf5L, "res/Wolf/wolf5L.png", this);
+        sconst.loadImage(wolf1R, "res/Wolf/wolfR.png", this);
+        sconst.loadImage(wolf2R, "res/Wolf/wolf2R.png", this);
+        sconst.loadImage(wolf3R, "res/Wolf/wolf3R.png", this);
+        sconst.loadImage(wolf5R, "res/Wolf/wolf5R.png", this);
         initSurface(createListeners);
         requestFocus();
         requestFocusInWindow();
@@ -224,7 +222,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         MouseListener mouseListener = new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent event) {
-                if (phase == 8 || phase == 101) {
+                if (phase == GamePhase.INGAME || phase == GamePhase.TUTORIAL) {
                     controlsHeld.posX = sconst.invertMouseX(event.getPoint().x);
                     controlsHeld.posY = sconst.invertMouseY(event.getPoint().y);
                     if (event.getButton() == 1) {
@@ -240,8 +238,8 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
 
             @Override
             public void mouseReleased(MouseEvent e) {
-                    controlsConfig.mapKeyRelease(controlsHeld, "LMB");
-                    controlsConfig.mapKeyRelease(controlsHeld, "RMB");
+                controlsConfig.mapKeyRelease(controlsHeld, "LMB");
+                controlsConfig.mapKeyRelease(controlsHeld, "RMB");
             }
         };
         addMouseListener(mouseListener);
@@ -259,15 +257,16 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         return -1;
     }
 
-    public void darkTheme(Graphics2D g2D, boolean backdropShow){
-        if(darkTheme && backdropShow){
+    public void darkTheme(Graphics2D g2D, boolean backdropShow) {
+        if (darkTheme && backdropShow) {
             sconst.drawImage(g2D, backdrop.getImage(), 0, 0, this);
         }
-        if(darkTheme){
+        if (darkTheme) {
             g2D.setColor(new Color(1f, 1f, 1f));
         }
     }
 
+    @Override
     public void paintComponent(Graphics g) {
         Graphics2D g2D = (Graphics2D) g;
         super.paintComponent(g);
@@ -275,30 +274,27 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
             darkTheme(g2D, true);
             Team team = teamFromUnderControl();
             Team enemy = enemyFromUnderControl();
-            if(!alreadyLeftGame){
+            if (queued) {
                 loginClient.leave();
-                alreadyLeftGame = true;
+                queued = false;
             }
             if (team.score > enemy.score) {
                 sconst.drawImage(g2D, victory.getImage(), sconst.RESULT_IMG_X, sconst.RESULT_IMG_Y, this);
-            } else if(team.score == enemy.score){
+            } else if (team.score == enemy.score) {
                 sconst.drawImage(g2D, tie.getImage(), sconst.RESULT_IMG_X, sconst.RESULT_IMG_Y, this);
-            } else{
+            } else {
                 sconst.drawImage(g2D, defeat.getImage(), sconst.RESULT_IMG_X, sconst.RESULT_IMG_Y, this);
             }
             gameEndStatsAndRanks(g2D, game.underControl);
             return;
         }
-        if(phase < 8 || phase == 69 || phase == 15 || phase == 2){
-            repaint();
-            //Not getting any packets to trigger a redraw yet
-        }
-        if (phase == 0) creditPanel(g2D);
-        if (phase == 1) tutorial(g2D);
-        if (phase == 15) showGameModes(g2D);
-        if (phase == 2) drawClassScreen(g2D); //Attack screen settings starting here!
-        if (phase == 3) {
-            if(tournamentCode.equals("")){
+        repaint();
+        if (phase == GamePhase.CREDITS) creditPanel(g2D);
+        if (phase == GamePhase.CONTROLS) tutorial(g2D);
+        if (phase == GamePhase.SHOW_GAME_MODES) showGameModes(g2D);
+        if (phase == GamePhase.DRAW_CLASS_SCREEN) drawClassScreen(g2D, true); //Attack screen settings starting here!
+        if (phase == GamePhase.SET_MASTERIES) {
+            if (tournamentCode.equals("")) {
                 tourneyOptions = new GameOptions();
                 tournamentCode = tourneyOptions.toString();
             }
@@ -324,35 +320,38 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
             //System.out.println(tournamentCode);
             drawSetMasteries(g2D);
         }
-        if (phase == 4) consumeCursorSelectClasses();
-
-        //TODO rn skips straight to 6 -> 5 -> 7 due to refactors
-        if (phase == 6) {
+        if (phase == GamePhase.TRANSITIONAL) {
+            consumeCursorSelectClasses();
+            try {
+                clientInitialize();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        if (phase == GamePhase.WAIT_FOR_GAME) {
             try {
                 gameID = requestOrQueueGame();
-                clientInitialize();
-                phase = 5;
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-        if (phase == 5) {
-            try {
-                gameID = requestOrQueueGame(); //sets to 7 when complete
                 lobby(g2D);
+                System.out.println("got game " + gameID);
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }
-        if (phase == 7) {
+        if (phase == GamePhase.COUNTDOWN) {
             starting(g2D);
         }
-        if (phase == 8 || phase == 9 || phase == 10) {
-            if(this.game.effectPool.hasEffect(this.game.underControl, EffectId.BLIND)){
+        if (phase == GamePhase.DRAFT_HOMEBAN || phase == GamePhase.DRAFT_AWAYBAN ||
+                phase == GamePhase.DRAFT_HOMEMID || phase == GamePhase.DRAFT_AWAYMID ||
+                phase == GamePhase.DRAFT_HOMETOP || phase == GamePhase.DRAFT_AWAYTOP ||
+                phase == GamePhase.DRAFT_HOMEBOT || phase == GamePhase.DRAFT_AWAYBOT) {
+            draftClassScreen(g2D);
+        }
+        if (phase == GamePhase.INGAME || phase == GamePhase.SCORE_FREEZE) {
+            if (this.game.effectPool.hasEffect(this.game.underControl, EffectId.BLIND)) {
                 sconst.setFont(g2D, new Font("Verdana", Font.PLAIN, 72));
                 g2D.setColor(new Color(.2f, .2f, .2f));
-                sconst.drawString(g2D,"Blind!", 450, 300);
-            }else{
+                sconst.drawString(g2D, "Blind!", 450, 300);
+            } else {
                 updateFrameBall();
                 doDrawing(g2D); // do drawing of screen
                 displayBallArrow(g2D);
@@ -360,8 +359,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
             }
 
         }
-        ScheduledExecutorService exec = Executors.newScheduledThreadPool(1);
-        if (phase == 100) {
+        if (phase == GamePhase.TUTORIAL_START) {
             //doesn't work for looping tut?
             tut = new TutorialOverrides();
             try {
@@ -372,40 +370,42 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
                 tut.processClientPacket(tut.client, controlsHeld);
                 tut.inGame = true;
                 tut.underControl = tut.players[2];
+                Const c = new Const("res/game.cfg");
+                ScheduledExecutorService exec = Executors.newScheduledThreadPool(1);
                 TerminableExecutor terminableExecutor = new TerminableExecutor(tut, exec);
-                exec.scheduleAtFixedRate(terminableExecutor, 0, GAMETICK_MS, TimeUnit.MILLISECONDS);
+                exec.scheduleAtFixedRate(terminableExecutor, 0, c.GAMETICK_MS, TimeUnit.MILLISECONDS);
             } catch (Exception e) {
                 e.printStackTrace();
             }
             this.game = tut;
-            phase = 101;
+            phase = GamePhase.TUTORIAL;
         }
-        if (phase == 101) {
+        if (phase == GamePhase.TUTORIAL) {
             this.game = tut;
             repaint();
             updateFrameBall();
             updateNarration(tut);
-            if(this.game.phase == 15){ //finish tutorial
+            if (this.game.phase == GamePhase.SHOW_GAME_MODES) { //finish tutorial
                 try {
                     parentWindow.reset(true);
                     controlsHeld.classSelection = null;
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-            }
-            else{
+            } else {
                 doDrawing(g2D);
                 displayBallArrow(g2D);
                 displayScore(g2D); // call the method to display the game score
             }
         }
-        if (phase == 69) {
+        if (phase == GamePhase.TOURNAMENT_CODE) {
             drawTournamentScreen(g2D);
+        }
+        if (phase == GamePhase.TEAM_LAUNCH) {
+            drawTeamScreen(g2D);
         }
         Toolkit.getDefaultToolkit().sync();
     }
-
-
     static File t0File = new File("res/Sound/tut0.wav");
     static File t1File = new File("res/Sound/tut1.wav");
     static File t2File = new File("res/Sound/tut2.wav");
@@ -416,7 +416,8 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
     static Sound tut2 = new Sound();
     static Sound tut3 = new Sound();
     static Sound tut4 = new Sound();
-    static{
+
+    static {
         tut0.loadSound(t0File);
         tut1.loadSound(t1File);
         tut2.loadSound(t2File);
@@ -425,26 +426,26 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
     }
 
     private void updateNarration(TutorialOverrides game) {
-        if(game.tutorialPhase == 1 && game.narrationPhase == 0){
+        if (game.tutorialPhase == 1 && game.narrationPhase == 0) {
             tut0.rewindStart();
             game.narrationPhase++;
         }
-        if(game.tutorialPhase == 2 && game.narrationPhase == 1){
+        if (game.tutorialPhase == 2 && game.narrationPhase == 1) {
             tut0.rewindStop();
             tut1.rewindStart();
             game.narrationPhase++;
         }
-        if(game.tutorialPhase == 3 && game.narrationPhase == 2){
+        if (game.tutorialPhase == 3 && game.narrationPhase == 2) {
             tut1.rewindStop();
             tut2.rewindStart();
             game.narrationPhase++;
         }
-        if(game.tutorialPhase == 4 && game.narrationPhase == 3){
+        if (game.tutorialPhase == 4 && game.narrationPhase == 3) {
             tut2.rewindStop();
             tut3.rewindStart();
             game.narrationPhase++;
         }
-        if(game.tutorialPhase == 5 && game.narrationPhase == 4){
+        if (game.tutorialPhase == 5 && game.narrationPhase == 4) {
             tut3.rewindStop();
             tut4.rewindStart();
             game.narrationPhase++;
@@ -455,11 +456,11 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         g2D.setColor(Color.BLACK);
         darkTheme(g2D, true);
         sconst.setFont(g2D, new Font("Verdana", Font.PLAIN, 32));
-        sconst.drawString(g2D,"Setting Masteries", 200, 50);
+        sconst.drawString(g2D, "Setting Masteries", 200, 50);
         sconst.setFont(g2D, new Font("Verdana", Font.PLAIN, 16));
-        sconst.drawString(g2D,"Remaining Points", 200, 90);
-        sconst.drawString(g2D,"WASD or arrows to spend points", 200, 420);
-        sconst.drawString(g2D,"Space to enter (And queue for game)", 200, 450);
+        sconst.drawString(g2D, "Remaining Points", 200, 90);
+        sconst.drawString(g2D, "WASD or arrows to spend points", 200, 420);
+        sconst.drawString(g2D, "Space to enter (And queue for game)", 200, 450);
         int x = 430;
         for (int i = masteries.skillsRemaining(); i > 0; i--) {
             g2D.fill(new Ellipse2D.Double(x, 76, 16, 16));
@@ -471,7 +472,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
             x = 250;
             g2D.setColor(Color.BLACK);
             darkTheme(g2D, false);
-            sconst.drawString(g2D,Masteries.masteryFromIndex(i), x, y);
+            sconst.drawString(g2D, Masteries.masteryFromIndex(i), x, y);
             if (masteriesIndex == i) {
                 g2D.setColor(Color.RED);
                 sconst.fill(g2D, new Rectangle(x - 30, y - 14, 16, 16));
@@ -480,7 +481,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
             for (int ballNum = 3; ballNum > 0; ballNum--) {
                 setColorFromRank(g2D, ballNum);
                 if (3 - ballNum < arr[i]) {
-                    sconst.fill(g2D,new Ellipse2D.Double(x, y - 14, 16, 16));
+                    sconst.fill(g2D, new Ellipse2D.Double(x, y - 14, 16, 16));
                 }
                 x += 25;
             }
@@ -509,7 +510,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         for (String stat : stats.keySet()) {
             g2D.setColor(Color.BLACK);
             darkTheme(g2D, false);
-            sconst.drawString(g2D,stat + ": " + stats.get(stat), 310, y);
+            sconst.drawString(g2D, stat + ": " + stats.get(stat), 310, y);
             if (ranks.has(stat) && ((int) ranks.get(stat) >= 1)) {
                 int rank = (int) ranks.get(stat);
                 setColorFromRank(g2D, rank);
@@ -536,23 +537,23 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
     public void openConnection() throws IOException {
         gameserverConn.start();
         //gameserverConn.setHardy(true);
-        if( !gameserverConn.isConnected()){
+        if (!gameserverConn.isConnected()) {
             gameserverConn.connect(999999999, "zanzalaz.com", 54555);
             //gameserverConn.connect(5000, "127.0.0.1", 54555);
             gameserverConn.addListener(new Listener() {
                 public synchronized void received(Connection connection, Object object) {
-                    if (object instanceof GameEngine) {
+                    if (object instanceof Game) {
                         game = (GameEngine) object;
                         game.began = true;
                         phase = game.phase;
                         controlsHeld.gameID = gameID;
                         controlsHeld.token = token;
                         controlsHeld.masteries = masteries;
+                        controlsHeld.camX = camX;
+                        controlsHeld.camY = camY;
                         repaint();
                         try {
-                            controlsHeld.camX = camX;
-                            controlsHeld.camY = camY;
-                            gameserverConn.sendTCP(controlsHeld); //Automatically respond to the gameserver with tutorial when we get a new state
+                            gameserverConn.sendTCP(controlsHeld);
                         } catch (KryoException e) {
                             System.out.println("kryo end");
                             System.out.println(game.ended);
@@ -575,22 +576,20 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
     }
 
     protected String requestOrQueueGame() throws UnirestException {
-        if (phase != 5) { //request game
-            token = loginClient.token;
+        if (!queued) {
             loginClient.join(this.tournamentCode);
-        } else { //already waiting
-            loginClient.check();
-            System.out.println(loginClient.gameId);
-        }
-        if (loginClient.gameId == null
-                || loginClient.gameId.equals("WAITING")) {
-            phase = 5;
+            token = loginClient.token;
+            queued = true;
         } else {
-            gameID = loginClient.gameId;
-            phase = 7;
+            loginClient.check();
+            token = loginClient.token;
         }
-        if (loginClient.gameId.equals("NOT QUEUED")) {
+        if (loginClient.gameId != null && loginClient.gameId.equals("NOT QUEUED")) {
             throw new UnirestException("Server not accepting connections");
+        }
+        if (loginClient.gameId != null && !loginClient.gameId.equals("WAITING")) {
+            this.gameID = loginClient.gameId;
+            this.phase = GamePhase.COUNTDOWN;
         }
         return loginClient.gameId;
     }
@@ -600,7 +599,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         sconst.drawImage(g2D, intro.getImage(), 0, 0, this);
         Font font = new Font("Verdana", Font.PLAIN, 65);
         sconst.setFont(g2D, font);
-        sconst.drawString(g2D,"Space to proceed", 370, 640);
+        sconst.drawString(g2D, "Space to proceed", 370, 640);
     }
 
     public void rotTranslateArrow(Graphics2D g2D, int xt, int yt, double rot) {
@@ -676,6 +675,14 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
             tutorial(g2D);
             return;
         }
+        if (camFollow) {
+            camX = (int) (game.underControl.X + 35 - (this.xSize / 3 / 1.5 * scl));
+            //if (camX > 820) camX = 820;
+            if (camX < 0) camX = 0;
+            camY = (int) (game.underControl.Y + 35 - (this.ySize / 3 / 1.5 * scl));
+            //if (camY > 480) camY = 480;
+            if (camY < 0) camY = 0;
+        }
         sconst.drawImage(g2D, field.getImage(), (1 - camX), (1 - camY), this);
         if (crowdFrame == 2) {
             //TODO animation
@@ -725,40 +732,40 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
             double pow = game.underControl.throwPower;
             double mx = controlsHeld.posX + camX;
             double my = controlsHeld.posY + camY;
-            double ox = game.underControl.X - camX + 35;
-            double oy = game.underControl.Y - camY + 35;
+            double ox = game.ball.X + game.ball.width / 2 - camX;
+            double oy = game.ball.Y + game.ball.height / 2 - camY;
             ox = sconst.adjX(ox);
-            oy = sconst.adjY((int)oy);
-            double angle = Math.toRadians(Util.degreesFromCoords(mx - game.underControl.X - 35,
-                    my - game.underControl.Y - 35));
+            oy = sconst.adjY((int) oy);
+            double angle = Math.toRadians(Util.degreesFromCoords(mx - game.ball.X - game.ball.width / 2,
+                    my - game.ball.Y - game.ball.height / 2));
             final double LOB_DIST = sconst.adjX(230);
             final double SHOT_DIST = sconst.adjX(316);
             final double BALL_HALF = sconst.adjX(15);
             Line2D lobBlock = new Line2D.Double(ox,
                     oy,
-                    ox + ((.2 * LOB_DIST * pow +BALL_HALF) * Math.cos(angle)),
-                    oy + ((.2 * LOB_DIST * pow +BALL_HALF) * Math.sin(angle)));
+                    ox + ((.2 * LOB_DIST * pow + BALL_HALF) * Math.cos(angle)),
+                    oy + ((.2 * LOB_DIST * pow + BALL_HALF) * Math.sin(angle)));
             g2D.setColor(Color.YELLOW);
             reflectDraw(lobBlock, mx, my, g2D);
             g2D.draw(lobBlock);
 
             Line2D lobFly = new Line2D.Double(ox + ((.2 * LOB_DIST * pow + BALL_HALF) * Math.cos(angle)),
                     oy + ((.2 * LOB_DIST * pow + BALL_HALF) * Math.sin(angle)),
-                    ox + ((.75 * LOB_DIST * pow -BALL_HALF) * Math.cos(angle)),
-                    oy + ((.75 * LOB_DIST * pow -BALL_HALF) * Math.sin(angle)));
+                    ox + ((.75 * LOB_DIST * pow - BALL_HALF) * Math.cos(angle)),
+                    oy + ((.75 * LOB_DIST * pow - BALL_HALF) * Math.sin(angle)));
             g2D.setColor(Color.BLUE);
             reflectDraw(lobFly, mx, my, g2D);
             g2D.draw(lobFly);
 
-            Line2D lobCatch = new Line2D.Double(ox + ((.75 * LOB_DIST * pow -BALL_HALF) * Math.cos(angle)),
-                    oy + ((.75 * LOB_DIST * pow -BALL_HALF) * Math.sin(angle)),
+            Line2D lobCatch = new Line2D.Double(ox + ((.75 * LOB_DIST * pow - BALL_HALF) * Math.cos(angle)),
+                    oy + ((.75 * LOB_DIST * pow - BALL_HALF) * Math.sin(angle)),
                     ox + (LOB_DIST * pow * Math.cos(angle)),
                     oy + (LOB_DIST * pow * Math.sin(angle)));
             g2D.setColor(Color.YELLOW);
             reflectDraw(lobCatch, mx, my, g2D);
             g2D.draw(lobCatch);
-            if(this.controlsHeld.artisanShot == ClientPacket.ARTISAN_SHOT.SHOT
-                    || ! game.underControl.getType().equals(TitanType.ARTISAN)){
+            if (this.controlsHeld.artisanShot == ClientPacket.ARTISAN_SHOT.SHOT
+                    || !game.underControl.getType().equals(TitanType.ARTISAN)) {
                 Line2D shot = new Line2D.Double(ox + (LOB_DIST * pow * Math.cos(angle)),
                         oy + (LOB_DIST * pow * Math.sin(angle)),
                         ox + (SHOT_DIST * pow * Math.cos(angle)),
@@ -770,7 +777,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
             double Q_CURVE_A = sconst.adjX(310);
             double Q_CURVE_B = sconst.adjX(186);
             if (game.underControl.possession == 1 && game.underControl.getType() == TitanType.ARTISAN) {
-                if(this.controlsHeld.artisanShot == ClientPacket.ARTISAN_SHOT.LEFT) {
+                if (this.controlsHeld.artisanShot == ClientPacket.ARTISAN_SHOT.LEFT) {
                     QuadCurve2D eL = new QuadCurve2D.Double(ox, oy,
                             ox + (Q_CURVE_A * pow * Math.cos(angle - .97)),
                             oy + (Q_CURVE_A * pow * Math.sin(angle - .97)),
@@ -779,7 +786,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
                     g2D.setColor(Color.GREEN);
                     g2D.draw(eL);
                 }
-                if(this.controlsHeld.artisanShot == ClientPacket.ARTISAN_SHOT.RIGHT) {
+                if (this.controlsHeld.artisanShot == ClientPacket.ARTISAN_SHOT.RIGHT) {
                     QuadCurve2D eR = new QuadCurve2D.Double(ox, oy,
                             ox + (Q_CURVE_A * pow * Math.cos(angle + .97)),
                             oy + (Q_CURVE_A * pow * Math.sin(angle + .97)),
@@ -839,32 +846,6 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         if (game.goalVisible == true) {
             g2D.drawImage(goalScored.getImage(), sconst.GOAL_TXT_X, sconst.GOAL_TXT_Y, this);
         }
-        if (camFollow) {
-            camX = (int) (game.underControl.X + 35 - (this.xSize / 3 / 1.5 * scl));
-            //if (camX > 820) camX = 820;
-            if (camX < 0) camX = 0;
-            camY = (int) (game.underControl.Y + 35 - (this.ySize / 3 / 1.5 * scl));
-            //if (camY > 480) camY = 480;
-            if (camY < 0) camY = 0;
-        }
-        if (debugCamera == 0) {
-            if ((game.ball.X - camX) > sconst.CAM_MAX_X) {
-                camX += 5;
-                //if (camX > 820) camX = 820;
-            }
-            if ((game.ball.X - camX) < sconst.CAM_MAX_X) {
-                camX -= 5;
-                if (camX < 0) camX = 0;
-            }
-            if ((game.ball.Y - camY) > sconst.CAM_MAX_Y) {
-                camY += 5;
-                //if (camY > 480) camY = 480;
-            }
-            if ((game.ball.Y - camY) < sconst.CAM_MAX_Y) {
-                camY -= 5;
-                if (camY < 0) camY = 0;
-            }
-        }
         if (game.colliders != null) {
             g2D.setStroke(new BasicStroke(6));
             for (ShapePayload c : game.colliders) {
@@ -876,15 +857,15 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
     }
 
     private void drawPortalRanges(Graphics2D g2D) {
-        for(Entity e : game.entityPool){
+        for (Entity e : game.entityPool) {
             RangeCircle ri = null;
-            if(e instanceof BallPortal && game.underControl.id.equals(((BallPortal) e).getCreatedById())){
+            if (e instanceof BallPortal && game.underControl.id.equals(((BallPortal) e).getCreatedById())) {
                 ri = ((BallPortal) e).rangeCircle;
             }
-            if(e instanceof Portal && game.underControl.id.equals(((Portal) e).getCreatedById())){
+            if (e instanceof Portal && game.underControl.id.equals(((Portal) e).getCreatedById())) {
                 ri = ((Portal) e).rangeCircle;
             }
-            if(ri != null){
+            if (ri != null) {
                 int w = (int) (ri.getRadius() * 2);
                 int h = w;
                 int x = (int) e.X + (e.width / 2) - w / 2;
@@ -910,23 +891,23 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
                     double delta = Util.calculatePain(e, pain);
                     g2D.setStroke(new BasicStroke(4.0f));
                     if (delta > 0) {
-                        double percent = 75 - (7.5*delta);
-                        if(percent < 0){
+                        double percent = 75 - (7.5 * delta);
+                        if (percent < 0) {
                             percent = 0.1;
                         }
                         setColorBasedOnPercent(g2D, percent, false);
-                        g2D.drawLine(0,0,1920,0);
+                        g2D.drawLine(0, 0, 1920, 0);
                     }
-                    final double FPS = 1000 / GAMETICK_MS;
+                    final double FPS = 1000 / game.GAMETICK_MS;
                     double time = (game.framesSinceStart / FPS);
-                    time = (int)(time*10.0) / 10.0;
+                    time = (int) (time * 10.0) / 10.0;
                     if (delta < -3 && time < game.PAIN_DISABLE_TIME) {
-                        if(e.possession == 1){
+                        if (e.possession == 1) {
                             g2D.setColor(Color.BLUE);
-                        }else{
+                        } else {
                             g2D.setColor(Color.GREEN);
                         }
-                        g2D.drawLine(0,0,1920,0);
+                        g2D.drawLine(0, 0, 1920, 0);
                     }
                 }
             }
@@ -948,8 +929,8 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
     private void reflectDraw(Line2D pass, double tx, double ty, Graphics2D g2D) {
         double dx = pass.getX2() - pass.getX1();
         double dy = pass.getX2() - pass.getX1();
-        if (game.underControl.X - 35 + dx > Game.MAX_X) {
-            double remainder = game.underControl.X - 35 + dx - Game.MAX_X;
+        if (game.underControl.X - 35 + dx > game.c.MAX_X) {
+            double remainder = game.underControl.X - 35 + dx - game.c.MAX_X;
             //TODO this is bullshit without reflection/intersection helpers. Proudly developed elsewhere
         }
     }
@@ -1062,7 +1043,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         drawEffectIcons(g2D);
         if (game.allSolids != null) {
             List<Entity> drawHp = new ArrayList<>(Arrays.asList(game.allSolids));
-            if(game.underControl.team == TeamAffiliation.HOME)
+            if (game.underControl.team == TeamAffiliation.HOME)
                 Collections.reverse(drawHp); //draw your team on top always
             for (Entity e : drawHp) {
                 if (e.health > 0.0) {
@@ -1125,33 +1106,33 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
             if (e instanceof Wolf) {
                 Wolf w = (Wolf) e;
                 if (w.wolfPower == 1) {
-                    if(w.facingRight){
+                    if (w.facingRight) {
                         f1 = wolf1R.getImage();
-                    }else{
+                    } else {
                         f1 = wolf1L.getImage();
                     }
                 } else if (w.wolfPower == 2) {
-                    if(w.facingRight){
+                    if (w.facingRight) {
                         f1 = wolf2R.getImage();
-                    }else{
+                    } else {
                         f1 = wolf2L.getImage();
                     }
                 } else if (w.wolfPower > 2 && w.wolfPower < 5) {
-                    if(w.facingRight){
+                    if (w.facingRight) {
                         f1 = wolf3R.getImage();
-                    }else{
+                    } else {
                         f1 = wolf3L.getImage();
                     }
                 } else if (w.wolfPower >= 5) {
-                    if(w.facingRight){
+                    if (w.facingRight) {
                         f1 = wolf5R.getImage();
-                    }else{
+                    } else {
                         f1 = wolf5L.getImage();
                     }
                 }
                 f2 = f1;
             }
-            if(!invisible(e)){
+            if (!invisible(e)) {
                 if (staticFrame % 2 == 1) {
                     sconst.drawImage(g2D, f1, (int) e.getX() - camX, (int) e.getY() - camY, this);
                 } else {
@@ -1174,15 +1155,14 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
             Entity en = game.effectPool.getOn().get(i);
             //TODO evaluate whether or not to display cooldowns
             if (/*!e.toString().contains("COOLDOWN") &&*/ !e.toString().contains("ATTACKED")) {
-                if(en instanceof Titan){
+                if (en instanceof Titan) {
                     Titan t = (Titan) en;
                     if (offset.containsKey(t.id) && !invisible(t)) {
                         sconst.drawImage(g2D, e.getIconSmall(), (int) t.X + offset.get(t.id) - camX,
                                 (int) t.Y - 29 - camY, this);
                         offset.put(t.id, offset.get(t.id) + 16);
                     }
-                }
-                else{
+                } else {
                     if (offset.containsKey(en.id) && !invisible(en)) {
                         sconst.drawImage(g2D, e.getIconSmall(), (int) en.X + offset.get(en.id) - camX,
                                 (int) en.Y - 25 - camY, this);
@@ -1205,7 +1185,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
             xOffset = -21;
         }
         if (e instanceof Titan) {
-            if(!invisible(e)){
+            if (!invisible(e)) {
                 int x = (int) sconst.adjX((int) e.X + xOffset - camX);
                 int y = sconst.adjY((int) e.Y - 13 - camY);
                 Rectangle healthBar = new Rectangle(x, y,
@@ -1215,23 +1195,14 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
                 y = sconst.adjY((int) e.Y - 10 - camY);
                 Rectangle healthStat = new Rectangle(x,
                         y,
-                        (int) sconst.adjX(hpPercentage), sconst.adjY(8));
+                        (int) sconst.adjX(hpPercentage), sconst.adjY(9));
                 setColorBasedOnPercent(g2D, hpPercentage, false);
                 g2D.fill(healthStat);
                 Titan t = (Titan) e;
-                if (t.fuel > 25) {
-                    g2D.setColor(new Color(1f, .50f, .1f));
-                } else {
-                    g2D.setColor(new Color(0.7f, 0f, 0f));
-                }
-                y = sconst.adjY((int) e.Y - 4 - camY);
-                Rectangle buustStat = new Rectangle(x, y,
-                        (int) sconst.adjX((int) t.fuel),
-                        sconst.adjY(3));
-                g2D.fill(buustStat);
+                displayBuust(g2D, t, x);
             }
-        }else{
-            if(!invisible(e)) {
+        } else {
+            if (!invisible(e)) {
                 g2D.setColor(Color.DARK_GRAY);
                 xOffset = -9;
                 if (e.team == TeamAffiliation.AWAY) {
@@ -1261,7 +1232,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
             if (p.isCooldown(game.now)) {
                 double durSpent = p.cooldownPercentOver(game.now);
                 setColorBasedOnPercent(g2D, durSpent, false);
-                Rectangle durBar = new Rectangle((int) e.X + xOffset - camX, (int) e.Y - 1 - camY, (int) sconst.adjX(durSpent*2/3), sconst.adjY(2));
+                Rectangle durBar = new Rectangle((int) e.X + xOffset - camX, (int) e.Y - 1 - camY, (int) sconst.adjX(durSpent * 2 / 3), sconst.adjY(2));
                 g2D.fill(durBar);
             }
         }
@@ -1270,15 +1241,35 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
             if (p.isCooldown(game.now)) {
                 double durSpent = p.cooldownPercentOver(game.now);
                 setColorBasedOnPercent(g2D, durSpent, false);
-                Rectangle durBar = new Rectangle((int) e.X + xOffset - camX, (int) e.Y - 1 - camY, (int) sconst.adjX(durSpent*2/3), sconst.adjY(2));
+                Rectangle durBar = new Rectangle((int) e.X + xOffset - camX, (int) e.Y - 1 - camY, (int) sconst.adjX(durSpent * 2 / 3), sconst.adjY(2));
                 g2D.fill(durBar);
             }
         }
     }
 
+    private void displayBuust(Graphics2D g2D, Titan t, int x) {
+        int y = sconst.adjY((int) t.Y - 4 - camY);
+        if (t.fuel > 25) {
+            g2D.setColor(new Color(.5f, .5f, 1f));
+        } else {
+            g2D.setColor(new Color(.65f, 0f, 0f));
+        }
+        Rectangle buustStat = new Rectangle(x, y,
+                (int) sconst.adjX((int) t.fuel),
+                sconst.adjY(3));
+        g2D.fill(buustStat);
+        if (t.fuel > 25) {
+            g2D.setColor(new Color(.65f, 0f, 0f));
+            Rectangle lowBuustWarning = new Rectangle(x + 25 - 1, y,
+                    (int) sconst.adjX(4),
+                    sconst.adjY(3));
+            g2D.fill(lowBuustWarning);
+        }
+    }
+
     public void classFacts(Graphics2D g2D) {
         updateSelected();
-        if(controlsHeld.classSelection != TitanType.GOALIE){
+        if (controlsHeld.classSelection != TitanType.GOALIE) {
             double speed = Titan.normalOutOfTenFromStat(Titan.titanSpeed, controlsHeld.classSelection);
             double hp = Titan.normalOutOfTenFromStat(Titan.titanHealth, controlsHeld.classSelection);
             double shoot = Titan.normalOutOfTenFromStat(Titan.titanShoot, controlsHeld.classSelection);
@@ -1340,69 +1331,88 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
     public void keyPressed(KeyEvent ke) {
         int key = ke.getKeyCode();
         if (game != null && game.ended) {//back to main after game
-            if(key == KeyEvent.VK_BACK_SPACE || key == KeyEvent.VK_SPACE ||
-                    key == KeyEvent.VK_ESCAPE || key == KeyEvent.VK_ENTER){
+            if (key == KeyEvent.VK_BACK_SPACE || key == KeyEvent.VK_SPACE ||
+                    key == KeyEvent.VK_ESCAPE || key == KeyEvent.VK_ENTER) {
                 try {
                     parentWindow.reset(true); //TODO tournament feature here
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-                phase = 15;
+                phase = GamePhase.SHOW_GAME_MODES;
             }
         }
-        if(key == KeyEvent.VK_ESCAPE && phase == 2){
-            phase = 15;
+        if (key == KeyEvent.VK_ESCAPE && phase == GamePhase.DRAW_CLASS_SCREEN) {
+            phase = GamePhase.SHOW_GAME_MODES;
         }
-        if(phase == 69){
-            if(key == KeyEvent.VK_ESCAPE){
-                phase = 15;
+        if (phase == GamePhase.TEAM_LAUNCH) {
+            if (key == KeyEvent.VK_ESCAPE) {
+                phase = GamePhase.SHOW_GAME_MODES;
             }
-            if(key == KeyEvent.VK_BACK_SPACE || key == KeyEvent.VK_DELETE){
-                if(tournamentCode.length() > 0){
+            if (key == KeyEvent.VK_BACK_SPACE || key == KeyEvent.VK_DELETE) {
+                if (tournamentCode.length() > 0) {
                     tournamentCode = tournamentCode.substring(0, tournamentCode.length() - 1);
                 }
             }
-            if(key == KeyEvent.VK_SHIFT){
-                codeHide = ! codeHide;
+            if (key >= 65 && key <= 90 || key == 32 || key >= 48 && key <= 57) {
+                tournamentCode += (char) key;
             }
-            if(key >= 65 && key <= 90){
-                tournamentCode+= (char) key;
+            if (key == KeyEvent.VK_SPACE || key == KeyEvent.VK_ENTER) {
+                tourneyOptions = new GameOptions();
+
+                tournamentCode += tourneyOptions.toString();
+                phase = GamePhase.DRAFT_HOMEBAN;
             }
-            if(key == KeyEvent.VK_DOWN){
+        }
+        if (phase == GamePhase.TOURNAMENT_CODE) {
+            if (key == KeyEvent.VK_ESCAPE) {
+                phase = GamePhase.SHOW_GAME_MODES;
+            }
+            if (key == KeyEvent.VK_BACK_SPACE || key == KeyEvent.VK_DELETE) {
+                if (tournamentCode.length() > 0) {
+                    tournamentCode = tournamentCode.substring(0, tournamentCode.length() - 1);
+                }
+            }
+            if (key == KeyEvent.VK_SHIFT) {
+                codeHide = !codeHide;
+            }
+            if (key >= 65 && key <= 90) {
+                tournamentCode += (char) key;
+            }
+            if (key == KeyEvent.VK_DOWN) {
                 tourneyIndex++;
-                if(tourneyIndex >= 8){
-                    tourneyIndex -=8;
+                if (tourneyIndex >= 8) {
+                    tourneyIndex -= 8;
                 }
             }
-            if(key == KeyEvent.VK_UP){
+            if (key == KeyEvent.VK_UP) {
                 tourneyIndex--;
-                if(tourneyIndex < 0){
-                    tourneyIndex +=8;
+                if (tourneyIndex < 0) {
+                    tourneyIndex += 8;
                 }
             }
-            if(key == KeyEvent.VK_LEFT){
+            if (key == KeyEvent.VK_LEFT) {
                 tourneyOptions.advance(tourneyIndex, -1);
             }
-            if(key == KeyEvent.VK_RIGHT){
+            if (key == KeyEvent.VK_RIGHT) {
                 tourneyOptions.advance(tourneyIndex, 1);
             }
-            if(key == KeyEvent.VK_SPACE || key == KeyEvent.VK_ENTER){
-                tournamentCode+=tourneyOptions.toString();
-                phase = 2;
+            if (key == KeyEvent.VK_SPACE || key == KeyEvent.VK_ENTER) {
+                tournamentCode += tourneyOptions.toString();
+                phase = GamePhase.DRAW_CLASS_SCREEN;
             }
             return;
         }
         if (debugCamera == 1) {
-            if (key == KeyEvent.VK_RIGHT && phase == 8) {
+            if (key == KeyEvent.VK_RIGHT && phase == GamePhase.INGAME) {
                 camX += 10;
             }
-            if (key == KeyEvent.VK_LEFT && phase == 8) {
+            if (key == KeyEvent.VK_LEFT && phase == GamePhase.INGAME) {
                 camX -= 10;
             }
-            if (key == KeyEvent.VK_UP && phase == 8) {
+            if (key == KeyEvent.VK_UP && phase == GamePhase.INGAME) {
                 camY -= 10;
             }
-            if (key == KeyEvent.VK_DOWN && phase == 8) {
+            if (key == KeyEvent.VK_DOWN && phase == GamePhase.INGAME) {
                 camY += 10;
             }
         }
@@ -1414,24 +1424,25 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         if (advance) {
             return;
         }
-        if(key == KeyEvent.VK_ESCAPE && phase == 5){
+        if (key == KeyEvent.VK_ESCAPE && phase == GamePhase.WAIT_FOR_GAME) {
             loginClient.leave();
-            phase = 2;
+            queued = false;
+            phase = GamePhase.DRAW_CLASS_SCREEN;
         }
-        if(key == KeyEvent.VK_ESCAPE && phase == 3){
-            phase = 2;
+        if (key == KeyEvent.VK_ESCAPE && phase == GamePhase.SET_MASTERIES) {
+            phase = GamePhase.DRAW_CLASS_SCREEN;
         }
-        if (key == KeyEvent.VK_SPACE && (phase == 8 || phase == 9 || phase == 101)) {
+        if (key == KeyEvent.VK_SPACE && (phase == GamePhase.INGAME || phase == GamePhase.SCORE_FREEZE || phase == GamePhase.TUTORIAL)) {
             camFollow = !camFollow;
             controlsHeld.CAM = true;
             //TODO play restart ding/click
         }
-        if ((phase == 8) || phase == 101) {
+        if ((phase == GamePhase.INGAME) || phase == GamePhase.TUTORIAL) {
             controlsConfig.mapKeyPress(this.game, controlsHeld, key, this.shotSound);
-            if (controlsConfig.toggleInstructions("" + (char)key)) {
+            if (controlsConfig.toggleInstructions("" + (char) key)) {
                 instructionToggle = true;
             }
-            if (controlsConfig.fullScreen("" + (char)key)) {
+            if (controlsConfig.fullScreen("" + (char) key)) {
                 fullScreen = !fullScreen;
                 parentWindow.toggleFullscreen(fullScreen);
             }
@@ -1442,10 +1453,10 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
     @Override
     public void keyReleased(KeyEvent ke) {
         int key = ke.getKeyCode();
-        if (phase == 8 || phase == 101 ) {
+        if (phase == GamePhase.INGAME || phase == GamePhase.TUTORIAL) {
             controlsConfig.mapKeyRelease(controlsHeld, "" + key);
             //shotSound.rewindStart();
-            if (controlsConfig.toggleInstructions("" + (char)key)) {
+            if (controlsConfig.toggleInstructions("" + (char) key)) {
                 instructionToggle = false;
             }
             if (controlsConfig.movKey("" + key)) {
@@ -1461,34 +1472,34 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
 
     private void classKeys(int key) {
         if ((key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A)) {
-            if (phase == 2) {
+            if (phase == GamePhase.DRAW_CLASS_SCREEN) {
                 cursor -= 1;
             }
-            if (phase == 15) {
+            if (phase == GamePhase.SHOW_GAME_MODES) {
                 cursor -= 1;
             }
         }
         if ((key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D)) {
-            if (phase == 2) {
+            if (phase == GamePhase.DRAW_CLASS_SCREEN) {
                 cursor += 1;
             }
-            if (phase == 15) {
+            if (phase == GamePhase.SHOW_GAME_MODES) {
                 cursor += 1;
             }
         }
         if ((key == KeyEvent.VK_UP || key == KeyEvent.VK_W)) {
-            if (phase == 2) {
+            if (phase == GamePhase.DRAW_CLASS_SCREEN) {
                 cursor -= 4;
             }
-            if (phase == 15) {
+            if (phase == GamePhase.SHOW_GAME_MODES) {
                 cursor -= 1;
             }
         }
         if ((key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S)) {
-            if (phase == 2) {
+            if (phase == GamePhase.DRAW_CLASS_SCREEN) {
                 cursor += 4;
             }
-            if (phase == 15) {
+            if (phase == GamePhase.SHOW_GAME_MODES) {
                 cursor += 1;
             }
         }
@@ -1496,60 +1507,64 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
 
     private boolean stateControls(int key) {
         if ((key == KeyEvent.VK_SPACE || key == KeyEvent.VK_ENTER)
-                && phase == 0) {
+                && phase == GamePhase.CREDITS) {
             controlsHeld.CAM = true;
-            phase = 1;
+            phase = GamePhase.CONTROLS;
             return true;
         }
         if ((key == KeyEvent.VK_SPACE || key == KeyEvent.VK_ENTER)
-                && phase == 1) {
-            phase = 15;
+                && phase == GamePhase.CONTROLS) {
+            phase = GamePhase.SHOW_GAME_MODES;
             controlsHeld.CAM = true;
             return true;
         }
         if ((key == KeyEvent.VK_SPACE || key == KeyEvent.VK_ENTER)
-                && phase == 15) {
+                && phase == GamePhase.SHOW_GAME_MODES) {
             controlsHeld.CAM = true;
-            switch(cursor){
+            switch (cursor) {
                 case 0:
-                    phase = 2;
+                    phase = GamePhase.DRAW_CLASS_SCREEN;
                     cursor = 1;
                     tourneyOptions = new GameOptions();
                     tournamentCode = tourneyOptions.toString();
                     return true;
                 case 1:
-                    phase = 2;
+                    phase = GamePhase.DRAW_CLASS_SCREEN;
                     cursor = 1;
                     tourneyOptions = new GameOptions();
                     tourneyOptions.playerIndex = 4;
                     tournamentCode = tourneyOptions.toString();
                     return true;
                 case 2:
-                    phase = 69;
+                    phase = GamePhase.TEAM_LAUNCH;
                     cursor = 1;
                     return true;
                 case 3:
-                    phase = 100;
+                    phase = GamePhase.TOURNAMENT_CODE;
+                    cursor = 1;
+                    return true;
+                case 4:
+                    phase = GamePhase.TUTORIAL_START;
                     cursor = 1;
                     return true;
             }
             return true;
         }
         if ((key == KeyEvent.VK_SPACE || key == KeyEvent.VK_ENTER)
-                && phase == 2) {
+                && phase == GamePhase.DRAW_CLASS_SCREEN) {
             controlsHeld.CAM = true;
-            phase = 3;
+            phase = GamePhase.SET_MASTERIES;
             return true;
         }
         if ((key == KeyEvent.VK_SPACE || key == KeyEvent.VK_ENTER)
-                && phase == 3) {
-            phase = 4;
+                && phase == GamePhase.SET_MASTERIES) {
+            phase = GamePhase.TRANSITIONAL;
             controlsHeld.CAM = true;
             return true;
         }
         if ((key == KeyEvent.VK_SPACE || key == KeyEvent.VK_ENTER)
-                && phase == 4) {
-            phase = 6;
+                && phase == GamePhase.TRANSITIONAL) {
+            phase = GamePhase.WAIT_FOR_GAME;
             controlsHeld.CAM = true;
             return true;
         }
@@ -1557,22 +1572,22 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
     }
 
     protected boolean masteriesKeys(int key) {
-        if ((key == KeyEvent.VK_UP || key == KeyEvent.VK_W) && phase == 3) {
+        if ((key == KeyEvent.VK_UP || key == KeyEvent.VK_W) && phase == GamePhase.SET_MASTERIES) {
             masteriesIndex--;
             if (masteriesIndex < 0) {
                 masteriesIndex = 8;
             }
         }
-        if ((key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S) && phase == 3) {
+        if ((key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S) && phase == GamePhase.SET_MASTERIES) {
             masteriesIndex++;
             if (masteriesIndex > 8) {
                 masteriesIndex = 0;
             }
         }
-        if ((key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) && phase == 3) {
+        if ((key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) && phase == GamePhase.SET_MASTERIES) {
             masteryDelta(masteriesIndex, 1);
         }
-        if ((key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) && phase == 3) {
+        if ((key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) && phase == GamePhase.SET_MASTERIES) {
             masteryDelta(masteriesIndex, -1);
         }
         return false;
@@ -1631,9 +1646,9 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         if (cursor == 7) controlsHeld.classSelection = TitanType.GOLEM;
         if (cursor == 8) controlsHeld.classSelection = TitanType.STEALTH;
         if (cursor == 9) controlsHeld.classSelection = TitanType.SUPPORT;
-        if (cursor == 10) controlsHeld.classSelection= TitanType.BUILDER;
-        if (cursor == 11) controlsHeld.classSelection= TitanType.ARTISAN;
-        if (cursor == 12) controlsHeld.classSelection= TitanType.GRENADIER;
+        if (cursor == 10) controlsHeld.classSelection = TitanType.BUILDER;
+        if (cursor == 11) controlsHeld.classSelection = TitanType.ARTISAN;
+        if (cursor == 12) controlsHeld.classSelection = TitanType.GRENADIER;
         if (cursor > 12) controlsHeld.classSelection = TitanType.GRENADIER;
         //System.out.println(controlsHeld.classSelection);
         if (masteries != controlsHeld.masteries) {
@@ -1655,14 +1670,14 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         } catch (Exception ex1) {
             ex1.printStackTrace();
         }
-        phase = 6;
+        phase = GamePhase.WAIT_FOR_GAME;
     }
 
     protected void fireReconnect() {
         try {//rejoin game logic
             loginClient.check();
             if (!loginClient.gameId.equals("NOT QUEUED")) {
-                phase = 6;
+                phase = GamePhase.COUNTDOWN;
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -1674,7 +1689,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         shotSound = new Sound();
         // Load the sounds
         shotSound.loadSound(shotSoundFile);
-        if(addListeners){
+        if (addListeners) {
             addKeyListener(this);
         }
 
@@ -1693,16 +1708,19 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         g2D.setColor(Color.YELLOW);
         sconst.setFont(g2D, font);
         double milUntil = (new Duration(Instant.now(), gamestart)).getMillis();
-        sconst.drawString(g2D,String.format("Starting in %1.1f seconds", milUntil / 1000.0), 345, 220);
+        System.out.println(milUntil);
+        sconst.drawString(g2D, String.format("Starting in %1.1f seconds", milUntil / 1000.0), 345, 220);
         font = new Font("Verdana", Font.BOLD, 48);
         g2D.setColor(Color.RED);
         sconst.setFont(g2D, font);
-        sconst.drawString(g2D,"STARTING", 418, 480);
-        if ((game == null || game.phase < 8) && Instant.now().isAfter(gamestart.plus(new Duration(500)))) {
+        sconst.drawString(g2D, "STARTING", 418, 480);
+        if (game == null &&
+                Instant.now().isAfter(gamestart.plus(new Duration(500)))) {
             //TODO this messes us up bad somehow for everyone but the last client to connect
             sconst.setFont(g2D, new Font("Verdana", Font.BOLD, 12));
-            sconst.drawString(g2D,"(Client may be disconnected, retrying)", 80, 520);
-            if ((game == null || game.phase < 8) && Instant.now().isAfter(gamestart.plus(new Duration(2500)))) {
+            sconst.drawString(g2D, "(Client may be disconnected, retrying)", 80, 520);
+            if (game == null &&
+                    Instant.now().isAfter(gamestart.plus(new Duration(2500)))) {
                 try {
                     parentWindow.reset(false);
                 } catch (IOException e) {
@@ -1718,12 +1736,12 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         Font font = new Font("Verdana", Font.BOLD, 24);
         g2D.setColor(Color.YELLOW);
         sconst.setFont(g2D, font);
-        sconst.drawString(g2D,"Waiting for players...", 342, 220);
+        sconst.drawString(g2D, "Waiting for players...", 342, 220);
 
         font = new Font("Verdana", Font.BOLD, 24);
         g2D.setColor(Color.GREEN);
         sconst.setFont(g2D, font);
-        sconst.drawString(g2D,"Press ESC to cancel...", 342, 480);
+        sconst.drawString(g2D, "Press ESC to cancel...", 342, 480);
     }
 
 
@@ -1739,7 +1757,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
     }
 
     public void displayScore(Graphics2D g2D) {
-        if (phase == 8 || phase == 101) {
+        if (phase == GamePhase.INGAME || phase == GamePhase.TUTORIAL) {
             Font font = new Font("Verdana", Font.BOLD, 45);
             sconst.setFont(g2D, font);
             String goalsHome = Integer.toString((int) game.home.score);
@@ -1748,17 +1766,17 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
             String minorGoalsAway = Integer.toString((int) ((game.away.score - (int) game.away.score) * 4));
 
             g2D.setColor(new Color(0f, 0f, 1f, .5f));
-            sconst.drawString(g2D,goalsHome, 180, 704);
+            sconst.drawString(g2D, goalsHome, 180, 704);
             g2D.setColor(new Color(1f, 1f, 1f, .5f));
-            sconst.drawString(g2D,goalsAway, 799, 704);
+            sconst.drawString(g2D, goalsAway, 799, 704);
 
             //draw minor goals
             font = new Font("Verdana", Font.BOLD, 32);
             sconst.setFont(g2D, font);
             setColorFromCharge(g2D, minorGoalsHome);
-            sconst.drawString(g2D,minorGoalsHome + "/4", 230, 701);
+            sconst.drawString(g2D, minorGoalsHome + "/4", 230, 701);
             setColorFromCharge(g2D, minorGoalsAway);
-            sconst.drawString(g2D,minorGoalsAway + "/4", 848, 701);
+            sconst.drawString(g2D, minorGoalsAway + "/4", 848, 701);
 
             g2D.setColor(Color.RED);
             int x = xSize / 4;
@@ -1770,19 +1788,19 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
                     sconst.setFont(g2D, new Font("Verdana", Font.PLAIN, 72));
                     if (e.effect == EffectId.ROOT) {
                         g2D.setColor(new Color(.36f, .51f, .28f, .4f));
-                        sconst.drawString(g2D,"Rooted!", 450, 300);
+                        sconst.drawString(g2D, "Rooted!", 450, 300);
                     }
                     if (e.effect == EffectId.SLOW) {
                         g2D.setColor(new Color(.45f, .9f, .75f, .4f));
-                        sconst.drawString(g2D,"Slowed!", 450, 300);
+                        sconst.drawString(g2D, "Slowed!", 450, 300);
                     }
                     if (e.effect == EffectId.STUN) {
                         g2D.setColor(new Color(1f, .74f, 0f, .4f));
-                        sconst.drawString(g2D,"Stunned!", 450, 300);
+                        sconst.drawString(g2D, "Stunned!", 450, 300);
                     }
                     if (e.effect == EffectId.STEAL) {
                         g2D.setColor(new Color(0f, 0f, 0f, .4f));
-                        sconst.drawString(g2D,"Stolen!", 450, 300);
+                        sconst.drawString(g2D, "Stolen!", 450, 300);
                     }
                     if (e.getIcon() != null) {
                         Composite originalComposite = g2D.getComposite();
@@ -1805,7 +1823,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
                         }
                         setColorBasedOnPercent(g2D, percentBar, true);
                         double coverage = e.getPercentLeft() / 100.0 * 360.0;
-                        xt = sconst.adjX(x+2);
+                        xt = sconst.adjX(x + 2);
                         wt = sconst.adjX(28);
                         yt = sconst.adjY(659);
                         ht = sconst.adjY(28);
@@ -1823,56 +1841,48 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         g2D.setColor(new Color(0f, 1f, 0f, .4f));
         Font font = new Font("Verdana", Font.BOLD, 32);
         sconst.setFont(g2D, font);
-        final double FPS = 1000 / GAMETICK_MS;
+        final double FPS = 1000 / game.GAMETICK_MS;
         String timeStr = "";
         double time = (game.framesSinceStart / FPS);
-        time = (int)(time*10.0) / 10.0;
+        time = (int) (time * 10.0) / 10.0;
         timeStr += time;
-        sconst.drawString(g2D,timeStr, 614, 711);
+        sconst.drawString(g2D, timeStr, 614, 711);
         g2D.setColor(new Color(0f, 0f, 0f, .4f));
         setBottomText(g2D, (int) time);
-        sconst.drawString(g2D,bottomText, 480, 664);
+        sconst.drawString(g2D, bottomText, 480, 664);
     }
 
     private void setBottomText(Graphics2D g2D, int timer) {
         Font font = new Font("Verdana", Font.BOLD, 16);
         sconst.setFont(g2D, font);
         bottomText = "";
-        final int WARN=30, FWARN=10, CHWARN = 4;
-        if(timer >= game.GOALIE_DISABLE_TIME - WARN && timer < game.GOALIE_DISABLE_TIME - FWARN){
+        final int WARN = 30, FWARN = 10, CHWARN = 4;
+        if (timer >= game.GOALIE_DISABLE_TIME - WARN && timer < game.GOALIE_DISABLE_TIME - FWARN) {
             g2D.setColor(new Color(.9f, .9f, 0f, .4f));
             bottomText = "GOALIES VANISHING WARNING";
-        }
-        else if(timer >= game.GOALIE_DISABLE_TIME - FWARN && timer < game.GOALIE_DISABLE_TIME){
-            g2D.setColor(new Color(1f,0f, 0f, .4f));
+        } else if (timer >= game.GOALIE_DISABLE_TIME - FWARN && timer < game.GOALIE_DISABLE_TIME) {
+            g2D.setColor(new Color(1f, 0f, 0f, .4f));
             bottomText = "GOALIES VANISHING WARNING";
-        }
-        else if(timer >= game.GOALIE_DISABLE_TIME && timer < game.GOALIE_DISABLE_TIME - CHWARN){
-            g2D.setColor(new Color(1f,0f, 0f, .4f));
+        } else if (timer >= game.GOALIE_DISABLE_TIME && timer < game.GOALIE_DISABLE_TIME - CHWARN) {
+            g2D.setColor(new Color(1f, 0f, 0f, .4f));
             bottomText = "GOALIES VANISHED";
-        }
-        else if(timer >= (game.options.suddenDeathIndex*60) - WARN && timer < (game.options.suddenDeathIndex*60) - FWARN){
+        } else if (timer >= (game.options.suddenDeathIndex * 60) - WARN && timer < (game.options.suddenDeathIndex * 60) - FWARN) {
             g2D.setColor(new Color(.9f, .9f, 0f, .6f));
             bottomText = "SUDDEN DEATH WARNING";
-        }
-        else if(timer >= (game.options.suddenDeathIndex*60) - FWARN && timer < (game.options.suddenDeathIndex*60)){
-            g2D.setColor(new Color(1f,0f, 0f, .6f));
+        } else if (timer >= (game.options.suddenDeathIndex * 60) - FWARN && timer < (game.options.suddenDeathIndex * 60)) {
+            g2D.setColor(new Color(1f, 0f, 0f, .6f));
             bottomText = "SUDDEN DEATH WARNING";
-        }
-        else if(timer >= (game.options.suddenDeathIndex*60) && timer < (game.options.suddenDeathIndex*60) - CHWARN){
-            g2D.setColor(new Color(1f,0f, 0f, 1f));
+        } else if (timer >= (game.options.suddenDeathIndex * 60) && timer < (game.options.suddenDeathIndex * 60) - CHWARN) {
+            g2D.setColor(new Color(1f, 0f, 0f, 1f));
             bottomText = "SUDDEN DEATH ENABLED";
-        }
-        else if(timer >= (game.options.tieIndex*60) - WARN && timer < (game.options.tieIndex*60) - FWARN){
+        } else if (timer >= (game.options.tieIndex * 60) - WARN && timer < (game.options.tieIndex * 60) - FWARN) {
             g2D.setColor(new Color(.9f, .9f, 0f, 1f));
             bottomText = "TIE GAME WARNING";
-        }
-        else if(timer >= (game.options.tieIndex*60) - FWARN && timer < (game.options.tieIndex*60)){
-            g2D.setColor(new Color(1f,0f, 0f, 1f));
+        } else if (timer >= (game.options.tieIndex * 60) - FWARN && timer < (game.options.tieIndex * 60)) {
+            g2D.setColor(new Color(1f, 0f, 0f, 1f));
             bottomText = "TIE GAME WARNING";
-        }
-        else if(timer >= (game.options.tieIndex*60) && timer < (game.options.tieIndex*60) - CHWARN){
-            g2D.setColor(new Color(1f,0f, 0f, 1f));
+        } else if (timer >= (game.options.tieIndex * 60) && timer < (game.options.tieIndex * 60) - CHWARN) {
+            g2D.setColor(new Color(1f, 0f, 0f, 1f));
             bottomText = "TIE GAME";
         }
     }
@@ -1909,7 +1919,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         sconst.drawImage(g2D, tutorial.getImage(), 1, 1, this);
         Font font = new Font("Verdana", Font.PLAIN, 65);
         sconst.setFont(g2D, font);
-        sconst.drawString(g2D,"Space to proceed", 5, 705);
+        sconst.drawString(g2D, "Space to proceed", 5, 705);
     }
 
     protected void setColorBasedOnPercent(Graphics2D g2D, double inputPercent, boolean translucent) {
@@ -1935,50 +1945,70 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         return (float) (.01f * (inputPercent));
     }
 
-    private void drawTournamentScreen(Graphics2D g2D) {
+    private void drawTeamScreen(Graphics2D g2D) {
         darkTheme(g2D, true);
-        try{
-            tournamentCode=tournamentCode.split("/")[0];
-        } catch (Exception ex){ }
+        try {
+            tournamentCode = tournamentCode.split("/")[0];
+        } catch (Exception ex) {
+        }
         g2D.setColor(new Color(1f, 0f, 0f));
         sconst.setFont(g2D, new Font("Verdana", Font.PLAIN, 32));
-        sconst.drawString(g2D,"Type alphabetical game password. Space to proceed, shift to hide letters", 60, 100);
+        sconst.drawString(g2D, "Enter the name of your team to queue up for a game with your teammates", 60, 100);
         g2D.setColor(new Color(0f, 0f, 1f));
-        if(codeHide){
+        sconst.drawString(g2D, tournamentCode, 100, 200);
+    }
+
+    private void drawTournamentScreen(Graphics2D g2D) {
+        darkTheme(g2D, true);
+        try {
+            tournamentCode = tournamentCode.split("/")[0];
+        } catch (Exception ex) {
+        }
+        g2D.setColor(new Color(1f, 0f, 0f));
+        sconst.setFont(g2D, new Font("Verdana", Font.PLAIN, 32));
+        sconst.drawString(g2D, "Type alphabetical game password. Space to proceed, shift to hide letters", 60, 100);
+        g2D.setColor(new Color(0f, 0f, 1f));
+        if (codeHide) {
             String s = "";
-            for(int i=0; i< tournamentCode.length(); i++){
+            for (int i = 0; i < tournamentCode.length(); i++) {
                 s += "*";
             }
-            sconst.drawString(g2D,s, 100, 200);
-        }else{
-            sconst.drawString(g2D,tournamentCode, 100, 200);
+            sconst.drawString(g2D, s, 100, 200);
+        } else {
+            sconst.drawString(g2D, tournamentCode, 100, 200);
         }
         sconst.setFont(g2D, new Font("Verdana", Font.PLAIN, 16));
-        sconst.drawString(g2D,"This feature is for avoiding random matchmaking. Set the same game password and rules as your friends to join a private lobby", 50, 400);
-        sconst.drawString(g2D,"Leave the password blank for the default/public lobby", 120, 500);
+        sconst.drawString(g2D, "This feature is for avoiding random matchmaking. Set the same game password and rules as your friends to join a private lobby", 50, 400);
+        sconst.drawString(g2D, "Leave the password blank for the default/public lobby", 120, 500);
 
         g2D.setColor(Color.BLACK);
         darkTheme(g2D, false);
         sconst.setFont(g2D, new Font("Verdana", Font.PLAIN, 32));
-        sconst.drawString(g2D,"Setting Tournament Options", 200, 50);
+        sconst.drawString(g2D, "Setting Tournament Options", 200, 50);
         sconst.setFont(g2D, new Font("Verdana", Font.PLAIN, 16));
-        sconst.drawString(g2D,"ARROW keys to set options", 200, 420);
+        sconst.drawString(g2D, "ARROW keys to set options", 200, 420);
         int y = 420;
         for (int i = 0; i < 8; i++) {
             int x = 650;
             g2D.setColor(Color.BLACK);
             darkTheme(g2D, false);
-            sconst.drawString(g2D,tourneyOptions.disp(i), x, y);
+            sconst.drawString(g2D, tourneyOptions.disp(i), x, y);
             if (tourneyIndex == i) {
                 g2D.setColor(Color.RED);
                 int[] xpts = new int[3], ypts = new int[3];
-                xpts[0] = (int) sconst.adjX(x-22); ypts[0] = sconst.adjY(y-14);
-                xpts[1] = (int) sconst.adjX(x-30); ypts[1] = sconst.adjY(y-6);
-                xpts[2] = (int) sconst.adjX(x-22); ypts[2] = sconst.adjY(y+2);
+                xpts[0] = (int) sconst.adjX(x - 22);
+                ypts[0] = sconst.adjY(y - 14);
+                xpts[1] = (int) sconst.adjX(x - 30);
+                ypts[1] = sconst.adjY(y - 6);
+                xpts[2] = (int) sconst.adjX(x - 22);
+                ypts[2] = sconst.adjY(y + 2);
                 g2D.fill(new Polygon(xpts, ypts, 3));
-                xpts[0] = (int) sconst.adjX(x+200); ypts[0] = sconst.adjY(y-14);
-                xpts[1] = (int) sconst.adjX(x+208); ypts[1] = sconst.adjY(y-6);
-                xpts[2] = (int) sconst.adjX(x+200); ypts[2] = sconst.adjY(y+2);
+                xpts[0] = (int) sconst.adjX(x + 200);
+                ypts[0] = sconst.adjY(y - 14);
+                xpts[1] = (int) sconst.adjX(x + 208);
+                ypts[1] = sconst.adjY(y - 6);
+                xpts[2] = (int) sconst.adjX(x + 200);
+                ypts[2] = sconst.adjY(y + 2);
                 g2D.fill(new Polygon(xpts, ypts, 3));
             }
             y += 25;
@@ -1986,42 +2016,45 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
     }
 
     private void showGameModes(Graphics2D g2D) {
-        if(hasFocus()) {
+        if (hasFocus()) {
             darkTheme(g2D, true);
             tut = null;
             game = null;
             tut4.rewindStop();
-            if (cursor > 3) {
+            if (cursor > 4) {
                 cursor = 0;
             }
             if (cursor < 0) {
-                cursor = 3;
+                cursor = 4;
             }
 
-            if (cursor == 0) sconst.drawImage(g2D, classCursor.getImage(), 250, 245, 1.8, 1, this);
-            if (cursor == 1) sconst.drawImage(g2D, classCursor.getImage(), 250, 365, 1.8, 1, this);
-            if (cursor == 2) sconst.drawImage(g2D, classCursor.getImage(), 250, 485, 1.8, 1, this);
-            if (cursor == 3) sconst.drawImage(g2D, classCursor.getImage(), 250, 605, 1.8, 1, this);
+            classCursor = new StaticImage(sconst.loadImage(classCursor, "res/Court/draft/cursorflag.png", this, 1.8, 1.0));
+            if (cursor == 0) sconst.drawImage(g2D, classCursor.getImage(), 250, 125, this);
+            if (cursor == 1) sconst.drawImage(g2D, classCursor.getImage(), 250, 245, this);
+            if (cursor == 2) sconst.drawImage(g2D, classCursor.getImage(), 250, 365, this);
+            if (cursor == 3) sconst.drawImage(g2D, classCursor.getImage(), 250, 485, this);
+            if (cursor == 4) sconst.drawImage(g2D, classCursor.getImage(), 250, 605, this);
 
             sconst.setFont(g2D, new Font("Verdana", Font.PLAIN, 24));
-            g2D.setColor(new Color(1f, 0f, 0f));
-            sconst.drawString(g2D, "Navigate Options with W (up) S (down), confirm with SPACE", 350, 155);
-            sconst.drawString(g2D, "RANKED 3v3", 260, 300);
+            g2D.setColor(new Color(.55f, 0f, 0f));
+            sconst.drawString(g2D, "Navigate Options with W (up) S (down), confirm with SPACE", 350, 55);
+            sconst.drawString(g2D, "SOLO 3v3", 260, 180);
+            g2D.setColor(new Color(1f, .1f, 0f));
+            sconst.drawString(g2D, "SOLO 1v1", 260, 300);
             g2D.setColor(new Color(1f, .5f, 0f));
-            sconst.drawString(g2D, "RANKED 1v1", 260, 420);
-            g2D.setColor(new Color(0f, 0f, 1f));
-            sconst.drawString(g2D, "TUTORIAL", 260, 660);
             sconst.setFont(g2D, new Font("Verdana", Font.PLAIN, 20));
+            sconst.drawString(g2D, "TEAM DRAFT", 260, 420);
+            g2D.setColor(new Color(0f, 0f, 1f));
+            sconst.drawString(g2D, "TUTORIAL", 265, 660);
             g2D.setColor(new Color(0f, 1f, 0f));
             sconst.drawString(g2D, "CUSTOM GAME", 260, 540);//drawn after to save a refont
-
             drawTrophies(g2D);
 
         } else {
             g2D.setColor(new Color(1f, 0f, 0f));
             sconst.setFont(g2D, new Font("Verdana", Font.PLAIN, 32));
-            sconst.drawString(g2D,"APP LOST FOCUS (AFTER GAME USUALLY)", 10, 132);
-            sconst.drawString(g2D,"ALT TAB OUT AND THEN BACK IN TO RESTORE KEY LISTENERS", 10, 280);
+            sconst.drawString(g2D, "APP LOST FOCUS (AFTER GAME USUALLY)", 10, 132);
+            sconst.drawString(g2D, "ALT TAB OUT AND THEN BACK IN TO RESTORE KEY LISTENERS", 10, 280);
         }
     }
 
@@ -2029,26 +2062,88 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         g2D.setColor(Color.BLACK);
         darkTheme(g2D, false);
         String rankname = "res/Court/rnk/" +
-                loginClient.getRank3v3().toString().toLowerCase()  + ".png";
+                loginClient.getRank3v3().toString().toLowerCase() + ".png";
         String rank1v1name = "res/Court/rnk/" +
-                loginClient.getRank1v1().toString().toLowerCase()  + ".png";
+                loginClient.getRank1v1().toString().toLowerCase() + ".png";
         StaticImage trophy = new StaticImage();
-        trophy.loadImage(rankname);
+        trophy = new StaticImage(sconst.loadImage(trophy, rankname, this, 2.0, 2.0));
         StaticImage trophy1v1 = new StaticImage();
-        trophy1v1.loadImage(rank1v1name);
-        sconst.drawImage(g2D, trophy.getImage(), 458, 235, 2, 2, this);
-        sconst.drawImage(g2D, trophy1v1.getImage(), 458, 355, 2, 2, this);
+        trophy1v1 = new StaticImage(sconst.loadImage(trophy1v1, rank1v1name, this, 2.0, 2.0));
+        sconst.drawImage(g2D, trophy.getImage(), 458, 115, this);
+        sconst.drawImage(g2D, trophy1v1.getImage(), 458, 235, this);
         g2D.setColor(Color.YELLOW);
-        if(loginClient.getTopten() <= 10){
-            sconst.drawString(g2D, ""+ loginClient.getTopten(), 432, 290);
+        if (loginClient.getTopten() <= 10) {
+            sconst.drawString(g2D, "" + loginClient.getTopten(), 432, 170);
         }
-        if(loginClient.getTopten1v1() <= 10){
-            sconst.drawString(g2D,""+ loginClient.getTopten1v1(), 432, 410);
+        if (loginClient.getTopten1v1() <= 10) {
+            sconst.drawString(g2D, "" + loginClient.getTopten1v1(), 432, 290);
         }
     }
 
-    protected void drawClassScreen(Graphics2D g2D) {
-        if(hasFocus()) {
+    private void draftClassScreen(Graphics2D g2D) {
+        drawClassScreen(g2D, false);
+        if (game != null) {
+            Images banCursor = new StaticImage(sconst.loadImage(classCursor, "res/Court/draft/draftBanned.png", this));
+            Images teamCursor = new StaticImage(sconst.loadImage(classCursor, "res/Court/draft/draftPicked.png", this));
+            Images oppCursor = new StaticImage(sconst.loadImage(classCursor, "res/Court/draft/draftPicked2.png", this));
+            if (game.picksAndBans.containsKey("ban1")) {
+                int banIndex = classSelIndex(game.picksAndBans.get("ban1"));
+                sconst.drawImage(g2D, banCursor.getImage(), xCursor(banIndex), yCursor(banIndex), this);
+            }
+            if (game.picksAndBans.containsKey("ban2")) {
+                int banIndex = classSelIndex(game.picksAndBans.get("ban2"));
+                sconst.drawImage(g2D, banCursor.getImage(), xCursor(banIndex), yCursor(banIndex), this);
+            }
+            if (game.picksAndBans.containsKey("home1") && game.yourteam == TeamAffiliation.HOME ||
+                    game.picksAndBans.containsKey("away1") && game.yourteam == TeamAffiliation.AWAY) {
+                int pickIndex = game.yourteam == TeamAffiliation.HOME ?
+                        classSelIndex(game.picksAndBans.get("home1")) :
+                        classSelIndex(game.picksAndBans.get("away1"));
+                sconst.drawImage(g2D, teamCursor.getImage(), xCursor(pickIndex), yCursor(pickIndex), this);
+            }
+            if (game.picksAndBans.containsKey("home1") && game.yourteam == TeamAffiliation.AWAY ||
+                    game.picksAndBans.containsKey("away1") && game.yourteam == TeamAffiliation.HOME) {
+                int pickIndex = game.yourteam == TeamAffiliation.HOME ?
+                        classSelIndex(game.picksAndBans.get("away1")) :
+                        classSelIndex(game.picksAndBans.get("home1"));
+                sconst.drawImage(g2D, oppCursor.getImage(), xCursor(pickIndex), yCursor(pickIndex), this);
+            }
+            if (game.picksAndBans.containsKey("home2") && game.yourteam == TeamAffiliation.HOME ||
+                    game.picksAndBans.containsKey("away2") && game.yourteam == TeamAffiliation.AWAY) {
+                int pickIndex = game.yourteam == TeamAffiliation.HOME ?
+                        classSelIndex(game.picksAndBans.get("home2")) :
+                        classSelIndex(game.picksAndBans.get("away2"));
+                sconst.drawImage(g2D, teamCursor.getImage(), xCursor(pickIndex), yCursor(pickIndex), this);
+            }
+            if (game.picksAndBans.containsKey("home2") && game.yourteam == TeamAffiliation.HOME ||
+                    game.picksAndBans.containsKey("away2") && game.yourteam == TeamAffiliation.AWAY) {
+                int pickIndex = game.yourteam == TeamAffiliation.HOME ?
+                        classSelIndex(game.picksAndBans.get("away1")) :
+                        classSelIndex(game.picksAndBans.get("home1"));
+                sconst.drawImage(g2D, oppCursor.getImage(), xCursor(pickIndex), yCursor(pickIndex), this);
+            }
+            if (game.picksAndBans.containsKey("home3") && game.yourteam == TeamAffiliation.HOME) {
+                int pickIndex = classSelIndex(game.picksAndBans.get("home3"));
+                sconst.drawImage(g2D, teamCursor.getImage(), xCursor(pickIndex), yCursor(pickIndex), this);
+            }
+            if (game.picksAndBans.containsKey("home3") && game.yourteam == TeamAffiliation.AWAY) {
+                int pickIndex = classSelIndex(game.picksAndBans.get("home3"));
+                sconst.drawImage(g2D, oppCursor.getImage(), xCursor(pickIndex), yCursor(pickIndex), this);
+            }
+            if(game.phase == GamePhase.DRAFT_HOMEBAN || game.phase == GamePhase.DRAFT_AWAYBAN){
+                classCursor = new StaticImage(sconst.loadImage(classCursor, "res/Court/draft/draftBan.png", this));
+            }else{
+                classCursor = new StaticImage(sconst.loadImage(classCursor, "res/Court/draft/draft.png", this));
+            }
+            for (int i = 0; i <= 16; i++) {
+                if (cursor == i)
+                    sconst.drawImage(g2D, classCursor.getImage(), xCursor(i), yCursor(i), this);
+            }
+        }
+    }
+
+    protected void drawClassScreen(Graphics2D g2D, boolean displayCursor) {
+        if (hasFocus()) {
             tut = null;
             game = null;
             tut4.rewindStop();
@@ -2068,19 +2163,18 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
             if (staticFrameCounter == 9) {
                 staticFrameCounter = 0;
             }
-            sconst.drawImage(g2D, SelectClassSkins.pullImage(TitanType.WARRIOR, staticFrame), 160, 200, this);
-            sconst.drawImage(g2D, SelectClassSkins.pullImage(TitanType.RANGER, staticFrame), 360, 200, this);
-            sconst.drawImage(g2D, SelectClassSkins.pullImage(TitanType.MAGE, staticFrame), 560, 200, this);
-            sconst.drawImage(g2D, SelectClassSkins.pullImage(TitanType.HOUNDMASTER, staticFrame), 760, 200, this);
-            sconst.drawImage(g2D, SelectClassSkins.pullImage(TitanType.MARKSMAN, staticFrame), 160, 320, this);
-            sconst.drawImage(g2D, SelectClassSkins.pullImage(TitanType.DASHER, staticFrame), 360, 320, this);
-            sconst.drawImage(g2D, SelectClassSkins.pullImage(TitanType.GOLEM, staticFrame), 560, 320, this);
-            sconst.drawImage(g2D, SelectClassSkins.pullImage(TitanType.STEALTH, staticFrame), 760, 320, this);
-            sconst.drawImage(g2D, SelectClassSkins.pullImage(TitanType.SUPPORT, staticFrame), 160, 440, this);
-            sconst.drawImage(g2D, SelectClassSkins.pullImage(TitanType.BUILDER, staticFrame), 360, 440, this);
-            sconst.drawImage(g2D, SelectClassSkins.pullImage(TitanType.ARTISAN, staticFrame), 560, 440, this);
-            sconst.drawImage(g2D, SelectClassSkins.pullImage(TitanType.GRENADIER, staticFrame), 760, 440, this);
-
+            sconst.drawImage(g2D, SelectClassSkins.pullImage(TitanType.WARRIOR, staticFrame), 164, 200, this);
+            sconst.drawImage(g2D, SelectClassSkins.pullImage(TitanType.RANGER, staticFrame), 364, 200, this);
+            sconst.drawImage(g2D, SelectClassSkins.pullImage(TitanType.MAGE, staticFrame), 564, 200, this);
+            sconst.drawImage(g2D, SelectClassSkins.pullImage(TitanType.HOUNDMASTER, staticFrame), 764, 200, this);
+            sconst.drawImage(g2D, SelectClassSkins.pullImage(TitanType.MARKSMAN, staticFrame), 164, 320, this);
+            sconst.drawImage(g2D, SelectClassSkins.pullImage(TitanType.DASHER, staticFrame), 364, 320, this);
+            sconst.drawImage(g2D, SelectClassSkins.pullImage(TitanType.GOLEM, staticFrame), 564, 320, this);
+            sconst.drawImage(g2D, SelectClassSkins.pullImage(TitanType.STEALTH, staticFrame), 764, 320, this);
+            sconst.drawImage(g2D, SelectClassSkins.pullImage(TitanType.SUPPORT, staticFrame), 164, 440, this);
+            sconst.drawImage(g2D, SelectClassSkins.pullImage(TitanType.BUILDER, staticFrame), 364, 440, this);
+            sconst.drawImage(g2D, SelectClassSkins.pullImage(TitanType.ARTISAN, staticFrame), 564, 440, this);
+            sconst.drawImage(g2D, SelectClassSkins.pullImage(TitanType.GRENADIER, staticFrame), 764, 440, this);
             classFacts(g2D);
             if (cursor > 12) {
                 cursor %= 12;
@@ -2091,28 +2185,61 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
                     cursor = 1;
                 }
             }
-            if (cursor == 1) sconst.drawImage(g2D, classCursor.getImage(), 150, 195, this);
-            if (cursor == 2) sconst.drawImage(g2D, classCursor.getImage(), 350, 195, this);
-            if (cursor == 3) sconst.drawImage(g2D, classCursor.getImage(), 550, 195, this);
-            if (cursor == 4) sconst.drawImage(g2D, classCursor.getImage(), 750, 195, this);
-            if (cursor == 5) sconst.drawImage(g2D, classCursor.getImage(), 150, 315, this);
-            if (cursor == 6) sconst.drawImage(g2D, classCursor.getImage(), 350, 315, this);
-            if (cursor == 7) sconst.drawImage(g2D, classCursor.getImage(), 550, 315, this);
-            if (cursor == 8) sconst.drawImage(g2D, classCursor.getImage(), 750, 315, this);
-            if (cursor == 9) sconst.drawImage(g2D, classCursor.getImage(), 150, 435, this);
-            if (cursor == 10) sconst.drawImage(g2D, classCursor.getImage(), 350, 435, this);
-            if (cursor == 11) sconst.drawImage(g2D, classCursor.getImage(), 550, 435, this);
-            if (cursor == 12) sconst.drawImage(g2D, classCursor.getImage(), 750, 435, this);
-            if (cursor == 13) sconst.drawImage(g2D, classCursor.getImage(), 150, 515, this);
-            if (cursor == 14) sconst.drawImage(g2D, classCursor.getImage(), 350, 515, this);
-            if (cursor == 15) sconst.drawImage(g2D, classCursor.getImage(), 550, 515, this);
-            if (cursor == 16) sconst.drawImage(g2D, classCursor.getImage(), 750, 515, this);
+            classCursor = new StaticImage(sconst.loadImage(classCursor, "res/Court/draft/cursorflag.png", this));
+            if (displayCursor) {
+                for (int i = 0; i <= 16; i++) {
+                    if (cursor == i)
+                        sconst.drawImage(g2D, classCursor.getImage(), xCursor(i), yCursor(i), this);
+                }
+            }
         } else {
             g2D.setColor(new Color(1f, 0f, 0f));
             sconst.setFont(g2D, new Font("Verdana", Font.PLAIN, 32));
-            sconst.drawString(g2D,"APP LOST FOCUS (AFTER GAME USUALLY)", 10, 132);
-            sconst.drawString(g2D,"ALT TAB OUT AND THEN BACK IN TO RESTORE KEY LISTENERS", 10, 280);
+            sconst.drawString(g2D, "APP LOST FOCUS (AFTER GAME USUALLY)", 10, 132);
+            sconst.drawString(g2D, "ALT TAB OUT AND THEN BACK IN TO RESTORE KEY LISTENERS", 10, 280);
         }
+    }
+
+    private int classSelIndex(TitanType index) {
+        switch (index) {
+            case WARRIOR:
+                return 1;
+            case RANGER:
+                return 2;
+            case MAGE:
+                return 3;
+            case HOUNDMASTER:
+                return 4;
+            case MARKSMAN:
+                return 5;
+            case DASHER:
+                return 6;
+            case GOLEM:
+                return 7;
+            case STEALTH:
+                return 8;
+            case SUPPORT:
+                return 9;
+            case BUILDER:
+                return 10;
+            case ARTISAN:
+                return 11;
+            case GRENADIER:
+                return 12;
+        }
+        return 0;
+    }
+
+    private int xCursor(int index) {
+        index -= 1;
+        index %= 4;
+        return 200 * index + 150;
+    }
+
+    private int yCursor(int index) {
+        index -= 1;
+        index /= 4;
+        return 120 * index + 195;
     }
 
     protected class TerminableExecutor implements Runnable {

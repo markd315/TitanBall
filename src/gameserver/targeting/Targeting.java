@@ -8,9 +8,10 @@ import gameserver.targeting.core.Filter;
 import gameserver.targeting.core.Limiter;
 import gameserver.targeting.core.Selector;
 
+import java.io.Serializable;
 import java.util.*;
 
-public class Targeting {
+public class Targeting  implements Serializable {
 
     public Set<Entity> entities;
     private Selector selector;

@@ -54,17 +54,22 @@ public class ScreenConst {
         g2D.setFont(new Font(verdana.getName(), verdana.getStyle(), size));
     }
 
-    public void drawImage(Graphics2D g2D, Image image, int x, int y, TitanballClient context) {
-        drawImage(g2D, image, x, y, 1.0, 1.0, context);
+    public Image loadImage(Images image, String filename, TitanballClient context){
+        return loadImage(image, filename, context, 1.0, 1.0);
     }
 
-    public void drawImage(Graphics2D g2D, Image image, int x, int y, double wMult, double hMult, TitanballClient context) {
+    public Image loadImage(Images image, String filename, TitanballClient context, double wMult, double hMult){
+        image.loadImage(filename);
+        int w = (int) (image.getImage().getWidth(context) * wMult);
+        int h = (int) (image.getImage().getHeight(context) * hMult);
+        BufferedImage bi = Images.resize(toBi(image.getImage()), adjX(w), adjY(h));
+        return bi;
+    }
+
+    public void drawImage(Graphics2D g2D, Image image, int x, int y, TitanballClient context) {
         x = adjX(x);
         y = adjY(y);
-        int w = (int) (image.getWidth(context) * wMult);
-        int h = (int) (image.getHeight(context) * hMult);
-        BufferedImage bi = Images.resize(toBi(image), adjX(w), adjY(h));
-        g2D.drawImage(bi, x, y, context);
+        g2D.drawImage(image, x, y, context);
     }
 
     private BufferedImage toBi(Image img) {
