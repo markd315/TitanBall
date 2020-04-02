@@ -342,7 +342,7 @@ public class Titan extends Entity {
         support.add(e(c.getI("titan.stun.range") / 2));
         support.add(r(c.getI("titan.heal.range")));
         ranger.add(e(c.getI("titan.arrow.range")));
-        ranger.add(r(c.getI("titan.kick.range")));
+        ranger.add(r(c.getI("titan.kick.range")/2));
         warrior.add(e(c.getI("titan.slash.range")/2));
         warrior.add(r(c.getI("titan.flash.warrior.dist")));
         artisan.add(e(c.getI("titan.suck.range") /2));

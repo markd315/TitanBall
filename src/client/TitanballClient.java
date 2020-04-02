@@ -270,9 +270,6 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
     public void paintComponent(Graphics g) {
         Graphics2D g2D = (Graphics2D) g;
         super.paintComponent(g);
-        if(this.phase != null){
-            System.out.println(this.phase);
-        }
         if (game != null && game.ended) {
             darkTheme(g2D, true);
             Team team = teamFromUnderControl();
@@ -539,11 +536,9 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
             gameserverConn.addListener(new Listener() {
                 public synchronized void received(Connection connection, Object object) {
                     if (object instanceof Game) {
-                        System.out.println("got a packet");
                         game = (GameEngine) object;
                         game.began = true;
                         phase = game.phase;
-                        System.out.println("packet phase" + phase);
                         controlsHeld.gameID = gameID;
                         controlsHeld.token = token;
                         controlsHeld.masteries = masteries;
@@ -577,21 +572,17 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         if(!queued){
             loginClient.join(this.tournamentCode);
             token = loginClient.token;
-            System.out.println("setting token " + token);
             queued = true;
         }else{
             loginClient.check();
             token = loginClient.token;
         }
-        if(loginClient.gameId == null || loginClient.gameId.equals("WAITING")){
-            System.out.println("still waiting");
-        }else{
-            System.out.println("triggered");
+        if (loginClient.gameId != null && loginClient.gameId.equals("NOT QUEUED")) {
+            throw new UnirestException("Server not accepting connections");
+        }
+        if(loginClient.gameId != null && !loginClient.gameId.equals("WAITING")){
             this.gameID = loginClient.gameId;
             this.phase = GamePhase.COUNTDOWN;
-        }
-        if (loginClient.gameId.equals("NOT QUEUED")) {
-            throw new UnirestException("Server not accepting connections");
         }
         return loginClient.gameId;
     }
@@ -1694,7 +1685,6 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         g2D.setColor(Color.RED);
         sconst.setFont(g2D, font);
         sconst.drawString(g2D,"STARTING", 418, 480);
-        System.out.println(game == null ? "nullstill" : game.phase);
         if (game == null &&
                 Instant.now().isAfter(gamestart.plus(new Duration(500)))) {
             //TODO this messes us up bad somehow for everyone but the last client to connect

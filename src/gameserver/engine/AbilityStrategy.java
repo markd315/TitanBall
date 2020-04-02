@@ -46,7 +46,8 @@ public class AbilityStrategy {
     static final Limiter mouseNear = new Limiter(SortBy.NEAREST_MOUSE, 1);
 
     protected Const c;
-    public AbilityStrategy(GameEngine context, Titan caster){
+
+    public AbilityStrategy(GameEngine context, Titan caster) {
         this.context = context;
         this.caster = caster;
         this.c = context.c;
@@ -55,9 +56,9 @@ public class AbilityStrategy {
         y = context.lastControlPacket[clientIndex].posY + context.lastControlPacket[clientIndex].camY;
     }
 
-    public void parameterizedFlash(double cdSeconds, int dist){
-        int cd = (int) (caster.cooldownFactor * cdSeconds*1000);
-        dist*=caster.rangeFactor;
+    public void parameterizedFlash(double cdSeconds, int dist) {
+        int cd = (int) (caster.cooldownFactor * cdSeconds * 1000);
+        dist *= caster.rangeFactor;
         context.effectPool.addUniqueEffect(new CooldownR(cd, caster), context);
         shape = new Ellipse2D.Double(0, 0, 2, 2);
         sel = new Selector(shape, SelectorOffset.MOUSE_CENTER, c.FAR_RANGE);
@@ -76,11 +77,11 @@ public class AbilityStrategy {
         }
     }
 
-    public void ignite(double cd, double dur, double initialD, double recurringD){
-        cd*= caster.cooldownFactor;
-        dur*= caster.durationsFactor;
-        initialD*=caster.damageFactor;
-        recurringD*=caster.damageFactor;
+    public void ignite(double cd, double dur, double initialD, double recurringD) {
+        cd *= caster.cooldownFactor;
+        dur *= caster.durationsFactor;
+        initialD *= caster.damageFactor;
+        recurringD *= caster.damageFactor;
         int range = (int) (250 * caster.rangeFactor);
         shape = new Rectangle(0, 0, 20, 20);
         sel = new Selector(shape, SelectorOffset.MOUSE_CENTER,
@@ -88,18 +89,18 @@ public class AbilityStrategy {
         appliedTo = new Targeting(sel, notFriendly, mouseNear, context)
                 .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
         for (Entity e : appliedTo) {
-            if(initialD + recurringD > 0.0){
+            if (initialD + recurringD > 0.0) {
                 context.effectPool.addStackingEffect(caster, new EmptyEffect(5000, e, EffectId.ATTACKED));
             }
             context.effectPool.addUniqueEffect(new CooldownR((int) (cd * 1000), caster), context);
-            context.effectPool.addStackingEffect(new FlareEffect((int) (dur*1000), e, initialD, recurringD));
+            context.effectPool.addStackingEffect(new FlareEffect((int) (dur * 1000), e, initialD, recurringD));
         }
     }
 
-    public void circleSlash(double dmg, double cdMs){
+    public void circleSlash(double dmg, double cdMs) {
         dmg *= caster.damageFactor;
         double range = c.getI("titan.slash.range") * caster.rangeFactor;
-        context.effectPool.addUniqueEffect(new CooldownE((int) (cdMs*caster.cooldownFactor), caster), context);
+        context.effectPool.addUniqueEffect(new CooldownE((int) (cdMs * caster.cooldownFactor), caster), context);
         shape = new Ellipse2D.Double(0, 0, range, range);
         sel = new Selector(shape, SelectorOffset.CAST_CENTER, c.FAR_RANGE);
         appliedTo = new Targeting(sel, notFriendly, unlimited, context)
@@ -110,13 +111,13 @@ public class AbilityStrategy {
         }
     }
 
-    public void kick() {
+    public void kickSelectedTarget() {
         shape = new Ellipse2D.Double(0, 0, 1, 1);
         sel = new Selector(shape, SelectorOffset.MOUSE_CENTER, (int) (c.getI("titan.kick.range") * caster.rangeFactor));
         appliedTo = new Targeting(sel, champions, nearest, context)
                 .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
-        if(!appliedTo.isEmpty()){
-            context.effectPool.addUniqueEffect(new CooldownR((int) (c.getI("titan.kick.range")*caster.cooldownFactor), caster), context);
+        if (!appliedTo.isEmpty()) {
+            context.effectPool.addUniqueEffect(new CooldownR((int) (c.getI("titan.kick.range") * caster.cooldownFactor), caster), context);
         }
         for (Entity e : appliedTo) {
             double tx = caster.X;
@@ -147,44 +148,44 @@ public class AbilityStrategy {
         sel.select(Collections.EMPTY_SET, x, y, caster);
         corners = sel.getLatestColliderBounds();
         if (corners.getWidth() > 0 && inBoundsNotRedzone(corners)) {
-            context.effectPool.addUniqueEffect(new CooldownR((int) (caster.cooldownFactor *c.getI("titan.wall.cdms")), caster), context);
+            context.effectPool.addUniqueEffect(new CooldownR((int) (caster.cooldownFactor * c.getI("titan.wall.cdms")), caster), context);
             context.entityPool.add(new Wall(context, (int) corners.getX(), (int) corners.getY()));
         }
     }
 
     private boolean inBoundsNotRedzone(Rectangle corners) {
-        Rectangle goalH = new Rectangle(context.c.GOALIE_XH_MIN+50,
-                (context.c.GOALIE_Y_MIN+24),
+        Rectangle goalH = new Rectangle(context.c.GOALIE_XH_MIN + 50,
+                (context.c.GOALIE_Y_MIN + 24),
                 context.c.GOALIE_XH_MAX - context.c.GOALIE_XH_MIN,
                 context.c.GOALIE_Y_MAX - (context.c.GOALIE_Y_MIN) + 10);
         Rectangle goalA = new Rectangle(context.c.GOALIE_XA_MIN - 4,
-                (context.c.GOALIE_Y_MIN+24),
+                (context.c.GOALIE_Y_MIN + 24),
                 context.c.GOALIE_XA_MAX - context.c.GOALIE_XA_MIN + 29,
                 context.c.GOALIE_Y_MAX - (context.c.GOALIE_Y_MIN) + 10);
-        if(goalA.intersects(corners) || goalH.intersects(corners)
-            || goalA.contains(corners) || goalH.contains(corners)){
+        if (goalA.intersects(corners) || goalH.intersects(corners)
+                || goalA.contains(corners) || goalH.contains(corners)) {
             return false; //redzone
         }
         return inBounds(corners);
     }
 
-    private boolean inBounds(Rectangle corners){
+    private boolean inBounds(Rectangle corners) {
         Rectangle bounds = new Rectangle(context.c.MIN_X, context.c.MIN_Y,
                 context.c.MAX_X - context.c.MIN_X,
                 context.c.MAX_Y - context.c.MIN_Y);
         return corners.intersects(bounds) || bounds.contains(corners);
     }
 
-    public void scatter() {
-        int range = (int) (c.getI("titan.scatter.range") * caster.rangeFactor);
+    public void scatter(int rangeIn, int scatterDist, int cdms) {
+        int range = (int) (rangeIn * caster.rangeFactor);
         context.effectPool.addUniqueEffect(
-                new CooldownR((int) (caster.cooldownFactor *c.getI("titan.scatter.cdms")), caster), context);
+                new CooldownR((int) (caster.cooldownFactor * cdms), caster), context);
         shape = new Ellipse2D.Double(0, 0, range, range);
         sel = new Selector(shape, SelectorOffset.CAST_CENTER, c.FAR_RANGE);
         appliedTo = new Targeting(sel, champions, unlimited, context)
                 .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
         int limit = 0;
-        while (limit < c.getI("titan.scatter.dist")) {
+        while (limit < scatterDist) {
             for (Entity e : appliedTo) {
                 double tx = caster.X;
                 double ty = caster.Y;
@@ -212,7 +213,7 @@ public class AbilityStrategy {
         corners = sel.getLatestColliderBounds();
         if (corners.getWidth() > 0 && inBoundsNotRedzone(corners)) {
             context.effectPool.addUniqueEffect(
-                    new CooldownR((int) (caster.cooldownFactor *c.getI("titan.bportal.cdms")), caster), context);
+                    new CooldownR((int) (caster.cooldownFactor * c.getI("titan.bportal.cdms")), caster), context);
             context.entityPool.add(new BallPortal(TeamAffiliation.UNAFFILIATED, caster, context.entityPool,
                     (int) corners.getX(),
                     (int) corners.getY(), context));
@@ -229,7 +230,7 @@ public class AbilityStrategy {
                 .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
         for (Entity e : appliedTo) {
             context.effectPool.addUniqueEffect(
-                    new CooldownR((int) (caster.cooldownFactor *c.getD("titan.heal.cdms")), caster), context);
+                    new CooldownR((int) (caster.cooldownFactor * c.getD("titan.heal.cdms")), caster), context);
             eff = new HealEffect(dur, e, c.getD("titan.heal.initd"), c.getD("titan.heal.recurd"));
             context.effectPool.addStackingEffect(eff); //also unique and singleton
         }
@@ -238,7 +239,7 @@ public class AbilityStrategy {
     public void chargeShot() {
         int dur = (int) (c.getI("titan.shoot.dur") * caster.durationsFactor);
         context.effectPool
-                .addUniqueEffect(new CooldownR((int) (caster.cooldownFactor *c.getI("titan.shoot.cdms")), caster), context);
+                .addUniqueEffect(new CooldownR((int) (caster.cooldownFactor * c.getI("titan.shoot.cdms")), caster), context);
         context.effectPool.addUniqueEffect(
                 new ShootEffect(dur, caster, c.getD("titan.shoot.ratio")), context);
     }
@@ -252,7 +253,7 @@ public class AbilityStrategy {
         corners = sel.getLatestColliderBounds();
         if (corners.getWidth() > 0 && inBoundsNotRedzone(corners)) {
             context.effectPool.addUniqueEffect(
-                    new CooldownE((int) (caster.cooldownFactor *c.getI("titan.portal.range")), caster), context);
+                    new CooldownE((int) (caster.cooldownFactor * c.getI("titan.portal.range")), caster), context);
             System.out.println("-1 hit");
             context.entityPool.add(new Portal(caster.team, caster,
                     context.entityPool, (int) corners.getX(), (int) corners.getY(), context));
@@ -269,7 +270,7 @@ public class AbilityStrategy {
         corners = sel.getLatestColliderBounds();
         if (corners.getWidth() > 0 && inBoundsNotRedzone(corners)) {
             context.effectPool.addUniqueEffect(
-                    new CooldownE((int) (caster.cooldownFactor *c.getI("titan.trap.cdms")), caster), context);
+                    new CooldownE((int) (caster.cooldownFactor * c.getI("titan.trap.cdms")), caster), context);
             context.entityPool.add(new Trap(caster, context, (int) corners.getX(), (int) corners.getY()));
         }
     }
@@ -284,7 +285,7 @@ public class AbilityStrategy {
                 .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
         for (Entity e : appliedTo) {
             context.effectPool.addUniqueEffect(
-                    new CooldownE((int) (caster.cooldownFactor *c.getI("titan.trap.cdms")), caster), context);
+                    new CooldownE((int) (caster.cooldownFactor * c.getI("titan.trap.cdms")), caster), context);
             eff = new RatioEffect(dur, e, EffectId.SLOW, c.getD("titan.trap.ratio"));
             context.effectPool.addUniqueEffect(
                     eff, context);
@@ -294,7 +295,7 @@ public class AbilityStrategy {
     public void suckBall() {
         int range = (int) (c.getI("titan.suck.range") * caster.rangeFactor);
         context.effectPool.addUniqueEffect(
-                new CooldownE((int) (caster.cooldownFactor *c.getI("titan.suck.cdms")), caster), context);
+                new CooldownE((int) (caster.cooldownFactor * c.getI("titan.suck.cdms")), caster), context);
         shape = new Ellipse2D.Double(0, 0, range, range);
         sel = new Selector(shape, SelectorOffset.CAST_CENTER, c.FAR_RANGE);
         //To update the region to caster loc
@@ -328,7 +329,7 @@ public class AbilityStrategy {
         corners = sel.getLatestColliderBounds();
         if (corners.getWidth() > 0 && inBoundsNotRedzone(corners)) {
             context.effectPool.addUniqueEffect(
-                    new CooldownE((int) (caster.cooldownFactor *c.getI("titan.cage.cdms")), caster), context);
+                    new CooldownE((int) (caster.cooldownFactor * c.getI("titan.cage.cdms")), caster), context);
             context.entityPool.add(new Cage(caster.team, caster,
                     (int) corners.getX(), (int) corners.getY(), context));
         }
@@ -336,15 +337,15 @@ public class AbilityStrategy {
 
     public void releaseCages() {
         context.effectPool.addUniqueEffect(
-                new CooldownR((int) (caster.cooldownFactor *c.getI("titan.wolf.cdms")), caster), context);
+                new CooldownR((int) (caster.cooldownFactor * c.getI("titan.wolf.cdms")), caster), context);
         ArrayList<Cage> cages = new ArrayList<Cage>();
-        for(Entity e : context.entityPool){
-            if(e instanceof Cage &&
-                    ((Cage)e).getCreatedById().equals(caster.id)){
+        for (Entity e : context.entityPool) {
+            if (e instanceof Cage &&
+                    ((Cage) e).getCreatedById().equals(caster.id)) {
                 cages.add((Cage) e);
             }
         }
-        for(Cage c : cages){
+        for (Cage c : cages) {
             c.open(context, cages.size());
         }
     }
@@ -353,7 +354,7 @@ public class AbilityStrategy {
         int range = (int) (c.getI("titan.flashbang.range") * caster.rangeFactor);
         int dur = (int) (durMillis * caster.durationsFactor);
         context.effectPool.addUniqueEffect(
-                new CooldownE((int) (caster.cooldownFactor *c.getI("titan.flashbang.cdms")), caster), context);
+                new CooldownE((int) (caster.cooldownFactor * c.getI("titan.flashbang.cdms")), caster), context);
         shape = new Ellipse2D.Double(0, 0, range, range);
         sel = new Selector(shape, SelectorOffset.CAST_CENTER, c.FAR_RANGE);
         appliedTo = new Targeting(sel, champions, nearest, context)
@@ -374,7 +375,7 @@ public class AbilityStrategy {
         corners = sel.getLatestColliderBounds();
         if (corners.getWidth() > 0 && inBoundsNotRedzone(corners)) {
             context.effectPool.addUniqueEffect(
-                    new CooldownR((int) (caster.cooldownFactor *c.getI("titan.molotov.cdms")), caster), context);
+                    new CooldownR((int) (caster.cooldownFactor * c.getI("titan.molotov.cdms")), caster), context);
             context.entityPool.add(new Fire(caster, (int) corners.getX(), (int) corners.getY()));
             //41 ticks per second
             //8.2 tick DPS + 1 initial (more initials+duration if running through constantly)
@@ -387,7 +388,7 @@ public class AbilityStrategy {
         int range = (int) (c.getI("titan.stun.range") * caster.rangeFactor);
         int dur = (int) (durMillis * caster.durationsFactor);
         context.effectPool.addUniqueEffect(
-                new CooldownE((int) (caster.cooldownFactor *c.getI("titan.stun.cdms")), caster), context);
+                new CooldownE((int) (caster.cooldownFactor * c.getI("titan.stun.cdms")), caster), context);
         shape = new Ellipse2D.Double(0, 0, range, range);
         sel = new Selector(shape, SelectorOffset.CAST_CENTER, c.FAR_RANGE);
         appliedTo = new Targeting(sel, champions, nearest, context)
@@ -408,42 +409,42 @@ public class AbilityStrategy {
                 .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
         for (Entity e : appliedTo) {
             context.effectPool.addUniqueEffect(
-                    new CooldownE((int) (caster.cooldownFactor *cdMs), caster), context);
+                    new CooldownE((int) (caster.cooldownFactor * cdMs), caster), context);
             context.effectPool.addStackingEffect(caster, new EmptyEffect(5000, e, EffectId.ATTACKED));
             e.damage(context, dmg);
         }
     }
 
     public boolean stealBall() {
-        context.effectPool.addUniqueEffect(
-                new CooldownQ((int) (caster.cooldownFactor *c.STEAL_CD), caster), context);
-        shape = new Ellipse2D.Double(0, 0, caster.stealRad*2, caster.stealRad*2);
-        sel = new Selector(shape, SelectorOffset.CAST_CENTER, c.FAR_RANGE);
-        new Targeting(sel, champions, unlimited, context)
-                .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
-        if (context.titanInPossession().isPresent() &&
-                !context.titanInPossession().get().id.equals(caster.id)) {
-            //Change previous conditional to exclude teammates in prod.
-            Titan tip = context.titanInPossession().get();
-            double x = sel.getLatestColliderCircle().x;
-            double y = sel.getLatestColliderCircle().y;
-            double r = sel.getLatestColliderCircle().height / 2.0;
-            if (context.ball.intersectCircle(x, y, r) && context.ballVisible) {
-                context.stats.grant(context, tip, StatEngine.StatEnum.TURNOVERS);
-                context.stats.grant(context, caster, StatEngine.StatEnum.STEALS);
-                tip.possession = 0;
-                eff = new EmptyEffect((int) (c.STOLEN_STUN * caster.durationsFactor), tip, EffectId.STEAL);
-                context.effectPool.addStackingEffect(caster, eff);
+        if (!context.titanInPossession().isPresent() || !context.titanInPossession().get().id.equals(caster.id)) {
+            context.effectPool.addUniqueEffect(
+                    new CooldownQ((int) (caster.cooldownFactor * c.STEAL_CD), caster), context);
+            if (context.titanInPossession().isPresent()) {
+                Titan tip = context.titanInPossession().get();
+                shape = new Ellipse2D.Double(0, 0, caster.stealRad * 2, caster.stealRad * 2);
+                sel = new Selector(shape, SelectorOffset.CAST_CENTER, c.FAR_RANGE);
+                new Targeting(sel, champions, unlimited, context)
+                        .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
+                double x = sel.getLatestColliderCircle().x;
+                double y = sel.getLatestColliderCircle().y;
+                double r = sel.getLatestColliderCircle().height / 2.0;
+                if (context.ball.intersectCircle(x, y, r) && context.ballVisible) {
+                    context.stats.grant(context, tip, StatEngine.StatEnum.TURNOVERS);
+                    context.stats.grant(context, caster, StatEngine.StatEnum.STEALS);
+                    tip.possession = 0;
+                    eff = new EmptyEffect((int) (c.STOLEN_STUN * caster.durationsFactor), tip, EffectId.STEAL);
+                    context.effectPool.addStackingEffect(caster, eff);
 
-                context.ball.X = caster.X + caster.centerDist - context.ball.centerDist;
-                context.ball.Y = caster.Y + caster.centerDist - context.ball.centerDist;
-                caster.actionState = Titan.TitanState.IDLE;
-                caster.actionFrame = 0;
-                caster.possession = 1;
-                return true;
+                    context.ball.X = caster.X + caster.centerDist - context.ball.centerDist;
+                    context.ball.Y = caster.Y + caster.centerDist - context.ball.centerDist;
+                    caster.actionState = Titan.TitanState.IDLE;
+                    caster.actionFrame = 0;
+                    caster.possession = 1;
+                    return true;
+                }
             }
+            caster.pushMove();
         }
-        caster.pushMove();
         return false;
     }
 }

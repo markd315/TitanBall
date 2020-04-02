@@ -95,10 +95,14 @@ public class Ability {
                     strat.spawnBallPortal();
                     break;
                 case GOLEM:
-                    strat.scatter();
+                    strat.scatter(context.c.getI("titan.scatter.range"),
+                            context.c.getI("titan.scatter.dist"),
+                            context.c.getI("titan.scatter.cdms"));
                     break;
                 case RANGER:
-                    strat.kick();
+                    strat.scatter(context.c.getI("titan.kick.range"),
+                            context.c.getI("titan.kick.dist"),
+                            context.c.getI("titan.kick.cdms"));
                     break;
                 case MAGE:
                     strat.ignite(context.c.getD("titan.ignite.cds"),
