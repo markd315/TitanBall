@@ -379,7 +379,7 @@ public class Titan extends Entity {
         titanEText.put(TitanType.RANGER, "Shoot a damaging arrow at enemies");
         titanEText.put(TitanType.MARKSMAN, "Slow a nearby enemy temporarily");
         titanEText.put(TitanType.DASHER, "Protect the ball from any steal attempts");
-        titanEText.put(TitanType.GOLEM, "Block 99% of incoming damage for a few seconds");
+        titanEText.put(TitanType.GOLEM, "Reduce incoming damage for a few seconds");
         titanEText.put(TitanType.BUILDER, "Build traps that will damage anyone moving thru them");
         titanEText.put(TitanType.WARRIOR, "Powerfully slash nearby enemies for significant damage");
         titanEText.put(TitanType.SUPPORT, "Stun an enemy for a short amount of time");
@@ -389,10 +389,10 @@ public class Titan extends Entity {
         titanEText.put(TitanType.HOUNDMASTER, "Spawn a cage with a hound");
 
         titanRText.put(TitanType.MAGE, "Scald an enemy with powerful fire magic");
-        titanRText.put(TitanType.RANGER, "Kick a nearby enemy a short distance away from you");
+        titanRText.put(TitanType.RANGER, "Knock all nearby enemies back a short distance");
         titanRText.put(TitanType.MARKSMAN, "Massively boost shot/pass range and power");
         titanRText.put(TitanType.DASHER, "Ignite an enemy with a flare to prevent stealth");
-        titanRText.put(TitanType.GOLEM, "Knock all nearby enemies back a moderate distance");
+        titanRText.put(TitanType.GOLEM, "Knock all nearby enemies back a long distance");
         titanRText.put(TitanType.BUILDER, "Build walls that block balls and players");
         titanRText.put(TitanType.WARRIOR, "Warp a short distance, or until you hit a solid player/object");
         titanRText.put(TitanType.SUPPORT, "Heal an ally, some at first and more over time");

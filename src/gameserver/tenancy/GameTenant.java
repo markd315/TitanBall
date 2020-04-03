@@ -42,7 +42,7 @@ public class GameTenant {
 
 
     public void delegatePacket(Connection connection, ClientPacket request) {
-        if (state == null || state.phase.getCode() < 8) {
+        if (state == null || state.phase != GamePhase.INGAME) {
             addOrReplaceNewClient(connection, clients, request.token);
         }
         if (state != null) {

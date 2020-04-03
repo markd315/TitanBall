@@ -13,9 +13,7 @@ import networking.ClientPacket;
 import networking.PlayerDivider;
 import org.joda.time.Instant;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Game {
@@ -93,6 +91,9 @@ public class Game {
             players);
 
     public Box ball = new Box(0, 0, c.getI("ball.w"), c.getI("ball.h"));
+
+    public Map<String, TitanType> picksAndBans = new HashMap<>();
+    public TeamAffiliation yourteam;
 
     public boolean anyPoss() {
         for (Titan t : players) {
