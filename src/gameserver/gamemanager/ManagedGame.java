@@ -115,7 +115,7 @@ public class ManagedGame {
     }
 
     private void startGame(List<PlayerConnection> gameIncludedClients){
-        if(state.away.score + state.home.score > 0){
+        if(state != null && state.away.score + state.home.score > 0){
             return; //Don't reset the game in this case lol
         }
         System.out.println("starting full");
