@@ -22,7 +22,7 @@ import gameserver.targeting.*;
 import gameserver.targeting.core.Filter;
 import gameserver.targeting.core.Limiter;
 import gameserver.targeting.core.Selector;
-import gameserver.tenancy.GamePhase;
+import gameserver.gamemanager.GamePhase;
 import org.joda.time.Instant;
 import util.ConstOperations;
 

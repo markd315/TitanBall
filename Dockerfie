@@ -1,0 +1,32 @@
+FROM ubuntu:16.04
+RUN sudo apt install mariadb-server -y
+RUN sudo mysql --version
+RUN sudo service mysql restart
+RUN sudo apt install apache2 -y
+RUN sudo apt install unzip -y
+RUN sudo apt-get install default-jre -y
+RUN mysql -e "use mysql; CREATE TABLE users(id int auto_increment primary key, username varchar(255), email varchar(255), password varchar(70), role varchar(10), rating double default 1000.0,             	    wins int default 0,             	    losses int default 0, ties int default 0,              	    created timestamp,             	    goals int default 0,             	    points double default 0.0,                     sidegoals int default 0,                     blocks int default 0,                     steals int default 0,                     passes int default 0,                     kills int default 0,                     deaths int default 0,             	    turnovers int default 0,             	    killassists int default 0,             	    goalassists int default 0, rebounds int default 0, rating_1v1 double default 1000.0,             	    wins_1v1 int default 0,             	    losses_1v1 int default 0, ties_1v1 int default 0, goals_1v1 int default 0,             	    points_1v1 double default 0.0,                     sidegoals_1v1 int default 0,                     blocks_1v1 int default 0,                     steals_1v1 int default 0,                     passes_1v1 int default 0,                     kills_1v1 int default 0,                     deaths_1v1 int default 0,             	    turnovers_1v1 int default 0,             	    killassists_1v1 int default 0,             	    goalassists_1v1 int default 0, rebounds_1v1 int default 0, activation varchar(10), subexpiration timestamp, enabled boolean default 1);"
+RUN mysql -e "use mysql; CREATE TABLE classes(id int auto_increment primary key, role varchar(32), wins int default 0, losses int default 0, ties int default 0, goals int default 0, points double default 0.0, sidegoals int default 0, blocks int default 0, steals int default 0, passes int default 0, kills int default 0, deaths int default 0, turnovers int default 0, killassists int default 0, goalassists int default 0, rebounds int default 0);"
+RUN mysql -e "use mysql; insert into users (id, username, email, password, role, created, subexpiration) values(10,'markd315', 'markd315@gmail.com', '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.','ADMIN', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);"
+RUN mysql -e "use mysql; insert into users (id, username, email, password, role, created, subexpiration) values(11,'mattbuster', 'mattbuster@gmail.com', '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.','USER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);"
+RUN mysql -e "use mysql; insert into users (id, username, email, password, role, created, subexpiration) values(1,'u1', 'e1@gmail.com', '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.','USER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);"
+RUN mysql -e "use mysql; insert into users (id, username, email, password, role, created, subexpiration) values(2,'u2', 'e2@gmail.com', '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.','USER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);"
+RUN mysql -e "use mysql; insert into users (id, username, email, password, role, created, subexpiration) values(3,'u3', 'e3@gmail.com', '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.','USER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);"
+RUN mysql -e "use mysql; insert into users (id, username, email, password, role, created, subexpiration) values(4,'u4', 'e4@gmail.com', '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.','USER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);"
+RUN mysql -e "use mysql; insert into users (id, username, email, password, role, created, subexpiration) values(5,'u5', 'e5@gmail.com', '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.','USER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);"
+RUN mysql -e "use mysql; insert into users (id, username, email, password, role, created, subexpiration) values(6,'u6', 'e6@gmail.com', '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.','USER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);"
+RUN mysql -e "use mysql; insert into users (id, username, email, password, role, created, subexpiration) values(7,'u7', 'e7@gmail.com', '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.','USER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);"
+RUN mysql -e "use mysql; insert into users (id, username, email, password, role, created, subexpiration) values(8,'u8', 'e8@gmail.com', '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.','USER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);"
+RUN mysql -e "use mysql; insert into users (id, username, email, password, role, created, subexpiration) values(9,'u0', 'e0@gmail.com', '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.','USER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);"
+RUN mysql -e "use mysql; insert into classes (id, role) values(1,'GOALIE');"
+RUN mysql -e "use mysql; insert into classes (id, role) values(2,'WARRIOR');"
+RUN mysql -e "use mysql; insert into classes (id, role) values(3,'RANGER');"
+RUN mysql -e "use mysql; insert into classes (id, role) values(4,'DASHER');"
+RUN mysql -e "use mysql; insert into classes (id, role) values(5,'MARKSMAN');"
+RUN mysql -e "use mysql; insert into classes (id, role) values(6,'STEALTH');"
+RUN mysql -e "use mysql; insert into classes (id, role) values(7,'SUPPORT');"
+RUN mysql -e "use mysql; insert into classes (id, role) values(8,'ARTISAN');"
+RUN mysql -e "use mysql; insert into classes (id, role) values(9,'GOLEM');"
+RUN mysql -e "use mysql; insert into classes (id, role) values(10,'MAGE');"
+RUN mysql -e "use mysql; insert into classes (id, role) values(11,'BUILDER');"
+RUN mysql -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost' IDENTIFIED BY 'tmp' WITH GRANT OPTION;"

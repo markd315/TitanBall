@@ -23,7 +23,7 @@ import gameserver.entity.TitanType;
 import gameserver.entity.minions.*;
 import gameserver.models.Game;
 import gameserver.targeting.ShapePayload;
-import gameserver.tenancy.GamePhase;
+import gameserver.gamemanager.GamePhase;
 import networking.ClientPacket;
 import networking.KryoRegistry;
 import org.joda.time.Duration;

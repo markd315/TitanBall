@@ -14,7 +14,6 @@ gameserver\entity\minions\BallPortal$1.class
 client\TitanballClient$3.class
 gameserver\engine\GameEngine$TerminableExecutor.class
 gameserver\entity\minions\Portal.class
-gameserver\tenancy\GamePhase.class
 gameserver\engine\StatEngine.class
 gameserver\effects\effects\DefenseEffect.class
 gameserver\effects\cooldowns\CooldownQ.class
@@ -46,11 +45,9 @@ gameserver\entity\Collidable.class
 gameserver\entity\minions\Portal$RetObj.class
 gameserver\effects\effects\ShootEffect.class
 gameserver\entity\Box.class
-gameserver\tenancy\ServerApplication$1.class
 gameserver\targeting\core\Limiter.class
 client\TitanballClient$2.class
 gameserver\effects\cooldowns\CooldownR.class
-gameserver\tenancy\ServerApplication.class
 gameserver\Const.class
 gameserver\effects\effects\BleedEffect.class
 gameserver\entity\minions\Trap.class
@@ -81,7 +78,6 @@ gameserver\effects\effects\RatioEffect.class
 gameserver\models\Game.class
 gameserver\engine\Ability$1.class
 gameserver\entity\Entity.class
-gameserver\tenancy\GameTenant.class
 gameserver\TutorialOverrides.class
 gameserver\effects\effects\HealEffect.class
 authserver\SpringContextBridge.class

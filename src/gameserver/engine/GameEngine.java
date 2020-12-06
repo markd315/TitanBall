@@ -16,8 +16,8 @@ import gameserver.entity.Titan;
 import gameserver.entity.TitanType;
 import gameserver.entity.minions.Tickable;
 import gameserver.models.Game;
-import gameserver.tenancy.GamePhase;
-import gameserver.tenancy.GameTenant;
+import gameserver.gamemanager.GamePhase;
+import gameserver.gamemanager.ManagedGame;
 import networking.ClientPacket;
 import networking.KeyDifferences;
 import networking.PlayerDivider;
@@ -59,7 +59,7 @@ public class GameEngine extends Game {
         this.lastControlPacket = new ClientPacket[clients.size()];
     }
 
-    public GameEngine(String gameId, List<PlayerDivider> players, GameOptions options, GameTenant gameTenant) {
+    public GameEngine(String gameId, List<PlayerDivider> players, GameOptions options, ManagedGame managedGame) {
         this(gameId, players, options);
     }
 

@@ -8,7 +8,7 @@ import gameserver.entity.Entity;
 import gameserver.entity.Titan;
 import gameserver.entity.TitanType;
 import gameserver.targeting.ShapePayload;
-import gameserver.tenancy.GamePhase;
+import gameserver.gamemanager.GamePhase;
 import networking.ClientPacket;
 import networking.PlayerDivider;
 import org.joda.time.Instant;

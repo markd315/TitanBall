@@ -7,7 +7,7 @@ import client.forms.LoginForm;
 import com.esotericsoftware.kryonet.Client;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import gameserver.tenancy.GamePhase;
+import gameserver.gamemanager.GamePhase;
 
 import javax.swing.*;
 import java.awt.*;
