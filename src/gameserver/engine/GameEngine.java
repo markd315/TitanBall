@@ -226,6 +226,7 @@ public class GameEngine extends Game {
                 ballVisible = false;
                 inGame = false;
                 goalVisible = true;
+                System.out.println(us.score + " " + enemy.score);
                 serverDelayReset();
             }
         }
@@ -281,6 +282,7 @@ public class GameEngine extends Game {
     }
 
     public void initializeServer() {
+        System.out.println("initializing");
         home.hasBall = false;
         away.hasBall = false;
         goalVisible = false;
