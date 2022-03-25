@@ -4,8 +4,9 @@ package gameserver.engine;
 import org.joda.time.Instant;
 
 import java.awt.geom.Rectangle2D;
+import java.io.Serializable;
 
-public class GoalHoop{
+public class GoalHoop implements Serializable {
     public Instant nextAvailable;
     public boolean onCooldown, frozen;
     public TeamAffiliation team;

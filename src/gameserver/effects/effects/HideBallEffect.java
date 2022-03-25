@@ -5,7 +5,9 @@ import gameserver.engine.GameEngine;
 import gameserver.effects.EffectId;
 import gameserver.entity.Entity;
 
-public class HideBallEffect extends Effect {
+import java.io.Serializable;
+
+public class HideBallEffect extends Effect implements Serializable {
     public HideBallEffect(int durationMillis, Entity e){
         super(EffectId.HIDE_BALL, e, durationMillis);
     }

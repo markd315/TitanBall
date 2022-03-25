@@ -3,7 +3,9 @@ package gameserver.effects.effects;
 import gameserver.effects.EffectId;
 import gameserver.entity.Entity;
 
-public class RatioEffect extends EmptyEffect{
+import java.io.Serializable;
+
+public class RatioEffect extends EmptyEffect implements Serializable {
     private double ratio;
 
     public RatioEffect(int durationMillis, Entity e, EffectId id, double ratio){

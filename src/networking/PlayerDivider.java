@@ -3,10 +3,11 @@ package networking;
 import com.esotericsoftware.kryonet.Connection;
 import gameserver.engine.GameEngine;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-public class PlayerDivider {
+public class PlayerDivider  implements Serializable {
     public String email = "";
     public boolean ready = false;
     public double newRating;

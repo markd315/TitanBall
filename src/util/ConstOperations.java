@@ -2,11 +2,12 @@ package util;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Scanner;
 
-public class ConstOperations {
+public class ConstOperations  implements Serializable {
     private Map<String, String> cache = new HashMap();
     public ConstOperations(String s) {
         Scanner sc = null;

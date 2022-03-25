@@ -7,11 +7,12 @@ import org.joda.time.Instant;
 import util.Util;
 
 import java.awt.*;
+import java.io.Serializable;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-public class Portal extends gameserver.entity.Entity implements Collidable {
+public class Portal extends gameserver.entity.Entity implements Collidable, Serializable {
 
     private int COOLDOWN_MS;
     private int MAX_RANGE;

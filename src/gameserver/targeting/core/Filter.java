@@ -7,12 +7,13 @@ import gameserver.entity.TitanType;
 import gameserver.targeting.DistanceFilter;
 
 import java.awt.geom.Point2D;
+import java.io.Serializable;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class Filter {
+public class Filter  implements Serializable {
     TeamAffiliation team;
     TitanType type;
     boolean allowSelf;

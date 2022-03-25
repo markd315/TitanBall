@@ -2,9 +2,10 @@ package networking;
 
 import com.esotericsoftware.kryonet.Connection;
 
+import java.io.Serializable;
 import java.util.List;
 
-public class PlayerConnection extends PlayerDivider {
+public class PlayerConnection extends PlayerDivider  implements Serializable {
     public PlayerConnection(List<Integer> possibleSelection, Connection client, String email){
         super(possibleSelection);
         this.possibleSelection = possibleSelection;

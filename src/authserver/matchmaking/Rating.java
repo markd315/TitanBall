@@ -4,9 +4,10 @@ package authserver.matchmaking;
 //Copied under MIT License with attribution on 7/23/2019
 //https://github.com/jsnider3/Jelo/blob/master/LICENSE
 
+import java.io.Serializable;
 import java.util.List;
 
-public class Rating<E>
+public class Rating<E> implements Serializable
 {
     private int gamesRecorded;
     public double rating, ratingDelta, previousRating;

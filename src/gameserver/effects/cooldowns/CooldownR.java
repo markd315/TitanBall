@@ -6,7 +6,9 @@ import gameserver.effects.EffectId;
 import gameserver.effects.effects.Effect;
 import gameserver.entity.Entity;
 
-public class CooldownR extends Effect {
+import java.io.Serializable;
+
+public class CooldownR extends Effect implements Serializable {
 
     public CooldownR(int durationMillis, Entity e){
         super(EffectId.COOLDOWN_R, e, durationMillis);

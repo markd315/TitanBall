@@ -3,9 +3,10 @@ package authserver.matchmaking;
 //Copied and heavily modified under MIT License with attribution on 7/23/2019
 //https://github.com/jsnider3/Jelo/blob/master/LICENSE
 
+import java.io.Serializable;
 import java.util.List;
 
-public class Match<E> {
+public class Match<E>  implements Serializable {
     private final int winnerParamSlot;
     private Rating<E> winner;
     private Rating<E> loser;

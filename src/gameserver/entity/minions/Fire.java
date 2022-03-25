@@ -9,7 +9,9 @@ import gameserver.entity.Collidable;
 import gameserver.entity.Entity;
 import gameserver.entity.Titan;
 
-public class Fire extends gameserver.entity.Entity implements Collidable {
+import java.io.Serializable;
+
+public class Fire extends gameserver.entity.Entity implements Collidable, Serializable {
 
     private String caster;
     private static Const c = new Const("res/game.cfg");

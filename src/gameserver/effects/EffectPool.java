@@ -6,12 +6,13 @@ import gameserver.entity.Entity;
 import gameserver.entity.Titan;
 import org.joda.time.Instant;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.ConcurrentModificationException;
 import java.util.List;
 
-public class EffectPool {
+public class EffectPool implements Serializable {
     public EffectPool() {
         this.pool = new ArrayList<>();
         this.targetPool = new ArrayList<>();

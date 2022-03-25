@@ -9,12 +9,13 @@ import gameserver.engine.GameEngine;
 import gameserver.engine.TeamAffiliation;
 
 import java.awt.*;
+import java.io.Serializable;
 import java.util.*;
 
 import static util.Util.typesafeNumeric;
 
 
-public class Titan extends Entity {
+public class Titan extends Entity  implements Serializable {
     public int sel, possession = 0;
 
     public double throwPower = 1.0;

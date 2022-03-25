@@ -5,7 +5,6 @@ import client.graphical.GoalSprite;
 import client.graphical.ScreenConst;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.rits.cloning.Cloner;
 import gameserver.TutorialOverrides;
 import gameserver.effects.EffectId;
 import gameserver.effects.cooldowns.CooldownCurve;
@@ -15,9 +14,9 @@ import gameserver.entity.Entity;
 import gameserver.entity.Titan;
 import gameserver.entity.TitanType;
 import gameserver.entity.minions.Tickable;
-import gameserver.models.Game;
 import gameserver.gamemanager.GamePhase;
 import gameserver.gamemanager.ManagedGame;
+import gameserver.models.Game;
 import networking.ClientPacket;
 import networking.KeyDifferences;
 import networking.PlayerDivider;
@@ -633,8 +632,6 @@ public class GameEngine extends Game {
                 lastControlPacket[0] = new ClientPacket();
             }
             KeyDifferences controlsHeld = new KeyDifferences(controls, lastControlPacket[clientIndex]);
-            Cloner c = new Cloner();
-            lastControlPacket[clientIndex] = c.deepClone(controls);
             boost(controlsHeld, t);
             if (controlsHeld.SWITCH == 1 && this.phase == GamePhase.INGAME && t.actionState == Titan.TitanState.IDLE) {
                 from.incSel(this);
@@ -689,6 +686,7 @@ public class GameEngine extends Game {
                 }
             }
             moveKeys(controlsHeld, t);
+            lastControlPacket[clientIndex] = controls;
         }
     }
 
@@ -860,7 +858,7 @@ public class GameEngine extends Game {
     }
 
     public void gameTick() throws Exception {
-        //System.out.println("tock " + began + ended);
+        System.out.println("tock " + began + ended);
         lock();
         this.now = Instant.now();
         if (began && !ended) {
@@ -1729,6 +1727,8 @@ public class GameEngine extends Game {
     }
 
     public Titan titanSelected(PlayerDivider p) {
+        if(p == null)
+            return null;
         Titan t = players[p.selection - 1];
         //System.out.println( "controlling " + (t.team.toString() + t.getType()
         //+ " " + t.runUp + t.runDown + t.runLeft + t.runRight));

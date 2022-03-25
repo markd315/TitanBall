@@ -20,11 +20,12 @@ import util.Util;
 
 import java.awt.*;
 import java.awt.geom.Ellipse2D;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Set;
 
-public class AbilityStrategy {
+public class AbilityStrategy implements Serializable {
     protected Selector sel;
     protected Shape shape;
     protected Set<Entity> appliedTo;

@@ -3,10 +3,11 @@ package gameserver.engine;
 
 import gameserver.entity.Titan;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Team {
+public class Team  implements Serializable {
     public double score;
     public boolean hasBall;
     public TeamAffiliation which;

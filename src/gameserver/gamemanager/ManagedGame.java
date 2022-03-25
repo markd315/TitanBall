@@ -5,7 +5,6 @@ import authserver.users.identities.UserService;
 import com.esotericsoftware.kryonet.Connection;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.rits.cloning.Cloner;
 import gameserver.Const;
 import gameserver.effects.EffectId;
 import gameserver.effects.EffectPool;
@@ -20,6 +19,10 @@ import networking.PlayerDivider;
 import org.joda.time.Instant;
 import util.Util;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -145,15 +148,20 @@ public class ManagedGame {
             //System.out.println(p.toString());
         }
         Runnable updateClients = () -> {
-            //System.out.println("updating clients now");
+            System.out.println("updating clients now");
             clients.parallelStream().forEach(client -> {
-                PlayerDivider pd = dividerFromConn(client.getClient());
-                //Optimizing clone away by only hacking in the needed var fails because of occasional concurrency issue
-                Cloner cloner= new Cloner();
-                GameEngine update = cloner.deepClone(state);
-                update.underControl = state.titanSelected(pd);
-                update.now = Instant.now();
-                client.getClient().sendTCP(anticheat(update));
+                try{
+                    PlayerDivider pd = dividerFromConn(client.getClient());
+                    //Optimizing clone away by only hacking in the needed var fails because of occasional concurrency issue
+                    GameEngine update = (GameEngine) deepClone(state);
+                    assert update != null;
+                    update.underControl = state.titanSelected(pd);
+                    update.now = Instant.now();
+                    client.getClient().sendTCP(anticheat(update));
+                }
+                catch (Exception ex1){
+                    ex1.printStackTrace();
+                }
             });
         };
         exec.scheduleAtFixedRate(updateClients, 1, 50, TimeUnit.MILLISECONDS);
@@ -497,5 +505,19 @@ public class ManagedGame {
             }
         }
         return false;
+    }
+    public static Object deepClone(Object object) {
+        try {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ObjectOutputStream oos = new ObjectOutputStream(baos);
+            oos.writeObject(object);
+            ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
+            ObjectInputStream ois = new ObjectInputStream(bais);
+            return ois.readObject();
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 }

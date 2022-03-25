@@ -6,7 +6,9 @@ import gameserver.effects.effects.DeadEffect;
 import gameserver.engine.GameEngine;
 import gameserver.engine.TeamAffiliation;
 
-public class Entity extends Box {
+import java.io.Serializable;
+
+public class Entity extends Box  implements Serializable {
     public double health, maxHealth;
     public TeamAffiliation team;
     public double speed = 5;

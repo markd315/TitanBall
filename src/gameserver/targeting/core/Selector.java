@@ -11,10 +11,11 @@ import java.awt.*;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.Point2D;
+import java.io.Serializable;
 import java.util.HashSet;
 import java.util.Set;
 
-public class Selector {
+public class Selector  implements Serializable {
     //Region-based selection of entities
     public Shape sizeDef, latestCollider;
     //sizeDef does not have updated cast info, and is a prototype

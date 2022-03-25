@@ -13,10 +13,11 @@ import networking.ClientPacket;
 import networking.PlayerDivider;
 import org.joda.time.Instant;
 
+import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class Game {
+public class Game  implements Serializable {
     public String gameId;
     public UUID lastPossessed;
     public Const c = new Const("res/game.cfg");

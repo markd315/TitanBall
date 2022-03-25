@@ -13,8 +13,9 @@ import gameserver.targeting.core.Selector;
 
 import java.awt.*;
 import java.awt.geom.Ellipse2D;
+import java.io.Serializable;
 
-public class Ability {
+public class Ability implements Serializable {
     public boolean castE(GameEngine context, Titan caster) throws NullPointerException {
         AbilityStrategy strat = new AbilityStrategy(context, caster);
         Const c = strat.c;

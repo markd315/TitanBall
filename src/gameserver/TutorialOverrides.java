@@ -12,9 +12,10 @@ import gameserver.gamemanager.GamePhase;
 import networking.ClientPacket;
 import networking.PlayerDivider;
 
+import java.io.Serializable;
 import java.util.*;
 
-public class TutorialOverrides extends GameEngine {
+public class TutorialOverrides extends GameEngine  implements Serializable {
 
      Titan hGol = new Titan(HOME_HI_X, HOME_HI_Y, TeamAffiliation.HOME, TitanType.GOALIE);
      Titan awGol = new Titan(AWAY_HI_X, AWAY_HI_Y, TeamAffiliation.AWAY, TitanType.GOALIE);

@@ -5,7 +5,9 @@ import gameserver.engine.GameEngine;
 import gameserver.effects.EffectId;
 import gameserver.entity.Entity;
 
-public class HealEffect extends Effect {
+import java.io.Serializable;
+
+public class HealEffect extends Effect implements Serializable {
 
     private double initialDamage, recurringDamage;
 

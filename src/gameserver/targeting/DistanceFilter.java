@@ -1,6 +1,8 @@
 package gameserver.targeting;
 
-public class DistanceFilter {
+import java.io.Serializable;
+
+public class DistanceFilter  implements Serializable {
     private boolean lessThanNotGreaterThan;
     private boolean strict;
     private int dist;
