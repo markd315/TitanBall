@@ -114,8 +114,7 @@ public class User implements Serializable, UserDetails {
         this.enabled = false;
         Calendar calendar = Calendar.getInstance();
         java.util.Date now = calendar.getTime();
-        java.sql.Timestamp currentTimestamp = new java.sql.Timestamp(now.getTime());
-        this.subExp = currentTimestamp;
+        this.subExp = new Timestamp(now.getTime());
         this.activation = Util.randomKey();
     }
 

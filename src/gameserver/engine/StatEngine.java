@@ -8,12 +8,13 @@ import gameserver.entity.Titan;
 import networking.PlayerDivider;
 import org.json.JSONObject;
 
+import java.io.Serializable;
 import java.util.*;
 
 import static java.util.Arrays.stream;
 import static java.util.stream.Collectors.toMap;
 
-public class StatEngine {
+public class StatEngine implements Serializable {
 
     @JsonProperty
     private List<Map<String, Double>> gamestats;

@@ -15,26 +15,28 @@ import gameserver.entity.Entity;
 import gameserver.entity.Titan;
 import gameserver.entity.TitanType;
 import gameserver.entity.minions.Tickable;
-import gameserver.models.Game;
 import gameserver.gamemanager.GamePhase;
 import gameserver.gamemanager.ManagedGame;
+import gameserver.models.Game;
 import networking.ClientPacket;
 import networking.KeyDifferences;
 import networking.PlayerDivider;
-import org.joda.time.Instant;
 import util.Util;
 
 import java.awt.*;
 import java.awt.geom.Rectangle2D;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class GameEngine extends Game {
     private static boolean logs = false;
     protected Ability ability = new Ability();
+    private AtomicBoolean locked = new AtomicBoolean(false);
 
     public GameEngine(String id, List<PlayerDivider> clients, GameOptions options) {
         this.clients = clients;
@@ -860,10 +862,14 @@ public class GameEngine extends Game {
     }
 
     public void gameTick() throws Exception {
-        //System.out.println("tock " + began + ended);
+        if (ended)
+            System.out.println("tock ended " + began + ended);
         lock();
-        this.now = Instant.now();
+        this.now = LocalDateTime.now();
         if (began && !ended) {
+            for(Titan t : this.away.players){
+                System.out.println("On away: " + t + " " + t.X + " " + t.Y);
+            }
             try {
                 framesSinceStart++;
                 gameDurationRuleChanges();
@@ -996,21 +1002,24 @@ public class GameEngine extends Game {
     }
 
     private void gameDurationRuleChanges() throws Exception {
-        final long FPS = 1000 / GAMETICK_MS;
-        if ((options.goalieIndex == 1) && framesSinceStart / FPS > GOALIE_DISABLE_TIME) {
+        final double FPS = 1000.0 / GAMETICK_MS;
+        double seconds = (double) framesSinceStart / FPS;
+        System.out.println("FPS: " + FPS + " frames:" + framesSinceStart + " seconds: " + seconds);
+        //System.out.println("options " + this.options.toStringSrv());
+        if ((options.goalieIndex == 1) && seconds > GOALIE_DISABLE_TIME) {
             cullGoalies();
         }
-        if (framesSinceStart / FPS > PAIN_DISABLE_TIME) {
+        if (seconds > PAIN_DISABLE_TIME) {
             hoopDmg = false;
         }
-        if (framesSinceStart / FPS > this.options.suddenDeathIndex * 60) {
+        //System.out.println("options: " + this.options.suddenDeathIndex + " " + this.options.tieIndex);
+        if (seconds > this.options.suddenDeathIndex * 60.0) {
             suddenDeath = true;
-            checkWinCondition();
         }
-        if (framesSinceStart / FPS > this.options.tieIndex * 60) {
+        if (seconds > this.options.tieIndex * 60.0) {
             tieAble = true;
-            checkWinCondition();
         }
+        checkWinCondition();
     }
 
     protected void tickEntities(List<Entity> entityPool) {
@@ -1784,6 +1793,7 @@ public class GameEngine extends Game {
     }
 
     void triggerWin(Team winner) {
+        System.out.println("win triggered");
         for (PlayerDivider p : clients) {
             int winDex = p.selection;
             if (winner.which.equals(players[winDex - 1].team)) {
@@ -1796,6 +1806,7 @@ public class GameEngine extends Game {
     }
 
     void triggerTie(Team winner) {
+        System.out.println("tie triggered");
         for (PlayerDivider p : clients) {
             int winDex = p.selection;
             if (winner.which.equals(players[winDex - 1].team)) {

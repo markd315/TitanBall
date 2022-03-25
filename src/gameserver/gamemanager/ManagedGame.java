@@ -1,7 +1,6 @@
 package gameserver.gamemanager;
 
 import authserver.SpringContextBridge;
-import authserver.matchmaking.Matchmaker;
 import authserver.models.User;
 import authserver.users.identities.UserService;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -22,22 +21,21 @@ import java.util.*;
 
 public class ManagedGame {
     public static final ServerMode SERVER_MODE = ServerMode.TRUETHREE;
-    protected GameOptions options;
+    public GameOptions options;
     protected Const c = new Const("res/game.cfg");
 
     public GameEngine state;
     public String gameId;
-    List<PlayerDivider> clients;
+    public List<PlayerDivider> gameStartQueue = new ArrayList<>();
+    public List<PlayerDivider> clients;
     public List<List<Integer>> availableSlots;
     int claimIndex = 0;
 
     private UserService userService;
 
-    public ManagedGame() {
-    }
-
-
     public void delegatePacket(PlayerDivider pl, ClientPacket request) {
+        String email = Util.jwtExtractEmail(request.token);
+        addOrReplaceNewClient(email);
         if(state != null){
             System.out.println("delegating from player " + pl);
             state.processClientPacket(pl, request);
@@ -62,25 +60,17 @@ public class ManagedGame {
         return pd;
     }
 
-    public void passQueueToUsers(Matchmaker matchmaker) {
-        Map<String, String> map = matchmaker.teamGameMap;
-        ArrayList<PlayerDivider> queue = new ArrayList<>();
-        for(String email : map.keySet()){
-            addOrReplaceNewClient(queue, email);
-        }
-    }
-
     List<Integer> nextUnclaimedSlot(){
         claimIndex++;
         return availableSlots.get(claimIndex -1);
     }
 
-    void addOrReplaceNewClient(List<PlayerDivider> queue, String email){
-        if (!accountQueued(queue, email)) {
+    public void addOrReplaceNewClient(String email){
+        if (!accountQueued(gameStartQueue, email)) {
             System.out.println("adding NEW client");
-            queue.add(new PlayerDivider(nextUnclaimedSlot(), email));
-            if(lobbyFull(queue)){
-                this.clients = queue;
+            gameStartQueue.add(new PlayerDivider(nextUnclaimedSlot(), email));
+            if(lobbyFull(gameStartQueue)){
+                this.clients = gameStartQueue;
                 System.out.println("starting game!");
                 startGame();
             }
@@ -98,7 +88,8 @@ public class ManagedGame {
             }
             System.out.println();
         }
-        state  = new GameEngine(gameId, clients, new GameOptions()); //Start the game
+        System.out.println("updating state with gameoptions " + options.toStringSrv());
+        state  = new GameEngine(gameId, clients, new GameOptions(options.toStringSrv())); //Start the game
         waitFive();
         state.initializeServer();
         state.clients = clients;
@@ -177,29 +168,21 @@ public class ManagedGame {
     }
 
     private List<PlayerDivider> monteCarloBalance(List<PlayerDivider> players) {
-        Map<String, Double> tempRating = new HashMap<>();
+        Map<PlayerDivider, Double> tempRating = new HashMap<>();
         instantiateSpringContext();
         System.out.println("players size" + players.size());
-        System.out.println(userService);
-        ObjectMapper mapper = new ObjectMapper();
         for (PlayerDivider pl : players) {
-            System.out.println(pl.email + " " + userService.findUserByEmail(pl.email).getRating());
-            tempRating.put(pl.email, userService.findUserByEmail(pl.email).getRating());
-            //Currently pl says email, but is actually a USERNAME, we need to fix that
-            User user = userService.findUserByUsername(pl.email);
-            //Correct the pl.email field.
-            pl.email = user.getEmail();
-            System.out.println(user.getEmail() + " " + user.getRating());
-            tempRating.put(pl.email, user.getRating());
-        }
-        final int MAX_MM = 5;
-        CandidateGame candidateGame = new CandidateGame();
-        for (int i = 0; i < MAX_MM; i++) {
-                //The final possibleSelection is still wrong, maybe trash this last list constructor
-                List<PlayerDivider> testOrder = new ArrayList<>(players);
-                Collections.shuffle(testOrder);
+            User user = userService.findUserByEmail(pl.email);
+            if(user == null){
+                user = userService.findUserByUsername(pl.email);
             }
-        return candidateGame.bestMonteCarloBalance(availableSlots);
+            System.out.println(pl.email + " " + user.getRating());
+            //Currently pl says email, but may actually be a USERNAME, we need to fix that
+            pl.email = user.getEmail();
+            tempRating.put(pl, user.getRating());
+        }
+        CandidateGame candidateGame = new CandidateGame();
+        return candidateGame.bestMonteCarloBalance(availableSlots, tempRating);
     }
 
     private void instantiateSpringContext() {
@@ -217,7 +200,7 @@ public class ManagedGame {
         } catch (JsonProcessingException e) {
             e.printStackTrace();
         }
-        if(op.playerIndex == 1 && false) { //player switching working, but disabled for now
+        if(op.playerIndex == 1) { //player switching working, but disabled for now
             this.availableSlots = new ArrayList<>();
             ArrayList<Integer> c1 = new ArrayList<>();
             c1.add(4);
@@ -227,7 +210,7 @@ public class ManagedGame {
             c1.add(6);
             ArrayList<Integer> c2 = new ArrayList<>();
             c2.add(8);
-            c2.add(2);
+            c2.add(2); //second goalie
             c2.add(7);
             c2.add(9);
             c2.add(10);

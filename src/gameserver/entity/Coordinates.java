@@ -2,7 +2,9 @@ package gameserver.entity;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public class Coordinates {
+import java.io.Serializable;
+
+public class Coordinates implements Serializable {
     @JsonProperty
     public double X, Y;
 

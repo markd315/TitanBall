@@ -5,7 +5,7 @@ import com.mashape.unirest.http.HttpResponse;
 import com.mashape.unirest.http.JsonNode;
 import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
-import gameserver.models.Game;
+import gameserver.engine.GameEngine;
 import networking.ClientPacket;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.conn.ssl.TrustSelfSignedStrategy;
@@ -85,7 +85,7 @@ public class HttpClient {
         return "uh oh";
     }
 
-    public Game update(ClientPacket controlsHeld){
+    public GameEngine update(ClientPacket controlsHeld){
         Optional<HttpResponse<JsonNode>> response;
         response = updateRequest(controlsHeld);
         while (!response.isPresent()) {
@@ -97,7 +97,7 @@ public class HttpClient {
         }
         ObjectMapper mapper = new ObjectMapper();
         try {
-            return mapper.readValue(response.get().getBody().toString(), Game.class);
+            return mapper.readValue(response.get().getBody().toString(), GameEngine.class);
         } catch (IOException e) {
             e.printStackTrace();
         }

@@ -1,8 +1,9 @@
 package gameserver.entity;
 
 import java.awt.*;
+import java.io.Serializable;
 
-public class RangeCircle {
+public class RangeCircle implements Serializable {
     protected int radius;
     protected float[] color = new float[4];
 

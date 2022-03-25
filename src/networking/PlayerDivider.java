@@ -3,10 +3,11 @@ package networking;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import gameserver.engine.GameEngine;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-public class PlayerDivider {
+public class PlayerDivider implements Serializable {
     //At some points early in execution, "email" is actually the username
     @JsonProperty
     public String email = "";
@@ -17,7 +18,7 @@ public class PlayerDivider {
     @JsonProperty
     public int id;
     @JsonProperty
-    public int selection;
+    public int selection; // The current titan selected (index of possibleSelection) since you can change during game
     @JsonProperty
     public List<Integer> possibleSelection = new ArrayList<>();
     @JsonProperty

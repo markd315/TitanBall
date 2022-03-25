@@ -10,7 +10,9 @@ import gameserver.entity.Collidable;
 import gameserver.entity.Entity;
 import gameserver.entity.Titan;
 
-public class Trap extends gameserver.entity.Entity implements Collidable {
+import java.io.Serializable;
+
+public class Trap extends gameserver.entity.Entity implements Collidable, Serializable {
     public Trap(Titan caster, GameEngine context, int x, int y) {
         super(caster.team);
         this.setX(x);

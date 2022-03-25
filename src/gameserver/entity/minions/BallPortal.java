@@ -1,5 +1,10 @@
 package gameserver.entity.minions;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
+import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
 import gameserver.engine.GameEngine;
 import gameserver.engine.TeamAffiliation;
 import gameserver.entity.*;
@@ -7,18 +12,26 @@ import org.joda.time.Instant;
 import util.Util;
 
 import java.awt.*;
+import java.io.Serializable;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-public class BallPortal extends Entity implements Collidable {
+public class BallPortal extends Entity implements Collidable, Serializable {
 
     private int COOLDOWN_MS;
     public RangeCircle rangeCircle;
     private int MAX_RANGE;
     private UUID createdById;
-    private Instant createdAt;//only used serverside so clock skew is irrelevant
-    private Instant cdUntil;
+    @JsonProperty
+    @JsonSerialize(using = LocalDateTimeSerializer.class)
+    @JsonDeserialize(using = LocalDateTimeDeserializer.class)
+    private LocalDateTime createdAt;//only used serverside so clock skew is irrelevant
+    @JsonProperty
+    @JsonSerialize(using = LocalDateTimeSerializer.class)
+    @JsonDeserialize(using = LocalDateTimeDeserializer.class)
+    private LocalDateTime cdUntil;
 
     public BallPortal(TeamAffiliation team, Titan pl, List<Entity> pool, int x, int y, GameEngine context) {
         super(team);
@@ -32,7 +45,7 @@ public class BallPortal extends Entity implements Collidable {
         this.maxHealth = 20;
         this.solid = false;
         this.createdById = pl.id;
-        this.createdAt = Instant.now(); //only used serverside so clock skew is irrelevant
+        this.createdAt = LocalDateTime.now(); //only used serverside so clock skew is irrelevant
         removeOldestBallPortal(pool, pl);
         RetObj secondCanStayIfRange = oldestP(pool, pl);
         if(! isPlaceableRangeCheck(context, pl.id)){
@@ -47,7 +60,7 @@ public class BallPortal extends Entity implements Collidable {
         this.rangeCircle = new RangeCircle(Color.RED, MAX_RANGE);
     }
 
-    public boolean isCooldown(Instant now) {
+    public boolean isCooldown(LocalDateTime now) {
         return cdUntil != null && now.isBefore(cdUntil);
     }
 
@@ -97,8 +110,8 @@ public class BallPortal extends Entity implements Collidable {
         return Optional.empty();
     }
 
-    private void triggerCd(Instant now) {
-        this.cdUntil = now.plus(COOLDOWN_MS);
+    private void triggerCd(LocalDateTime now) {
+        this.cdUntil = now.plusNanos(1000000L * COOLDOWN_MS);
     }
 
     @Override
@@ -119,10 +132,12 @@ public class BallPortal extends Entity implements Collidable {
         }
     }
 
-    public double cooldownPercentOver(Instant now){
+    public double cooldownPercentOver(LocalDateTime now){
         if(this.isCooldown(now)){
-            double cdActivated = cdUntil.getMillis() - COOLDOWN_MS;
-            double nowNormalized = now.getMillis() - cdActivated;
+            Instant now_ins = new Instant(now);
+            Instant until_ins = new Instant(cdUntil);
+            double cdActivated = until_ins.getMillis() - COOLDOWN_MS;
+            double nowNormalized = now_ins.getMillis() - cdActivated;
             double percent = nowNormalized*100.0 / ((double)COOLDOWN_MS);
             return percent;
         }

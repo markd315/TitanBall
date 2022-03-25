@@ -2,13 +2,20 @@ package gameserver.engine;
 
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import org.joda.time.Instant;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
+import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
 
 import java.awt.geom.Rectangle2D;
+import java.io.Serializable;
+import java.time.LocalDateTime;
 
-public class GoalHoop{
+public class GoalHoop implements Serializable {
     @JsonProperty
-    public Instant nextAvailable;
+    @JsonSerialize(using = LocalDateTimeSerializer.class)
+    @JsonDeserialize(using = LocalDateTimeDeserializer.class)
+    public LocalDateTime nextAvailable;
     @JsonProperty
     public boolean onCooldown, frozen;
     @JsonProperty
@@ -28,21 +35,21 @@ public class GoalHoop{
     public void trigger() {
         onCooldown = true;
 
-        Instant now = Instant.now();
-        nextAvailable = now.plus(1000);
+        LocalDateTime now = LocalDateTime.now();
+        nextAvailable = now.plusNanos(1000000L * 1000);
     }
 
     public void freeze() {
         onCooldown = true;
         frozen = true;
-        Instant now = Instant.now();
-        nextAvailable = now.plus(5000);
+        LocalDateTime now = LocalDateTime.now();
+        nextAvailable = now.plusNanos(1000000L * 5000);
     }
 
     public boolean checkReady() {
-        Instant currentTimestamp = Instant.now();
+        LocalDateTime currentTimestamp = LocalDateTime.now();
         if (frozen) {
-            if (currentTimestamp.plus(1000).isAfter(nextAvailable)) {
+            if (currentTimestamp.plusNanos(1000000L * 1000).isAfter(nextAvailable)) {
                 frozen = false;
             }
         }
@@ -56,7 +63,7 @@ public class GoalHoop{
     public GoalHoop(){
     }
 
-    public Instant getNextAvailable(){
+    public LocalDateTime getNextAvailable(){
         return nextAvailable;
     }
 

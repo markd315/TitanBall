@@ -2,14 +2,19 @@ package gameserver.targeting;
 
 import client.graphical.ScreenConst;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
+import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
 import gameserver.engine.TeamAffiliation;
 import gameserver.entity.Titan;
-import org.joda.time.Instant;
 
 import java.awt.*;
 import java.awt.geom.Ellipse2D;
+import java.io.Serializable;
+import java.time.LocalDateTime;
 
-public class ShapePayload {
+public class ShapePayload implements Serializable {
     private static final int COLLIDER_DISP_MS = 400;
     @JsonProperty
     int x, y, w, h;
@@ -22,7 +27,9 @@ public class ShapePayload {
     @JsonProperty
     protected float[] color = new float[4];
     @JsonProperty
-    public Instant dispUntil;
+    @JsonSerialize(using = LocalDateTimeSerializer.class)
+    @JsonDeserialize(using = LocalDateTimeDeserializer.class)
+    public LocalDateTime dispUntil;
     @JsonProperty
     public boolean disp;
 
@@ -115,12 +122,12 @@ public class ShapePayload {
 
     public void trigger() {
         disp = true;
-        Instant now = Instant.now();
-        dispUntil = now.plus(COLLIDER_DISP_MS);
+        LocalDateTime now = LocalDateTime.now();
+        dispUntil = now.plusNanos(1000000L * COLLIDER_DISP_MS);
     }
 
     public boolean checkDisp() {
-        Instant currentTimestamp = Instant.now();
+        LocalDateTime currentTimestamp = LocalDateTime.now();
         if (currentTimestamp.isAfter(dispUntil)) {
             disp = false;
         }

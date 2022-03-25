@@ -1,16 +1,23 @@
 package gameserver.effects.effects;
 
 import client.graphical.StaticImage;
-import gameserver.engine.GameEngine;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
+import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
 import gameserver.effects.EffectId;
+import gameserver.engine.GameEngine;
 import gameserver.entity.Entity;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
 
 import java.awt.*;
 import java.awt.image.RescaleOp;
+import java.io.Serializable;
+import java.time.LocalDateTime;
 
-public abstract class Effect {
+public abstract class Effect implements Serializable {
 
     public Entity on;
     public StaticImage icon;
@@ -47,10 +54,10 @@ public abstract class Effect {
     }
 
     public boolean tick(GameEngine context){//Removes from effect pool when expired
-        if(Instant.now().isBefore(getBegin())){
+        if(LocalDateTime.now().isBefore(getBegin())){
             return false;
         }
-        else if(Instant.now().isAfter(getEnd()) && active == true){
+        else if(LocalDateTime.now().isAfter(getEnd()) && active == true){
             onCease(context);
             percentLeft = 0.0;
             active = false;
@@ -70,18 +77,20 @@ public abstract class Effect {
         }
     }
 
-    public static long subtract(Instant in1, Instant in2) {
-        return new Duration(in2,in1).getMillis();
+    public static long subtract(LocalDateTime in1, LocalDateTime in2) {
+        Instant start = new Instant(in1);
+        Instant end = new Instant(in2);
+        return new Duration(end,start).getMillis();
     }
 
     private void updatePercent() {
         this.percentLeft = 100.0 - (100.0*
-                (subtract(Instant.now(), begin)) / (subtract(end, begin))
+                (subtract(LocalDateTime.now(), begin)) / (subtract(end, begin))
         );
     }
 
     public boolean check(){ //Read-only action, perform whenever
-        if(Instant.now().isAfter(getEnd())){
+        if(LocalDateTime.now().isAfter(getEnd())){
             return false;
         }
         return true;
@@ -89,7 +98,7 @@ public abstract class Effect {
 
     public void cull(GameEngine context){
         onCease(context);
-        this.setEnd(Instant.now());
+        this.setEnd(LocalDateTime.now());
         this.everActive = true;
         this.active = false;
     }
@@ -106,21 +115,29 @@ public abstract class Effect {
         this.active = false;
         this.everActive = false;
         this.percentLeft = 100.0;
-        Instant now = Instant.now();
-        begin = now.plus(delayMillis);
-        end = begin.plus(durationMillis);
+        LocalDateTime now = LocalDateTime.now();
+        begin = now.plusNanos(1000000L * delayMillis);
+        end = begin.plusNanos(1000000L * durationMillis);
     }
 
+    @JsonProperty
     public EffectId effect;
 
+    @JsonProperty
     public boolean ceased = false;
 
-    public Instant begin, end;
+    @JsonProperty
+    @JsonSerialize(using = LocalDateTimeSerializer.class)
+    @JsonDeserialize(using = LocalDateTimeDeserializer.class)
+    public LocalDateTime begin, end;
 
+    @JsonProperty
     public int duration, delay;
 
+    @JsonProperty
     public boolean active, everActive;
 
+    @JsonProperty
     double percentLeft;
 
     public double getPercentLeft(){
@@ -135,19 +152,19 @@ public abstract class Effect {
         this.effect = effect;
     }
 
-    public Instant getBegin() {
+    public LocalDateTime getBegin() {
         return begin;
     }
 
-    public void setBegin(Instant begin) {
+    public void setBegin(LocalDateTime begin) {
         this.begin = begin;
     }
 
-    public Instant getEnd() {
+    public LocalDateTime getEnd() {
         return end;
     }
 
-    public void setEnd(Instant end) {
+    public void setEnd(LocalDateTime end) {
         this.end = end;
     }
 

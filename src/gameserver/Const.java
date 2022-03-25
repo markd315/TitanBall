@@ -1,8 +1,12 @@
 package gameserver;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import util.ConstOperations;
 
-public class Const extends ConstOperations {
+import java.io.Serializable;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class Const extends ConstOperations implements Serializable {
     public final double PAIN_FACTOR = getD("globals.ent.painfactor");
     public final double FLAT_PAIN = getD("globals.ent.flatdamage");
     public final double MAX_HEAL =getD("globals.titan.maxheal");

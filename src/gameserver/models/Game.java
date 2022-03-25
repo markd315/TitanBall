@@ -1,6 +1,11 @@
 package gameserver.models;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
+import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
 import gameserver.Const;
 import gameserver.effects.EffectPool;
 import gameserver.engine.*;
@@ -12,12 +17,13 @@ import gameserver.gamemanager.GamePhase;
 import gameserver.targeting.ShapePayload;
 import networking.ClientPacket;
 import networking.PlayerDivider;
-import org.joda.time.Instant;
 
+import java.io.Serializable;
+import java.time.LocalDateTime;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 
-public class Game {
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class Game implements Serializable {
 
     @JsonProperty
     public String gameId;
@@ -31,10 +37,16 @@ public class Game {
     public List<PlayerDivider> clients;
     @JsonProperty
     public ClientPacket[] lastControlPacket = null;
+
     @JsonProperty
-    public Instant now;
+    @JsonSerialize(using = LocalDateTimeSerializer.class)
+    @JsonDeserialize(using = LocalDateTimeDeserializer.class)
+    public LocalDateTime now;
+
     @JsonProperty
-    protected AtomicBoolean locked = new AtomicBoolean(false);
+    @JsonSerialize(using = LocalDateTimeSerializer.class)
+    @JsonDeserialize(using = LocalDateTimeDeserializer.class)
+    public LocalDateTime serverTimeStamp; //TODO use this to make sure client rendering order is clean.
     @JsonProperty
     public List<ShapePayload> colliders;
     @JsonProperty
@@ -61,7 +73,7 @@ public class Game {
     @JsonProperty
     public final double GOALIE_DISABLE_TIME = c.getD("goalie.disable.time");
     @JsonProperty
-    public final double PAIN_DISABLE_TIME = 9999999.0; //420
+    public final double PAIN_DISABLE_TIME = 9999999.0;
     @JsonProperty
     public GameOptions options;
     @JsonProperty

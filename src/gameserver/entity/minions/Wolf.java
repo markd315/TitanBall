@@ -6,9 +6,10 @@ import gameserver.engine.TeamAffiliation;
 import gameserver.entity.Titan;
 import util.Util;
 
+import java.io.Serializable;
 import java.util.UUID;
 
-public class Wolf extends gameserver.entity.Entity implements Tickable {
+public class Wolf extends gameserver.entity.Entity implements Tickable, Serializable {
     public int wolfPower;
     public boolean facingRight = false;
     private UUID createdById;

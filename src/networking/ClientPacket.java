@@ -1,15 +1,14 @@
 package networking;
 
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectWriter;
 import gameserver.engine.Masteries;
 import gameserver.entity.TitanType;
 
 import java.io.Serializable;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class ClientPacket implements Serializable {
     public ClientPacket(){
     }
@@ -43,5 +42,6 @@ public class ClientPacket implements Serializable {
         RIGHT,
         LEFT
     }
+    @JsonProperty
     public ARTISAN_SHOT artisanShot = ARTISAN_SHOT.SHOT;
 }

@@ -43,7 +43,7 @@ public class ConstOperations {
         return Integer.parseInt(getS(key));
     }
 
-    public ConstOperations() {//kryo
-        this("game.cfg");
+    public ConstOperations() {//for serializing
+        this("res/game.cfg");
     }
 }

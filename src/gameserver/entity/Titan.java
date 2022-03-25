@@ -11,13 +11,14 @@ import gameserver.engine.GameEngine;
 import gameserver.engine.TeamAffiliation;
 
 import java.awt.*;
+import java.io.Serializable;
 import java.util.*;
 
 import static util.Util.typesafeNumeric;
 
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class Titan extends Entity {
+public class Titan extends Entity implements Serializable {
 
     @JsonProperty
     public int sel, possession = 0;

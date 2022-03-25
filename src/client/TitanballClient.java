@@ -185,9 +185,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         requestFocus();
         requestFocusInWindow();
         setLayout(new BorderLayout());
-        System.out.println("creating new listeners");
         createListeners();
-        fireReconnect();
     }
 
     private void createListeners() {
@@ -262,6 +260,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         Graphics2D g2D = (Graphics2D) g;
         super.paintComponent(g);
         if (game != null && game.ended) {
+            phase = game.phase;
             darkTheme(g2D, true);
             Team team = teamFromUnderControl();
             Team enemy = enemyFromUnderControl();
@@ -313,13 +312,15 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         }
         if (phase == GamePhase.TRANSITIONAL) {
             consumeCursorSelectClasses();
-            clientInitialize(token);
         }
         if (phase == GamePhase.WAIT_FOR_GAME) {
             try {
                 gameID = requestOrQueueGame();
                 lobby(g2D);
                 System.out.println("got game " + gameID);
+                if (! gameID.equals("WAITING")) {
+                    clientInitialize();
+                }
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -513,26 +514,40 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         }
     }
 
-    public void clientInitialize(String token) {
+    final ScheduledExecutorService exec = Executors.newScheduledThreadPool(1);
+    final Runnable updateServer = () -> {
+        try{
+            System.out.println("trying to update");
+            controlsHeld.gameID = gameID;
+            controlsHeld.token = token;
+            controlsHeld.masteries = masteries;
+            GameEngine gameTemp = loginClient.update(controlsHeld);
+            if(this.game == null){
+                this.game = gameTemp;
+            }
+            if(gameTemp != null && ! gameTemp.serverTimeStamp.isBefore(this.game.serverTimeStamp)) {
+                this.game.lock();
+                this.game = gameTemp;
+                this.game.unlock();
+                this.gameID = this.game.gameId;
+                System.out.println(this.gameID);
+                System.out.println(Arrays.toString(this.game.players));
+                System.out.println(game.underControl);
+                this.phase = game.phase;
+            }
+        }
+        catch(Exception ex1){
+            ex1.printStackTrace();
+        }
+    };
+    public void clientInitialize() {
         crowdFrame = 1;
         crowdFrameCount = 0;
         ballFrame = 0;
         ballFrameCounter = 0;
         camX = 500;
         camY = 300;
-        ScheduledExecutorService exec = Executors.newScheduledThreadPool(1);
-        Runnable updateServer = () -> {
-            System.out.println("trying to update");
-            controlsHeld.gameID = gameID;
-            controlsHeld.token = token;
-            controlsHeld.masteries = masteries;
-            this.game = (GameEngine) loginClient.update(controlsHeld);
-            this.gameID = this.game.gameId;
-            System.out.println(this.game);
-            System.out.println(this.gameID);
-            this.phase = game.phase;
-        };
-        exec.scheduleAtFixedRate(updateServer, 1, 100, TimeUnit.MILLISECONDS);
+        exec.scheduleWithFixedDelay(updateServer, 1, 1, TimeUnit.MILLISECONDS);
     }
 
     protected String requestOrQueueGame() throws UnirestException {
@@ -1633,17 +1648,6 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         phase = GamePhase.WAIT_FOR_GAME;
     }
 
-    protected void fireReconnect() {
-        try {//rejoin game logic
-            loginClient.check();
-            if (!loginClient.gameId.equals("NOT QUEUED")) {
-                phase = GamePhase.COUNTDOWN;
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
     protected void initSurface(boolean addListeners) {
         // Instantiation of sound classes
         shotSound = new Sound();
@@ -1668,26 +1672,12 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         g2D.setColor(Color.YELLOW);
         sconst.setFont(g2D, font);
         double milUntil = (new Duration(Instant.now(), gamestart)).getMillis();
-        System.out.println(milUntil);
+        //System.out.println("starting in millis: " + milUntil);
         sconst.drawString(g2D, String.format("Starting in %1.1f seconds", milUntil / 1000.0), 345, 220);
         font = new Font("Verdana", Font.BOLD, 48);
         g2D.setColor(Color.RED);
         sconst.setFont(g2D, font);
         sconst.drawString(g2D, "STARTING", 418, 480);
-        if (game == null &&
-                Instant.now().isAfter(gamestart.plus(new Duration(500)))) {
-            //TODO this messes us up bad somehow for everyone but the last client to connect
-            sconst.setFont(g2D, new Font("Verdana", Font.BOLD, 12));
-            sconst.drawString(g2D, "(Client may be disconnected, retrying)", 80, 520);
-            if (game == null &&
-                    Instant.now().isAfter(gamestart.plus(new Duration(2500)))) {
-                try {
-                    parentWindow.reset(false);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
     }
 
     public void lobby(Graphics2D g2D) {
@@ -2213,6 +2203,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
 
         @Override
         public void run() {
+            System.out.println("running tick executor");
             if (context.ended) {
                 controlsHeld.classSelection = null;
                 System.out.println("suspending game thread");

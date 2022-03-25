@@ -1,13 +1,21 @@
 package client.graphical;
 
-import org.joda.time.Instant;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
+import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
 import gameserver.engine.GoalHoop;
 import gameserver.engine.TeamAffiliation;
 
 import java.awt.geom.Ellipse2D;
+import java.time.LocalDateTime;
 
 public class GoalSprite extends Ellipse2D.Double {
-    public Instant nextAvailable;
+    @JsonProperty
+    @JsonSerialize(using = LocalDateTimeSerializer.class)
+    @JsonDeserialize(using = LocalDateTimeDeserializer.class)
+    public LocalDateTime nextAvailable;
     public boolean onCooldown, frozen;
     public TeamAffiliation team;
 
@@ -24,9 +32,9 @@ public class GoalSprite extends Ellipse2D.Double {
     }
 
     public boolean checkReady() {
-        Instant currentTimestamp = Instant.now();
+        LocalDateTime currentTimestamp = LocalDateTime.now();
         if (frozen) {
-            if (currentTimestamp.plus(1000).isAfter(nextAvailable)) {
+            if (currentTimestamp.plusNanos(1000000L * 1000).isAfter(nextAvailable)) {
                 frozen = false;
             }
         }

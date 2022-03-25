@@ -1,7 +1,14 @@
 package authserver.matchmaking;
 
-import gameserver.gamemanager.ServerApplication;
+import authserver.models.User;
+import authserver.users.PersistenceManager;
+import gameserver.engine.GameEngine;
 import gameserver.engine.GameOptions;
+import gameserver.engine.TeamAffiliation;
+import gameserver.entity.Titan;
+import gameserver.gamemanager.ManagedGame;
+import gameserver.gamemanager.ServerApplication;
+import networking.PlayerDivider;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
@@ -12,19 +19,21 @@ public class Matchmaker {
 
     private void spawnGame(Collection<String> gameFor, GameOptions op) {
         UUID gameId = UUID.randomUUID();
-        ServerApplication.addNewGame(gameId.toString(), op, gameFor);
+        addNewGame(gameId.toString(), op, gameFor);
         for (String email : gameFor) {
-            System.out.println("gamemap " + email + gameId.toString());
+            System.out.println("gamemap " + email + gameId);
             gameMap.put(email, gameId.toString());
         }
     }
 
     private Map<String, String> waitingPool = new HashMap<>();//user emails -> tournament code
-    private Map<String, String> gameMap = new HashMap<>();//user emails -> game id
-
     private Map<String, String> teamMemberWaitingPool = new HashMap<>();//user emails -> teamN
     private Map<String, String> teamWaitingPool = new HashMap<>();//teamN -> tournament code
+
     public Map<String, String> teamGameMap = new HashMap<>();//user emails -> game id
+
+    private static Map<String, String> gameMap = new HashMap<>();//user emails -> game id
+    static Map<String, ManagedGame> states = new HashMap<>(); //game id -> actual game object
 
     private int desperation = 0; //TODO increase to eventually sacrifice match quality
 
@@ -39,7 +48,7 @@ public class Matchmaker {
         return "NOT QUEUED";
     }
 
-    public Map<String, String> getGameMap(){
+    public Map<String, String> getGameMap() {
         return gameMap;
     }
 
@@ -68,11 +77,11 @@ public class Matchmaker {
             }
             if(count >= players){
                 int gameMembers = 0;
-                for(String email : waitingPool.keySet()){
-                    if(waitingPool.get(email).equals(val)) {
+                for (String email : waitingPool.keySet()) {
+                    if (waitingPool.get(email).equals(val)) {
                         gameFor.add(email);
                         gameMembers++;
-                        if(gameMembers == players){
+                        if (gameMembers == players) {
                             break;
                         }
                     }
@@ -83,8 +92,8 @@ public class Matchmaker {
         //only to avoid comod exception
         for (String s : gameFor) {
             waitingPool.remove(s);
-            System.out.println("WAITING POOL SIZE: " + waitingPool.size());
         }
+        System.out.println("WAITING POOL SIZE: " + waitingPool.size());
     }
 
     private void makeTeamMatches() {
@@ -200,7 +209,7 @@ public class Matchmaker {
         }
     }
 
-    public void endGame(String id) {
+    public static void endGame(String id) {
         List<String> rm = new ArrayList<>();
         for (String email : gameMap.keySet()) {
             if (gameMap.get(email)
@@ -212,5 +221,127 @@ public class Matchmaker {
             System.out.println("ENDING AND FREEING " + email);
             gameMap.remove(email);
         }
+    }
+
+    public static void addNewGame(String id, GameOptions op, Collection<String> gameFor) {
+        System.out.println("adding new game, id " + id);
+        ManagedGame newgame = new ManagedGame(id, op);
+        states.put(id, newgame);
+        for(String email : gameFor){
+            newgame.addOrReplaceNewClient(email);
+        }
+        System.out.println("game map size: " + states.size());
+    }
+
+
+    public static void checkGameExpiry() {
+        Set<String> rm = new HashSet<>();
+        PersistenceManager pm = ServerApplication.getPersistenceManager();
+        for (String id : states.keySet()) {
+            ManagedGame val = states.get(id);
+            if (val.state != null && val.state.ended) {
+                System.out.println("ENDING GAME");
+                System.out.println(val.options.toStringSrv());
+                if(val.options.toStringSrv().equals("/3/1/1/5/2/9999/10/12")) {//default public mode only for ratings
+                    injectRatingsToPlayers(val.state);
+                    for (PlayerDivider player : val.state.clients) {
+                        try {
+                            Titan t = val.state.titanSelected(player);
+                            if (t != null) {
+                                String className = t.getType().toString();
+                                pm.postgameStats(player.email, val.state.stats, className, player.wasVictorious, player.newRating);
+                            }
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+                if(val.options.toStringSrv().equals("/1/1/1/5/2/9999/10/12")) {//1v1 ratings mode
+                    inject1v1RatingsToPlayers(val.state);//This method is new
+                    for (PlayerDivider player : val.state.clients) {
+                        try {
+                            Titan t = val.state.titanSelected(player);
+                            if (t != null) {
+                                String className = t.getType().toString();
+                                //This method is new
+                                pm.postgameStats1v1(player.email, val.state.stats, className, player.wasVictorious, player.newRating);
+                            }
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+                rm.add(id);
+                endGame(id);
+            }
+        }
+        for (String id : rm) {
+            states.remove(id);
+        }
+    }
+
+    private static void injectRatingsToPlayers(GameEngine state) {
+        List<Rating> home = new ArrayList<>(), away = new ArrayList<>();
+        PersistenceManager pm = ServerApplication.getPersistenceManager();
+        for (PlayerDivider pl : state.clients) {
+            User persistence = pm.userService.findUserByEmail(pl.email);
+            //System.out.println("got user " + persistence.getEmail() + persistence.getRating());
+            Rating<User> oldRating = new Rating<>(persistence, persistence.getLosses() + persistence.getWins());
+            if (state.players[pl.getSelection() - 1].team == TeamAffiliation.HOME) {
+                oldRating.setRating(persistence.getRating());
+                home.add(oldRating);
+            } else {
+                oldRating.setRating(persistence.getRating());
+                away.add(oldRating);
+            }
+        }
+        Rating<String> homeRating = new Rating<>(home, "home", 0);
+        Rating<String> awayRating = new Rating<>(away, "away", 0);
+        Match<User> match = new Match(homeRating, awayRating, state.home.score - state.away.score);
+        //System.out.println(match.winMargin + "");
+        match.injectAverage(home, away);
+        for (PlayerDivider pl : state.clients) {
+            updatePlayerRating(pl, home);
+            updatePlayerRating(pl, away);
+        }
+    }
+
+    private static void inject1v1RatingsToPlayers(GameEngine state) {
+        List<Rating> home = new ArrayList<>(), away = new ArrayList<>();
+        PersistenceManager pm = ServerApplication.getPersistenceManager();
+        for (PlayerDivider pl : state.clients) {
+            User persistence = pm.userService.findUserByEmail(pl.email);
+            //System.out.println("got user " + persistence.getEmail() + persistence.getRating());
+            Rating<User> oldRating = new Rating<>(persistence, persistence.getLosses_1v1() + persistence.getWins_1v1());
+            if (state.players[pl.getSelection() - 1].team == TeamAffiliation.HOME) {
+                oldRating.setRating(persistence.getRating_1v1());
+                home.add(oldRating);
+            } else {
+                oldRating.setRating(persistence.getRating_1v1());
+                away.add(oldRating);
+            }
+        }
+        Rating<String> homeRating = new Rating<>(home, "home", 0);
+        Rating<String> awayRating = new Rating<>(away, "away", 0);
+        Match<User> match = new Match(homeRating, awayRating, state.home.score - state.away.score);
+        //System.out.println(match.winMargin + "");
+        match.injectAverage(home, away);
+        for (PlayerDivider pl : state.clients) {
+            updatePlayerRating(pl, home);
+            updatePlayerRating(pl, away);
+        }
+    }
+
+    private static void updatePlayerRating(PlayerDivider pl, List<Rating> team) {
+        for (Rating<User> r : team) {
+            if (r.getID().getEmail().equals(pl.email)) {
+                //System.out.println(r.rating + " new");
+                pl.newRating = r.rating;
+            }
+        }
+    }
+
+    public ManagedGame getManagedGame(String uuid){
+        return states.get(uuid);
     }
 }

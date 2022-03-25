@@ -8,8 +8,10 @@ import gameserver.effects.effects.DeadEffect;
 import gameserver.engine.GameEngine;
 import gameserver.engine.TeamAffiliation;
 
+import java.io.Serializable;
+
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class Entity extends Box {
+public class Entity extends Box implements Serializable {
     @JsonProperty
     public double health, maxHealth;
     @JsonProperty

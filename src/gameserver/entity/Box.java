@@ -7,10 +7,11 @@ import java.awt.*;
 import java.awt.geom.Area;
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.Rectangle2D;
+import java.io.Serializable;
 import java.util.Optional;
 import java.util.UUID;
 
-public class Box extends Coordinates{
+public class Box extends Coordinates implements Serializable {
 
     @JsonProperty
     public int width, height;

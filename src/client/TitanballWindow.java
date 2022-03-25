@@ -20,7 +20,7 @@ public class TitanballWindow extends JFrame {
     private static HttpClient loginClient;
     private int xSize = 1920, ySize = 1080;
     private double scl = 1.5;
-    private HashMap<String, String> keymap;
+    private HashMap<String, String> keymap = new HashMap<String, String>();
     private TitanballClient client = null;
     private boolean darkTheme = false;
 

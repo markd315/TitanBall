@@ -13,7 +13,6 @@ import authserver.models.responses.JwtAuthenticationResponse;
 import authserver.models.responses.UserResponse;
 import authserver.users.identities.UserService;
 import authserver.users.premades.PremadeService;
-import com.rits.cloning.Cloner;
 import gameserver.engine.GameEngine;
 import gameserver.gamemanager.GamePhase;
 import gameserver.gamemanager.ManagedGame;
@@ -34,10 +33,13 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
-import java.io.IOException;
-import java.util.*;
+import java.io.*;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 
-import static gameserver.gamemanager.ServerApplication.checkGameExpiry;
+import static authserver.matchmaking.Matchmaker.checkGameExpiry;
 import static gameserver.gamemanager.ServerApplication.instantiateSpringContext;
 
 @RestController
@@ -63,33 +65,35 @@ public class Controller {
     @Autowired
     AuthenticationManager authenticationManager;
 
-    Map<UUID, ManagedGame> states = new HashMap<UUID, ManagedGame>();
+    @Autowired
+    Matchmaker matchmaker;
 
     @PostMapping("/ingame")
     public ResponseEntity<Game> submitControls(@Valid @RequestBody ClientPacket controls) {
         Game update = null;
         if(controls.gameID !=null) {
-            ManagedGame state = states.get(controls.gameID);
-
+            ManagedGame state = matchmaker.getManagedGame(controls.gameID);
             if(state != null){
+                System.out.println("state not null");
                 instantiateSpringContext();
                 checkGameExpiry();
 
                 PlayerDivider player = state.playerFromToken(controls.token);
-
                 //input
                 if (controls.token != null) {
                     state.delegatePacket(player, controls);
                 }
 
                 //response
-                Cloner cloner = new Cloner();
+
                 state.anticheat(state.state);
-                update = cloner.deepClone(state.state);
+                Game tmp = state.state;
+                update = (Game) deepClone(tmp);
                 try {
                     update.underControl = state.state.titanSelected(player);
+                    update.serverTimeStamp = LocalDateTime.now();
                     System.out.println(update.gameId + update.began);
-                    System.out.println(update.toString());
+                    System.out.println(update);
                 }
                 //Server is not ready for game yet
                 catch(NullPointerException ex){
@@ -280,6 +284,21 @@ public class Controller {
         Optional<Premade> getback = this.premadeService.findPremadeByTeamname(premade.getTeamname());
         return getback.map(value -> new ResponseEntity<>(value, HttpStatus.CREATED))
                 .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
+    }
+
+    public static Object deepClone(Object object) {
+        try {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ObjectOutputStream oos = new ObjectOutputStream(baos);
+            oos.writeObject(object);
+            ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
+            ObjectInputStream ois = new ObjectInputStream(bais);
+            return ois.readObject();
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 }
 

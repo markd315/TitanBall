@@ -2,7 +2,9 @@ package gameserver.engine;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public class GameOptions {
+import java.io.Serializable;
+
+public class GameOptions implements Serializable {
     //TODO tournament best of n
     //Updating these defaults? ALSO CHANGE ServerApplication:107 default!
     @JsonProperty

@@ -6,7 +6,9 @@ import gameserver.engine.TeamAffiliation;
 import gameserver.entity.Box;
 import gameserver.entity.Collidable;
 
-public class Wall extends gameserver.entity.Entity implements Collidable {
+import java.io.Serializable;
+
+public class Wall extends gameserver.entity.Entity implements Collidable, Serializable {
 
     public Wall(GameEngine context, int x, int y) {
         this.team = TeamAffiliation.UNAFFILIATED;

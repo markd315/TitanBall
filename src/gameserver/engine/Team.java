@@ -4,10 +4,11 @@ package gameserver.engine;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import gameserver.entity.Titan;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Team {
+public class Team implements Serializable {
     @JsonProperty
     public double score;
     @JsonProperty
