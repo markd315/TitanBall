@@ -25,6 +25,10 @@ C: MV_BALL
 I: INSTR
 O: SHOT
 P: LOB
+37: LEFT
+38: UP
+39: RIGHT
+40: DOWN
 #See link for key numbers in the left column
 #https://docs.oracle.com/javase/7/docs/api/constant-values.html#java.awt.event.KeyEvent.VK_T
 #Alternate RTS-style bindings provided with move-right-click for those used to games like LOL/DOTA

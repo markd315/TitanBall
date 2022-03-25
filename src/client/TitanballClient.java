@@ -549,11 +549,11 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
                         controlsHeld.gameID = gameID;
                         controlsHeld.token = token;
                         controlsHeld.masteries = masteries;
+                        controlsHeld.camX = camX;
+                        controlsHeld.camY = camY;
                         repaint();
                         try {
-                            controlsHeld.camX = camX;
-                            controlsHeld.camY = camY;
-                            gameserverConn.sendTCP(controlsHeld); //Automatically respond to the gameserver with tutorial when we get a new state
+                            gameserverConn.sendTCP(controlsHeld);
                         } catch (KryoException e) {
                             System.out.println("kryo end");
                             System.out.println(game.ended);
@@ -674,6 +674,14 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         if (instructionToggle) {
             tutorial(g2D);
             return;
+        }
+        if (camFollow) {
+            camX = (int) (game.underControl.X + 35 - (this.xSize / 3 / 1.5 * scl));
+            //if (camX > 820) camX = 820;
+            if (camX < 0) camX = 0;
+            camY = (int) (game.underControl.Y + 35 - (this.ySize / 3 / 1.5 * scl));
+            //if (camY > 480) camY = 480;
+            if (camY < 0) camY = 0;
         }
         sconst.drawImage(g2D, field.getImage(), (1 - camX), (1 - camY), this);
         if (crowdFrame == 2) {
@@ -837,14 +845,6 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         drawPortalRanges(g2D);
         if (game.goalVisible == true) {
             g2D.drawImage(goalScored.getImage(), sconst.GOAL_TXT_X, sconst.GOAL_TXT_Y, this);
-        }
-        if (camFollow) {
-            camX = (int) (game.underControl.X + 35 - (this.xSize / 3 / 1.5 * scl));
-            //if (camX > 820) camX = 820;
-            if (camX < 0) camX = 0;
-            camY = (int) (game.underControl.Y + 35 - (this.ySize / 3 / 1.5 * scl));
-            //if (camY > 480) camY = 480;
-            if (camY < 0) camY = 0;
         }
         if (game.colliders != null) {
             g2D.setStroke(new BasicStroke(6));

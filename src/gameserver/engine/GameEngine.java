@@ -858,7 +858,7 @@ public class GameEngine extends Game {
     }
 
     public void gameTick() throws Exception {
-        System.out.println("tock " + began + ended);
+        //System.out.println("tock " + began + ended);
         lock();
         this.now = Instant.now();
         if (began && !ended) {

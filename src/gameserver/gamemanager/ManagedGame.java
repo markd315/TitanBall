@@ -140,15 +140,9 @@ public class ManagedGame {
         ScheduledExecutorService exec = Executors.newScheduledThreadPool(gameIncludedClients.size());
 
         System.out.println("reassigning client list on startgame");
-        for(PlayerConnection p : clients){
-            //System.out.println(p.toString());
-        }
         clients = gameIncludedClients;
-        for(PlayerConnection p : clients){
-            //System.out.println(p.toString());
-        }
         Runnable updateClients = () -> {
-            System.out.println("updating clients now");
+            //System.out.println("updating clients now");
             clients.parallelStream().forEach(client -> {
                 try{
                     PlayerDivider pd = dividerFromConn(client.getClient());
@@ -164,7 +158,8 @@ public class ManagedGame {
                 }
             });
         };
-        exec.scheduleAtFixedRate(updateClients, 1, 50, TimeUnit.MILLISECONDS);
+        exec.scheduleWithFixedDelay(updateClients, 1, c.getI("server.clients.updateinterval.ms"),
+                TimeUnit.MILLISECONDS);
     }
 
     private GameEngine anticheat(GameEngine update) {
