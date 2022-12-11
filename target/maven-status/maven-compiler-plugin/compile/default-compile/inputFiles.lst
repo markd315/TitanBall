@@ -8,7 +8,6 @@ C:\Users\markd\TitanBall\src\gameserver\targeting\core\Filter.java
 C:\Users\markd\TitanBall\src\authserver\users\premades\PremadeServiceImpl.java
 C:\Users\markd\TitanBall\src\authserver\models\User.java
 C:\Users\markd\TitanBall\src\gameserver\engine\Team.java
-C:\Users\markd\TitanBall\src\networking\AtomicBooleanSerializer.java
 C:\Users\markd\TitanBall\src\gameserver\gamemanager\ServerApplication.java
 C:\Users\markd\TitanBall\src\authserver\users\classes\ClassServiceImpl.java
 C:\Users\markd\TitanBall\src\gameserver\engine\GameEngine.java
@@ -65,7 +64,6 @@ C:\Users\markd\TitanBall\src\authserver\SpringContextBridge.java
 C:\Users\markd\TitanBall\src\authserver\models\responses\UserResponse.java
 C:\Users\markd\TitanBall\src\authserver\users\identities\UserService.java
 C:\Users\markd\TitanBall\src\authserver\users\identities\CustomUserDetailsService.java
-C:\Users\markd\TitanBall\src\networking\KryoRegistry.java
 C:\Users\markd\TitanBall\src\gameserver\targeting\core\Selector.java
 C:\Users\markd\TitanBall\src\gameserver\gamemanager\RemoteAddrFilter.java
 C:\Users\markd\TitanBall\src\gameserver\entity\minions\Fire.java
@@ -81,7 +79,6 @@ C:\Users\markd\TitanBall\src\gameserver\targeting\SelectorOffset.java
 C:\Users\markd\TitanBall\src\authserver\users\classes\ClassRepository.java
 C:\Users\markd\TitanBall\src\gameserver\entity\minions\Wall.java
 C:\Users\markd\TitanBall\src\gameserver\effects\effects\ShootEffect.java
-C:\Users\markd\TitanBall\src\networking\UUIDSerializer.java
 C:\Users\markd\TitanBall\src\client\forms\LoginForm.java
 C:\Users\markd\TitanBall\src\gameserver\effects\cooldowns\CooldownE.java
 C:\Users\markd\TitanBall\src\gameserver\entity\Box.java
