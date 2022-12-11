@@ -5,6 +5,7 @@ import gameserver.effects.EffectPool;
 import gameserver.effects.effects.Effect;
 import gameserver.entity.Titan;
 import networking.PlayerDivider;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.Serializable;
@@ -48,11 +49,11 @@ public class StatEngine  implements Serializable {
         return gamestats.get(en.index);
     }
 
-    public JSONObject statsOf(PlayerDivider t) {
+    public JSONObject statsOf(PlayerDivider t) throws JSONException {
         return statsOf(t.email);
     }
 
-    public JSONObject statsOf(String email) {
+    public JSONObject statsOf(String email) throws JSONException {
         JSONObject stats = new JSONObject();
         for (Map<String, Double> category : gamestats) {
             String name = StatEnum.valueOf(gamestats.indexOf(category)).toString();
@@ -65,7 +66,7 @@ public class StatEngine  implements Serializable {
         return stats;
     }
 
-    public JSONObject ranksOf(PlayerDivider t) {
+    public JSONObject ranksOf(PlayerDivider t) throws JSONException{
         JSONObject ranks = new JSONObject();
         for (Map<String, Double> category : gamestats) {
             String name = StatEnum.valueOf(gamestats.indexOf(category)).toString();

@@ -67,6 +67,7 @@ C:\Users\markd\TitanBall\src\authserver\users\identities\UserService.java
 C:\Users\markd\TitanBall\src\authserver\users\identities\CustomUserDetailsService.java
 C:\Users\markd\TitanBall\src\networking\KryoRegistry.java
 C:\Users\markd\TitanBall\src\gameserver\targeting\core\Selector.java
+C:\Users\markd\TitanBall\src\gameserver\gamemanager\RemoteAddrFilter.java
 C:\Users\markd\TitanBall\src\gameserver\entity\minions\Fire.java
 C:\Users\markd\TitanBall\src\authserver\models\DTO\LoginRequest.java
 C:\Users\markd\TitanBall\src\gameserver\engine\Masteries.java
@@ -86,6 +87,7 @@ C:\Users\markd\TitanBall\src\gameserver\effects\cooldowns\CooldownE.java
 C:\Users\markd\TitanBall\src\gameserver\entity\Box.java
 C:\Users\markd\TitanBall\src\gameserver\effects\effects\HideBallEffect.java
 C:\Users\markd\TitanBall\src\authserver\SpringSecurityConfig.java
+C:\Users\markd\TitanBall\src\gameserver\gamemanager\ServerWrapper.java
 C:\Users\markd\TitanBall\src\gameserver\effects\effects\FlareEffect.java
 C:\Users\markd\TitanBall\src\gameserver\entity\Titan.java
 C:\Users\markd\TitanBall\src\gameserver\gamemanager\ManagedGame.java
