@@ -22,6 +22,7 @@ C:\Users\markd\TitanBall\src\gameserver\effects\effects\Effect.java
 C:\Users\markd\TitanBall\src\gameserver\entity\RangeCircle.java
 C:\Users\markd\TitanBall\src\util\ConstOperations.java
 C:\Users\markd\TitanBall\src\client\graphical\ScreenConst.java
+C:\Users\markd\TitanBall\src\authserver\UserController.java
 C:\Users\markd\TitanBall\src\networking\KeyDifferences.java
 C:\Users\markd\TitanBall\src\networking\PlayerDivider.java
 C:\Users\markd\TitanBall\src\authserver\models\DTO\ActivationRequest.java
@@ -64,6 +65,7 @@ C:\Users\markd\TitanBall\src\authserver\SpringContextBridge.java
 C:\Users\markd\TitanBall\src\authserver\models\responses\UserResponse.java
 C:\Users\markd\TitanBall\src\authserver\users\identities\UserService.java
 C:\Users\markd\TitanBall\src\authserver\users\identities\CustomUserDetailsService.java
+C:\Users\markd\TitanBall\src\authserver\JerseyConfig.java
 C:\Users\markd\TitanBall\src\gameserver\targeting\core\Selector.java
 C:\Users\markd\TitanBall\src\gameserver\gamemanager\RemoteAddrFilter.java
 C:\Users\markd\TitanBall\src\gameserver\entity\minions\Fire.java
