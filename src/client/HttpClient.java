@@ -26,7 +26,7 @@ public class HttpClient {
     private com.fasterxml.jackson.databind.JsonNode stat;
 
     public String springEndpoint() {
-        return "https://zanzalaz.com:" + PORT + "/";
+        return "https://zanzalaz.com:" + PORT + "/usersAPI/";
     }
 
     static{
