@@ -55,7 +55,7 @@ public class LoginController {
     @Autowired
     AuthenticationManager authenticationManager;
 
-    @PostMapping("/login")
+    @PostMapping("/entrypoint")
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
         System.out.println("reached method");
         System.out.println(loginRequest);

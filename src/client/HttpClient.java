@@ -52,7 +52,7 @@ public class HttpClient {
 
     public String authenticate(String un, String pass) {
         try {
-            HttpResponse<JsonNode> response = Unirest.post(springEndpoint() + "login")
+            HttpResponse<JsonNode> response = Unirest.post(springEndpoint() + "entrypoint")
                     .header("accept", "application/json")
                     .header("Content-Type", "application/json")
                     .body("{\"usernameOrEmail\":\"" + un + "\"," +
