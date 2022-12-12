@@ -12,6 +12,7 @@ import java.util.*;
 public class Matchmaker {
 
     static {//Boot server for matchmaker
+        System.out.println("Loaded matchmaker class, servlet should start");
         String[] args = new String[0];
         try {
             ServerApplication.main(args);

@@ -7,16 +7,14 @@ import authserver.matchmaking.Matchmaker;
 import authserver.matchmaking.Rating;
 import authserver.models.User;
 import authserver.users.PersistenceManager;
-import com.esotericsoftware.kryo.Kryo;
-import com.esotericsoftware.kryonet.Connection;
-import com.esotericsoftware.kryonet.Listener;
-import com.esotericsoftware.kryonet.Server;
 import gameserver.engine.GameEngine;
 import gameserver.engine.GameOptions;
 import gameserver.engine.TeamAffiliation;
 import gameserver.entity.Titan;
+import io.socket.socketio.server.SocketIoNamespace;
+import io.socket.socketio.server.SocketIoServer;
+import io.socket.socketio.server.SocketIoSocket;
 import networking.ClientPacket;
-import networking.KryoRegistry;
 import networking.PlayerDivider;
 
 import java.io.File;
@@ -39,6 +37,7 @@ public class ServerApplication {
 
     static {
         try {
+            System.out.println("Loading servlet properties");
             prop = new Properties();
             prop.load(new FileInputStream(new File("application.properties")));
             appSecret = prop.getProperty("app.jwtSecret");
@@ -49,30 +48,39 @@ public class ServerApplication {
 
 
     public static void main(String[] args) throws IOException {
-        Server server = new Server(16384 * 8, 2048 * 8);
-        Kryo kryo = server.getKryo();
-        KryoRegistry.register(kryo);
-        server.start();
-        //gameserver.setHardy(true);
-        server.bind(54555);
-
+        System.out.println("servlet starting");
         states = new HashMap<>();
 
-        server.addListener(new Listener() {
-            public void received(Connection connection, Object object) {
-                if (connection.getID() > 0) {
-                    if (object instanceof ClientPacket) {
-                        String token = ((ClientPacket) object).token;
-                        if (token == null) {
-                            //System.out.println("token null");
-                            return;
-                        }
-                        delegatePacket(connection, (ClientPacket) object);
-                    }
-                }
-            }
-        });
+        final ServerWrapper serverWrapper = new ServerWrapper("127.0.0.1", 54555, null); // null means "allow all" as stated in https://github.com/socketio/engine.io-server-java/blob/f8cd8fc96f5ee1a027d9b8d9748523e2f9a14d2a/engine.io-server/src/main/java/io/socket/engineio/server/EngineIoServerOptions.java#L26
+        try {
+            System.out.println("Servlet wrapper created");
+            serverWrapper.startServer();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         System.out.println("server listening 54555 for game changes");
+        SocketIoServer serverSocket = serverWrapper.getSocketIoServer();
+        SocketIoNamespace ns = serverSocket.namespace("/");
+        ns.on("connection", args12 -> {
+            SocketIoSocket socket = (SocketIoSocket) args12[0];
+            System.out.println("Client " + socket.getId() + " (" + socket.getInitialHeaders().get("remote_addr") + ") has connected.");
+
+            socket.on("controlsHeld", args1 -> {
+                Object object = args1[0];
+                if (object instanceof ClientPacket) {
+                    String token = ((ClientPacket) object).token;
+                    if (token == null) {
+                        //System.out.println("token null");
+                        return;
+                    }
+                    delegatePacket(socket, (ClientPacket) object);
+                }
+                System.out.println("[Client " + socket.getId() + "] " + object);
+                //TODO move this somewhere else in the code, we should only be doing it periodically.
+                socket.send("gameState", "test message", 1);
+            });
+
+        });
     }
 
     public static void addNewGame(String id, GameOptions op, Collection<String> gameFor) {
@@ -97,7 +105,7 @@ public class ServerApplication {
         }
     }
 
-    public static void delegatePacket(Connection connection, ClientPacket packet) {
+    public static void delegatePacket(SocketIoSocket connection, ClientPacket packet) {
         instantiateSpringContext();
         checkGameExpiry();
         //System.out.println("delegating from game " + packet.gameID);

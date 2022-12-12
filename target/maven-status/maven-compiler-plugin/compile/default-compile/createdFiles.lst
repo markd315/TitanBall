@@ -5,16 +5,15 @@ gameserver\effects\cooldowns\CooldownE.class
 gameserver\entity\minions\Fire.class
 authserver\models\responses\UserResponse.class
 authserver\models\ClassStat.class
-networking\UUIDSerializer.class
 authserver\users\premades\PremadeRepository.class
 gameserver\effects\effects\HideBallEffect.class
 networking\PlayerDivider.class
 authserver\models\DTO\UserDTO.class
 gameserver\engine\Masteries.class
-networking\KryoRegistry.class
 authserver\users\classes\ClassServiceImpl.class
 gameserver\effects\effects\TestEffect.class
 gameserver\entity\minions\BallPortal$1.class
+gameserver\gamemanager\RemoteAddrFilter.class
 gameserver\gamemanager\ManagedGame.class
 client\TitanballClient$3.class
 gameserver\engine\GameEngine$TerminableExecutor.class
@@ -22,6 +21,7 @@ gameserver\entity\minions\Portal.class
 gameserver\engine\StatEngine.class
 gameserver\effects\effects\DefenseEffect.class
 gameserver\effects\cooldowns\CooldownQ.class
+gameserver\gamemanager\ServerWrapper.class
 gameserver\effects\cooldowns\CooldownCurve.class
 gameserver\targeting\ShapePayload.class
 authserver\models\User.class
@@ -34,7 +34,6 @@ client\ControlsConfig$1.class
 gameserver\entity\TitanType.class
 networking\ClientPacket.class
 client\Sound.class
-authserver\LoginController.class
 gameserver\entity\Titan$TitanState.class
 authserver\users\premades\PremadeServiceImpl.class
 gameserver\entity\minions\Cage.class
@@ -53,7 +52,6 @@ networking\CandidateGame.class
 client\graphical\SelectClassSkins.class
 gameserver\engine\TeamAffiliation.class
 client\HttpClient$Rank.class
-gameserver\gamemanager\ServerApplication$1.class
 authserver\matchmaking\Rating.class
 client\forms\LoginForm.class
 gameserver\entity\minions\Wall.class
@@ -79,7 +77,6 @@ gameserver\effects\cooldowns\CooldownR.class
 gameserver\Const.class
 gameserver\effects\effects\BleedEffect.class
 gameserver\entity\minions\Trap.class
-networking\AtomicBooleanSerializer.class
 authserver\LoginApp.class
 authserver\models\DTO\ActivationRequest.class
 gameserver\entity\Coordinates.class
@@ -98,17 +95,18 @@ gameserver\targeting\SelectorOffset.class
 authserver\matchmaking\Matchmaker.class
 gameserver\engine\AbilityStrategy.class
 gameserver\entity\minions\BallPortal$RetObj.class
-client\TitanballClient$4.class
 gameserver\engine\Team.class
 gameserver\entity\Titan.class
 gameserver\targeting\ShapePayload$ShapeSelector.class
 gameserver\effects\effects\BombEffect.class
 gameserver\engine\Ability.class
 client\graphical\GoalSprite.class
+gameserver\gamemanager\ServerWrapper$1$1.class
 gameserver\gamemanager\ServerApplication.class
 gameserver\targeting\DistanceFilter.class
 gameserver\targeting\core\Limiter$1.class
 gameserver\effects\effects\DeadEffect.class
+gameserver\gamemanager\RemoteAddrFilter$HeaderMapRequestWrapper.class
 authserver\users\identities\UserService.class
 gameserver\engine\GameOptions.class
 gameserver\effects\effects\FlareEffect.class
@@ -117,6 +115,7 @@ gameserver\entity\RangeCircle.class
 authserver\users\classes\ClassRepository.class
 client\TitanballClient$TerminableExecutor.class
 client\graphical\ScreenConst.class
+gameserver\gamemanager\ServerWrapper$1.class
 networking\KeyDifferences.class
 authserver\models\DTO\LoginRequest.class
 client\graphical\Images.class

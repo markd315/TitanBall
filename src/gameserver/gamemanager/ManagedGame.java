@@ -2,7 +2,6 @@ package gameserver.gamemanager;
 
 import authserver.SpringContextBridge;
 import authserver.users.identities.UserService;
-import com.esotericsoftware.kryonet.Connection;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import gameserver.Const;
@@ -12,6 +11,7 @@ import gameserver.engine.GameEngine;
 import gameserver.engine.GameOptions;
 import gameserver.entity.Entity;
 import gameserver.entity.Titan;
+import io.socket.socketio.server.SocketIoSocket;
 import networking.CandidateGame;
 import networking.ClientPacket;
 import networking.PlayerConnection;
@@ -44,7 +44,7 @@ public class ManagedGame {
     }
 
 
-    public void delegatePacket(Connection connection, ClientPacket request) {
+    public void delegatePacket(SocketIoSocket connection, ClientPacket request) {
         if (state == null || state.phase != GamePhase.INGAME) {
             addOrReplaceNewClient(connection, clients, request.token);
         }
@@ -56,7 +56,7 @@ public class ManagedGame {
                 for(PlayerDivider p : state.clients){
                     if(p.getEmail().equals(email)){
                         pd = p;
-                        pd.setId(connection);
+                        pd.setId(connection.getId());
                         pd.setEmail(email);
                     }
                 }
@@ -70,10 +70,10 @@ public class ManagedGame {
         }
     }
 
-    private PlayerDivider dividerFromConn(Connection connection) {
+    private PlayerDivider dividerFromConn(SocketIoSocket connection) {
         for(PlayerDivider pc : state.clients){
             //System.out.println(pc.id);
-            if(connection.getID() == pc.id){
+            if(connection.equals(pc.id)){
                 return pc;
             }
         }
@@ -90,7 +90,7 @@ public class ManagedGame {
         return (uniqueEmails.size() == availableSlots.size());
     }
 
-    void addOrReplaceNewClient(Connection c, List<PlayerConnection> queue, String token){
+    void addOrReplaceNewClient(SocketIoSocket c, List<PlayerConnection> queue, String token){
         boolean connFound = connectionQueued(queue, c);
         String email = Util.jwtExtractEmail(token);
         boolean emailFound = accountQueued(queue, email);
@@ -107,7 +107,8 @@ public class ManagedGame {
                     System.out.println(p.toString());
                 }
                 System.out.println("adding NEW client");
-                System.out.println(c.getRemoteAddressTCP());
+                System.out.println(c.getConnectData());
+                System.out.println(c.getId());
                 //We should be sorting the connections when the game actually starts, so doesn't matter
                 queue.add(new PlayerConnection(nextUnclaimedSlot(), c, email));
             }
@@ -151,7 +152,8 @@ public class ManagedGame {
                     assert update != null;
                     update.underControl = state.titanSelected(pd);
                     update.now = Instant.now();
-                    client.getClient().sendTCP(anticheat(update));
+
+                    client.getClient().send("gameState", anticheat(update));
                 }
                 catch (Exception ex1){
                     ex1.printStackTrace();
@@ -219,10 +221,10 @@ public class ManagedGame {
         return availableSlots.get(claimIndex -1);
     }
 
-    private boolean connectionQueued(List<PlayerConnection> queue, Connection query){
+    private boolean connectionQueued(List<PlayerConnection> queue, SocketIoSocket query){
         boolean connFound = false;
         for(PlayerConnection p : queue){
-            if (p.getClient().getID() == query.getID()){
+            if (p.getClient().getId().equals(query.getId())){
                 connFound = true;
             }
         }

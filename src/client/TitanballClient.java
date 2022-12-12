@@ -1,11 +1,6 @@
 package client;
 
 import client.graphical.*;
-import com.esotericsoftware.kryo.Kryo;
-import com.esotericsoftware.kryo.KryoException;
-import com.esotericsoftware.kryonet.Client;
-import com.esotericsoftware.kryonet.Connection;
-import com.esotericsoftware.kryonet.Listener;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mashape.unirest.http.exceptions.UnirestException;
 import com.rits.cloning.Cloner;
@@ -21,13 +16,16 @@ import gameserver.entity.RangeCircle;
 import gameserver.entity.Titan;
 import gameserver.entity.TitanType;
 import gameserver.entity.minions.*;
+import gameserver.gamemanager.GamePhase;
 import gameserver.models.Game;
 import gameserver.targeting.ShapePayload;
-import gameserver.gamemanager.GamePhase;
+import io.socket.client.IO;
+import io.socket.client.Socket;
+import io.socket.emitter.Emitter;
 import networking.ClientPacket;
-import networking.KryoRegistry;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
+import org.json.JSONException;
 import org.json.JSONObject;
 import util.Util;
 
@@ -40,6 +38,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.net.URISyntaxException;
 import java.util.List;
 import java.util.*;
 import java.util.concurrent.Executors;
@@ -57,11 +56,9 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
     public Instant gamestart = null;
     public Random rand;
     public Sound shotSound;
-    protected Client gameserverConn = new Client(8192 * 8, 32768 * 8);
     protected String gameID;
     protected GameEngine game;
     protected GamePhase phase = GamePhase.CREDITS;
-    protected Kryo kryo = gameserverConn.getKryo();
     protected boolean camFollow = true;
     protected String token, refresh;
     protected HttpClient loginClient;
@@ -324,7 +321,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
             consumeCursorSelectClasses();
             try {
                 clientInitialize();
-            } catch (IOException e) {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         }
@@ -389,7 +386,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
                 try {
                     parentWindow.reset(true);
                     controlsHeld.classSelection = null;
-                } catch (IOException e) {
+                } catch (Exception e) {
                     e.printStackTrace();
                 }
             } else {
@@ -502,31 +499,43 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
     }
 
     protected void gameEndStatsAndRanks(Graphics2D g2D, Titan underControl) {
-        JSONObject stats = game.stats.statsOf(game.clientFromTitan(underControl));
-        JSONObject ranks = game.stats.ranksOf(game.clientFromTitan(underControl));
+        JSONObject stats;
+        JSONObject ranks;
+        try {
+            stats = game.stats.statsOf(game.clientFromTitan(underControl));
+            ranks = game.stats.ranksOf(game.clientFromTitan(underControl));
+        } catch (JSONException ex1) {
+            ex1.printStackTrace();
+            return;
+        }
         int y = 425;
         Font font = new Font("Verdana", Font.PLAIN, sconst.STATS_FONT);
         sconst.setFont(g2D, font);
-        for (String stat : stats.keySet()) {
-            g2D.setColor(Color.BLACK);
-            darkTheme(g2D, false);
-            sconst.drawString(g2D, stat + ": " + stats.get(stat), 310, y);
-            if (ranks.has(stat) && ((int) ranks.get(stat) >= 1)) {
-                int rank = (int) ranks.get(stat);
-                setColorFromRank(g2D, rank);
-                g2D.fill(new Ellipse2D.Double(sconst.STATS_MEDAL + 1, //subtractions for internal color circle
-                        y - (sconst.STATS_FONT - 4) + 1,
-                        sconst.STATS_FONT - 2, sconst.STATS_FONT - 2));
+        for (Iterator it = stats.keys(); it.hasNext(); ) {
+            try {
+                String stat = (String) it.next();
                 g2D.setColor(Color.BLACK);
-                g2D.draw(new Ellipse2D.Double(sconst.STATS_MEDAL,
-                        y - (sconst.STATS_FONT - 4),
-                        sconst.STATS_FONT, sconst.STATS_FONT));
+                darkTheme(g2D, false);
+                sconst.drawString(g2D, stat + ": " + stats.get(stat), 310, y);
+                if (ranks.has(stat) && ((int) ranks.get(stat) >= 1)) {
+                    int rank = (int) ranks.get(stat);
+                    setColorFromRank(g2D, rank);
+                    g2D.fill(new Ellipse2D.Double(sconst.STATS_MEDAL + 1, //subtractions for internal color circle
+                            y - (sconst.STATS_FONT - 4) + 1,
+                            sconst.STATS_FONT - 2, sconst.STATS_FONT - 2));
+                    g2D.setColor(Color.BLACK);
+                    g2D.draw(new Ellipse2D.Double(sconst.STATS_MEDAL,
+                            y - (sconst.STATS_FONT - 4),
+                            sconst.STATS_FONT, sconst.STATS_FONT));
+                }
+                y += sconst.STATS_FONT + 5;
+            } catch (JSONException ex1) {
+                ex1.printStackTrace();
             }
-            y += sconst.STATS_FONT + 5;
         }
     }
 
-    public void clientInitialize() throws IOException {
+    public void clientInitialize() throws IOException, URISyntaxException {
         ballFrame = 0;
         ballFrameCounter = 0;
         camX = 500;
@@ -534,42 +543,41 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         openConnection();
     }
 
-    public void openConnection() throws IOException {
-        gameserverConn.start();
-        //gameserverConn.setHardy(true);
-        if (!gameserverConn.isConnected()) {
-            gameserverConn.connect(999999999, "zanzalaz.com", 54555);
-            //gameserverConn.connect(5000, "127.0.0.1", 54555);
-            gameserverConn.addListener(new Listener() {
-                public synchronized void received(Connection connection, Object object) {
-                    if (object instanceof Game) {
-                        game = (GameEngine) object;
-                        game.began = true;
-                        phase = game.phase;
-                        controlsHeld.gameID = gameID;
-                        controlsHeld.token = token;
-                        controlsHeld.masteries = masteries;
-                        controlsHeld.camX = camX;
-                        controlsHeld.camY = camY;
-                        repaint();
-                        try {
-                            gameserverConn.sendTCP(controlsHeld);
-                        } catch (KryoException e) {
-                            System.out.println("kryo end");
-                            System.out.println(game.ended);
-                        }
-                    } else {
-                        System.out.println("Didn't get a game from gameserver!");
-                    }
+    public void openConnection() throws IOException, URISyntaxException {
+        Socket io = IO.socket("https://zanzalaz.com:54555");
+        io.connect();
+        if (! io.connected()) {
+            io = io.connect();
+            // Next, we define a function that will handle the game state that is received from the server
+            Emitter.Listener handleGameState = args -> {
+                // Here, you can update your game with the new state received from the server
+                Object object = args[0];
+                if (object instanceof Game) {
+                    game = (GameEngine) object;
+                    game.began = true;
+                    phase = game.phase;
+                    controlsHeld.gameID = gameID;
+                    controlsHeld.token = token;
+                    controlsHeld.masteries = masteries;
+                    controlsHeld.camX = camX;
+                    controlsHeld.camY = camY;
+                    repaint();
+                } else {
+                    System.out.println("Didn't get a game from gameserver!");
                 }
-            });
-            KryoRegistry.register(kryo);
+                System.out.println("Received game state: " + object);
+            };
+            // Then, we create a socket listener that listens for the "gameState" event, and calls our handleGameState function
+            // whenever the event is emitted by the server
+            io.on("gameState", handleGameState);
+            // Finally we schedule the periodic control updates to the server at the appropriate frequency.
             ScheduledExecutorService exec = Executors.newScheduledThreadPool(1);
+            Socket finalIo = io;
             Runnable updateServer = () -> {
                 controlsHeld.gameID = gameID;
                 controlsHeld.token = token;
                 controlsHeld.masteries = masteries;
-                gameserverConn.sendTCP(controlsHeld);
+                finalIo.send("controlsHeld", controlsHeld);
             };
             exec.scheduleAtFixedRate(updateServer, 1, 30, TimeUnit.MILLISECONDS);
         }
@@ -1335,7 +1343,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
                     key == KeyEvent.VK_ESCAPE || key == KeyEvent.VK_ENTER) {
                 try {
                     parentWindow.reset(true); //TODO tournament feature here
-                } catch (IOException e) {
+                } catch (Exception e) {
                     e.printStackTrace();
                 }
                 phase = GamePhase.SHOW_GAME_MODES;
@@ -1723,7 +1731,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
                     Instant.now().isAfter(gamestart.plus(new Duration(2500)))) {
                 try {
                     parentWindow.reset(false);
-                } catch (IOException e) {
+                } catch (Exception e) {
                     e.printStackTrace();
                 }
             }

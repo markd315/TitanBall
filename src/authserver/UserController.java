@@ -14,27 +14,28 @@ import authserver.models.responses.UserResponse;
 import authserver.users.identities.UserService;
 import authserver.users.premades.PremadeService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.validation.BindingResult;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.stereotype.Component;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 
 import javax.validation.Valid;
+import javax.ws.rs.*;
+import javax.ws.rs.core.Response;
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-@RestController
-@CrossOrigin(exposedHeaders = "errors, content-type")
-public class LoginController {
+@Component
+@Path("/users")
+public class UserController {
     private static final String M2M_AUTH = "VERY SECRET PAYPAL PRIVATE KEY";
 
     @Autowired
@@ -55,31 +56,37 @@ public class LoginController {
     @Autowired
     AuthenticationManager authenticationManager;
 
-    @PostMapping("/login")
-    public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
+    @POST
+    @Path("/entrypoint")
+    public Response authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
+        System.out.println("reached method");
+        System.out.println(loginRequest);
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         loginRequest.getUsernameOrEmail(),
                         loginRequest.getPassword()
                 )
         );
+        System.out.println(authentication);
         SecurityContextHolder.getContext().setAuthentication(authentication);
         String jwt = tokenProvider.generateToken(authentication);
         String ref = tokenProvider.generateRefreshToken(authentication);
-        return ResponseEntity.ok(new JwtAuthenticationResponse(jwt, ref));
+        return Response.status(200).type(javax.ws.rs.core.MediaType.APPLICATION_JSON_TYPE).entity(new JwtAuthenticationResponse(jwt, ref)).build();
     }
 
-    @PostMapping("/refresh")
-    public ResponseEntity<?> reauthenticateUser(@RequestHeader String authorization) {
+    @POST
+    @Path("/refresh")
+    public Response reauthenticateUser(@RequestHeader String authorization) {
         String[] newTokens = tokenProvider.bothRefreshed(authorization);
         if(newTokens.length != 2){
-            return ResponseEntity.status(401).body("Refresh token not/no longer valid");
+            return Response.status(401).entity("Refresh token not/no longer valid").build();
         }
-        return ResponseEntity.ok(new JwtAuthenticationResponse(newTokens[0], newTokens[1]));
+        return Response.status(200).type(javax.ws.rs.core.MediaType.APPLICATION_JSON_TYPE).entity(new JwtAuthenticationResponse(newTokens[0], newTokens[1])).build();
     }
 
-    @PostMapping("/activate")
-    public ResponseEntity<?> activateUser(@Valid @RequestBody ActivationRequest activationRequest) throws Exception {
+    @POST
+    @Path("/activate")
+    public Response activateUser(@Valid @RequestBody ActivationRequest activationRequest) throws Exception {
         User user;
         try{
             user = userService.findUserByEmail(activationRequest.getUsernameOrEmail());
@@ -88,20 +95,21 @@ public class LoginController {
             user = userService.findUserByUsername(activationRequest.getUsernameOrEmail());
         }
         if(user == null){
-            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+            return Response.status(400).build();
         }
         if(user.activate(activationRequest.getKey())){
             user.setEnabled(true);
             user.renew(14);
             userService.saveUser(user);
-            return new ResponseEntity<>(HttpStatus.OK);
+            return Response.ok().build();
         }else{
-            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+            return Response.status(401).build();
         }
     }
 
-    @PostMapping("/renew")
-    public ResponseEntity<?> renewUser(@Valid @RequestBody RenewRequest loginRequest) throws Exception {
+    @POST
+    @Path("/renew")
+    public Response renewUser(@Valid @RequestBody RenewRequest loginRequest) throws Exception {
         User user;
         try{
             user = userService.findUserByEmail(loginRequest.getUsernameOrEmail());
@@ -110,41 +118,47 @@ public class LoginController {
             user = userService.findUserByUsername(loginRequest.getUsernameOrEmail());
         }
         if(user == null){
-            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+            return Response.status(400).build();
         }
         if(loginRequest.getM2mAuth().equals(M2M_AUTH)){
             user.renew(loginRequest.getDays());
             userService.saveUser(user);
-            return new ResponseEntity<>(HttpStatus.OK);
+            return Response.ok().build();
         }else{
-            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+            return Response.status(401).build();
         }
     }
 
-    @RequestMapping("/gamecheck")
-    public ResponseEntity<String> gameCheck(Authentication auth) {
-        return new ResponseEntity<>(userPool.findGame(auth), HttpStatus.OK);
+    @GET
+    @Path("/gamecheck")
+    public Response gameCheck() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return Response.status(200).type(javax.ws.rs.core.MediaType.APPLICATION_JSON_TYPE).entity(userPool.findGame(auth)).build();
     }
 
-    @RequestMapping("/join")
-    public ResponseEntity<String> joinLobby(Authentication auth,
-              @RequestParam String tournamentCode, @RequestParam(required = false) String teamname) throws IOException {
+    @GET
+    @Path("/join")
+    public Response joinLobby(@QueryParam("tournamentCode") String tournamentCode, @QueryParam("teamname") String teamname) throws IOException {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         userPool.registerIntent(auth, tournamentCode, teamname);
-        return new ResponseEntity<>(userPool.findGame(auth), HttpStatus.OK);
+        return Response.ok().entity(userPool.findGame(auth)).build();
     }
 
-    @RequestMapping("/leave")
-    public ResponseEntity<String> leaveLobby(Authentication auth) {
+    @GET
+    @Path("/leave")
+    public Response leaveLobby() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         userPool.removeIntent(auth);
         String game = userPool.findGame(auth);
         if(!game.equals("NOT QUEUED")){
-            return new ResponseEntity<>(game, HttpStatus.BAD_REQUEST);
+            return Response.status(400).entity(game).build();
         }
-        return new ResponseEntity<>("Successfully withdrawn", HttpStatus.OK);
+        return Response.ok().type(javax.ws.rs.core.MediaType.TEXT_PLAIN_TYPE).entity("Successfully withdrawn").build();
     }
 
-    @RequestMapping(value = "/stat", method = RequestMethod.POST)
-    public ResponseEntity<UserResponse> userStats(@RequestBody @Valid UserDTO userinput) {
+    @POST
+    @Path("/stat")
+    public Response userStats(@RequestBody @Valid UserDTO userinput) {
         User user = userService.findUserByEmail(userinput.getEmail());
         List<User> rate3v3 = userService.findAll();
         rate3v3.sort((User o1, User o2) -> (int) (o2.getRating()- o1.getRating()));
@@ -166,20 +180,22 @@ public class LoginController {
                 rating1v1 = i+1;
             }
         }
-        return new ResponseEntity<>(new UserResponse(user, rating, rating1v1), HttpStatus.OK);
+        return Response.status(200).type(javax.ws.rs.core.MediaType.APPLICATION_JSON_TYPE).entity(new UserResponse(user, rating, rating1v1)).build();
     }
 
-    @RequestMapping(value = "", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
-    public ResponseEntity<UserResponse> addUser(@RequestBody @Valid UserDTO userinput, BindingResult bindingResult, Authentication auth) throws Exception {
-        HttpHeaders headers = new HttpHeaders();
+    @POST
+    @Path("addUser")
+    @Produces(MediaType.APPLICATION_JSON_UTF8_VALUE)
+    public Response addUser(@RequestBody @Valid UserDTO userinput) throws Exception {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         /*if(!isRole(auth, "ADMIN")){
-            return new ResponseEntity<>(null, headers, HttpStatus.FORBIDDEN);
+            return Response(null, headers, HttpStatus.FORBIDDEN);
         }*/
         User user = new User();
-        if (bindingResult.hasErrors() || (userinput == null) || userinput.getUsername() == null || userinput.getPassword() == null) {
+        if ((userinput == null) || userinput.getUsername() == null || userinput.getPassword() == null) {
             //errors.addAllErrors(bindingResult);
             //headers.add("errors", errors.toJSON());
-            return new ResponseEntity<>(new UserResponse(user, 999, 999), headers, HttpStatus.BAD_REQUEST);
+            return Response.status(400).entity(new UserResponse(user, 999, 999)).build();
         }
         user.setUsername(userinput.getUsername());
         String hashed = passwordEncoder.encode(userinput.getPassword());
@@ -193,12 +209,15 @@ public class LoginController {
         }
 
         this.userService.saveUser(user);
-        return new ResponseEntity<>(new UserResponse(user, 999, 999), headers, HttpStatus.CREATED);
+        return Response.status(202).type(javax.ws.rs.core.MediaType.APPLICATION_JSON_TYPE).entity(new UserResponse(user, 999, 999)).build();
     }
 
-    @RequestMapping(value = "/teamcheck", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
-    public ResponseEntity<Premade> checkTeam(
-            @RequestBody PremadeDTO input, Authentication auth) {
+    @POST
+    @Path("/teamcheck")
+    @Produces(MediaType.APPLICATION_JSON_UTF8_VALUE)
+    public Response checkTeam(
+            @RequestBody PremadeDTO input) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String email = auth.getName();
         //return code and body
         Optional<Premade> getback = this.premadeService.findPremadeByTeamname(input.teamname);
@@ -207,32 +226,36 @@ public class LoginController {
             if(email.equals(pm.getTopuser()) ||
                     email.equals(pm.getMiduser()) ||
                     email.equals(pm.getBotuser())){
-                return new ResponseEntity<>(getback.get(), HttpStatus.CREATED);
+                return Response.status(202).type(javax.ws.rs.core.MediaType.APPLICATION_JSON_TYPE).entity(getback.get()).build();
             }
-            return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+            return Response.status(403).build();
         }else{
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            return Response.status(404).build();
         }
     }
 
-    @RequestMapping(value = "/teamup", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
-    public ResponseEntity<Premade> registerTeam(@RequestBody @Valid PremadeDTO input,
-                                                Authentication auth, @RequestParam(required = false) boolean queue) {
+    @POST
+    @Path("/teamup")
+    @Produces(MediaType.APPLICATION_JSON_UTF8_VALUE)
+    public Response registerTeam(@RequestBody @Valid PremadeDTO input, @QueryParam("queue") boolean queue) throws MalformedURLException {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if(input.teamname == null || input.teamname.equals("")){
-            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+            return Response.status(400).build();
         }
         String username = auth.getName();
         Premade premade = new Premade(input, queue ? username : "");
         try {
             this.premadeService.enterTeamDetails(premade, username);
         } catch (Exception e) {
-            return new ResponseEntity<>(HttpStatus.CONFLICT);
+            return Response.status(409).build();
         }
         //return code and body
         Optional<Premade> getback = this.premadeService.findPremadeByTeamname(premade.getTeamname());
-        return getback.map(value -> new ResponseEntity<>(value, HttpStatus.CREATED))
-                .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
+        if(getback.isPresent()){
+            return Response.status(202).build();
+        }
+        else{
+            return Response.status(404).build();
+        }
     }
 }
-
-// URL: ec2-18-223-131-64.us-east-2.compute.amazonaws.com:8080/usersAPI/login

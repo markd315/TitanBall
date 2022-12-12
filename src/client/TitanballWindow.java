@@ -4,7 +4,6 @@ package client;
  * */
 
 import client.forms.LoginForm;
-import com.esotericsoftware.kryonet.Client;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import gameserver.gamemanager.GamePhase;
@@ -14,6 +13,7 @@ import java.awt.*;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.Scanner;
 
@@ -30,11 +30,9 @@ public class TitanballWindow extends JFrame {
         initUI();
     }
 
-    public void reset(boolean menu) throws IOException {
-        Client conn = null;
+    public void reset(boolean menu) throws IOException, URISyntaxException {
         boolean restarting = false;
         if (client != null) { //reset
-            conn = client.gameserverConn;
             remove(client);
             System.gc();
             restarting = true;
@@ -50,9 +48,6 @@ public class TitanballWindow extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setExtendedState(JFrame.MAXIMIZED_BOTH);
         setResizable(false);
-        if (client.gameserverConn == null) {
-            client.gameserverConn = conn;
-        }
         if(restarting){
             client.openConnection();
             if(menu){
@@ -91,7 +86,7 @@ public class TitanballWindow extends JFrame {
         }
         try {
             reset(true);
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }

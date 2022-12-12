@@ -22,11 +22,11 @@ public class HttpClient {
 
     public String token, refreshToken = null;
     public String gameId;
-    public final int PORT = 444;
+    public final int PORT = 1443;
     private com.fasterxml.jackson.databind.JsonNode stat;
 
     public String springEndpoint() {
-        return "https://zanzalaz.com:" + PORT + "/";
+        return "https://zanzalaz.com:" + PORT + "/api/users/";
     }
 
     static{
@@ -52,7 +52,7 @@ public class HttpClient {
 
     public String authenticate(String un, String pass) {
         try {
-            HttpResponse<JsonNode> response = Unirest.post(springEndpoint() + "login")
+            HttpResponse<JsonNode> response = Unirest.post(springEndpoint() + "entrypoint")
                     .header("accept", "application/json")
                     .header("Content-Type", "application/json")
                     .body("{\"usernameOrEmail\":\"" + un + "\"," +
