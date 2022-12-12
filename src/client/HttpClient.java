@@ -22,7 +22,7 @@ public class HttpClient {
 
     public String token, refreshToken = null;
     public String gameId;
-    public final int PORT = 444;
+    public final int PORT = 1443;
     private com.fasterxml.jackson.databind.JsonNode stat;
 
     public String springEndpoint() {
