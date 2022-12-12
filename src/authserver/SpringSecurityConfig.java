@@ -68,12 +68,12 @@ public class SpringSecurityConfig extends WebSecurityConfigurerAdapter {
                         "/**/*.css",
                         "/**/*.js")
                 .permitAll()
-                .antMatchers("/usersAPI/login/**",
-                        "/usersAPI/refresh/**",
-                        "/usersAPI/activate/**", //open for key param
-                        "/usersAPI/renew/**")
+                .antMatchers("/login/**",
+                        "/refresh/**",
+                        "/activate/**", //open for key param
+                        "/renew/**")
                 .permitAll()
-                .antMatchers("/usersAPI/login/checkUsernameAvailability", "/usersAPI/login/checkEmailAvailability")
+                .antMatchers("/login/checkUsernameAvailability", "/login/checkEmailAvailability")
                 .permitAll()
                 .anyRequest()
                 .authenticated();
