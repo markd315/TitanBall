@@ -33,7 +33,7 @@ import java.util.List;
 import java.util.Optional;
 
 @RestController
-@CrossOrigin(exposedHeaders = "errors, content-type")
+@CrossOrigin(origins = "*", exposedHeaders = "errors, accept, content-type", allowCredentials = "true", methods = {RequestMethod.POST, RequestMethod.GET, RequestMethod.DELETE, RequestMethod.OPTIONS, RequestMethod.HEAD, RequestMethod.PATCH, RequestMethod.TRACE})
 public class LoginController {
     private static final String M2M_AUTH = "VERY SECRET PAYPAL PRIVATE KEY";
 
