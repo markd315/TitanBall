@@ -20,7 +20,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -34,8 +33,6 @@ import java.util.List;
 import java.util.Optional;
 
 @RestController
-@EnableWebSecurity(debug = true)
-@CrossOrigin(origins = "*", exposedHeaders = "errors, accept, content-type", allowCredentials = "true", methods = {RequestMethod.POST, RequestMethod.GET, RequestMethod.DELETE, RequestMethod.OPTIONS, RequestMethod.HEAD, RequestMethod.PATCH, RequestMethod.TRACE})
 public class LoginController {
     private static final String M2M_AUTH = "VERY SECRET PAYPAL PRIVATE KEY";
 
