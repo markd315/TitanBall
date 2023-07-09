@@ -8,8 +8,10 @@ import org.eclipse.jetty.http.pathmap.ServletPathSpec;
 import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.HandlerList;
+import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
+import org.eclipse.jetty.servlets.CrossOriginFilter;
 import org.eclipse.jetty.websocket.server.WebSocketUpgradeFilter;
 
 import javax.servlet.DispatcherType;
@@ -36,9 +38,11 @@ public final class ServerWrapper {
         PORT_START = new AtomicInteger(port);
 
         mPort = PORT_START.getAndIncrement();
+        System.out.println("MPORT set to " + mPort);
         mServer = new Server(new InetSocketAddress(ip, mPort));
         eioOptions = EngineIoServerOptions.newFromDefault();
         eioOptions.setAllowedCorsOrigins(allowedCorsOrigins);
+        eioOptions.setCorsHandlingDisabled(true);
 
         mEngineIoServer = new EngineIoServer(eioOptions);
         mSocketIoServer = new SocketIoServer(mEngineIoServer);
@@ -53,7 +57,7 @@ public final class ServerWrapper {
         /*
         An alternative way of handling the CORS.
         Must set eioOptions.setCorsHandlingDisabled(true) if you want to use the below method
-
+        */
         FilterHolder cors = new FilterHolder(new CrossOriginFilter());
         cors.setInitParameter(CrossOriginFilter.ALLOWED_ORIGINS_PARAM, "*");
         cors.setInitParameter(CrossOriginFilter.ACCESS_CONTROL_ALLOW_ORIGIN_HEADER, "*");
@@ -61,8 +65,7 @@ public final class ServerWrapper {
         cors.setInitParameter(CrossOriginFilter.ALLOWED_HEADERS_PARAM, "X-Requested-With,Content-Type,Accept,Origin,Cache-Control");
         cors.setInitParameter(CrossOriginFilter.CHAIN_PREFLIGHT_PARAM, "false");
         servletContextHandler.addFilter(cors, "/socket.io/*", EnumSet.of(DispatcherType.REQUEST));
-        */
-
+        System.out.println(cors.getInitParameterNames());
         servletContextHandler.addServlet(new ServletHolder(new HttpServlet() {
             @Override
             protected void service(HttpServletRequest request, HttpServletResponse response) throws IOException {
