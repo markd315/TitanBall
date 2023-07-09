@@ -97,6 +97,8 @@ public class JwtTokenProvider {
             logger.error("Unsupported JWT token");
         } catch (IllegalArgumentException ex) {
             logger.error("JWT claims string is empty.");
+        }catch (IncorrectClaimException ex) {
+            return validateRefreshToken(authToken);
         }
         return false;
     }

@@ -55,11 +55,6 @@
             <artifactId>engine.io-server-jetty</artifactId>
             <version>5.0.0</version>
         </dependency>
-        <dependency>
-            <groupId>io.socket</groupId>
-            <artifactId>socket.io-server</artifactId>
-            <version>3.0.2</version>
-        </dependency>
 
         <dependency>
             <groupId>commons-io</groupId>

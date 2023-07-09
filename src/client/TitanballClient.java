@@ -546,10 +546,19 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
     public void openConnection() throws IOException, URISyntaxException {
         Socket io = IO.socket("https://zanzalaz.com:54555");
         io.connect();
+        System.out.println("Connected?");
         if (! io.connected()) {
-            io = io.connect();
+            System.out.println("Connected!");
+            //TODO we were connecting twice idk why maybe important
+            //io = io.connect();
+            System.out.println("Game next line");
+            System.out.println(game);
+            if (game != null) {
+                System.out.println(game.phase);
+            }
             // Next, we define a function that will handle the game state that is received from the server
             Emitter.Listener handleGameState = args -> {
+                System.out.println("handleGameState start " + Arrays.toString(args));
                 // Here, you can update your game with the new state received from the server
                 Object object = args[0];
                 if (object instanceof Game) {
@@ -577,9 +586,12 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
                 controlsHeld.gameID = gameID;
                 controlsHeld.token = token;
                 controlsHeld.masteries = masteries;
+                System.out.println("controlsHeld " + controlsHeld);
+                System.out.println("controlsHeld down " + controlsHeld.DOWN);
                 finalIo.send("controlsHeld", controlsHeld);
             };
             exec.scheduleAtFixedRate(updateServer, 1, 30, TimeUnit.MILLISECONDS);
+            System.out.println("Updates scheduled");
         }
     }
 

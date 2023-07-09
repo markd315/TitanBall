@@ -51,7 +51,7 @@ public class ServerApplication {
         System.out.println("servlet starting");
         states = new HashMap<>();
 
-        final ServerWrapper serverWrapper = new ServerWrapper("127.0.0.1", 54555, null); // null means "allow all" as stated in https://github.com/socketio/engine.io-server-java/blob/f8cd8fc96f5ee1a027d9b8d9748523e2f9a14d2a/engine.io-server/src/main/java/io/socket/engineio/server/EngineIoServerOptions.java#L26
+        final ServerWrapper serverWrapper = new ServerWrapper("https://zanzalaz.com", 54555, null); // null means "allow all" as stated in https://github.com/socketio/engine.io-server-java/blob/f8cd8fc96f5ee1a027d9b8d9748523e2f9a14d2a/engine.io-server/src/main/java/io/socket/engineio/server/EngineIoServerOptions.java#L26
         try {
             System.out.println("Servlet wrapper created");
             serverWrapper.startServer();
@@ -66,6 +66,7 @@ public class ServerApplication {
             System.out.println("Client " + socket.getId() + " (" + socket.getInitialHeaders().get("remote_addr") + ") has connected.");
 
             socket.on("controlsHeld", args1 -> {
+                System.out.println("controlsHeld start " + Arrays.toString(args1));
                 Object object = args1[0];
                 if (object instanceof ClientPacket) {
                     String token = ((ClientPacket) object).token;
