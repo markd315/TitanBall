@@ -2,25 +2,13 @@ package gameserver.gamemanager;
 
 import io.socket.engineio.server.EngineIoServer;
 import io.socket.engineio.server.EngineIoServerOptions;
-import io.socket.engineio.server.JettyWebSocketHandler;
 import io.socket.socketio.server.SocketIoServer;
-import org.eclipse.jetty.http.pathmap.ServletPathSpec;
-import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Server;
-import org.eclipse.jetty.server.handler.HandlerList;
 import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlet.ServletContextHandler;
-import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.servlets.CrossOriginFilter;
-import org.eclipse.jetty.websocket.server.WebSocketUpgradeFilter;
 
 import javax.servlet.DispatcherType;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletRequestWrapper;
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.EnumSet;
 
@@ -55,7 +43,7 @@ public class ServerWrapper {
         cors.setInitParameter(CrossOriginFilter.ALLOWED_HEADERS_PARAM, "X-Requested-With, Content-Type, Accept, Origin, Cache-Control");
         cors.setInitParameter(CrossOriginFilter.CHAIN_PREFLIGHT_PARAM, "false");
         servletContextHandler.addFilter(cors, "/*", EnumSet.of(DispatcherType.REQUEST));
-
+        /*
         servletContextHandler.addServlet(new ServletHolder(new HttpServlet() {
             @Override
             protected void service(HttpServletRequest request, HttpServletResponse response) throws IOException {
@@ -80,6 +68,7 @@ public class ServerWrapper {
         HandlerList handlerList = new HandlerList();
         handlerList.setHandlers(new Handler[]{servletContextHandler});
         mServer.setHandler(handlerList);
+         */
     }
 
     public void startServer() throws Exception {
