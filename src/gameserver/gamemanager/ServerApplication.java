@@ -56,7 +56,7 @@ public class ServerApplication {
         options.extraHeaders = new HashMap<>();
         options.extraHeaders.put("Origin", Collections.singletonList("*"));
         */
-        final ServerWrapper serverWrapper = new ServerWrapper("https://zanzalaz.com", 54555, new String[]{"*"}); // null means "allow all" as stated in https://github.com/socketio/engine.io-server-java/blob/f8cd8fc96f5ee1a027d9b8d9748523e2f9a14d2a/engine.io-server/src/main/java/io/socket/engineio/server/EngineIoServerOptions.java#L26
+        final ServerWrapper serverWrapper = new ServerWrapper("https://zanzalaz.com", 54555);
         try {
             System.out.println("Servlet wrapper created");
             serverWrapper.startServer();

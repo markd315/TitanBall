@@ -23,49 +23,39 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.EnumSet;
-import java.util.concurrent.atomic.AtomicInteger;
 
-public final class ServerWrapper {
-    private static AtomicInteger PORT_START = null;
-
+public class ServerWrapper {
     private final int mPort;
     private final Server mServer;
     private final EngineIoServerOptions eioOptions;
     private final EngineIoServer mEngineIoServer;
     private final SocketIoServer mSocketIoServer;
 
-    public ServerWrapper(String ip, int port, String[] allowedCorsOrigins) {
-        PORT_START = new AtomicInteger(port);
-
-        mPort = PORT_START.getAndIncrement();
-        System.out.println("MPORT set to " + mPort);
+    public ServerWrapper(String ip, int port) {
+        mPort = port;
         mServer = new Server(new InetSocketAddress(ip, mPort));
         eioOptions = EngineIoServerOptions.newFromDefault();
-        eioOptions.setAllowedCorsOrigins(allowedCorsOrigins);
-        eioOptions.setCorsHandlingDisabled(true);
+        eioOptions.setCorsHandlingDisabled(true); // Disable Engine.IO CORS handling
 
         mEngineIoServer = new EngineIoServer(eioOptions);
         mSocketIoServer = new SocketIoServer(mEngineIoServer);
 
+        // Set up Jetty server logging and handlers
         System.setProperty("org.eclipse.jetty.util.log.class", "org.eclipse.jetty.util.log.StdErrLog");
         System.setProperty("org.eclipse.jetty.LEVEL", "OFF");
 
         ServletContextHandler servletContextHandler = new ServletContextHandler(ServletContextHandler.SESSIONS);
         servletContextHandler.setContextPath("/");
-        servletContextHandler.addFilter(RemoteAddrFilter.class, "/socket.io/*", EnumSet.of(DispatcherType.REQUEST));
 
-        /*
-        An alternative way of handling the CORS.
-        Must set eioOptions.setCorsHandlingDisabled(true) if you want to use the below method
-        */
+        // Configure CrossOriginFilter to handle CORS for all paths
         FilterHolder cors = new FilterHolder(new CrossOriginFilter());
         cors.setInitParameter(CrossOriginFilter.ALLOWED_ORIGINS_PARAM, "*");
         cors.setInitParameter(CrossOriginFilter.ACCESS_CONTROL_ALLOW_ORIGIN_HEADER, "*");
-        cors.setInitParameter(CrossOriginFilter.ALLOWED_METHODS_PARAM, "OPTIONS,GET,POST,HEAD");
-        cors.setInitParameter(CrossOriginFilter.ALLOWED_HEADERS_PARAM, "X-Requested-With,Content-Type,Accept,Origin,Cache-Control");
+        cors.setInitParameter(CrossOriginFilter.ALLOWED_METHODS_PARAM, "OPTIONS, GET, POST, HEAD");
+        cors.setInitParameter(CrossOriginFilter.ALLOWED_HEADERS_PARAM, "X-Requested-With, Content-Type, Accept, Origin, Cache-Control");
         cors.setInitParameter(CrossOriginFilter.CHAIN_PREFLIGHT_PARAM, "false");
-        servletContextHandler.addFilter(cors, "/socket.io/*", EnumSet.of(DispatcherType.REQUEST));
-        System.out.println(cors.getInitParameterNames());
+        servletContextHandler.addFilter(cors, "/*", EnumSet.of(DispatcherType.REQUEST));
+
         servletContextHandler.addServlet(new ServletHolder(new HttpServlet() {
             @Override
             protected void service(HttpServletRequest request, HttpServletResponse response) throws IOException {
@@ -76,19 +66,19 @@ public final class ServerWrapper {
                     }
                 }, response);
             }
-        }), "/socket.io/*");
+        }), "/*");
 
         try {
             WebSocketUpgradeFilter webSocketUpgradeFilter = WebSocketUpgradeFilter.configureContext(servletContextHandler);
             webSocketUpgradeFilter.addMapping(
-                    new ServletPathSpec("/socket.io/*"),
+                    new ServletPathSpec("/*"),
                     (servletUpgradeRequest, servletUpgradeResponse) -> new JettyWebSocketHandler(mEngineIoServer));
         } catch (ServletException ex) {
             ex.printStackTrace();
         }
 
         HandlerList handlerList = new HandlerList();
-        handlerList.setHandlers(new Handler[] { servletContextHandler });
+        handlerList.setHandlers(new Handler[]{servletContextHandler});
         mServer.setHandler(handlerList);
     }
 
