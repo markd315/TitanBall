@@ -50,13 +50,7 @@ public class ServerApplication {
     public static void main(String[] args) throws IOException {
         System.out.println("servlet starting");
         states = new HashMap<>();
-
-        /*IO.Options options = new IO.Options();
-        options.transports = new String[]{WebSocket.NAME};
-        options.extraHeaders = new HashMap<>();
-        options.extraHeaders.put("Origin", Collections.singletonList("*"));
-        */
-        final ServerWrapper serverWrapper = new ServerWrapper("https://zanzalaz.com", 54555);
+        final ServerWrapper serverWrapper = new ServerWrapper("35.227.124.68", 54555);
         try {
             System.out.println("Servlet wrapper created");
             serverWrapper.startServer();

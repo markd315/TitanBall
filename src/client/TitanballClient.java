@@ -546,7 +546,6 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
     public void openConnection() throws IOException, URISyntaxException {
         Socket io = IO.socket("https://zanzalaz.com:54555");
         io.connect();
-        System.out.println("Connected?");
         if (! io.connected()) {
             System.out.println("Connected!");
             //TODO we were connecting twice idk why maybe important
@@ -581,14 +580,13 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
             io.on("gameState", handleGameState);
             // Finally we schedule the periodic control updates to the server at the appropriate frequency.
             ScheduledExecutorService exec = Executors.newScheduledThreadPool(1);
-            Socket finalIo = io;
             Runnable updateServer = () -> {
                 controlsHeld.gameID = gameID;
                 controlsHeld.token = token;
                 controlsHeld.masteries = masteries;
                 System.out.println("controlsHeld " + controlsHeld);
                 System.out.println("controlsHeld down " + controlsHeld.DOWN);
-                finalIo.send("controlsHeld", controlsHeld);
+                io.send("controlsHeld", controlsHeld);
             };
             exec.scheduleAtFixedRate(updateServer, 1, 30, TimeUnit.MILLISECONDS);
             System.out.println("Updates scheduled");
