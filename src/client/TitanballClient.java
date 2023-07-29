@@ -586,7 +586,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
                 controlsHeld.masteries = masteries;
                 System.out.println("controlsHeld " + controlsHeld);
                 System.out.println("controlsHeld down " + controlsHeld.DOWN);
-                io.send("controlsHeld", controlsHeld);
+                io.emit("controlsHeld", controlsHeld);
             };
             exec.scheduleAtFixedRate(updateServer, 1, 30, TimeUnit.MILLISECONDS);
             System.out.println("Updates scheduled");

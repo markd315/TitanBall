@@ -50,7 +50,7 @@ public class ServerApplication {
     public static void main(String[] args) throws IOException {
         System.out.println("servlet starting");
         states = new HashMap<>();
-        final ServerWrapper serverWrapper = new ServerWrapper("35.227.124.68", 54555);
+        final ServerWrapper serverWrapper = new ServerWrapper("0.0.0.0", 54555);
         try {
             System.out.println("Servlet wrapper created");
             serverWrapper.startServer();
@@ -77,7 +77,7 @@ public class ServerApplication {
                 }
                 System.out.println("[Client " + socket.getId() + "] " + object);
                 //TODO move this somewhere else in the code, we should only be doing it periodically.
-                socket.send("gameState", "test message", 1);
+                socket.emit("gameState", "test message", 1);
             });
 
         });
