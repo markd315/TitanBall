@@ -544,54 +544,59 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
     }
 
     public void openConnection() throws IOException, URISyntaxException {
-        Socket io = IO.socket("https://zanzalaz.com:54555/");
-        io.connect();
-        while ( !io.connected()) {
-            System.out.println("Not connected!");
-            io = io.connect();
-        }
-        System.out.println("finally connected!");
-        System.out.println("Game next line");
-        System.out.println(game);
-        if (game != null) {
-            System.out.println(game.phase);
-        }
-        // Next, we define a function that will handle the game state that is received from the server
-        Emitter.Listener handleGameState = args -> {
-            System.out.println("handleGameState start " + Arrays.toString(args));
-            // Here, you can update your game with the new state received from the server
-            Object object = args[0];
-            if (object instanceof Game) {
-                game = (GameEngine) object;
-                game.began = true;
-                phase = game.phase;
+        Socket io = IO.socket("http://zanzalaz.com:54555/");
+        io.on(Socket.EVENT_CONNECT, argsc -> {
+            System.out.println("Connected!");
+            System.out.println("Game next line");
+            System.out.println(game);
+            if (game != null) {
+                System.out.println(game.phase);
+            }
+            // Next, we define a function that will handle the game state that is received from the server
+            Emitter.Listener handleGameState = args -> {
+                System.out.println("handleGameState start " + Arrays.toString(args));
+                // Here, you can update your game with the new state received from the server
+                Object object = args[0];
+                if (object instanceof Game) {
+                    game = (GameEngine) object;
+                    game.began = true;
+                    phase = game.phase;
+                    controlsHeld.gameID = gameID;
+                    controlsHeld.token = token;
+                    controlsHeld.masteries = masteries;
+                    controlsHeld.camX = camX;
+                    controlsHeld.camY = camY;
+                    repaint();
+                } else {
+                    System.out.println("Didn't get a game from gameserver!");
+                }
+                System.out.println("Received game state: " + object);
+            };
+            // Then, we create a socket listener that listens for the "gameState" event, and calls our handleGameState function
+            // whenever the event is emitted by the server
+            io.on("gameState", handleGameState);
+            // Finally we schedule the periodic control updates to the server at the appropriate frequency.
+            ScheduledExecutorService exec = Executors.newScheduledThreadPool(1);
+            Socket finalIo = io;
+            Runnable updateServer = () -> {
                 controlsHeld.gameID = gameID;
                 controlsHeld.token = token;
                 controlsHeld.masteries = masteries;
-                controlsHeld.camX = camX;
-                controlsHeld.camY = camY;
-                repaint();
-            } else {
-                System.out.println("Didn't get a game from gameserver!");
+                System.out.println("controlsHeld " + controlsHeld);
+                System.out.println("controlsHeld down " + controlsHeld.DOWN);
+                finalIo.emit("controlsHeld", controlsHeld);
+            };
+            exec.scheduleAtFixedRate(updateServer, 1, 30, TimeUnit.MILLISECONDS);
+            System.out.println("Updates scheduled");
+        });
+
+        io.on(Socket.EVENT_CONNECT_ERROR, args -> {
+            System.out.println("Connection error!");
+            for(Object o : args){
+                System.out.println(o);
             }
-            System.out.println("Received game state: " + object);
-        };
-        // Then, we create a socket listener that listens for the "gameState" event, and calls our handleGameState function
-        // whenever the event is emitted by the server
-        io.on("gameState", handleGameState);
-        // Finally we schedule the periodic control updates to the server at the appropriate frequency.
-        ScheduledExecutorService exec = Executors.newScheduledThreadPool(1);
-        Socket finalIo = io;
-        Runnable updateServer = () -> {
-            controlsHeld.gameID = gameID;
-            controlsHeld.token = token;
-            controlsHeld.masteries = masteries;
-            System.out.println("controlsHeld " + controlsHeld);
-            System.out.println("controlsHeld down " + controlsHeld.DOWN);
-            finalIo.emit("controlsHeld", controlsHeld);
-        };
-        exec.scheduleAtFixedRate(updateServer, 1, 30, TimeUnit.MILLISECONDS);
-        System.out.println("Updates scheduled");
+        });
+        io.connect();
     }
 
     protected String requestOrQueueGame() throws UnirestException {
