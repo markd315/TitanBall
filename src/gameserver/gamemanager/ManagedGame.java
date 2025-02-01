@@ -55,7 +55,6 @@ public class ManagedGame {
         if (state != null) {
             if (state.ended) {
                 System.out.println("GameManager: ENDED GAME");
-                exec.shutdown(); //Stop updating clients
                 return;
             }
             state.kickoff();
@@ -177,6 +176,14 @@ public class ManagedGame {
                     ex1.printStackTrace();
                 }
             });
+            if (state.ended) {
+                /*
+                exec.shutdown(); //Stop updating clients after they get their final update with the game ended
+                for (PlayerConnection connection : clients) {
+                    connection.getClient().close();
+                }
+                */
+            }
         };
         exec.scheduleWithFixedDelay(updateClients, 1, c.getI("server.clients.updateinterval.ms"),
                 TimeUnit.MILLISECONDS);
@@ -526,6 +533,7 @@ public class ManagedGame {
     public PlayerConnection replaceConnectionForSameUser(Connection connection, String token) {
         for (PlayerConnection pc : clients) {
             if (pc.getEmail().equals(Util.jwtExtractEmail(token))) {
+                System.out.println("replacing connection for same user " + pc.getEmail());
                 pc.setClient(connection);
                 return pc;
             }

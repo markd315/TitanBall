@@ -53,6 +53,8 @@ public class ServerApplication {
     public static void main(String[] args) throws IOException {
         Server server = new Server(1024 * 1024, 256 * 1024); //1mb and 256k
         Kryo kryo = server.getKryo();
+        //kryo.setRegistrationRequired(false);
+
         KryoRegistry.register(kryo);
         server.start();
         //gameserver.setHardy(true);

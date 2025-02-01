@@ -59,7 +59,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
     public Instant gamestart = null;
     public Random rand;
     public Sound shotSound;
-    protected Client gameserverConn = new Client(1024 * 1024, 256 * 1024); // 1mb and 256k
+    protected Client gameserverConn = new Client(1024 * 1024, 256 * 1024); // 1mb and 256k; // 1mb and 256k
     protected String gameID;
     protected GameEngine game;
     protected GamePhase phase = GamePhase.CREDITS;
@@ -274,11 +274,15 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         Graphics2D g2D = (Graphics2D) g;
         super.paintComponent(g);
         if (game != null && game.ended) {
+            /*
             if (! exec.isShutdown()) {
                 List<Runnable> canceled = exec.shutdownNow();
                 System.out.println("cancelled " + canceled.size() + " tasks at end of game");
                 exec = Executors.newScheduledThreadPool(1);
+                gameserverConn.close();
+
             }
+             */
             darkTheme(g2D, true);
             Team team = teamFromUnderControl();
             Team enemy = enemyFromUnderControl();
@@ -552,9 +556,14 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
     }
 
     public void openConnection() throws IOException {
-        //TODO replace this with a socketio connection
+        /*
+        System.out.println("shutting down any old connection");
+        exec.shutdownNow();
+        exec = Executors.newScheduledThreadPool(1);
+        gameserverConn.close();
+        */
+        gameserverConn = new Client(1024 * 1024, 256 * 1024); // 1mb and 256k
         gameserverConn.start();
-        //gameserverConn.setHardy(true);
         KryoRegistry.register(kryo);
         if (!gameserverConn.isConnected()) {
             gameserverConn.connect(999999999, "zanzalaz.com", 54555);

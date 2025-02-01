@@ -35,7 +35,6 @@ public class Masteries  implements Serializable {
         this.abilityLag = json.get("abilityLag");
         this.speed = json.get("speed");
         this.painReduction = json.get("painReduction");
-
     }
 
     @JsonProperty

@@ -4,6 +4,7 @@ import client.graphical.GoalSprite;
 import client.graphical.Images;
 import client.graphical.StaticImage;
 import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryonet.FrameworkMessage;
 import com.esotericsoftware.minlog.Log;
 import gameserver.Const;
 import gameserver.TutorialOverrides;
@@ -134,6 +135,7 @@ public class KryoRegistry {
 
         kryo.register(TutorialOverrides.class);
         kryo.register(GameOptions.class);
+        kryo.register(FrameworkMessage.KeepAlive.class);
         Log.DEBUG();
         //Log.TRACE();
     }
