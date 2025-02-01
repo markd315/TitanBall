@@ -522,6 +522,17 @@ public class ManagedGame {
         }
         return false;
     }
+
+    public PlayerConnection replaceConnectionForSameUser(Connection connection, String token) {
+        for (PlayerConnection pc : clients) {
+            if (pc.getEmail().equals(Util.jwtExtractEmail(token))) {
+                pc.setClient(connection);
+                return pc;
+            }
+        }
+        return null;
+    }
+
     public static Object deepClone(Object object) {
         try {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();

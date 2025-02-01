@@ -19,6 +19,7 @@ import gameserver.entity.Titan;
 import networking.ClientPacket;
 import networking.KryoRegistry;
 import networking.PlayerDivider;
+import util.Util;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -114,6 +115,21 @@ public class ServerApplication {
                 state.delegatePacket(connection, packet);
             } catch (IllegalArgumentException ex) {
                 //need a new game created, this should only be triggered if the same user tries to join a new game
+            }
+        }
+        else {
+            //Rejoin logic for when the token has the right email but the connection is new.
+            //This is a hack to fix the issue of rejoining a game with a new connection
+            System.out.println("found a packet for a new connection but an existing game+user");
+            String email = Util.jwtExtractEmail(packet.token);
+            for (ManagedGame mg : states.values()) {
+                System.out.println("checking " + mg.gameId);
+                if (mg.gameContainsEmail(Collections.singleton(email))) {
+                    System.out.println("found a game for " + email + " to rejoin");
+                    mg.replaceConnectionForSameUser(connection, packet.token);
+                    System.out.println("passing connection " + connection.getID() + " to game " + mg.gameId);
+                    mg.delegatePacket(connection, packet);
+                }
             }
         }
     }

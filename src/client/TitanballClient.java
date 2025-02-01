@@ -274,6 +274,11 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         Graphics2D g2D = (Graphics2D) g;
         super.paintComponent(g);
         if (game != null && game.ended) {
+            if (! exec.isShutdown()) {
+                List<Runnable> canceled = exec.shutdownNow();
+                System.out.println("cancelled " + canceled.size() + " tasks at end of game");
+                exec = Executors.newScheduledThreadPool(1);
+            }
             darkTheme(g2D, true);
             Team team = teamFromUnderControl();
             Team enemy = enemyFromUnderControl();
@@ -474,7 +479,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         sconst.drawString(g2D, "WASD or arrows to spend points", 200, 420);
         sconst.drawString(g2D, "Space to enter (And queue for game)", 200, 450);
         int x = 430;
-        for (int i = masteries.skillsRemaining(); i > 0; i--) {
+        for (int i = masteries.validate(); i > 0; i--) {
             g2D.fill(new Ellipse2D.Double(x, 76, 16, 16));
             x += 32;
         }
@@ -1365,8 +1370,6 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         if (game != null && game.ended) {//back to main after game
             if (key == KeyEvent.VK_BACK_SPACE || key == KeyEvent.VK_SPACE ||
                     key == KeyEvent.VK_ESCAPE || key == KeyEvent.VK_ENTER) {
-                exec.shutdown(); // Stop spamming the server with updates
-                exec = Executors.newScheduledThreadPool(1);
                 try {
                     parentWindow.reset(true); //TODO tournament feature here for next games
                 } catch (IOException e) {
@@ -1663,7 +1666,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
                 masteries.abilityLag += delta;
                 break;
         }
-        if (!masteries.validate()) {
+        if (masteries.validate() == -1) {
             System.out.println("detected invalid mastery settings");
             masteries = oldMasteries;
         }
@@ -1833,6 +1836,11 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
             setColorFromCharge(g2D, minorGoalsAway);
             sconst.drawString(g2D, minorGoalsAway + "/4", 848, 701);
 
+            sconst.setFont(g2D, new Font("Verdana", Font.PLAIN, 9));
+            //get usernmame from titan via token decoded jwt
+            String jwt = controlsHeld.token;
+            String username = Util.jwtExtractEmail(jwt);
+            sconst.drawString(g2D, username, 920, 701);
             g2D.setColor(Color.RED);
             int x = xSize / 4;
             //addBoostIcons();

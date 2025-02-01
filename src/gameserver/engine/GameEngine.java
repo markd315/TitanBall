@@ -131,6 +131,7 @@ public class GameEngine extends Game {
             GoalHoop[] pains = getPainHoopsFromTeam(e.team);
             for (GoalHoop pain : pains) {
                 double delta = Util.calculatePain(e, pain);
+                delta *= e.painReduction;
                 if (delta > 0) {
                     if (delta > c.MAX_PAIN) {
                         delta = c.MAX_PAIN;

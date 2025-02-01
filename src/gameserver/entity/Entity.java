@@ -14,6 +14,7 @@ public class Entity extends Box  implements Serializable {
     public double speed = 5;
     public double armorRatio = 1.0;
     public double healReduce = 1.0;
+    public double painReduction = 1.0;
 
     public Entity() {
     }
