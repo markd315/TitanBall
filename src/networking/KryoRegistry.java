@@ -107,6 +107,9 @@ public class KryoRegistry {
         kryo.register(AtomicBoolean.class, aSer);
         kryo.register(Instant.class);
         kryo.register(Integer.class);
+        kryo.register(Double.class);
+        kryo.register(Float.class);
+        kryo.register(Long.class);
         kryo.register(java.util.ArrayList.class);
         kryo.register(java.util.List.class);
         kryo.register(Map.class);
@@ -114,13 +117,15 @@ public class KryoRegistry {
         kryo.register(String.class);
         kryo.register(java.util.HashSet.class);
 
+        kryo.register(byte.class);
         kryo.register(byte[].class);
         kryo.register(int[].class);
         kryo.register(int.class);
         kryo.register(float[].class);
         kryo.register(float.class);
+        kryo.register(double[].class);
         kryo.register(double.class);
-        kryo.register(boolean.class);
+        kryo.register(boolean[].class);
         kryo.register(boolean.class);
         kryo.register(Const.class);
         kryo.register(ConstOperations.class);

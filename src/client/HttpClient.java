@@ -17,6 +17,9 @@ import java.io.IOException;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
+import java.util.Base64;
+import java.util.HashMap;
+import java.util.Map;
 
 public class HttpClient {
 
@@ -61,14 +64,14 @@ public class HttpClient {
             System.out.println("statusCode = " + response.getStatus());
             token = response.getBody().getObject().get("accessToken").toString();
             refreshToken = response.getBody().getObject().get("refreshToken").toString();
-            stat(getEmailFromToken(token));
+            retry401Catch503("stat", getEmailFromToken(token));
         } catch (Exception ex) {
         }
         return token;
     }
 
     private String getEmailFromToken(String jwtToken){
-        java.util.Base64.Decoder decoder = java.util.Base64.getUrlDecoder();
+        Base64.Decoder decoder = Base64.getUrlDecoder();
         String[] parts = jwtToken.split("\\."); // split out the "parts" (header, payload and signature)
 
         String payloadJson = new String(decoder.decode(parts[1]));
@@ -95,24 +98,58 @@ public class HttpClient {
             JSONObject body = response.getBody().getObject();
             this.token = body.getString("accessToken");
             this.refreshToken = body.getString("refreshToken");
-            stat(getEmailFromToken(token));
+            retry401Catch503("stat", getEmailFromToken(token));
             return response.getStatus();
         }catch (Exception e){
             return 401;
         }
     }
 
-    public void join(String tournamentCode) throws UnirestException {
-        while (joinRequest(tournamentCode) == 401) {
+    public void retry401Catch503(String type, String param) throws UnirestException {
+        int response = 401;
+        switch(type){
+            case "join":
+                response = joinRequest(param);
+                break;
+            case "leave":
+                response = leaveRequest();
+                break;
+            case "stat":
+                response = statRequest(param);
+                break;
+            case "check":
+                response = checkRequest();
+                break;
+        }
+        while (response == 401) {
             token = null;
             System.out.println("Session expired, refreshing token");
             refresh(refreshToken);
+            switch(type){
+                case "join":
+                    response = joinRequest(param);
+                    break;
+                case "leave":
+                    response = leaveRequest();
+                    break;
+                case "stat":
+                    response = statRequest(param);
+                    break;
+                case "check":
+                    response = checkRequest();
+                    break;
+            }
+        }
+        if (response == 503) {
+            throw new UnirestException("Server is shutting down");
         }
     }
 
+
     public int joinRequest(String tournamentCode) throws UnirestException {
+        HttpResponse<String> response = null;
         try {
-            HttpResponse<String> response = Unirest.get(springEndpoint() + "join")
+            response = Unirest.get(springEndpoint() + "join")
                     .header("Authorization", "Bearer " + token)
                     .queryString("tournamentCode", tournamentCode)
                     .asString();
@@ -122,18 +159,6 @@ public class HttpClient {
             return response.getStatus();
         }catch (Exception e){
             return 401;
-        }
-    }
-
-    public void leave(){
-        while (leaveRequest() == 401) {
-            token = null;
-            System.out.println("Session expired, refreshing token");
-            try {
-                refresh(refreshToken);
-            } catch (UnirestException e) {
-                e.printStackTrace();
-            }
         }
     }
 
@@ -177,14 +202,6 @@ public class HttpClient {
     catch (Exception e){
         return 401;
     }
-    }
-
-    public void check() throws UnirestException {
-        while (checkRequest() == 401) {
-            token = null;
-            System.out.println("Session expired, refreshing token");
-            refresh(refreshToken);
-        }
     }
 
     public int checkRequest(){

@@ -36,7 +36,7 @@ public class Ability implements Serializable {
                     }
                     break;
                 case SUPPORT:
-                    strat.stunByRadius(c.getI("titan.stun.cdms"));
+                    strat.stunByRadius(c.getI("titan.stun.dur"));
                     break;
                 case GOLEM:
                     context.effectPool.addUniqueEffect(new CooldownE((int) (caster.cooldownFactor *c.getI("titan.shield.cdms")), caster), context);

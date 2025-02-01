@@ -3,6 +3,7 @@ package client;
 import client.graphical.*;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.KryoException;
+import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryonet.Client;
 import com.esotericsoftware.kryonet.Connection;
 import com.esotericsoftware.kryonet.Listener;
@@ -57,7 +58,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
     public Instant gamestart = null;
     public Random rand;
     public Sound shotSound;
-    protected Client gameserverConn = new Client(8192 * 8, 32768 * 8);
+    protected Client gameserverConn = new Client(16384 * 8, 2048 * 8);
     protected String gameID;
     protected GameEngine game;
     protected GamePhase phase = GamePhase.CREDITS;
@@ -275,7 +276,11 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
             Team team = teamFromUnderControl();
             Team enemy = enemyFromUnderControl();
             if (queued) {
-                loginClient.leave();
+                try {
+                    loginClient.retry401Catch503("leave", null);
+                } catch (UnirestException e) {
+                    // This is fine, server is in shutdown state so we have already been dequeued
+                }
                 queued = false;
             }
             if (team.score > enemy.score) {
@@ -334,8 +339,13 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
                 lobby(g2D);
                 System.out.println("got game " + gameID);
             } catch (Exception e) {
+                //Server is shutting down, not accepting new games
+                phase = GamePhase.CANNOT_JOIN;
                 e.printStackTrace();
             }
+        }
+        if (phase == GamePhase.CANNOT_JOIN) {
+            cannotJoin(g2D);
         }
         if (phase == GamePhase.COUNTDOWN) {
             starting(g2D);
@@ -535,35 +545,43 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
     }
 
     public void openConnection() throws IOException {
+        //TODO replace this with a socketio connection
         gameserverConn.start();
         //gameserverConn.setHardy(true);
+        KryoRegistry.register(kryo);
         if (!gameserverConn.isConnected()) {
             gameserverConn.connect(999999999, "zanzalaz.com", 54555);
             //gameserverConn.connect(5000, "127.0.0.1", 54555);
             gameserverConn.addListener(new Listener() {
                 public synchronized void received(Connection connection, Object object) {
-                    if (object instanceof Game) {
-                        game = (GameEngine) object;
-                        game.began = true;
-                        phase = game.phase;
-                        controlsHeld.gameID = gameID;
-                        controlsHeld.token = token;
-                        controlsHeld.masteries = masteries;
-                        controlsHeld.camX = camX;
-                        controlsHeld.camY = camY;
-                        repaint();
-                        try {
-                            gameserverConn.sendTCP(controlsHeld);
-                        } catch (KryoException e) {
-                            System.out.println("kryo end");
-                            System.out.println(game.ended);
-                        }
-                    } else {
-                        System.out.println("Didn't get a game from gameserver!");
+                     System.out.println("type of object: " + object.getClass().getName());
+                     if (object instanceof Game) {
+                         game = (GameEngine) object;
+                     }
+                     else if (object instanceof byte[]) {
+                        byte[] data = (byte[]) object;
+                        game = kryo.readObject(new Input(data), GameEngine.class);
+                     }
+                     else {
+                         System.out.println("Got a non-game from gameserver!");
+                     }
+                    game.began = true;
+                    phase = game.phase;
+                    controlsHeld.gameID = gameID;
+                    controlsHeld.token = token;
+                    controlsHeld.masteries = masteries;
+                    controlsHeld.camX = camX;
+                    controlsHeld.camY = camY;
+                    repaint();
+                    // Disabled this because If multiple updates arrive in quick succession, the client might send outdated or incomplete control data
+                    try {
+                        //gameserverConn.sendTCP(controlsHeld);
+                    } catch (KryoException e) {
+                        System.out.println("kryo end");
+                        System.out.println(game.ended);
                     }
                 }
             });
-            KryoRegistry.register(kryo);
             ScheduledExecutorService exec = Executors.newScheduledThreadPool(1);
             Runnable updateServer = () -> {
                 controlsHeld.gameID = gameID;
@@ -577,11 +595,11 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
 
     protected String requestOrQueueGame() throws UnirestException {
         if (!queued) {
-            loginClient.join(this.tournamentCode);
+            loginClient.retry401Catch503("join", this.tournamentCode);
             token = loginClient.token;
             queued = true;
         } else {
-            loginClient.check();
+            loginClient.retry401Catch503("check", null);
             token = loginClient.token;
         }
         if (loginClient.gameId != null && loginClient.gameId.equals("NOT QUEUED")) {
@@ -1425,7 +1443,11 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
             return;
         }
         if (key == KeyEvent.VK_ESCAPE && phase == GamePhase.WAIT_FOR_GAME) {
-            loginClient.leave();
+            try {
+                loginClient.retry401Catch503("leave", null);
+            } catch (UnirestException e) {
+                // This is fine, the server is in shutdown mode so we have already been dequeued
+            }
             queued = false;
             phase = GamePhase.DRAW_CLASS_SCREEN;
         }
@@ -1675,7 +1697,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
 
     protected void fireReconnect() {
         try {//rejoin game logic
-            loginClient.check();
+            loginClient.retry401Catch503("check", null);
             if (!loginClient.gameId.equals("NOT QUEUED")) {
                 phase = GamePhase.COUNTDOWN;
             }
@@ -1728,6 +1750,23 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
                 }
             }
         }
+    }
+
+    public void cannotJoin(Graphics2D g2D) {
+        darkTheme(g2D, true);
+        if (gamestart == null) {
+            gamestart = Instant.now().plus(new Duration(5100));
+        }
+        sconst.drawImage(g2D, lobby.getImage(), 1, 1, this);
+        Font font = new Font("Verdana", Font.BOLD, 24);
+        g2D.setColor(Color.PINK);
+        sconst.setFont(g2D, font);
+        double milUntil = (new Duration(Instant.now(), gamestart)).getMillis();
+        System.out.println(milUntil);
+        sconst.drawString(g2D, "Cannot join, server is in shutdown mode: no new games at this time", 345, 220);
+        font = new Font("Verdana", Font.BOLD, 36);
+        sconst.setFont(g2D, font);
+        sconst.drawString(g2D, "Please close the client and try again later", 418, 480);
     }
 
     public void lobby(Graphics2D g2D) {

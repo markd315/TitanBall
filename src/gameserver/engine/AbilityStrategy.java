@@ -57,6 +57,24 @@ public class AbilityStrategy implements Serializable {
         y = context.lastControlPacket[clientIndex].posY + context.lastControlPacket[clientIndex].camY;
     }
 
+     public void goOnCooldown(Titan caster, String cdKey, char eOrR) {
+        // For Q, CD key is i
+        switch (eOrR) {
+            case 'E':
+                context.effectPool.addUniqueEffect(
+                        new CooldownE((int) (caster.cooldownFactor * c.getI(cdKey)), caster), context);
+                break;
+            case 'R':
+                context.effectPool.addUniqueEffect(
+                        new CooldownR((int) (caster.cooldownFactor * c.getI(cdKey)), caster), context);
+                break;
+            case 'Q':
+                context.effectPool.addUniqueEffect(
+                        new CooldownQ((int) (caster.cooldownFactor * c.getI(cdKey)), caster), context);
+                break;
+        }
+    }
+
     public void parameterizedFlash(double cdSeconds, int dist) {
         int cd = (int) (caster.cooldownFactor * cdSeconds * 1000);
         dist *= caster.rangeFactor;
@@ -149,7 +167,7 @@ public class AbilityStrategy implements Serializable {
         sel.select(Collections.EMPTY_SET, x, y, caster);
         corners = sel.getLatestColliderBounds();
         if (corners.getWidth() > 0 && inBoundsNotRedzone(corners)) {
-            context.effectPool.addUniqueEffect(new CooldownR((int) (caster.cooldownFactor * c.getI("titan.wall.cdms")), caster), context);
+            goOnCooldown(caster, "titan.wall.cdms", 'R');
             context.entityPool.add(new Wall(context, (int) corners.getX(), (int) corners.getY()));
         }
     }
@@ -213,8 +231,7 @@ public class AbilityStrategy implements Serializable {
         sel.select(Collections.EMPTY_SET, x, y, caster);
         corners = sel.getLatestColliderBounds();
         if (corners.getWidth() > 0 && inBoundsNotRedzone(corners)) {
-            context.effectPool.addUniqueEffect(
-                    new CooldownR((int) (caster.cooldownFactor * c.getI("titan.bportal.cdms")), caster), context);
+            goOnCooldown(caster, "titan.bportal.cdms", 'R');
             context.entityPool.add(new BallPortal(TeamAffiliation.UNAFFILIATED, caster, context.entityPool,
                     (int) corners.getX(),
                     (int) corners.getY(), context));
@@ -230,8 +247,7 @@ public class AbilityStrategy implements Serializable {
         appliedTo = new Targeting(sel, friendlyIncSelf, mouseNear, context)
                 .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
         for (Entity e : appliedTo) {
-            context.effectPool.addUniqueEffect(
-                    new CooldownR((int) (caster.cooldownFactor * c.getD("titan.heal.cdms")), caster), context);
+            goOnCooldown(caster, "titan.heal.cdms", 'R');
             eff = new HealEffect(dur, e, c.getD("titan.heal.initd"), c.getD("titan.heal.recurd"));
             context.effectPool.addStackingEffect(eff); //also unique and singleton
         }
@@ -239,8 +255,7 @@ public class AbilityStrategy implements Serializable {
 
     public void chargeShot() {
         int dur = (int) (c.getI("titan.shoot.dur") * caster.durationsFactor);
-        context.effectPool
-                .addUniqueEffect(new CooldownR((int) (caster.cooldownFactor * c.getI("titan.shoot.cdms")), caster), context);
+        goOnCooldown(caster, "titan.shoot.cdms", 'R');
         context.effectPool.addUniqueEffect(
                 new ShootEffect(dur, caster, c.getD("titan.shoot.ratio")), context);
     }
@@ -253,8 +268,7 @@ public class AbilityStrategy implements Serializable {
         sel.select(Collections.EMPTY_SET, x, y, caster);
         corners = sel.getLatestColliderBounds();
         if (corners.getWidth() > 0 && inBoundsNotRedzone(corners)) {
-            context.effectPool.addUniqueEffect(
-                    new CooldownE((int) (caster.cooldownFactor * c.getI("titan.portal.range")), caster), context);
+            goOnCooldown(caster, "titan.portal.cdms", 'E');
             System.out.println("-1 hit");
             context.entityPool.add(new Portal(caster.team, caster,
                     context.entityPool, (int) corners.getX(), (int) corners.getY(), context));
@@ -270,8 +284,7 @@ public class AbilityStrategy implements Serializable {
         sel.select(Collections.EMPTY_SET, x, y, caster);
         corners = sel.getLatestColliderBounds();
         if (corners.getWidth() > 0 && inBoundsNotRedzone(corners)) {
-            context.effectPool.addUniqueEffect(
-                    new CooldownE((int) (caster.cooldownFactor * c.getI("titan.trap.cdms")), caster), context);
+            goOnCooldown(caster, "titan.trap.cdms", 'E');
             context.entityPool.add(new Trap(caster, context, (int) corners.getX(), (int) corners.getY()));
         }
     }
@@ -285,8 +298,7 @@ public class AbilityStrategy implements Serializable {
         appliedTo = new Targeting(sel, champions, mouseNear, context)
                 .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
         for (Entity e : appliedTo) {
-            context.effectPool.addUniqueEffect(
-                    new CooldownE((int) (caster.cooldownFactor * c.getI("titan.trap.cdms")), caster), context);
+            goOnCooldown(caster, "titan.trap.cdms", 'E');
             eff = new RatioEffect(dur, e, EffectId.SLOW, c.getD("titan.trap.ratio"));
             context.effectPool.addUniqueEffect(
                     eff, context);
@@ -295,8 +307,7 @@ public class AbilityStrategy implements Serializable {
 
     public void suckBall() {
         int range = (int) (c.getI("titan.suck.range") * caster.rangeFactor);
-        context.effectPool.addUniqueEffect(
-                new CooldownE((int) (caster.cooldownFactor * c.getI("titan.suck.cdms")), caster), context);
+        goOnCooldown(caster, "titan.suck.cdms", 'E');
         shape = new Ellipse2D.Double(0, 0, range, range);
         sel = new Selector(shape, SelectorOffset.CAST_CENTER, c.FAR_RANGE);
         //To update the region to caster loc
@@ -329,16 +340,14 @@ public class AbilityStrategy implements Serializable {
         sel.select(Collections.EMPTY_SET, x, y, caster);
         corners = sel.getLatestColliderBounds();
         if (corners.getWidth() > 0 && inBoundsNotRedzone(corners)) {
-            context.effectPool.addUniqueEffect(
-                    new CooldownE((int) (caster.cooldownFactor * c.getI("titan.cage.cdms")), caster), context);
+            goOnCooldown(caster, "titan.cage.cdms", 'E');
             context.entityPool.add(new Cage(caster.team, caster,
                     (int) corners.getX(), (int) corners.getY(), context));
         }
     }
 
     public void releaseCages() {
-        context.effectPool.addUniqueEffect(
-                new CooldownR((int) (caster.cooldownFactor * c.getI("titan.wolf.cdms")), caster), context);
+        goOnCooldown(caster, "titan.wolf.cdms", 'R');
         ArrayList<Cage> cages = new ArrayList<Cage>();
         for (Entity e : context.entityPool) {
             if (e instanceof Cage &&
@@ -354,8 +363,7 @@ public class AbilityStrategy implements Serializable {
     public void flashbang(double durMillis) {
         int range = (int) (c.getI("titan.flashbang.range") * caster.rangeFactor);
         int dur = (int) (durMillis * caster.durationsFactor);
-        context.effectPool.addUniqueEffect(
-                new CooldownE((int) (caster.cooldownFactor * c.getI("titan.flashbang.cdms")), caster), context);
+        goOnCooldown(caster, "titan.flashbang.cdms", 'E');
         shape = new Ellipse2D.Double(0, 0, range, range);
         sel = new Selector(shape, SelectorOffset.CAST_CENTER, c.FAR_RANGE);
         appliedTo = new Targeting(sel, champions, nearest, context)
@@ -375,8 +383,7 @@ public class AbilityStrategy implements Serializable {
         sel.select(Collections.EMPTY_SET, x, y, caster);
         corners = sel.getLatestColliderBounds();
         if (corners.getWidth() > 0 && inBoundsNotRedzone(corners)) {
-            context.effectPool.addUniqueEffect(
-                    new CooldownR((int) (caster.cooldownFactor * c.getI("titan.molotov.cdms")), caster), context);
+            goOnCooldown(caster, "titan.molotov.cdms", 'R');
             context.entityPool.add(new Fire(caster, (int) corners.getX(), (int) corners.getY()));
             //41 ticks per second
             //8.2 tick DPS + 1 initial (more initials+duration if running through constantly)
@@ -388,8 +395,7 @@ public class AbilityStrategy implements Serializable {
     public void stunByRadius(double durMillis) {
         int range = (int) (c.getI("titan.stun.range") * caster.rangeFactor);
         int dur = (int) (durMillis * caster.durationsFactor);
-        context.effectPool.addUniqueEffect(
-                new CooldownE((int) (caster.cooldownFactor * c.getI("titan.stun.cdms")), caster), context);
+        goOnCooldown(caster, "titan.stun.cdms", 'E');
         shape = new Ellipse2D.Double(0, 0, range, range);
         sel = new Selector(shape, SelectorOffset.CAST_CENTER, c.FAR_RANGE);
         appliedTo = new Targeting(sel, champions, nearest, context)
@@ -408,9 +414,11 @@ public class AbilityStrategy implements Serializable {
                 range);
         appliedTo = new Targeting(sel, notFriendly, mouseNear, context)
                 .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
+        if (appliedTo.isEmpty()) {
+            return;
+        }
+        goOnCooldown(caster, "titan.arrow.cdms", 'E');
         for (Entity e : appliedTo) {
-            context.effectPool.addUniqueEffect(
-                    new CooldownE((int) (caster.cooldownFactor * cdMs), caster), context);
             context.effectPool.addStackingEffect(caster, new EmptyEffect(5000, e, EffectId.ATTACKED));
             e.damage(context, dmg);
         }
@@ -418,8 +426,7 @@ public class AbilityStrategy implements Serializable {
 
     public boolean stealBall() {
         if (!context.titanInPossession().isPresent() || !context.titanInPossession().get().id.equals(caster.id)) {
-            context.effectPool.addUniqueEffect(
-                    new CooldownQ((int) (caster.cooldownFactor * c.STEAL_CD), caster), context);
+            goOnCooldown(caster, "titan.steal.cdms", 'Q');
             if (context.titanInPossession().isPresent()) {
                 Titan tip = context.titanInPossession().get();
                 shape = new Ellipse2D.Double(0, 0, caster.stealRad * 2, caster.stealRad * 2);
