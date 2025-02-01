@@ -159,6 +159,8 @@ public class ManagedGame {
                 System.err.println("Warning: state is null, skipping update");
                 return;
             }
+            //remove if not connected
+            clients.removeIf(client -> !client.getClient().isConnected());
             clients.parallelStream().forEach(client -> {
                 try{
                     PlayerDivider pd = dividerFromConn(client.getClient());
@@ -167,8 +169,9 @@ public class ManagedGame {
 
                     update.underControl = state.titanSelected(pd);
                     update.now = Instant.now();
-                    client.getClient().sendTCP(anticheat(update));
-                    update = null; //release memory
+                    if (client.getClient().isConnected()) {
+                        client.getClient().sendTCP(anticheat(update));
+                    }
                 }
                 catch (Exception ex1){
                     ex1.printStackTrace();
