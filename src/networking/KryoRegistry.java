@@ -4,6 +4,7 @@ import client.graphical.GoalSprite;
 import client.graphical.Images;
 import client.graphical.StaticImage;
 import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.minlog.Log;
 import gameserver.Const;
 import gameserver.TutorialOverrides;
 import gameserver.effects.EffectId;
@@ -64,7 +65,7 @@ public class KryoRegistry {
         kryo.register(Wolf.class);
         kryo.register(Fire.class);
 
-        kryo.register(GameEngine.class);
+        kryo.register(GameEngine.class, 95);
         kryo.register(Game.class);
         kryo.register(GoalHoop.class);
         kryo.register(GoalHoop[].class);
@@ -133,7 +134,7 @@ public class KryoRegistry {
 
         kryo.register(TutorialOverrides.class);
         kryo.register(GameOptions.class);
-        //Log.DEBUG();
+        Log.DEBUG();
         //Log.TRACE();
     }
 }

@@ -12,6 +12,7 @@ import gameserver.engine.GameEngine;
 import gameserver.engine.GameOptions;
 import gameserver.entity.Entity;
 import gameserver.entity.Titan;
+import gameserver.models.Game;
 import networking.CandidateGame;
 import networking.ClientPacket;
 import networking.PlayerConnection;
@@ -40,7 +41,7 @@ public class ManagedGame {
     List<PlayerConnection> clients = new ArrayList<>();
     public List<List<Integer>> availableSlots;
     int claimIndex = 0;
-    private final AtomicReference<GameEngine> stateRef = new AtomicReference<>(state);
+    private final AtomicReference<Game> stateRef = new AtomicReference<>(state);
 
     public ManagedGame() {
     }
@@ -82,14 +83,14 @@ public class ManagedGame {
         return null;
     }
 
-    boolean lobbyFull(List<PlayerConnection> pd){
+    boolean lobbyFull(List<PlayerConnection> queue){
         List<String> uniqueEmails = new ArrayList<>();
-        for(PlayerConnection p : pd){
+        for(PlayerConnection p : queue){
             if(!uniqueEmails.contains(p.getEmail())){
                 uniqueEmails.add(p.getEmail());
             }
         }
-        return (uniqueEmails.size() == availableSlots.size());
+        return (uniqueEmails.size() == availableSlots.size()); // Check if all players are connected
     }
 
     void addOrReplaceNewClient(Connection c, List<PlayerConnection> queue, String token){
@@ -97,6 +98,7 @@ public class ManagedGame {
         String email = Util.jwtExtractEmail(token);
         boolean emailFound = accountQueued(queue, email);
         System.out.println(email + " c found" + connFound + " e found " + emailFound);
+
         if(!connFound){
             if(emailFound){ //rejoin unstarted game
                 for(PlayerConnection p : queue){
@@ -104,17 +106,11 @@ public class ManagedGame {
                         p.setClient(c);
                     }
                 }
-            }else{
-                for(PlayerConnection p : queue){
-                    System.out.println(p.toString());
-                }
-                System.out.println("adding NEW client");
-                System.out.println(c.getRemoteAddressTCP());
-                //We should be sorting the connections when the game actually starts, so doesn't matter
+            } else { // Adding new client
                 queue.add(new PlayerConnection(nextUnclaimedSlot(), c, email));
             }
         }
-        if(lobbyFull(queue)){
+        if(lobbyFull(queue)) {
             startGame(queue);
         }
     }
@@ -146,7 +142,7 @@ public class ManagedGame {
         Runnable updateClients = () -> {
             stateRef.set(state); // everyone gets the latest state once and no one gets a stale one or a fresher one
             //System.out.println("updating clients now");
-            GameEngine snapshot = stateRef.get();
+            Game snapshot = stateRef.get();
             if (snapshot == null) {
                 System.err.println("Warning: state is null, skipping update");
                 return;
@@ -155,11 +151,12 @@ public class ManagedGame {
                 try{
                     PlayerDivider pd = dividerFromConn(client.getClient());
                     //Optimizing clone away by only hacking in the needed var fails because of occasional concurrency issue
-                    GameEngine update = (GameEngine) deepClone(snapshot);
+                    Game update = (Game) deepClone(snapshot);
 
                     update.underControl = state.titanSelected(pd);
                     update.now = Instant.now();
                     client.getClient().sendTCP(anticheat(update));
+                    update = null; //release memory
                 }
                 catch (Exception ex1){
                     ex1.printStackTrace();
@@ -168,9 +165,10 @@ public class ManagedGame {
         };
         exec.scheduleWithFixedDelay(updateClients, 1, c.getI("server.clients.updateinterval.ms"),
                 TimeUnit.MILLISECONDS);
+        //cleanup schedule when game ends
     }
 
-    private GameEngine anticheat(GameEngine update) {
+    private Game anticheat(Game update) {
         Titan underControl = update.underControl;
         EffectPool fx = update.effectPool;
         if(fx.hasEffect(underControl, EffectId.BLIND)){

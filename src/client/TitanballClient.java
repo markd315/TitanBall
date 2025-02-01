@@ -6,6 +6,7 @@ import com.esotericsoftware.kryo.KryoException;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryonet.Client;
 import com.esotericsoftware.kryonet.Connection;
+import com.esotericsoftware.kryonet.FrameworkMessage;
 import com.esotericsoftware.kryonet.Listener;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mashape.unirest.http.exceptions.UnirestException;
@@ -562,6 +563,10 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
                         byte[] data = (byte[]) object;
                         game = kryo.readObject(new Input(data), GameEngine.class);
                      }
+                     else if (object instanceof FrameworkMessage.KeepAlive) {
+                        System.out.println("Got a keepalive from gameserver!");
+                        return;
+                    }
                      else {
                          System.out.println("Got a non-game from gameserver!");
                      }
@@ -573,9 +578,9 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
                     controlsHeld.camX = camX;
                     controlsHeld.camY = camY;
                     repaint();
-                    // Disabled this because If multiple updates arrive in quick succession, the client might send outdated or incomplete control data
                     try {
-                        //gameserverConn.sendTCP(controlsHeld);
+                        // Disabled this because If multiple updates arrive in quick succession, the client might send outdated or incomplete control data
+                        gameserverConn.sendTCP(controlsHeld);
                     } catch (KryoException e) {
                         System.out.println("kryo end");
                         System.out.println(game.ended);
@@ -1730,7 +1735,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         g2D.setColor(Color.YELLOW);
         sconst.setFont(g2D, font);
         double milUntil = (new Duration(Instant.now(), gamestart)).getMillis();
-        System.out.println(milUntil);
+        //System.out.println(milUntil);
         sconst.drawString(g2D, String.format("Starting in %1.1f seconds", milUntil / 1000.0), 345, 220);
         font = new Font("Verdana", Font.BOLD, 48);
         g2D.setColor(Color.RED);
@@ -1762,7 +1767,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         g2D.setColor(Color.PINK);
         sconst.setFont(g2D, font);
         double milUntil = (new Duration(Instant.now(), gamestart)).getMillis();
-        System.out.println(milUntil);
+        //System.out.println(milUntil);
         sconst.drawString(g2D, "Cannot join, server is in shutdown mode: no new games at this time", 345, 220);
         font = new Font("Verdana", Font.BOLD, 36);
         sconst.setFont(g2D, font);
