@@ -101,7 +101,7 @@ public class Masteries  implements Serializable {
     }
 
     public int[] asArray() {
-        int[] ret = new int[9];
+        int[] ret = new int[10];
         ret[0] = this.health;
         ret[1] = this.shot;
         ret[2] = this.damage;
