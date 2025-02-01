@@ -49,7 +49,7 @@ public class ServerApplication {
 
 
     public static void main(String[] args) throws IOException {
-        Server server = new Server(16384 * 8, 2048 * 8);
+        Server server = new Server(16384 * 8 * 1024, 2048 * 8 * 1024);
         Kryo kryo = server.getKryo();
         KryoRegistry.register(kryo);
         server.start();

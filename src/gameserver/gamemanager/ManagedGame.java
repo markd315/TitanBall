@@ -27,6 +27,7 @@ import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class ManagedGame {
     public static final ServerMode SERVER_MODE = ServerMode.TRUETHREE;
@@ -39,6 +40,7 @@ public class ManagedGame {
     List<PlayerConnection> clients = new ArrayList<>();
     public List<List<Integer>> availableSlots;
     int claimIndex = 0;
+    private final AtomicReference<GameEngine> stateRef = new AtomicReference<>(state);
 
     public ManagedGame() {
     }
@@ -142,13 +144,19 @@ public class ManagedGame {
         System.out.println("reassigning client list on startgame");
         clients = gameIncludedClients;
         Runnable updateClients = () -> {
+            stateRef.set(state); // everyone gets the latest state once and no one gets a stale one or a fresher one
             //System.out.println("updating clients now");
+            GameEngine snapshot = stateRef.get();
+            if (snapshot == null) {
+                System.err.println("Warning: state is null, skipping update");
+                return;
+            }
             clients.parallelStream().forEach(client -> {
                 try{
                     PlayerDivider pd = dividerFromConn(client.getClient());
                     //Optimizing clone away by only hacking in the needed var fails because of occasional concurrency issue
-                    GameEngine update = (GameEngine) deepClone(state);
-                    assert update != null;
+                    GameEngine update = (GameEngine) deepClone(snapshot);
+
                     update.underControl = state.titanSelected(pd);
                     update.now = Instant.now();
                     client.getClient().sendTCP(anticheat(update));
