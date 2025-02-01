@@ -98,7 +98,6 @@ public class ManagedGame {
         String email = Util.jwtExtractEmail(token);
         boolean emailFound = accountQueued(queue, email);
         System.out.println(email + " c found" + connFound + " e found " + emailFound);
-
         if(!connFound){
             if(emailFound){ //rejoin unstarted game
                 for(PlayerConnection p : queue){
@@ -106,11 +105,17 @@ public class ManagedGame {
                         p.setClient(c);
                     }
                 }
-            } else { // Adding new client
+            }else{
+                for(PlayerConnection p : queue){
+                    System.out.println(p.toString());
+                }
+                System.out.println("adding NEW client");
+                System.out.println(c.getRemoteAddressTCP());
+                //We should be sorting the connections when the game actually starts, so doesn't matter
                 queue.add(new PlayerConnection(nextUnclaimedSlot(), c, email));
             }
         }
-        if(lobbyFull(queue)) {
+        if(lobbyFull(queue)){
             startGame(queue);
         }
     }
