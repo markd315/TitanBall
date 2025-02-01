@@ -58,7 +58,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
     public Instant gamestart = null;
     public Random rand;
     public Sound shotSound;
-    protected Client gameserverConn = new Client(16384 * 8 * 1024, 2048 * 8 * 1024);
+    protected Client gameserverConn = new Client(1024 * 1024, 256 * 1024); // 1mb and 256k
     protected String gameID;
     protected GameEngine game;
     protected GamePhase phase = GamePhase.CREDITS;
