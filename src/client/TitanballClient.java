@@ -553,6 +553,19 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         if (!gameserverConn.isConnected()) {
             gameserverConn.connect(999999999, "zanzalaz.com", 54555);
             //gameserverConn.connect(5000, "127.0.0.1", 54555);
+            ScheduledExecutorService exec = Executors.newScheduledThreadPool(1);
+            Runnable updateServer = () -> {
+                if (controlsHeld != null) {
+                    controlsHeld.gameID = gameID;
+                    controlsHeld.token = token;
+                    controlsHeld.masteries = masteries;
+                    gameserverConn.sendTCP(controlsHeld);
+                }
+                else{
+                    System.out.println("null controls held");
+                }
+            };
+
             gameserverConn.addListener(new Listener() {
                 public synchronized void received(Connection connection, Object object) {
                      System.out.println("type of object: " + object.getClass().getName());
@@ -580,21 +593,18 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
                     repaint();
                     try {
                         // Disabled this because If multiple updates arrive in quick succession, the client might send outdated or incomplete control data
+                        System.out.println("Initial update sending");
                         gameserverConn.sendTCP(controlsHeld);
+                        System.out.println("Initial update sent");
+                        //Schedule updates after our
+                        exec.scheduleAtFixedRate(updateServer, 30, 30, TimeUnit.MILLISECONDS);
+                        System.out.println("Updates scheduled");
                     } catch (KryoException e) {
                         System.out.println("kryo end");
                         System.out.println(game.ended);
                     }
                 }
             });
-            ScheduledExecutorService exec = Executors.newScheduledThreadPool(1);
-            Runnable updateServer = () -> {
-                controlsHeld.gameID = gameID;
-                controlsHeld.token = token;
-                controlsHeld.masteries = masteries;
-                gameserverConn.sendTCP(controlsHeld);
-            };
-            exec.scheduleAtFixedRate(updateServer, 1, 30, TimeUnit.MILLISECONDS);
         }
     }
 

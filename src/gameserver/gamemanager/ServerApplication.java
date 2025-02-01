@@ -61,6 +61,10 @@ public class ServerApplication {
         server.addListener(new Listener() {
             public void received(Connection connection, Object object) {
                 if (connection.getID() > 0) {
+                    if (object == null) {
+                        System.out.println("got null object");
+                        return;
+                    }
                     if (object instanceof ClientPacket) {
                         String token = ((ClientPacket) object).token;
                         if (token == null) {
