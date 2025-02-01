@@ -9,6 +9,7 @@ import authserver.models.User;
 import authserver.users.PersistenceManager;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryonet.Connection;
+import com.esotericsoftware.kryonet.FrameworkMessage;
 import com.esotericsoftware.kryonet.Listener;
 import com.esotericsoftware.kryonet.Server;
 import gameserver.engine.GameEngine;
@@ -61,9 +62,9 @@ public class ServerApplication {
         server.addListener(new Listener() {
             public void received(Connection connection, Object object) {
                 if (connection.getID() > 0) {
-                    if (object == null) {
-                        System.out.println("got null object");
-                        return;
+                    if (object instanceof FrameworkMessage.KeepAlive) {
+                        // delegate keepalives so that game will start
+                        delegatePacket(connection, null);
                     }
                     if (object instanceof ClientPacket) {
                         String token = ((ClientPacket) object).token;

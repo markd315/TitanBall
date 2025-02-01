@@ -134,6 +134,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
     private double scl;
     private boolean darkTheme = false;
     private boolean queued = false;
+    ScheduledExecutorService exec = Executors.newScheduledThreadPool(1);
 
     public TitanballClient(TitanballWindow titanballWindow, int xSize, int ySize, double scl, HttpClient loginClient, Map<String, String> keymap, boolean createListeners, boolean darkTheme) {
         this.darkTheme = darkTheme;
@@ -553,7 +554,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         if (!gameserverConn.isConnected()) {
             gameserverConn.connect(999999999, "zanzalaz.com", 54555);
             //gameserverConn.connect(5000, "127.0.0.1", 54555);
-            ScheduledExecutorService exec = Executors.newScheduledThreadPool(1);
+
             Runnable updateServer = () -> {
                 if (controlsHeld != null) {
                     controlsHeld.gameID = gameID;
@@ -592,19 +593,17 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
                     controlsHeld.camY = camY;
                     repaint();
                     try {
-                        // Disabled this because If multiple updates arrive in quick succession, the client might send outdated or incomplete control data
                         System.out.println("Initial update sending");
                         gameserverConn.sendTCP(controlsHeld);
                         System.out.println("Initial update sent");
-                        //Schedule updates after our
-                        exec.scheduleAtFixedRate(updateServer, 30, 30, TimeUnit.MILLISECONDS);
-                        System.out.println("Updates scheduled");
                     } catch (KryoException e) {
                         System.out.println("kryo end");
                         System.out.println(game.ended);
                     }
                 }
             });
+            exec.scheduleAtFixedRate(updateServer, 30, 30, TimeUnit.MILLISECONDS);
+            System.out.println("Updates scheduled");
         }
     }
 
@@ -1366,8 +1365,10 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         if (game != null && game.ended) {//back to main after game
             if (key == KeyEvent.VK_BACK_SPACE || key == KeyEvent.VK_SPACE ||
                     key == KeyEvent.VK_ESCAPE || key == KeyEvent.VK_ENTER) {
+                exec.shutdown(); // Stop spamming the server with updates
+                exec = Executors.newScheduledThreadPool(1);
                 try {
-                    parentWindow.reset(true); //TODO tournament feature here
+                    parentWindow.reset(true); //TODO tournament feature here for next games
                 } catch (IOException e) {
                     e.printStackTrace();
                 }

@@ -42,6 +42,7 @@ public class ManagedGame {
     public List<List<Integer>> availableSlots;
     int claimIndex = 0;
     private final AtomicReference<Game> stateRef = new AtomicReference<>(state);
+    ScheduledExecutorService exec;
 
     public ManagedGame() {
     }
@@ -52,6 +53,11 @@ public class ManagedGame {
             addOrReplaceNewClient(connection, clients, request.token);
         }
         if (state != null) {
+            if (state.ended) {
+                System.out.println("GameManager: ENDED GAME");
+                exec.shutdown(); //Stop updating clients
+                return;
+            }
             state.kickoff();
             PlayerDivider pd = dividerFromConn(connection);
             if(pd == null){//client rejoining under new connection ID
@@ -90,6 +96,7 @@ public class ManagedGame {
                 uniqueEmails.add(p.getEmail());
             }
         }
+        System.out.println("uniqueEmails " + uniqueEmails.size());
         return (uniqueEmails.size() == availableSlots.size()); // Check if all players are connected
     }
 
@@ -140,7 +147,7 @@ public class ManagedGame {
         catch (InterruptedException e) {
             e.printStackTrace();
         }
-        ScheduledExecutorService exec = Executors.newScheduledThreadPool(gameIncludedClients.size());
+        exec = Executors.newScheduledThreadPool(gameIncludedClients.size());
 
         System.out.println("reassigning client list on startgame");
         clients = gameIncludedClients;
