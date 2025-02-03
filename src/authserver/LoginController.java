@@ -54,6 +54,7 @@ public class LoginController {
 
     @Autowired
     AuthenticationManager authenticationManager;
+    private boolean shutDownMode = false;
 
     @PostMapping("/login")
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
@@ -67,6 +68,15 @@ public class LoginController {
         String jwt = tokenProvider.generateToken(authentication);
         String ref = tokenProvider.generateRefreshToken(authentication);
         return ResponseEntity.ok(new JwtAuthenticationResponse(jwt, ref));
+    }
+
+     @PostMapping("/shutdown")
+    public ResponseEntity<?> gracefulShutdownServer(@Valid @RequestBody LoginRequest loginRequest) {
+         //respond with 503 for all future requests because the server is shutting down
+         //TODO require root level credentials to shut down server
+         shutDownMode = true;
+         userPool.clearWaitingPools();
+         return ResponseEntity.ok(new JwtAuthenticationResponse("Shutting down", null));
     }
 
     @PostMapping("/refresh")
@@ -123,18 +133,27 @@ public class LoginController {
 
     @RequestMapping("/gamecheck")
     public ResponseEntity<String> gameCheck(Authentication auth) {
+        if (shutDownMode) {
+            return new ResponseEntity<>("Shutting down", HttpStatus.SERVICE_UNAVAILABLE);
+        }
         return new ResponseEntity<>(userPool.findGame(auth), HttpStatus.OK);
     }
 
     @RequestMapping("/join")
     public ResponseEntity<String> joinLobby(Authentication auth,
               @RequestParam String tournamentCode, @RequestParam(required = false) String teamname) throws IOException {
+        if (shutDownMode) {
+            return new ResponseEntity<>("Shutting down", HttpStatus.SERVICE_UNAVAILABLE);
+        }
         userPool.registerIntent(auth, tournamentCode, teamname);
         return new ResponseEntity<>(userPool.findGame(auth), HttpStatus.OK);
     }
 
     @RequestMapping("/leave")
     public ResponseEntity<String> leaveLobby(Authentication auth) {
+        if (shutDownMode) {
+            return new ResponseEntity<>("Shutting down", HttpStatus.SERVICE_UNAVAILABLE);
+        }
         userPool.removeIntent(auth);
         String game = userPool.findGame(auth);
         if(!game.equals("NOT QUEUED")){
@@ -156,7 +175,7 @@ public class LoginController {
             //System.out.println("hit");
             //System.out.println(user.getEmail());
             //System.out.println(rate3v3.get(i).getEmail());
-            if(rate3v3.get(i).getEmail().equals(user.getEmail())){
+            if(rate3v3.get(i).getEmail().equals(user.getEmail())){ //TODO npe here
                 rating = i+1;
             }
         }

@@ -1,17 +1,16 @@
 package gameserver.effects.cooldowns;
 
-
-import gameserver.engine.GameEngine;
 import gameserver.effects.EffectId;
 import gameserver.effects.effects.Effect;
+import gameserver.engine.GameEngine;
 import gameserver.entity.Entity;
 
 import java.io.Serializable;
 
-public class CooldownR extends Effect implements Serializable {
+public class CooldownSteal extends Effect implements Serializable {
 
-    public CooldownR(int durationMillis, Entity e){
-        super(EffectId.COOLDOWN_R, e, durationMillis);
+    public CooldownSteal(int durationMillis, Entity e){
+        super(EffectId.COOLDOWN_STEAL, e, durationMillis);
     }
 
     @Override
@@ -27,5 +26,5 @@ public class CooldownR extends Effect implements Serializable {
     public void onTick(GameEngine context) {
     }
 
-    public CooldownR(){}
+    public CooldownSteal(){}
 }

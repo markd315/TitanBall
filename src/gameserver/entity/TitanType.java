@@ -28,7 +28,6 @@ public enum TitanType  implements Serializable {
 //Burstmage has enough to assassinate a smaller target at 2/3 health by landing his combo
 
 //Scoring
-//TODO burn
 //Slasher has the mega speed boost (recolor) and a burn effect he can apply to someone that counters stealth (low speed, low hp, med+ power)
 //Marksman has a shooting steroid and a targeted slow (med speed, low hp, highest power, laser accurate throwing)
 //Stealth has the stealth mechanic and a mild slow CC (med speed, low hp, med+ power)

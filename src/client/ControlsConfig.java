@@ -83,7 +83,7 @@ public class ControlsConfig {
                     if(tip.isPresent() && tip.get().id.equals(game.underControl.id)) {
                         shotSound.rewindStart();
                     }
-                    prior.passBtn = true;
+                    prior.lobBtn = true;
                     break;
                 case "UP":
                     prior.UP = true;
@@ -144,7 +144,7 @@ public class ControlsConfig {
                     prior.shotBtn = false;
                     break;
                 case "LOB":
-                    prior.passBtn = false;
+                    prior.lobBtn = false;
                     break;
                 case "UP":
                     prior.UP = false;

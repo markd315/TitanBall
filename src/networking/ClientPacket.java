@@ -14,7 +14,7 @@ public class ClientPacket implements Serializable {
     public boolean BOOST = false;
     public boolean BOOST_LOCK = false;
     public boolean MV_CLICK = false, MV_BALL = false;
-    public boolean passBtn = false, shotBtn = false;
+    public boolean lobBtn = false, shotBtn = false;
     public int posX, posY;
     public int camX, camY;
     public TitanType classSelection;

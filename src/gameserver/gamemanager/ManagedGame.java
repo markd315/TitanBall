@@ -12,6 +12,7 @@ import gameserver.engine.GameEngine;
 import gameserver.engine.GameOptions;
 import gameserver.entity.Entity;
 import gameserver.entity.Titan;
+import gameserver.models.Game;
 import networking.CandidateGame;
 import networking.ClientPacket;
 import networking.PlayerConnection;
@@ -24,9 +25,11 @@ import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class ManagedGame {
     public static final ServerMode SERVER_MODE = ServerMode.TRUETHREE;
@@ -39,6 +42,8 @@ public class ManagedGame {
     List<PlayerConnection> clients = new ArrayList<>();
     public List<List<Integer>> availableSlots;
     int claimIndex = 0;
+    final AtomicReference<Game> stateRef = new AtomicReference<>(state);
+    ScheduledExecutorService exec;
 
     public ManagedGame() {
     }
@@ -49,6 +54,11 @@ public class ManagedGame {
             addOrReplaceNewClient(connection, clients, request.token);
         }
         if (state != null) {
+            if (state.ended) {
+                System.out.println("GameManager: ENDED GAME");
+                exec.shutdown(); //Stop updating clients
+                return; //game end logic sends the final update
+            }
             state.kickoff();
             PlayerDivider pd = dividerFromConn(connection);
             if(pd == null){//client rejoining under new connection ID
@@ -80,14 +90,15 @@ public class ManagedGame {
         return null;
     }
 
-    boolean lobbyFull(List<PlayerConnection> pd){
+    boolean lobbyFull(List<PlayerConnection> queue){
         List<String> uniqueEmails = new ArrayList<>();
-        for(PlayerConnection p : pd){
+        for(PlayerConnection p : queue){
             if(!uniqueEmails.contains(p.getEmail())){
                 uniqueEmails.add(p.getEmail());
             }
         }
-        return (uniqueEmails.size() == availableSlots.size());
+        System.out.println("uniqueEmails " + uniqueEmails.size());
+        return (uniqueEmails.size() == availableSlots.size()); // Check if all players are connected
     }
 
     void addOrReplaceNewClient(Connection c, List<PlayerConnection> queue, String token){
@@ -137,21 +148,36 @@ public class ManagedGame {
         catch (InterruptedException e) {
             e.printStackTrace();
         }
-        ScheduledExecutorService exec = Executors.newScheduledThreadPool(gameIncludedClients.size());
+        exec = Executors.newScheduledThreadPool(gameIncludedClients.size());
 
         System.out.println("reassigning client list on startgame");
         clients = gameIncludedClients;
         Runnable updateClients = () -> {
+            stateRef.set(state); // everyone gets the latest state once and no one gets a stale one or a fresher one
             //System.out.println("updating clients now");
+            Game snapshot = stateRef.get();
+            if (snapshot == null || (snapshot.ended && snapshot.underControl == null)) {
+                if (snapshot != null) {
+                    System.out.println("GameManager: skipping extra packets after game ended");
+                }
+                else{
+                    System.err.println("Warning: state is null, skipping update");
+                }
+                return; //need undercontrol to decide winner clientside so we can't send this one
+            }
+            //remove if not connected
+            clients.removeIf(client -> !client.getClient().isConnected());
             clients.parallelStream().forEach(client -> {
                 try{
                     PlayerDivider pd = dividerFromConn(client.getClient());
                     //Optimizing clone away by only hacking in the needed var fails because of occasional concurrency issue
-                    GameEngine update = (GameEngine) deepClone(state);
-                    assert update != null;
+                    Game update = (Game) deepClone(snapshot);
+
                     update.underControl = state.titanSelected(pd);
                     update.now = Instant.now();
-                    client.getClient().sendTCP(anticheat(update));
+                    if (client.getClient().isConnected()) {
+                        client.getClient().sendTCP(anticheat(update));
+                    }
                 }
                 catch (Exception ex1){
                     ex1.printStackTrace();
@@ -160,9 +186,10 @@ public class ManagedGame {
         };
         exec.scheduleWithFixedDelay(updateClients, 1, c.getI("server.clients.updateinterval.ms"),
                 TimeUnit.MILLISECONDS);
+        //cleanup schedule when game ends
     }
 
-    private GameEngine anticheat(GameEngine update) {
+    private Game anticheat(Game update) {
         Titan underControl = update.underControl;
         EffectPool fx = update.effectPool;
         if(fx.hasEffect(underControl, EffectId.BLIND)){
@@ -227,6 +254,57 @@ public class ManagedGame {
             }
         }
         return connFound;
+    }
+
+    public boolean gameContainsEmail(Collection<String> gameFor) {
+        for(String searchFor : gameFor){
+            for(PlayerConnection matches : this.clients){
+                if(matches.email.equals(searchFor)){
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public PlayerConnection replaceConnectionForSameUser(Connection connection, String token) {
+        for (PlayerConnection pc : clients) {
+            if (pc.getEmail().equals(Util.jwtExtractEmail(token))) {
+                pc.setClient(connection);
+                return pc;
+            }
+        }
+        return null;
+    }
+
+    public void terminateConnections(AtomicReference<Game> stateRef) {
+        System.out.println("terminating connections");
+        //Client evaluates its own victory condition based on the score in the final packet
+        Game snapshot = stateRef.get();
+        if (snapshot == null) {
+            System.err.println("Warning: state is null, skipping update");
+            return;
+        }
+        //Don't block the main thread since we sleep in the final update
+        CompletableFuture.runAsync(() -> {
+            clients.parallelStream().forEach(client -> {
+                try{
+                    PlayerDivider pd = dividerFromConn(client.getClient());
+                    Game update = (Game) deepClone(snapshot);
+                    update.underControl = state.titanSelected(pd);
+                    update.now = Instant.now();
+                    if (client.getClient().isConnected()) {
+                        client.getClient().sendTCP(state);
+                        //Wait for the client to receive the final update before closing
+                        Thread.sleep(1200);
+                        client.getClient().close();
+                    }
+                }
+                catch (Exception ex1) {
+                    ex1.printStackTrace();
+                }
+            });
+        });
     }
 
     private boolean accountQueued(List<PlayerConnection> queue, String email) {
@@ -491,16 +569,6 @@ public class ManagedGame {
         }*/
     }
 
-    public boolean gameContainsEmail(Collection<String> gameFor) {
-        for(String searchFor : gameFor){
-            for(PlayerConnection matches : this.clients){
-                if(matches.email.equals(searchFor)){
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
     public static Object deepClone(Object object) {
         try {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();

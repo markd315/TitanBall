@@ -16,6 +16,7 @@ import org.joda.time.Instant;
 import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Stream;
 
 public class Game  implements Serializable {
     public String gameId;
@@ -155,4 +156,30 @@ public class Game  implements Serializable {
     protected final int FW_RETREAT = 1250;
     protected final int T_CIRCLE_WING_HOME = 450;
     protected final int B_CIRCLE_WING_HOME = 750;
+
+    public String toString()   {
+        StringBuilder str = new StringBuilder("Game{" +
+                "aScore=" + away.score +
+                ", hScore=" + home.score +
+                ", ended=" + ended +
+                ", phase=" + phase +
+                ", inGame=" + inGame +
+                ", began=" + began +
+                ", underControl=" + underControl +
+                ", ball=" + ball +
+                ", effectPool=" + effectPool +
+                ", clients=" + clients +
+                ", xKickPow=" + xKickPow +
+                ", yKickPow=" + yKickPow +
+                ", now=" + now +
+                ", colliders=" + colliders +
+                ", allSolids=" + allSolids +
+                ", players=" + players +
+                ", goalVisible=" + goalVisible +
+                ", ballVisible=" + ballVisible + ", entityPool = [");
+        for (Entity e : entityPool) {
+            str.append(e.toString()).append(", ");
+        }
+        return str + "]}";
+    }
 }

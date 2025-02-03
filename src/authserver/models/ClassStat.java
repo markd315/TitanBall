@@ -3,7 +3,7 @@ package authserver.models;
 import javax.persistence.*;
 
 @Entity
-@Table(name = "classes")
+@Table(name = "classstat")
 public class ClassStat{
 
     public ClassStat(String className){
@@ -217,4 +217,66 @@ public class ClassStat{
         this.rebounds = rebounds;
     }
 
+    /*
+    CREATE TABLE mysql.classstat
+(
+  id integer(20) not null auto_increment,
+  role varchar(32),
+  points double,
+  wins integer,
+  losses integer,
+  ties integer,
+  sidegoals integer,
+  steals integer,
+  blocks integer,
+  passes integer,
+  kills integer,
+  deaths integer,
+  turnovers integer,
+  killassists integer,
+  goalassists integer,
+  rebounds integer,
+  goals integer,
+  CONSTRAINT id_pk PRIMARY KEY (id)
+  );
+
+  INSERT INTO mysql.classstat (role, wins, losses, ties, goals, points, sidegoals, blocks, steals, passes, kills, deaths, turnovers, killassists, goalassists, rebounds)
+VALUES ('GOALIE', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+INSERT INTO mysql.classstat (role, wins, losses, ties, goals, points, sidegoals, blocks, steals, passes, kills, deaths, turnovers, killassists, goalassists, rebounds)
+VALUES ('WARRIOR', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+INSERT INTO mysql.classstat (role, wins, losses, ties, goals, points, sidegoals, blocks, steals, passes, kills, deaths, turnovers, killassists, goalassists, rebounds)
+VALUES ('RANGER', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+INSERT INTO mysql.classstat (role, wins, losses, ties, goals, points, sidegoals, blocks, steals, passes, kills, deaths, turnovers, killassists, goalassists, rebounds)
+VALUES ('DASHER', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+INSERT INTO mysql.classstat (role, wins, losses, ties, goals, points, sidegoals, blocks, steals, passes, kills, deaths, turnovers, killassists, goalassists, rebounds)
+VALUES ('MARKSMAN', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+INSERT INTO mysql.classstat (role, wins, losses, ties, goals, points, sidegoals, blocks, steals, passes, kills, deaths, turnovers, killassists, goalassists, rebounds)
+VALUES ('STEALTH', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+INSERT INTO mysql.classstat (role, wins, losses, ties, goals, points, sidegoals, blocks, steals, passes, kills, deaths, turnovers, killassists, goalassists, rebounds)
+VALUES ('SUPPORT', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+INSERT INTO mysql.classstat (role, wins, losses, ties, goals, points, sidegoals, blocks, steals, passes, kills, deaths, turnovers, killassists, goalassists, rebounds)
+VALUES ('ARTISAN', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+INSERT INTO mysql.classstat (role, wins, losses, ties, goals, points, sidegoals, blocks, steals, passes, kills, deaths, turnovers, killassists, goalassists, rebounds)
+VALUES ('GOLEM', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+INSERT INTO mysql.classstat (role, wins, losses, ties, goals, points, sidegoals, blocks, steals, passes, kills, deaths, turnovers, killassists, goalassists, rebounds)
+VALUES ('MAGE', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+INSERT INTO mysql.classstat (role, wins, losses, ties, goals, points, sidegoals, blocks, steals, passes, kills, deaths, turnovers, killassists, goalassists, rebounds)
+VALUES ('BUILDER', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+INSERT INTO mysql.classstat (role, wins, losses, ties, goals, points, sidegoals, blocks, steals, passes, kills, deaths, turnovers, killassists, goalassists, rebounds)
+VALUES ('GRENADIER', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+INSERT INTO mysql.classstat (role, wins, losses, ties, goals, points, sidegoals, blocks, steals, passes, kills, deaths, turnovers, killassists, goalassists, rebounds)
+VALUES ('HOUNDMASTER', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+     */
 }

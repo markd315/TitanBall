@@ -14,6 +14,7 @@ public class Entity extends Box  implements Serializable {
     public double speed = 5;
     public double armorRatio = 1.0;
     public double healReduce = 1.0;
+    public double painReduction = 1.0;
 
     public Entity() {
     }
@@ -123,5 +124,20 @@ public class Entity extends Box  implements Serializable {
             }
         }
 
+    }
+
+    public String toString()   {
+        return "Entity{" +
+                "id=" + id +
+                ", team=" + team +
+                ", health=" + health +
+                ", maxHealth=" + maxHealth +
+                ", X=" + X +
+                ", Y=" + Y +
+                ", solid=" + solid +
+                ", width=" + width +
+                ", height=" + height +
+                ", speed=" + speed
+                + "}";
     }
 }

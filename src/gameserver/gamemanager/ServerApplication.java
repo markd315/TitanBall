@@ -9,6 +9,7 @@ import authserver.models.User;
 import authserver.users.PersistenceManager;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryonet.Connection;
+import com.esotericsoftware.kryonet.FrameworkMessage;
 import com.esotericsoftware.kryonet.Listener;
 import com.esotericsoftware.kryonet.Server;
 import gameserver.engine.GameEngine;
@@ -18,6 +19,7 @@ import gameserver.entity.Titan;
 import networking.ClientPacket;
 import networking.KryoRegistry;
 import networking.PlayerDivider;
+import util.Util;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -26,7 +28,7 @@ import java.util.*;
 
 public class ServerApplication {
     public static final boolean PAYWALL = false;
-    static Map<String, ManagedGame> states = null; //game UUID onto game
+    static Map<String, ManagedGame> states = new HashMap<>(); //game UUID onto game
 
     static Matchmaker matchmaker;
 
@@ -49,18 +51,20 @@ public class ServerApplication {
 
 
     public static void main(String[] args) throws IOException {
-        Server server = new Server(16384 * 8, 2048 * 8);
+        Server server = new Server(8 * 1024 * 1024, 1024 * 1024); //8mb and 1mb
         Kryo kryo = server.getKryo();
         KryoRegistry.register(kryo);
         server.start();
         //gameserver.setHardy(true);
         server.bind(54555);
 
-        states = new HashMap<>();
-
         server.addListener(new Listener() {
             public void received(Connection connection, Object object) {
                 if (connection.getID() > 0) {
+                    if (object instanceof FrameworkMessage.KeepAlive) {
+                        // delegate keepalives so that game will start
+                        delegatePacket(connection, null);
+                    }
                     if (object instanceof ClientPacket) {
                         String token = ((ClientPacket) object).token;
                         if (token == null) {
@@ -102,14 +106,33 @@ public class ServerApplication {
         checkGameExpiry();
         //System.out.println("delegating from game " + packet.gameID);
         //System.out.println("game map size: " + states.size());
-        if (states.containsKey(packet.gameID)) {
-            ManagedGame state = states.get(packet.gameID);
-            try {
+        try {
+            if (states.containsKey(packet.gameID)) {
+                ManagedGame state = states.get(packet.gameID);
                 //System.out.println("passing connection " + connection.getID() + " to game " + state.gameId);
                 state.delegatePacket(connection, packet);
-            } catch (IllegalArgumentException ex) {
-                //need a new game created, this should only be triggered if the same user tries to join a new game
             }
+            else {
+                //Rejoin logic for when the token has the right email but the connection is new.
+                //This is a hack to fix the issue of rejoining a game with a new connection
+                System.out.println("found a packet for a new connection but an existing game+user");
+                String email = Util.jwtExtractEmail(packet.token);
+                for (ManagedGame mg : states.values()) {
+                    System.out.println("checking " + mg.gameId);
+                    if (mg.gameContainsEmail(Collections.singleton(email))) {
+                        System.out.println("found a game for " + email + " to rejoin");
+                        mg.replaceConnectionForSameUser(connection, packet.token);
+                        System.out.println("passing connection " + connection.getID() + " to game " + mg.gameId);
+                        mg.delegatePacket(connection, packet);
+                    }
+                }
+            }
+        } catch (IllegalArgumentException ex) {
+            //need a new game created, this should only be triggered if the same user tries to join a new game
+        }
+        catch (NullPointerException ex1) {
+            ex1.printStackTrace();
+            System.out.println("NullPointerException receving packet with no gameid at end of game, ignoring");
         }
     }
 
@@ -118,13 +141,21 @@ public class ServerApplication {
         matchmaker = SpringContextBridge.services().getMatchmaker();
     }
 
+    private static Set<String> rm = new HashSet<>();
+
     private static void checkGameExpiry() {
-        Set<String> rm = new HashSet<>();
         for (String id : states.keySet()) {
+            if (rm.contains(id)) {
+                continue;
+            }
             ManagedGame val = states.get(id);
             if (val.state != null && val.state.ended) {
+                val.exec.shutdown();
+                val.stateRef.set(val.state); // everyone gets the final packet one time.
                 System.out.println("ENDING GAME");
-                System.out.println(val.options.toStringSrv());
+                System.out.println("options: " + val.options.toStringSrv());
+                System.out.println(val.stateRef.get().toString());
+                val.terminateConnections(val.stateRef);
                 if(val.options.toStringSrv().equals("/3/1/1/5/2/9999/10/12")) {//default public mode only for ratings
                     injectRatingsToPlayers(val.state);
                     for (PlayerDivider player : val.state.clients) {

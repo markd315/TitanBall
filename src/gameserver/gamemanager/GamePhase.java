@@ -27,7 +27,9 @@ public enum GamePhase  implements Serializable {
     DRAFT_HOMEBOT(17),
     DRAFT_AWAYBOT(18),
     TUTORIAL_START(100),
-    TUTORIAL(101);
+    TUTORIAL(101),
+    CANNOT_JOIN(102),
+    ENDED(999);
 
     private static final Map<Integer, GamePhase> lookup
             = new HashMap<Integer, GamePhase>();

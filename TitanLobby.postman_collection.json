@@ -1,8 +1,10 @@
 {
 	"info": {
-		"_postman_id": "84f3ae5f-2c19-4ba3-ba0b-f3d6d8d535cb",
+		"_postman_id": "2272d3a6-3e25-4d0b-b925-b540059c15a5",
 		"name": "TitanLobby",
-		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "5022310",
+		"_collection_link": "https://blue-rocket-710169.postman.co/workspace/Team-Workspace~32b700a7-96ed-4a8f-8c49-6b6fbd90ed40/collection/5022310-2272d3a6-3e25-4d0b-b925-b540059c15a5?action=share&source=collection_link&creator=5022310"
 	},
 	"item": [
 		{
@@ -11,13 +13,13 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "5c59aeb2-bd8b-4ebd-939a-782a7af45a2d",
 						"exec": [
 							"pm.globals.set(\"TITAN_TOKEN\", pm.response.json().accessToken);",
 							"pm.globals.set(\"TITAN_REFRESH\", pm.response.json().refreshToken);",
 							"pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });"
 						],
-						"type": "text/javascript"
+						"type": "text/javascript",
+						"packages": {}
 					}
 				}
 			],
@@ -39,16 +41,13 @@
 					"raw": "{\n\t\"usernameOrEmail\": \"markd315@gmail.com\",\n\t\"password\": \"pass\"\n}"
 				},
 				"url": {
-					"raw": "https://ec2-18-223-131-64.us-east-2.compute.amazonaws.com:8080/login",
+					"raw": "https://zanzalaz.com:444/login",
 					"protocol": "https",
 					"host": [
-						"ec2-18-223-131-64",
-						"us-east-2",
-						"compute",
-						"amazonaws",
+						"zanzalaz",
 						"com"
 					],
-					"port": "8080",
+					"port": "444",
 					"path": [
 						"login"
 					]
@@ -62,13 +61,13 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "5c59aeb2-bd8b-4ebd-939a-782a7af45a2d",
 						"exec": [
 							"pm.globals.set(\"TITAN_TOKEN\", pm.response.json().accessToken);",
 							"pm.globals.set(\"TITAN_REFRESH\", pm.response.json().refreshToken);",
 							"pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });"
 						],
-						"type": "text/javascript"
+						"type": "text/javascript",
+						"packages": {}
 					}
 				}
 			],
@@ -97,16 +96,13 @@
 					"raw": ""
 				},
 				"url": {
-					"raw": "https://ec2-18-223-131-64.us-east-2.compute.amazonaws.com:8080/refresh",
+					"raw": "https://zanzalaz.com:444/refresh",
 					"protocol": "https",
 					"host": [
-						"ec2-18-223-131-64",
-						"us-east-2",
-						"compute",
-						"amazonaws",
+						"zanzalaz",
 						"com"
 					],
-					"port": "8080",
+					"port": "444",
 					"path": [
 						"refresh"
 					]
@@ -120,12 +116,12 @@
 				{
 					"listen": "test",
 					"script": {
-						"id": "5c59aeb2-bd8b-4ebd-939a-782a7af45a2d",
 						"exec": [
 							"pm.globals.set(\"TITAN_TOKEN\", pm.response.json().accessToken);",
 							"pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });"
 						],
-						"type": "text/javascript"
+						"type": "text/javascript",
+						"packages": {}
 					}
 				}
 			],
@@ -147,16 +143,13 @@
 					"raw": "{\n\t\"usernameOrEmail\": \"mattbuster\",\n\t\"password\": \"pass\"\n}"
 				},
 				"url": {
-					"raw": "https://ec2-18-223-131-64.us-east-2.compute.amazonaws.com:8080/login",
+					"raw": "https://zanzalaz.com:444/login",
 					"protocol": "https",
 					"host": [
-						"ec2-18-223-131-64",
-						"us-east-2",
-						"compute",
-						"amazonaws",
+						"zanzalaz",
 						"com"
 					],
-					"port": "8080",
+					"port": "444",
 					"path": [
 						"login"
 					]
@@ -170,16 +163,13 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "https://ec2-18-223-131-64.us-east-2.compute.amazonaws.com:8080/join",
+					"raw": "https://zanzalaz.com:444/join",
 					"protocol": "https",
 					"host": [
-						"ec2-18-223-131-64",
-						"us-east-2",
-						"compute",
-						"amazonaws",
+						"zanzalaz",
 						"com"
 					],
-					"port": "8080",
+					"port": "444",
 					"path": [
 						"join"
 					]
@@ -193,16 +183,13 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "https://ec2-18-223-131-64.us-east-2.compute.amazonaws.com:8080/leave",
+					"raw": "https://zanzalaz.com:444/leave",
 					"protocol": "https",
 					"host": [
-						"ec2-18-223-131-64",
-						"us-east-2",
-						"compute",
-						"amazonaws",
+						"zanzalaz",
 						"com"
 					],
-					"port": "8080",
+					"port": "444",
 					"path": [
 						"leave"
 					]
@@ -216,16 +203,13 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "https://ec2-18-223-131-64.us-east-2.compute.amazonaws.com:8080/gamecheck",
+					"raw": "https://zanzalaz.com:444/gamecheck",
 					"protocol": "https",
 					"host": [
-						"ec2-18-223-131-64",
-						"us-east-2",
-						"compute",
-						"amazonaws",
+						"zanzalaz",
 						"com"
 					],
-					"port": "8080",
+					"port": "444",
 					"path": [
 						"gamecheck"
 					]
@@ -250,16 +234,13 @@
 					"raw": "{\n\t\"username\": \"pou\",\n\t\"password\": \"jeff\",\n\t\"email\": \"eeemail\",\n\t\"role\": \"USER\"\n}"
 				},
 				"url": {
-					"raw": "https://ec2-18-223-131-64.us-east-2.compute.amazonaws.com:8080/",
+					"raw": "https://zanzalaz.com:444/",
 					"protocol": "https",
 					"host": [
-						"ec2-18-223-131-64",
-						"us-east-2",
-						"compute",
-						"amazonaws",
+						"zanzalaz",
 						"com"
 					],
-					"port": "8080",
+					"port": "444",
 					"path": [
 						""
 					]
@@ -281,19 +262,16 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n\t\"username\": \"u3\"\n}"
+					"raw": "{\n\t\"email\": \"markd315@gmail.com\"\n}"
 				},
 				"url": {
-					"raw": "https://ec2-18-223-131-64.us-east-2.compute.amazonaws.com:8080/stat",
+					"raw": "https://zanzalaz.com:444/stat",
 					"protocol": "https",
 					"host": [
-						"ec2-18-223-131-64",
-						"us-east-2",
-						"compute",
-						"amazonaws",
+						"zanzalaz",
 						"com"
 					],
-					"port": "8080",
+					"port": "444",
 					"path": [
 						"stat"
 					]
@@ -316,7 +294,6 @@
 		{
 			"listen": "prerequest",
 			"script": {
-				"id": "927cafc2-d9cd-4fc7-bc3d-61f7fc7a5f2a",
 				"type": "text/javascript",
 				"exec": [
 					""
@@ -326,7 +303,6 @@
 		{
 			"listen": "test",
 			"script": {
-				"id": "49b525ea-9100-4700-827f-8d5cf869d852",
 				"type": "text/javascript",
 				"exec": [
 					""

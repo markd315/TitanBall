@@ -2,7 +2,7 @@ package gameserver.engine;
 
 import gameserver.Const;
 import gameserver.effects.EffectId;
-import gameserver.effects.cooldowns.CooldownE;
+import gameserver.effects.cooldowns.CooldownQ;
 import gameserver.effects.effects.DefenseEffect;
 import gameserver.effects.effects.EmptyEffect;
 import gameserver.effects.effects.HideBallEffect;
@@ -16,10 +16,10 @@ import java.awt.geom.Ellipse2D;
 import java.io.Serializable;
 
 public class Ability implements Serializable {
-    public boolean castE(GameEngine context, Titan caster) throws NullPointerException {
+    public boolean castQ(GameEngine context, Titan caster) throws NullPointerException {
         AbilityStrategy strat = new AbilityStrategy(context, caster);
         Const c = strat.c;
-        if (!context.effectPool.hasEffect(caster, EffectId.COOLDOWN_E)) {
+        if (!context.effectPool.hasEffect(caster, EffectId.COOLDOWN_Q)) {
             switch (caster.getType()) {
                 case MAGE:
                     strat.spawnPortal();
@@ -36,22 +36,22 @@ public class Ability implements Serializable {
                     }
                     break;
                 case SUPPORT:
-                    strat.stunByRadius(c.getI("titan.stun.cdms"));
+                    strat.stunByRadius(c.getI("titan.stun.dur"));
                     break;
                 case GOLEM:
-                    context.effectPool.addUniqueEffect(new CooldownE((int) (caster.cooldownFactor *c.getI("titan.shield.cdms")), caster), context);
+                    context.effectPool.addUniqueEffect(new CooldownQ((int) (caster.cooldownFactor *c.getI("titan.shield.cdms")), caster), context);
                     context.effectPool.addUniqueEffect(
                             new DefenseEffect((int) (caster.durationsFactor*c.getI("titan.shield.dur")),
                                     caster, caster.durationsFactor*c.getI("titan.shield.ratio")), context);
                     break;
                 case STEALTH:
-                    context.effectPool.addUniqueEffect(new CooldownE((int) (caster.cooldownFactor *c.getI("titan.stealth.cdms")), caster), context);
+                    context.effectPool.addUniqueEffect(new CooldownQ((int) (caster.cooldownFactor *c.getI("titan.stealth.cdms")), caster), context);
                     context.effectPool.addUniqueEffect(
                             new EmptyEffect((int) (caster.durationsFactor*c.getI("titan.stealth.dur")), caster, EffectId.STEALTHED), context);
                     break;
                 case DASHER:
                     if(caster.possession == 1){
-                        context.effectPool.addUniqueEffect(new CooldownE((int) (caster.cooldownFactor *c.getI("titan.hide.cdms")), caster), context);
+                        context.effectPool.addUniqueEffect(new CooldownQ((int) (caster.cooldownFactor *c.getI("titan.hide.cdms")), caster), context);
                         context.effectPool.addUniqueEffect(
                                 new HideBallEffect((int) (caster.durationsFactor*c.getI("titan.hide.dur")), caster), context);
                     }
@@ -76,9 +76,9 @@ public class Ability implements Serializable {
         return false;
     }
 
-    public boolean castR(GameEngine context, Titan caster) throws NullPointerException {
+    public boolean castW(GameEngine context, Titan caster) throws NullPointerException {
         AbilityStrategy strat = new AbilityStrategy(context, caster);
-        if (!context.effectPool.hasEffect(caster, EffectId.COOLDOWN_R)) {
+        if (!context.effectPool.hasEffect(caster, EffectId.COOLDOWN_W)) {
             switch (caster.getType()) {
                 case DASHER:
                     strat.ignite(context.c.getD("titan.flare.cds"),
@@ -138,7 +138,7 @@ public class Ability implements Serializable {
         return false;
     }
 
-    public boolean castQ(GameEngine context, Titan caster) throws NullPointerException {
+    public boolean castSteal(GameEngine context, Titan caster) throws NullPointerException {
         AbilityStrategy strat = new AbilityStrategy(context, caster);
         boolean ret = strat.stealBall();
         injectColliders(context, strat, caster);
