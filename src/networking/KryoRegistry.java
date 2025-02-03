@@ -9,9 +9,9 @@ import gameserver.TutorialOverrides;
 import gameserver.effects.EffectId;
 import gameserver.effects.EffectPool;
 import gameserver.effects.cooldowns.CooldownCurve;
-import gameserver.effects.cooldowns.CooldownE;
 import gameserver.effects.cooldowns.CooldownQ;
-import gameserver.effects.cooldowns.CooldownR;
+import gameserver.effects.cooldowns.CooldownSteal;
+import gameserver.effects.cooldowns.CooldownW;
 import gameserver.effects.effects.*;
 import gameserver.engine.*;
 import gameserver.entity.*;
@@ -49,9 +49,9 @@ public class KryoRegistry {
         kryo.register(DefenseEffect.class);
         kryo.register(ShootEffect.class);
         kryo.register(HideBallEffect.class);
-        kryo.register(CooldownE.class);
-        kryo.register(CooldownR.class);
         kryo.register(CooldownQ.class);
+        kryo.register(CooldownW.class);
+        kryo.register(CooldownSteal.class);
         kryo.register(CooldownCurve.class);
 
         kryo.register(Collidable.class);
@@ -64,7 +64,7 @@ public class KryoRegistry {
         kryo.register(Wolf.class);
         kryo.register(Fire.class);
 
-        kryo.register(GameEngine.class);
+        kryo.register(GameEngine.class, 95);
         kryo.register(Game.class);
         kryo.register(GoalHoop.class);
         kryo.register(GoalHoop[].class);
@@ -107,6 +107,9 @@ public class KryoRegistry {
         kryo.register(AtomicBoolean.class, aSer);
         kryo.register(Instant.class);
         kryo.register(Integer.class);
+        kryo.register(Double.class);
+        kryo.register(Float.class);
+        kryo.register(Long.class);
         kryo.register(java.util.ArrayList.class);
         kryo.register(java.util.List.class);
         kryo.register(Map.class);
@@ -114,13 +117,15 @@ public class KryoRegistry {
         kryo.register(String.class);
         kryo.register(java.util.HashSet.class);
 
+        kryo.register(byte.class);
         kryo.register(byte[].class);
         kryo.register(int[].class);
         kryo.register(int.class);
         kryo.register(float[].class);
         kryo.register(float.class);
+        kryo.register(double[].class);
         kryo.register(double.class);
-        kryo.register(boolean.class);
+        kryo.register(boolean[].class);
         kryo.register(boolean.class);
         kryo.register(Const.class);
         kryo.register(ConstOperations.class);

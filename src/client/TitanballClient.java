@@ -3,8 +3,10 @@ package client;
 import client.graphical.*;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.KryoException;
+import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryonet.Client;
 import com.esotericsoftware.kryonet.Connection;
+import com.esotericsoftware.kryonet.FrameworkMessage;
 import com.esotericsoftware.kryonet.Listener;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mashape.unirest.http.exceptions.UnirestException;
@@ -12,8 +14,8 @@ import com.rits.cloning.Cloner;
 import gameserver.Const;
 import gameserver.TutorialOverrides;
 import gameserver.effects.EffectId;
-import gameserver.effects.cooldowns.CooldownE;
-import gameserver.effects.cooldowns.CooldownR;
+import gameserver.effects.cooldowns.CooldownQ;
+import gameserver.effects.cooldowns.CooldownW;
 import gameserver.effects.effects.*;
 import gameserver.engine.*;
 import gameserver.entity.Entity;
@@ -26,6 +28,7 @@ import gameserver.targeting.ShapePayload;
 import gameserver.gamemanager.GamePhase;
 import networking.ClientPacket;
 import networking.KryoRegistry;
+import networking.PlayerDivider;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
 import org.json.JSONObject;
@@ -57,7 +60,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
     public Instant gamestart = null;
     public Random rand;
     public Sound shotSound;
-    protected Client gameserverConn = new Client(8192 * 8, 32768 * 8);
+    protected Client gameserverConn = new Client(1024 * 1024, 256 * 1024); // 1mb and 256k
     protected String gameID;
     protected GameEngine game;
     protected GamePhase phase = GamePhase.CREDITS;
@@ -78,8 +81,6 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
     int round = 1;
     int ballFrame = 0;
     int ballFrameCounter = 0;
-    int crowdFrame = 1;//not used yet
-    int crowdFrameCount = 0;
     File shotSoundFile = new File("res/Sound/shotsound.wav");
     //File t4File = new File("res/Sound/tut4.wav");
     StaticImage intro = new StaticImage();
@@ -132,6 +133,9 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
     private double scl;
     private boolean darkTheme = false;
     private boolean queued = false;
+    ScheduledExecutorService exec = Executors.newScheduledThreadPool(1);
+    private TeamAffiliation saved_team;
+    private PlayerDivider saved_player_divider;
 
     public TitanballClient(TitanballWindow titanballWindow, int xSize, int ySize, double scl, HttpClient loginClient, Map<String, String> keymap, boolean createListeners, boolean darkTheme) {
         this.darkTheme = darkTheme;
@@ -266,17 +270,43 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         }
     }
 
+
     @Override
     public void paintComponent(Graphics g) {
         Graphics2D g2D = (Graphics2D) g;
         super.paintComponent(g);
         if (game != null && game.ended) {
+            game.phase = GamePhase.ENDED;
+            if (!exec.isShutdown()) {
+                List<Runnable> canceled = exec.shutdownNow();
+                System.out.println("cancelled " + canceled.size() + " tasks at end of game");
+                exec = Executors.newScheduledThreadPool(1);
+            }
             darkTheme(g2D, true);
-            Team team = teamFromUnderControl();
-            Team enemy = enemyFromUnderControl();
+            Team team;
+            Team enemy;
+            try {
+                team = teamFromUnderControl();
+                enemy = enemyFromUnderControl();
+            } catch (NullPointerException ex1) {
+                System.out.println("Started receving dead packets, because the game is over");
+            }
+
             if (queued) {
-                loginClient.leave();
+                try {
+                    loginClient.retry401Catch503("leave", null);
+                } catch (UnirestException e) {
+                    // This is fine, server is in shutdown state so we have already been dequeued
+                }
                 queued = false;
+            }
+            if (saved_team == TeamAffiliation.HOME){
+                team = game.home;
+                enemy = game.away;
+            }
+            else  {
+                team = game.away;
+                enemy = game.home;
             }
             if (team.score > enemy.score) {
                 sconst.drawImage(g2D, victory.getImage(), sconst.RESULT_IMG_X, sconst.RESULT_IMG_Y, this);
@@ -285,7 +315,10 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
             } else {
                 sconst.drawImage(g2D, defeat.getImage(), sconst.RESULT_IMG_X, sconst.RESULT_IMG_Y, this);
             }
-            gameEndStatsAndRanks(g2D, game.underControl);
+            repaint();
+            gameEndStatsAndRanks(g2D, saved_player_divider);
+            game.phase = GamePhase.ENDED;
+            repaint();
             return;
         }
         repaint();
@@ -334,8 +367,13 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
                 lobby(g2D);
                 System.out.println("got game " + gameID);
             } catch (Exception e) {
+                //Server is shutting down, not accepting new games
+                phase = GamePhase.CANNOT_JOIN;
                 e.printStackTrace();
             }
+        }
+        if (phase == GamePhase.CANNOT_JOIN) {
+            cannotJoin(g2D);
         }
         if (phase == GamePhase.COUNTDOWN) {
             starting(g2D);
@@ -347,17 +385,27 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
             draftClassScreen(g2D);
         }
         if (phase == GamePhase.INGAME || phase == GamePhase.SCORE_FREEZE) {
-            if (this.game.effectPool.hasEffect(this.game.underControl, EffectId.BLIND)) {
-                sconst.setFont(g2D, new Font("Verdana", Font.PLAIN, 72));
-                g2D.setColor(new Color(.2f, .2f, .2f));
-                sconst.drawString(g2D, "Blind!", 450, 300);
-            } else {
-                updateFrameBall();
-                doDrawing(g2D); // do drawing of screen
-                displayBallArrow(g2D);
-                displayScore(g2D); // call the method to display the game score
+            boolean over = game.checkWinCondition(true);
+            if (over) {
+                phase = GamePhase.ENDED;
+                return;
             }
-
+            else {
+                if (this.game.effectPool.hasEffect(this.game.underControl, EffectId.BLIND)) {
+                    sconst.setFont(g2D, new Font("Verdana", Font.PLAIN, 72));
+                    g2D.setColor(new Color(.2f, .2f, .2f));
+                    sconst.drawString(g2D, "Blind!", 450, 300);
+                } else {
+                    updateFrameBall();
+                    doDrawing(g2D); // do drawing of screen
+                    displayBallArrow(g2D);
+                    displayScore(g2D); // call the method to display the game score
+                    if (game.phase == GamePhase.INGAME) { //recheck in case new packet came in
+                        saved_team = game.underControl.team;
+                        saved_player_divider = game.clientFromTitan(game.underControl);
+                    }
+                }
+            }
         }
         if (phase == GamePhase.TUTORIAL_START) {
             //doesn't work for looping tut?
@@ -462,7 +510,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         sconst.drawString(g2D, "WASD or arrows to spend points", 200, 420);
         sconst.drawString(g2D, "Space to enter (And queue for game)", 200, 450);
         int x = 430;
-        for (int i = masteries.skillsRemaining(); i > 0; i--) {
+        for (int i = masteries.validate(); i > 0; i--) {
             g2D.fill(new Ellipse2D.Double(x, 76, 16, 16));
             x += 32;
         }
@@ -501,9 +549,9 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         }
     }
 
-    protected void gameEndStatsAndRanks(Graphics2D g2D, Titan underControl) {
-        JSONObject stats = game.stats.statsOf(game.clientFromTitan(underControl));
-        JSONObject ranks = game.stats.ranksOf(game.clientFromTitan(underControl));
+    protected void gameEndStatsAndRanks(Graphics2D g2D, PlayerDivider client) {
+        JSONObject stats = game.stats.statsOf(client);
+        JSONObject ranks = game.stats.ranksOf(client);
         int y = 425;
         Font font = new Font("Verdana", Font.PLAIN, sconst.STATS_FONT);
         sconst.setFont(g2D, font);
@@ -535,53 +583,77 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
     }
 
     public void openConnection() throws IOException {
+        //TODO replace this with a socketio connection
         gameserverConn.start();
         //gameserverConn.setHardy(true);
+        KryoRegistry.register(kryo);
         if (!gameserverConn.isConnected()) {
             gameserverConn.connect(999999999, "zanzalaz.com", 54555);
             //gameserverConn.connect(5000, "127.0.0.1", 54555);
+
+            Runnable updateServer = () -> {
+                if (controlsHeld != null && gameserverConn.isConnected()) {
+                    controlsHeld.gameID = gameID;
+                    controlsHeld.token = token;
+                    controlsHeld.masteries = masteries;
+                    gameserverConn.sendTCP(controlsHeld);
+                }
+                else if(!gameserverConn.isConnected()) {
+                    gameserverConn.close();
+                    gameserverConn = new Client(8 * 1024 * 1024, 1024 * 1024); //8mb and 1mb
+                }
+                else{
+                    System.out.println("null controls held");
+                }
+            };
+
             gameserverConn.addListener(new Listener() {
                 public synchronized void received(Connection connection, Object object) {
-                    if (object instanceof Game) {
-                        game = (GameEngine) object;
-                        game.began = true;
-                        phase = game.phase;
-                        controlsHeld.gameID = gameID;
-                        controlsHeld.token = token;
-                        controlsHeld.masteries = masteries;
-                        controlsHeld.camX = camX;
-                        controlsHeld.camY = camY;
-                        repaint();
-                        try {
-                            gameserverConn.sendTCP(controlsHeld);
-                        } catch (KryoException e) {
-                            System.out.println("kryo end");
-                            System.out.println(game.ended);
-                        }
-                    } else {
-                        System.out.println("Didn't get a game from gameserver!");
+                     System.out.println("type of object: " + object.getClass().getName());
+                     if (object instanceof Game) {
+                         game = (GameEngine) object;
+                     }
+                     else if (object instanceof byte[]) {
+                        byte[] data = (byte[]) object;
+                        game = kryo.readObject(new Input(data), GameEngine.class);
+                     }
+                     else if (object instanceof FrameworkMessage.KeepAlive) {
+                        System.out.println("Got a keepalive from gameserver!");
+                        return;
+                    }
+                     else {
+                         System.out.println("Got a non-game from gameserver!");
+                     }
+                    game.began = true;
+                    phase = game.phase;
+                    controlsHeld.gameID = gameID;
+                    controlsHeld.token = token;
+                    controlsHeld.masteries = masteries;
+                    controlsHeld.camX = camX;
+                    controlsHeld.camY = camY;
+                    repaint();
+                    try {
+                        System.out.println("Initial update sending");
+                        gameserverConn.sendTCP(controlsHeld);
+                        System.out.println("Initial update sent");
+                    } catch (KryoException e) {
+                        System.out.println("kryo end");
+                        System.out.println(game.ended);
                     }
                 }
             });
-            KryoRegistry.register(kryo);
-            ScheduledExecutorService exec = Executors.newScheduledThreadPool(1);
-            Runnable updateServer = () -> {
-                controlsHeld.gameID = gameID;
-                controlsHeld.token = token;
-                controlsHeld.masteries = masteries;
-                gameserverConn.sendTCP(controlsHeld);
-            };
-            exec.scheduleAtFixedRate(updateServer, 1, 30, TimeUnit.MILLISECONDS);
+            exec.scheduleAtFixedRate(updateServer, 30, 30, TimeUnit.MILLISECONDS);
+            System.out.println("Updates scheduled");
         }
     }
 
     protected String requestOrQueueGame() throws UnirestException {
         if (!queued) {
-            loginClient.join(this.tournamentCode);
+            loginClient.retry401Catch503("join", this.tournamentCode);
             token = loginClient.token;
             queued = true;
         } else {
-            loginClient.check();
+            loginClient.retry401Catch503("check", null);
             token = loginClient.token;
         }
         if (loginClient.gameId != null && loginClient.gameId.equals("NOT QUEUED")) {
@@ -659,8 +731,6 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
     }
 
     public void postgoalReset() {
-        crowdFrame = 1;
-        crowdFrameCount = 0;
         ballFrame = 0;
         ballFrameCounter = 0;
         camX = 500;
@@ -684,9 +754,6 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
             if (camY < 0) camY = 0;
         }
         sconst.drawImage(g2D, field.getImage(), (1 - camX), (1 - camY), this);
-        if (crowdFrame == 2) {
-            //TODO animation
-        }
         g2D.setStroke(new BasicStroke(6f));
         for (GoalHoop goalData : game.lowGoals) {
             GoalSprite goal = new GoalSprite(goalData, camX, camY, sconst);
@@ -1318,10 +1385,10 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
             g2D.drawString(text, sconst.OVR_DESC_FONT - 2, sconst.OVR_DESC_Y);
             g2D.setFont(new Font("Verdana", Font.BOLD, sconst.ABIL_DESC_FONT));
 
-            g2D.drawImage(new CooldownE(0, null)
+            g2D.drawImage(new CooldownQ(0, null)
                     .getIcon(), sconst.ICON_ABIL_X, sconst.E_ABIL_Y, this);
             g2D.drawString(e, sconst.DESC_ABIL_X, sconst.E_DESC_Y);
-            g2D.drawImage(new CooldownR(0, null)
+            g2D.drawImage(new CooldownW(0, null)
                     .getIcon(), sconst.ICON_ABIL_X, sconst.R_ABIL_Y, this);
             g2D.drawString(r, sconst.DESC_ABIL_X, sconst.R_DESC_Y);
         }
@@ -1330,11 +1397,11 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
     @Override
     public void keyPressed(KeyEvent ke) {
         int key = ke.getKeyCode();
-        if (game != null && game.ended) {//back to main after game
+        if (game != null && (game.ended || game.phase == GamePhase.ENDED)) {//back to main after game
             if (key == KeyEvent.VK_BACK_SPACE || key == KeyEvent.VK_SPACE ||
                     key == KeyEvent.VK_ESCAPE || key == KeyEvent.VK_ENTER) {
                 try {
-                    parentWindow.reset(true); //TODO tournament feature here
+                    parentWindow.reset(true); //TODO tournament feature here for next games
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -1425,7 +1492,11 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
             return;
         }
         if (key == KeyEvent.VK_ESCAPE && phase == GamePhase.WAIT_FOR_GAME) {
-            loginClient.leave();
+            try {
+                loginClient.retry401Catch503("leave", null);
+            } catch (UnirestException e) {
+                // This is fine, the server is in shutdown mode so we have already been dequeued
+            }
             queued = false;
             phase = GamePhase.DRAW_CLASS_SCREEN;
         }
@@ -1575,12 +1646,12 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         if ((key == KeyEvent.VK_UP || key == KeyEvent.VK_W) && phase == GamePhase.SET_MASTERIES) {
             masteriesIndex--;
             if (masteriesIndex < 0) {
-                masteriesIndex = 8;
+                masteriesIndex = 9;
             }
         }
         if ((key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S) && phase == GamePhase.SET_MASTERIES) {
             masteriesIndex++;
-            if (masteriesIndex > 8) {
+            if (masteriesIndex > 9) {
                 masteriesIndex = 0;
             }
         }
@@ -1624,8 +1695,11 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
             case 8:
                 masteries.abilityLag += delta;
                 break;
+            case 9:
+                masteries.painReduction += delta;
+                break;
         }
-        if (!masteries.validate()) {
+        if (masteries.validate() == -1) {
             System.out.println("detected invalid mastery settings");
             masteries = oldMasteries;
         }
@@ -1675,7 +1749,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
 
     protected void fireReconnect() {
         try {//rejoin game logic
-            loginClient.check();
+            loginClient.retry401Catch503("check", null);
             if (!loginClient.gameId.equals("NOT QUEUED")) {
                 phase = GamePhase.COUNTDOWN;
             }
@@ -1708,7 +1782,7 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
         g2D.setColor(Color.YELLOW);
         sconst.setFont(g2D, font);
         double milUntil = (new Duration(Instant.now(), gamestart)).getMillis();
-        System.out.println(milUntil);
+        //System.out.println(milUntil);
         sconst.drawString(g2D, String.format("Starting in %1.1f seconds", milUntil / 1000.0), 345, 220);
         font = new Font("Verdana", Font.BOLD, 48);
         g2D.setColor(Color.RED);
@@ -1728,6 +1802,23 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
                 }
             }
         }
+    }
+
+    public void cannotJoin(Graphics2D g2D) {
+        darkTheme(g2D, true);
+        if (gamestart == null) {
+            gamestart = Instant.now().plus(new Duration(5100));
+        }
+        sconst.drawImage(g2D, lobby.getImage(), 1, 1, this);
+        Font font = new Font("Verdana", Font.BOLD, 24);
+        g2D.setColor(Color.PINK);
+        sconst.setFont(g2D, font);
+        double milUntil = (new Duration(Instant.now(), gamestart)).getMillis();
+        //System.out.println(milUntil);
+        sconst.drawString(g2D, "Cannot join, server is in shutdown mode: no new games at this time", 345, 220);
+        font = new Font("Verdana", Font.BOLD, 36);
+        sconst.setFont(g2D, font);
+        sconst.drawString(g2D, "Please close the client and try again later", 418, 480);
     }
 
     public void lobby(Graphics2D g2D) {
@@ -1778,6 +1869,11 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
             setColorFromCharge(g2D, minorGoalsAway);
             sconst.drawString(g2D, minorGoalsAway + "/4", 848, 701);
 
+            sconst.setFont(g2D, new Font("Verdana", Font.PLAIN, 9));
+            //get usernmame from titan via token decoded jwt
+            String jwt = controlsHeld.token;
+            String username = Util.jwtExtractEmail(jwt);
+            sconst.drawString(g2D, username, 920, 701);
             g2D.setColor(Color.RED);
             int x = xSize / 4;
             //addBoostIcons();

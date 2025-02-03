@@ -206,6 +206,12 @@ public class Matchmaker {
         }
     }
 
+    public void clearWaitingPools() { //for graceful shutdown
+        waitingPool.clear();
+        teamMemberWaitingPool.clear();
+        teamWaitingPool.clear();
+    }
+
     public void endGame(String id) {
         List<String> rm = new ArrayList<>();
         for (String email : gameMap.keySet()) {

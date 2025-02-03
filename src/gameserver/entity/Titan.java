@@ -7,6 +7,7 @@ import gameserver.effects.effects.Effect;
 import gameserver.effects.effects.RatioEffect;
 import gameserver.engine.GameEngine;
 import gameserver.engine.TeamAffiliation;
+import util.ConstOperations;
 
 import java.awt.*;
 import java.io.Serializable;
@@ -71,10 +72,12 @@ public class Titan extends Entity  implements Serializable {
         this.throwPower = throwPower;
     }
 
+    ConstOperations c = new Const("res/game.cfg");
+
     public void setVarsBasedOnType() {
         if(type != null){
             this.maxHealth = titanHealth.get(type);
-            this.health = titanHealth.get(type) / 2;
+            this.health = 3.0 * titanHealth.get(type) / 4;
             this.throwPower = titanShoot.get(type);
             this.speed = titanSpeed.get(type);
             this.eCastFrames = titanEFrames.get(type);
@@ -86,9 +89,9 @@ public class Titan extends Entity  implements Serializable {
                 this.rangeIndicators.addAll(titanRange.get(this.type));
             }
             if(type == TitanType.DASHER){
-                this.boostFactor = 1.45;
+                this.boostFactor = c.getD("dasher.boost.boostFactor");
             }else{
-                this.boostFactor = 1.33;
+                this.boostFactor = c.getD("globals.boost.boostFactor");
             }
         }
     }
@@ -432,4 +435,48 @@ public class Titan extends Entity  implements Serializable {
         this.runLeft = this.moveMemL ? 1 : 0;
         this.runRight = this.moveMemR ? 1 : 0;
     }
+    /*
+
+    TODO FIRST:
+     Fix reset logic after a goal:
+     all entities despawned
+     All health and boosts reset to 75%
+     All cooldowns reset to 0
+     All effects ended
+
+     Fix reset logic at end of game:
+     stop contacting players after the one final update
+
+    More character designs:
+
+    Joker scorer:
+    When he blinks, he spawns a fake titan at his location
+    Randomly teleports to a random location
+
+    Turtle support :
+    Fires a shell that can bounce off walls, stunning anyone in its path
+    lives for a short time (10 seconds?)
+    Defensive ability to cast on allies?
+
+    Lanternfish support:
+    Hooks enemies with his tail (projectile) and pulls them towards him
+    Can extend the lantern to pull allies towards him
+
+    Snake assault:
+    Leaves a trail of poison that can slow enemies
+    Can bite enemies and jump to them
+
+    Spider support:
+    Can place webs that slow enemies and allies
+    Can teleport within the webs
+
+    Footballer scorer:
+    Can tackle enemies (push them away for a short time)
+    Forward pass is his second ability
+    Can only pass backwards (lateral)
+
+    Skater ?:
+    Can place ice fields that force all entities to slip until they exit the field
+
+     */
 }

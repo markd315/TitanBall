@@ -17,6 +17,9 @@ java -cp Titanball.jar client.TitanballWindow
 Or use the bash script
 `./start.sh` (While in the folder with the jar and res folder)
 
+Server info: https://zanzalaz.com
+
+
 Made with love by Mark Davis (contact: markd315@gmail.com), anything not specified below was developed in-house.
 
 Big thanks to:

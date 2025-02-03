@@ -131,6 +131,7 @@ public class GameEngine extends Game {
             GoalHoop[] pains = getPainHoopsFromTeam(e.team);
             for (GoalHoop pain : pains) {
                 double delta = Util.calculatePain(e, pain);
+                delta *= e.painReduction;
                 if (delta > 0) {
                     if (delta > c.MAX_PAIN) {
                         delta = c.MAX_PAIN;
@@ -170,7 +171,7 @@ public class GameEngine extends Game {
         return new GoalHoop[0];
     }
 
-    public void detectGoals() throws Exception {
+    public void detectGoals() {
         //If ball is in the air
         if(contactExemptBall()){
             return;
@@ -194,7 +195,7 @@ public class GameEngine extends Game {
                     goal.freeze();
                 }
                 us.score += .25;
-                checkWinCondition();//somewhat intentional to check condition before ghost removal
+                checkWinCondition(false);//somewhat intentional to check condition before ghost removal
                 enemy.score = Math.floor(enemy.score); //Reset any of the other teams ghostpoints
             }
         }
@@ -217,7 +218,7 @@ public class GameEngine extends Game {
                 us.score += fPart * 4 + 1;
                 stats.grant(getPossessorOrThrower(), StatEngine.StatEnum.GOALS);
                 stats.grant(getPossessorOrThrower(), StatEngine.StatEnum.POINTS, fPart * 4 + 1);
-                checkWinCondition();
+                checkWinCondition(false);
                 //reset enemy team ghost points
                 enemy.score = Math.floor(enemy.score);
                 us.hasBall = true;
@@ -452,10 +453,12 @@ public class GameEngine extends Game {
         ballVisible = true;
         for (Titan p : players) {
             p.actionState = Titan.TitanState.IDLE;
+            p.health = 3.0 * p.maxHealth / 4;
             p.programmed = false;
             p.marchingOrderX = (int) p.X;
             p.marchingOrderY = (int) p.Y;
             effectPool.cullAllOn(this, p);
+            entityPool.removeIf(e ->  (!(e instanceof Titan)));
             p.facing = 0;
             p.possession = 0;
             p.runningFrame = 0;
@@ -529,7 +532,7 @@ public class GameEngine extends Game {
         lock();
         if (from != null) {
             if(logs){
-                System.out.println(from.toString() + " packet");
+                System.out.println(from + " packet");
                 ObjectMapper mapper = new ObjectMapper();
                 try {
                     System.out.println(mapper.writeValueAsString(request));
@@ -542,22 +545,8 @@ public class GameEngine extends Game {
                 System.out.println("got passed a bad titan index! Possibly from another game?");
                 return;
             }
-            int btn = 0;
-            if (request.shotBtn) {
-                btn = 1;
-            }
-            if (request.passBtn) {
-                btn = 3;
-            }
+            int btn = getBtn(request, t);
             if (request.posX != -1 && request.posY != -1 && btn != 0) {
-                if(request.artisanShot == ClientPacket.ARTISAN_SHOT.LEFT
-                && t.getType().equals(TitanType.ARTISAN)){
-                    btn = 4;
-                }
-                if(request.artisanShot == ClientPacket.ARTISAN_SHOT.RIGHT
-                        && t.getType().equals(TitanType.ARTISAN)){
-                    btn = 5;
-                }
                 this.serverMouseRoutine(t, request.posX, request.posY, btn, request.camX, request.camY);
             }
             this.processProgramming(t, request);
@@ -582,6 +571,27 @@ public class GameEngine extends Game {
             }
         }
         unlock();
+    }
+
+    private static int getBtn(ClientPacket request, Titan t) {
+        int btn = 0;
+        if (request.lobBtn) {
+            btn = 3;
+        } else {
+            if (request.shotBtn) {
+                // Artisan shot logic
+                if (request.artisanShot == ClientPacket.ARTISAN_SHOT.LEFT
+                        && t.getType().equals(TitanType.ARTISAN)) {
+                    btn = 4;
+                } else if (request.artisanShot == ClientPacket.ARTISAN_SHOT.RIGHT
+                        && t.getType().equals(TitanType.ARTISAN)) {
+                    btn = 5;
+                } else {
+                    btn = 1;
+                }
+            }
+        }
+        return btn;
     }
 
     public void kickoff() {
@@ -645,7 +655,7 @@ public class GameEngine extends Game {
             if ((controlsHeld.STEAL == 1 && this.phase == GamePhase.INGAME && t.actionState == Titan.TitanState.IDLE)) {
                 if (!effectPool.isStunned(t) && !effectPool.hasEffect(t, EffectId.COOLDOWN_Q)) {
                     try {
-                        boolean stolen = ability.castQ(this, t);
+                        boolean stolen = ability.castSteal(this, t);
                         if (t.actionState == Titan.TitanState.IDLE && !stolen) {//Curve may be set by ability
                             t.actionState = Titan.TitanState.STEAL;
                             t.actionFrame = 0;
@@ -661,7 +671,7 @@ public class GameEngine extends Game {
                 if((t.actionState == Titan.TitanState.IDLE) ) {
                     if (!effectPool.isStunned(t)) {
                         try {
-                            boolean caststun = ability.castE(this, t);
+                            boolean caststun = ability.castQ(this, t);
                             if (caststun) {//Curve may be set by ability
                                 t.actionState = Titan.TitanState.A1;
                                 t.actionFrame = 0;
@@ -675,7 +685,7 @@ public class GameEngine extends Game {
                 if((t.actionState == Titan.TitanState.IDLE)) {
                     if (!effectPool.isStunned(t)) {
                         try {
-                            boolean caststun = ability.castR(this, t);
+                            boolean caststun = ability.castW(this, t);
                             if (caststun) {//Curve may be set by ability
                                 t.actionState = Titan.TitanState.A2;
                                 t.actionFrame = 0;
@@ -864,7 +874,7 @@ public class GameEngine extends Game {
         if (began && !ended) {
             try {
                 framesSinceStart++;
-                gameDurationRuleChanges();
+                boolean over = gameDurationRuleChanges();
                 List<Entity> tempSolids = new ArrayList<>();
                 tempSolids.addAll(Arrays.asList(players));
                 tickEntities(entityPool);
@@ -993,7 +1003,7 @@ public class GameEngine extends Game {
         }
     }
 
-    private void gameDurationRuleChanges() throws Exception {
+    private boolean gameDurationRuleChanges() {
         final long FPS = 1000 / GAMETICK_MS;
         if ((options.goalieIndex == 1) && framesSinceStart / FPS > GOALIE_DISABLE_TIME) {
             cullGoalies();
@@ -1003,12 +1013,13 @@ public class GameEngine extends Game {
         }
         if (framesSinceStart / FPS > this.options.suddenDeathIndex * 60) {
             suddenDeath = true;
-            checkWinCondition();
+            return checkWinCondition(false);
         }
         if (framesSinceStart / FPS > this.options.tieIndex * 60) {
             tieAble = true;
-            checkWinCondition();
+            return checkWinCondition(false);
         }
+        return false;
     }
 
     protected void tickEntities(List<Entity> entityPool) {
@@ -1744,43 +1755,47 @@ public class GameEngine extends Game {
         return Optional.empty();
     }
 
-    void checkWinCondition() throws Exception {
+    public boolean checkWinCondition(boolean clientSide) {
         int SOFT_WIN = this.options.playToIndex;
         int WIN_BY = this.options.winByIndex;
         int HARD_WIN = this.options.hardWinIndex;
+        boolean over = false;
+        double homeDifferential = home.score - away.score;
         if (!suddenDeath) {
             if ((home.score >= SOFT_WIN && home.score - away.score >= WIN_BY) ||
                     home.score >= HARD_WIN) {
-                triggerWin(home);
+                over = true;
             }
             if ((away.score >= SOFT_WIN && away.score - home.score >= WIN_BY) ||
                     away.score >= HARD_WIN) {
-                triggerWin(away);
+                over = true;
             }
         } else {
             if (tieAble) {
-                triggerTie(away);
-                triggerTie(home);
+                over = true;
             } else {
                 if (extremeSuddenDeath) {
-                    if (home.score > away.score) {
-                        triggerWin(home);
-                    }
-                    if (away.score > home.score) {
-                        triggerWin(away);
+                   if (home.score != away.score) {
+                        over = true;
                     }
                 } else {
-                    if ((int) home.score > (int) away.score) {
-                        triggerWin(home);
-                    }
-                    if ((int) away.score > (int) home.score) {
-                        triggerWin(away);
+                    if ((int) home.score != (int) away.score) {
+                        over = true;
                     }
                 }
-
             }
-
         }
+        if (over && !clientSide) {
+            if (homeDifferential > 0) {
+                triggerWin(home);
+            } else if (homeDifferential < 0) {
+                triggerWin(away);
+            } else{
+                triggerTie(home);
+                triggerTie(away);
+            }
+        }
+        return over;
     }
 
     void triggerWin(Team winner) {
