@@ -11,6 +11,19 @@ import java.util.Map;
 
 public class Masteries  implements Serializable {
 
+    public Masteries(Masteries other) { //copy constructor
+        this.health = other.health;
+        this.shot = other.shot;
+        this.damage = other.damage;
+        this.speed = other.speed;
+        this.cooldowns = other.cooldowns;
+        this.effectDuration = other.effectDuration;
+        this.stealRadius = other.stealRadius;
+        this.abilityRange = other.abilityRange;
+        this.abilityLag = other.abilityLag;
+        this.painReduction = other.painReduction;
+    }
+
     public Masteries() {
         this.health = 1;
         this.shot = 1;

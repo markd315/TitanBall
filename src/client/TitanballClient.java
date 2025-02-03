@@ -10,7 +10,6 @@ import com.esotericsoftware.kryonet.FrameworkMessage;
 import com.esotericsoftware.kryonet.Listener;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mashape.unirest.http.exceptions.UnirestException;
-import com.rits.cloning.Cloner;
 import gameserver.Const;
 import gameserver.TutorialOverrides;
 import gameserver.effects.EffectId;
@@ -1665,8 +1664,8 @@ public class TitanballClient extends JPanel implements ActionListener, KeyListen
     }
 
     protected void masteryDelta(int index, int delta) {
-        Cloner cl = new Cloner();
-        Masteries oldMasteries = cl.deepClone(masteries);
+        System.out.println("mastery delta " + index + " " + delta);
+        Masteries oldMasteries = new Masteries(masteries);
         switch (index) {
             case 0:
                 masteries.health += delta;
