@@ -26,14 +26,14 @@ public abstract class Effect implements Serializable {
         String imagePath = "res/Effects/" + this.getEffect().toString() + ".png";
         System.out.println(imagePath);
         Image im = sconst.loadImage(imagePath);
-        return sconst.getScaledImage(gc, im, 32, 32);
+        return sconst.getScaledImage(im, 32, 32);
     }
 
 
     public ImageView getIconTrans(GraphicsContext gc) {
         String imagePath = "res/Effects/" + this.getEffect().toString() + ".png";
         Image im = sconst.loadImage(imagePath);
-        Image scaledImage = sconst.getScaledImage(gc, im, 32, 32);
+        Image scaledImage = sconst.getScaledImage(im, 32, 32);
 
         ImageView imageView = new ImageView(scaledImage);
         ColorAdjust colorAdjust = new ColorAdjust();
@@ -49,14 +49,14 @@ public abstract class Effect implements Serializable {
         String imagePath = "res/Effects/" + this.getEffect().toString() + ".png";
         // Load and scale the image to 64x64
         Image iconBig = sconst.loadImage(imagePath);
-        return sconst.getScaledImage(gc, iconBig, 64, 64);
+        return sconst.getScaledImage(iconBig, 64, 64);
     }
 
     public javafx.scene.image.Image getIconSmall(GraphicsContext gc) {
         String imagePath = "res/Effects/" + this.getEffect().toString() + ".png";
         // Load and scale the image to 16x16
         Image iconSmall = sconst.loadImage(imagePath);
-        return sconst.getScaledImage(gc, iconSmall, 16, 16);
+        return sconst.getScaledImage(iconSmall, 16, 16);
     }
 
 

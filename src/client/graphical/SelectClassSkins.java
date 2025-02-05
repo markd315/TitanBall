@@ -67,13 +67,14 @@ public class SelectClassSkins{
         }
         String imageKey = decodeImage(cursor, frame);
         System.out.println(imageKey);
-         if (cache.containsKey(imageKey)){
-             return cache.get(imageKey);
+        if (cache.containsKey(imageKey)){
+            Image hit = cache.get(imageKey);
+            return sconst.getScaledImage(hit, x, y);
         }
         Image im = sconst.loadImage(imageKey);
-
+        cache.put(imageKey, im);
         // Scale the image using ScreenConst method
-        return sconst.getScaledImage(gc, im, x, y);
+        return sconst.getScaledImage(im, x, y);
     }
 
 	public static String decodeImage(int cursor, int frame){

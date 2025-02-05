@@ -525,8 +525,9 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
         sconst.drawString(gc, "WASD or arrows to spend points", 200, 420);
         sconst.drawString(gc, "Space to enter (And queue for game)", 200, 450);
         int x = 430;
+        int CIRCLE_RADIUS = 12;
         for (int i = masteries.validate(); i > 0; i--) {
-            Ellipse ellipse = new Ellipse(x, 76, 16, 16);
+            Ellipse ellipse = new Ellipse(x, 76, CIRCLE_RADIUS, CIRCLE_RADIUS);
             sconst.fill(gc, ellipse);
             x += 32;
         }
@@ -544,7 +545,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
             for (int ballNum = 3; ballNum > 0; ballNum--) {
                 setColorFromRank(gc, ballNum);
                 if (3 - ballNum < arr[i]) {
-                    sconst.fill(gc, new Ellipse(x, y - 14, 16, 16));
+                    sconst.fill(gc, new Ellipse(x, y - 14, CIRCLE_RADIUS, CIRCLE_RADIUS));
                 }
                 x += 25;
             }
@@ -2114,19 +2115,19 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
             sconst.drawString(gc, tourneyOptions.disp(i), x, y);
             if (tourneyIndex == i) {
                 gc.setFill(Color.RED);
-                double[] xpts = new double[]{sconst.adjX(x - 22), sconst.adjX(x - 30), sconst.adjX(x - 22)};
-                double[] ypts = new double[]{sconst.adjY(y - 14), sconst.adjY(y - 6), sconst.adjY(y + 2)};
 
-                Polygon leftArrow = new Polygon();
-                leftArrow.getPoints().addAll(xpts[0], ypts[0], xpts[1], ypts[1], xpts[2], ypts[2]);
-                sconst.fill(gc, leftArrow);
+                // Directly define coordinates
+                double[] xpts = new double[]{x - 22, x - 30, x - 22};
+                double[] ypts = new double[]{y - 14, y - 6, y + 2};
 
-                double[] xptsRight = new double[]{sconst.adjX(x + 200), sconst.adjX(x + 208), sconst.adjX(x + 200)};
-                double[] yptsRight = new double[]{sconst.adjY(y - 14), sconst.adjY(y - 6), sconst.adjY(y + 2)};
+                // Draw left arrow directly
+                gc.fillPolygon(xpts, ypts, xpts.length);
 
-                Polygon rightArrow = new Polygon();
-                rightArrow.getPoints().addAll(xptsRight[0], yptsRight[0], xptsRight[1], yptsRight[1], xptsRight[2], yptsRight[2]);
-                sconst.fill(gc, rightArrow);
+                double[] xptsRight = new double[]{x + 200, x + 208, x + 200};
+                double[] yptsRight = new double[]{y - 14, y - 6, y + 2};
+
+                // Draw right arrow directly
+                gc.fillPolygon(xptsRight, yptsRight, xptsRight.length);
             }
             y += 25;
         }

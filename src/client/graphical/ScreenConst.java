@@ -1,6 +1,7 @@
 package client.graphical;
 
 import javafx.scene.SnapshotParameters;
+import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.image.Image;
 import javafx.scene.image.WritableImage;
@@ -16,8 +17,8 @@ public class ScreenConst {
 
     private int X;
     private int Y;
-    public static int calX = 1920;
-    public static int calY = 1080;
+    public static final int CAL_X = 1920;
+    public static final int CAL_Y = 1080;
 
     public ScreenConst(int xSize, int ySize) {
         this.X = xSize;
@@ -57,7 +58,6 @@ public class ScreenConst {
         x = adjX(x);
         y = adjY(y);
         gc.fillText(payload, x, y);
-        System.out.println(payload);
     }
 
     public void setFont(GraphicsContext gc, Font font) {
@@ -91,27 +91,27 @@ public class ScreenConst {
     }
 
     public double adjX(double v) {
-        return v / calX * X;
+        return v / CAL_X * X;
     }
 
     public double adjY(double v) {
-        return v / calY * Y;
+        return v / CAL_Y * Y;
     }
 
     public int adjX(int v) {
-        return v / calX * X;
+        return v / CAL_X * X;
     }
 
     public int adjY(int v) {
-        return v / calY * Y;
+        return v / CAL_Y * Y;
     }
 
     public int invertMouseX(int i){
-        return (int) (((double)i * calX) / X);
+        return (int) (((double)i * CAL_X) / X);
     }
 
     public int invertMouseY(int i){
-        return (int) (((double)i * calY) / Y);
+        return (int) (((double)i * CAL_Y) / Y);
     }
 
     public final int RESULT_IMG_X;
@@ -172,26 +172,45 @@ public class ScreenConst {
     }
 
     public void fill(GraphicsContext gc, Polygon p) {
-        double[] adjustedXPoints = new double[p.getPoints().size() / 2];
-        double[] adjustedYPoints = new double[p.getPoints().size() / 2];
+        int size = p.getPoints().size() / 2;
+        double[] adjustedXPoints = new double[size];
+        double[] adjustedYPoints = new double[size];
 
-        for (int i = 0; i < p.getPoints().size(); i += 2) {
-            adjustedXPoints[i / 2] = adjX(p.getPoints().get(i));
-            adjustedYPoints[i / 2] = adjY(p.getPoints().get(i + 1));
+        for (int i = 0; i < size; i++) {
+            adjustedXPoints[i] = p.getPoints().get(i * 2);
+            adjustedYPoints[i] = p.getPoints().get(i * 2 + 1);
         }
-        gc.fillPolygon(adjustedXPoints, adjustedYPoints, adjustedXPoints.length);
+
+        // Debugging output
+        System.out.println("Polygon points:");
+        for (int i = 0; i < size; i++) {
+            System.out.println("Point " + i + ": (" + adjustedXPoints[i] + ", " + adjustedYPoints[i] + ")");
+        }
+
+        gc.fillPolygon(adjustedXPoints, adjustedYPoints, size);
     }
 
-    public Image getScaledImage(GraphicsContext gc, Image srcImg, int width, int height) {
+
+    public Image getScaledImage(Image srcImg, int width, int height) {
+        // Create a new writable image with the desired dimensions
         WritableImage scaledImage = new WritableImage(width, height);
+
+        // Draw the scaled image onto a temporary canvas
+        Canvas tempCanvas = new Canvas(width, height);
+        GraphicsContext tempGc = tempCanvas.getGraphicsContext2D();
+
+        tempGc.drawImage(srcImg, 0, 0, width, height); // Scale and draw
+
+        // Snapshot the canvas onto the writable image
         SnapshotParameters params = new SnapshotParameters();
         params.setFill(Color.TRANSPARENT);
-        gc.getCanvas().snapshot(params, scaledImage);
+        tempCanvas.snapshot(params, scaledImage);
+
         return scaledImage;
-    }
+}
 
     public void drawImage(GraphicsContext gc, Image image, int x, int y, int sizeX, int sizeY) {
-        Image scaledImage = getScaledImage(gc, image, sizeX, sizeY);
+        Image scaledImage = getScaledImage(image, sizeX, sizeY);
         gc.drawImage(scaledImage, x, y, sizeX, sizeY);
     }
 }
