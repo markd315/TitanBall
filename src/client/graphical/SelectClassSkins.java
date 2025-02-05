@@ -66,7 +66,6 @@ public class SelectClassSkins{
             cursor = 13;
         }
         String imageKey = decodeImage(cursor, frame);
-        System.out.println(imageKey);
         if (cache.containsKey(imageKey)){
             Image hit = cache.get(imageKey);
             return sconst.getScaledImage(hit, x, y);

@@ -101,6 +101,9 @@ public class TitanballWindow extends Application {
         reset(primaryStage, true);
         scene.setOnKeyPressed(client::handle);
         scene.setOnKeyReleased(client::handle);
+        scene.setOnMousePressed(client::handle);
+        scene.setOnMouseReleased(client::handle);
+        scene.setOnMouseMoved(client::handle);
         primaryStage.setScene(scene);
         primaryStage.show();
         startGameLoop();

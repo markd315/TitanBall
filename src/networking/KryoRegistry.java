@@ -1,7 +1,9 @@
 package networking;
 
 import client.graphical.GoalSprite;
+import client.graphical.ScreenConst;
 import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.minlog.Log;
 import gameserver.Const;
 import gameserver.TutorialOverrides;
 import gameserver.effects.EffectId;
@@ -112,6 +114,7 @@ public class KryoRegistry {
         kryo.register(HashMap.class);
         kryo.register(String.class);
         kryo.register(java.util.HashSet.class);
+        kryo.register(ScreenConst.class);
 
         kryo.register(byte.class);
         kryo.register(byte[].class);

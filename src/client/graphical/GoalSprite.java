@@ -1,5 +1,7 @@
 package client.graphical;
 
+import gameserver.entity.Box;
+import gameserver.entity.Entity;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.shape.Ellipse;
 import org.joda.time.Instant;
@@ -41,6 +43,7 @@ public class GoalSprite extends Ellipse {
 
     public void draw(GraphicsContext gc) {
         //draw an ellipse, assumes color preset
-        gc.fillOval(super.getCenterX(), super.getCenterY(), super.getRadiusX(), super.getRadiusY());
+        gc.strokeOval(super.getCenterX(), super.getCenterY(), super.getRadiusX(), super.getRadiusY());
     }
+
 }

@@ -216,7 +216,6 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
         //requestFocusInWindow();
         //setLayout(new BorderLayout());
         System.out.println("creating new listeners");
-        createListeners();
         fireReconnect();
     }
 
@@ -229,51 +228,6 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
         canvas.snapshot(params, scaledImage);
         return scaledImage;
     }
-
-    private void createListeners() {
-        // Handle mouse dragged and mouse moved events
-        EventHandler<MouseEvent> mouseMvtHandler = e -> {
-            controlsHeld.posX = sconst.invertMouseX((int) e.getX());
-            controlsHeld.posY = sconst.invertMouseY((int) e.getY());
-            controlsHeld.camX = camX;
-            controlsHeld.camY = camY;
-        };
-
-        // Handle mouse pressed and mouse released events
-        EventHandler<MouseEvent> mousePressedHandler = event -> {
-            if (phase == GamePhase.INGAME || phase == GamePhase.TUTORIAL) {
-                controlsHeld.posX = sconst.invertMouseX((int) event.getX());
-                controlsHeld.posY = sconst.invertMouseY((int) event.getY());
-                if (event.isPrimaryButtonDown()) {
-                    controlsConfig.mapKeyPress(game, controlsHeld, "LMB", shotSound);
-                }
-                if (event.isSecondaryButtonDown()) {
-                    controlsConfig.mapKeyPress(game, controlsHeld, "RMB", shotSound);
-                }
-                controlsHeld.camX = camX;
-                controlsHeld.camY = camY;
-            }
-        };
-
-        EventHandler<MouseEvent> mouseReleasedHandler = e -> {
-            controlsConfig.mapKeyRelease(controlsHeld, "LMB");
-            controlsConfig.mapKeyRelease(controlsHeld, "RMB");
-        };
-
-        // Add listeners to the JavaFX Pane (this)
-        setOnMouseDragged(mouseMvtHandler);
-        setOnMouseMoved(mouseMvtHandler);
-        setOnMousePressed(mousePressedHandler);
-        setOnMouseReleased(mouseReleasedHandler);
-
-        // Example of adding a listener to a JavaFX Button
-        Button button = new Button("Click me!");
-        button.setOnMousePressed(mousePressedHandler);
-        button.setOnMouseReleased(mouseReleasedHandler);
-
-        // Add the button to the JavaFX Pane
-        getChildren().add(button);
-}
 
     public int indexSelected() {
         for (int i = 0; i < game.players.length; i++) {
@@ -750,19 +704,6 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
             rotTranslateArrow(gc, x, ySize - YCORR - (sconst.BALL_PTR_X / 2), rot);
         }
     }
-
-    public void postgoalReset() {
-        ballFrame = 0;
-        ballFrameCounter = 0;
-        camX = 500;
-        camY = 300;
-    }
-
-    public void reflectDraw(Line line, double mx, double my, GraphicsContext gc) {
-        // Implement your reflection logic here
-        // Example: drawing a reflection of the line
-        gc.strokeLine(mx - (line.getEndX() - line.getStartX()), my - (line.getEndY() - line.getStartY()), mx, my);
-    }
     
     protected void graphicsDrawCurve(GraphicsContext gc, QuadCurve eL){
         gc.beginPath();
@@ -798,14 +739,14 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                 enemy = game.home;
             }
             if (!goal.checkReady()) {
-                gc.setFill(Color.RED);
+                gc.setStroke(Color.RED);
                 if (goal.frozen) {
-                    gc.setFill(Color.web("#26ECEA")); // light blue
+                    gc.setStroke(Color.web("#26ECEA")); // light blue
                 }
             } else if (enemy.score % 1.0 == .75) {
-                gc.setFill(Color.web("#CFA120")); // gold-like color
+                gc.setStroke(Color.web("#CFA120")); // gold-like color
             } else {
-                gc.setFill(Color.LIGHTGRAY);
+                gc.setStroke(Color.LIGHTGRAY);
             }
             goal.draw(gc);
         }
@@ -819,7 +760,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
             }
             gc.setFill(Color.DARKGRAY);
             if (enemy.score % 1.0 == .75) {
-                gc.setFill(Color.GREEN);
+                gc.setStroke(Color.GREEN);
             }
             goal.draw(gc);
         }
@@ -848,36 +789,38 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                 ox + ((.2 * LOB_DIST * pow + BALL_HALF) * Math.cos(angle)),
                 oy + ((.2 * LOB_DIST * pow + BALL_HALF) * Math.sin(angle))
             );
-    
-            gc.setFill(Color.YELLOW);
-            
-            // Call to reflectDraw method (you'll need to define this method)
-            reflectDraw(lobBlock, mx, my, gc);
-            
-            // Draw the line
+            gc.setStroke(Color.YELLOW);
             gc.strokeLine(lobBlock.getStartX(), lobBlock.getStartY(), lobBlock.getEndX(), lobBlock.getEndY());
 
-            Line lobFly = new Line(ox + ((.2 * LOB_DIST * pow + BALL_HALF) * Math.cos(angle)),
-                    oy + ((.2 * LOB_DIST * pow + BALL_HALF) * Math.sin(angle)),
-                    ox + ((.75 * LOB_DIST * pow - BALL_HALF) * Math.cos(angle)),
-                    oy + ((.75 * LOB_DIST * pow - BALL_HALF) * Math.sin(angle)));
-            gc.setFill(Color.BLUE);
-            reflectDraw(lobFly, mx, my, gc);
+            Line lobFly = new Line(
+                ox + ((.2 * LOB_DIST * pow + BALL_HALF) * Math.cos(angle)),
+                oy + ((.2 * LOB_DIST * pow + BALL_HALF) * Math.sin(angle)),
+                ox + ((.75 * LOB_DIST * pow - BALL_HALF) * Math.cos(angle)),
+                oy + ((.75 * LOB_DIST * pow - BALL_HALF) * Math.sin(angle))
+            );
+            gc.setStroke(Color.BLUE);
+            gc.strokeLine(lobFly.getStartX(), lobFly.getStartY(), lobFly.getEndX(), lobFly.getEndY());
 
-            Line lobCatch = new Line(ox + ((.75 * LOB_DIST * pow - BALL_HALF) * Math.cos(angle)),
-                    oy + ((.75 * LOB_DIST * pow - BALL_HALF) * Math.sin(angle)),
-                    ox + (LOB_DIST * pow * Math.cos(angle)),
-                    oy + (LOB_DIST * pow * Math.sin(angle)));
-            gc.setFill(Color.YELLOW);
-            reflectDraw(lobCatch, mx, my, gc);
+            Line lobCatch = new Line(
+                ox + ((.75 * LOB_DIST * pow - BALL_HALF) * Math.cos(angle)),
+                oy + ((.75 * LOB_DIST * pow - BALL_HALF) * Math.sin(angle)),
+                ox + (LOB_DIST * pow * Math.cos(angle)),
+                oy + (LOB_DIST * pow * Math.sin(angle))
+            );
+            gc.setStroke(Color.YELLOW);
+            gc.strokeLine(lobCatch.getStartX(), lobCatch.getStartY(), lobCatch.getEndX(), lobCatch.getEndY());
+
+            // Handle the shot line if applicable
             if (this.controlsHeld.artisanShot == ClientPacket.ARTISAN_SHOT.SHOT
                     || !game.underControl.getType().equals(TitanType.ARTISAN)) {
-                Line shot = new Line(ox + (LOB_DIST * pow * Math.cos(angle)),
-                        oy + (LOB_DIST * pow * Math.sin(angle)),
-                        ox + (SHOT_DIST * pow * Math.cos(angle)),
-                        oy + (SHOT_DIST * pow * Math.sin(angle)));
-                gc.setFill(Color.DARKRED);
-                reflectDraw(shot, mx, my, gc);
+                Line shot = new Line(
+                    ox + (LOB_DIST * pow * Math.cos(angle)),
+                    oy + (LOB_DIST * pow * Math.sin(angle)),
+                    ox + (SHOT_DIST * pow * Math.cos(angle)),
+                    oy + (SHOT_DIST * pow * Math.sin(angle))
+                );
+                gc.setStroke(Color.DARKRED);
+                gc.strokeLine(shot.getStartX(), shot.getStartY(), shot.getEndX(), shot.getEndY());
             }
             double Q_CURVE_A = sconst.adjX(310);
             double Q_CURVE_B = sconst.adjX(186);
@@ -888,7 +831,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                             oy + (Q_CURVE_A * pow * Math.sin(angle - .97)),
                             ox + (Q_CURVE_B * pow * Math.cos(angle)),
                             oy + (Q_CURVE_B * pow * Math.sin(angle)));
-                    gc.setFill(Color.GREEN);
+                    gc.setStroke(Color.GREEN);
                     graphicsDrawCurve(gc, eL);
                 }
                 if (this.controlsHeld.artisanShot == ClientPacket.ARTISAN_SHOT.RIGHT) {
@@ -897,7 +840,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                             oy + (Q_CURVE_A * pow * Math.sin(angle + .97)),
                             ox + (Q_CURVE_B * pow * Math.cos(angle)),
                             oy + (Q_CURVE_B * pow * Math.sin(angle)));
-                    gc.setFill(Color.PURPLE);
+                    gc.setStroke(Color.PURPLE);
                     graphicsDrawCurve(gc, eR);
                 }
             }
@@ -927,7 +870,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
             }
         }
         for (RangeCircle ri : clientCircles) { //draw these on top of enemies, but the shot underneath
-            gc.setLineWidth(RANGE_SIZE);
+            gc.setLineWidth(3);
             gc.setStroke(ri.getColor());
             Titan t = game.underControl;
             if (ri.getRadius() > 0) {
@@ -937,11 +880,14 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                     int h = w;
                     int x = (int) t.X + (t.width / 2) - w / 2;
                     int y = (int) t.Y + (t.height / 2) - h / 2;
+                    System.out.println("Original: x=" + x + " y=" + y + " w=" + w + " h=" + h);
                     x = sconst.adjX(x - camX);
                     y = sconst.adjY(y - camY);
                     h = sconst.adjY(h);
                     w = sconst.adjX(w);
-                    gc.fillOval(x, y, w, h);
+                    System.out.println("Adjusted: x=" + x + " y=" + y + " w=" + w + " h=" + h);
+                    gc.strokeOval(x, y, w, h);
+                    gc.strokeOval(100, 100, 200, 200); // Hardcoded circle in visible space
                 }
             }
         }
@@ -954,7 +900,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
             for (ShapePayload c : game.colliders) {
                 gc.setStroke(c.getColor());
                 Shape b = c.fromWithCamera(camX, camY, sconst);
-                gc.fillOval(b.getBoundsInLocal().getMinX(),
+                gc.strokeOval(b.getBoundsInLocal().getMinX(),
                         b.getBoundsInLocal().getMinY(),
                         b.getBoundsInLocal().getWidth(),
                         b.getBoundsInLocal().getHeight());
@@ -984,7 +930,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                 ShapePayload c = new ShapePayload(ell);
                 gc.setStroke(ri.getColor());
                 Shape b = c.fromWithCamera(camX, camY, sconst);
-                gc.fillOval(b.getBoundsInLocal().getMinX(),
+                gc.strokeOval(b.getBoundsInLocal().getMinX(),
                         b.getBoundsInLocal().getMinY(),
                         b.getBoundsInLocal().getWidth(),
                         b.getBoundsInLocal().getHeight());
@@ -1006,18 +952,18 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                             percent = 0.1;
                         }
                         setColorBasedOnPercent(gc, percent, false);
-                        gc.strokeLine(0, 0, 1920, 0);
+                        gc.strokeLine(0, 0, 1920, 3);
                     }
                     final double FPS = 1000 / game.GAMETICK_MS;
                     double time = (game.framesSinceStart / FPS);
                     time = (int) (time * 10.0) / 10.0;
                     if (delta < -3 && time < game.PAIN_DISABLE_TIME) {
                         if (e.possession == 1) {
-                            gc.setFill(Color.BLUE);
+                            gc.setStroke(Color.BLUE);
                         } else {
-                            gc.setFill(Color.GREEN);
+                            gc.setStroke(Color.GREEN);
                         }
-                        gc.strokeLine(0, 0, 1920, 0);
+                        gc.strokeLine(0, 0, 1920, 3);
                     }
                 }
             }
@@ -1287,20 +1233,23 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
         }
         if (e instanceof Titan) {
             if (!invisible(e)) {
-                int x = (int) sconst.adjX((int) e.X + xOffset - camX);
-                int y = sconst.adjY((int) e.Y - 13 - camY);
-                Rectangle healthBar = new Rectangle(x, y,
-                        (int) sconst.adjX(100), sconst.adjY(15));
-                sconst.fill(gc,healthBar);
+                int adjustedX = sconst.adjX((int) e.X + xOffset - camX);
+                int adjustedY = sconst.adjY((int) e.Y - 13 - camY);
+
+                // Create the health bar rectangle with adjusted coordinates
+                gc.fillRect(adjustedX, adjustedY, sconst.adjX(100), sconst.adjY(15));
+
+                // Calculate health bar width based on the health percentage, and adjust it only once
                 int hpPercentage = (int) (100 * e.health / e.maxHealth);
-                y = sconst.adjY((int) e.Y - 10 - camY);
-                Rectangle healthStat = new Rectangle(x,
-                        y,
-                        (int) sconst.adjX(hpPercentage), sconst.adjY(9));
+                int adjustedWidth = (int) sconst.adjX(hpPercentage);
+
+                // Adjust the Y position for the health bar (since it’s based on the same adjusted Y)
+                int healthStatY = sconst.adjY((int) e.Y - 10 - camY);
+
                 setColorBasedOnPercent(gc, hpPercentage, false);
-                sconst.fill(gc,healthStat);
+                gc.fillRect(adjustedX, healthStatY, adjustedWidth, sconst.adjY(9));
                 Titan t = (Titan) e;
-                displayBuust(gc, t, x);
+                displayBuust(gc, t, adjustedX);
             }
         } else {
             if (!invisible(e)) {
@@ -1355,18 +1304,16 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
         if (t.fuel > 25) {
             gc.setFill(Color.rgb(128, 128, 255)); // RGB equivalent of (.5, .5, 1)
         } else {
-            gc.setFill(Color.rgb(166, 0, 0)); // RGB equivalent of (.65, 0, 0)
+            gc.setFill(Color.DARKRED); // RGB equivalent of (.65, 0, 0)
         }
 
         // Create and fill the boost status rectangle
-        Rectangle boostStat = new Rectangle(x, adjustedY, sconst.adjX((int) t.fuel), sconst.adjY(3));
-        sconst.fill(gc, boostStat);
+        gc.fillRect(x, adjustedY, sconst.adjX((int) t.fuel), sconst.adjY(3));
 
         // Draw low boost warning if applicable
         if (t.fuel > 25) {
-            gc.setFill(Color.rgb(166, 0, 0)); // RGB equivalent of (.65, 0, 0)
-            Rectangle lowBoostWarning = new Rectangle(x + 25 - 1, adjustedY, sconst.adjX(4), sconst.adjY(3));
-            sconst.fill(gc, lowBoostWarning);
+            gc.setFill(Color.DARKRED); // RGB equivalent of (.65, 0, 0)
+            gc.fillRect(x + 25 - 1, adjustedY, sconst.adjX(4), sconst.adjY(3));
         }
     }
 
@@ -1377,55 +1324,68 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
             double hp = Titan.normalOutOfTenFromStat(Titan.titanHealth, controlsHeld.classSelection);
             double shoot = Titan.normalOutOfTenFromStat(Titan.titanShoot, controlsHeld.classSelection);
             double steal = Titan.normalOutOfTenFromStat(Titan.titanStealRad, controlsHeld.classSelection);
+
+            // Drawing stats
             gc.setFill(Color.BLUE);
             gc.setFont(new Font("Verdana", sconst.STAT_CAT_FONT));
-            sconst.fill(gc,new Rectangle(sconst.STAT_BAR_X, sconst.STAT_Y_SCL, sconst.STAT_EXTERNAL_W, sconst.STAT_EXTERNAL_H));
-            sconst.drawString(gc,"Speed", sconst.STAT_CAT_X, sconst.adjY(80));
-            sconst.drawImage(gc,new RatioEffect(0, null, EffectId.FAST, 0)
-                    .getIcon(gc), sconst.STAT_FX_X, sconst.STAT_Y_SCL);
-            sconst.fill(gc,new Rectangle(sconst.STAT_BAR_X, sconst.STAT_Y_SCL * 2, sconst.STAT_EXTERNAL_W, sconst.STAT_EXTERNAL_H));
-            sconst.drawString(gc,"Health", sconst.STAT_CAT_X, sconst.adjY(180));
-            sconst.drawImage(gc,new HealEffect(0, null)
-                    .getIcon(gc), sconst.STAT_FX_X, sconst.STAT_Y_SCL * 2);
-            sconst.fill(gc,new Rectangle(sconst.STAT_BAR_X, sconst.STAT_Y_SCL * 3, sconst.STAT_EXTERNAL_W, sconst.STAT_EXTERNAL_H));
-            sconst.drawString(gc,"Shot Power", sconst.STAT_CAT_X - 18, sconst.adjY(280));
-            sconst.drawImage(gc,new ShootEffect(0, null)
-                    .getIcon(gc), sconst.STAT_FX_X, sconst.STAT_Y_SCL * 3);
-            sconst.fill(gc,new Rectangle(sconst.STAT_BAR_X, sconst.STAT_Y_SCL * 4, sconst.STAT_EXTERNAL_W, sconst.STAT_EXTERNAL_H));
-            sconst.drawString(gc,"Steal Radius", sconst.STAT_CAT_X - 18, sconst.adjY(380));
-            sconst.drawImage(gc,new EmptyEffect(0, null, EffectId.STEAL)
-                    .getIcon(gc), sconst.STAT_FX_X, sconst.STAT_Y_SCL * 4);
 
+            // Draw Speed Label
             setColorBasedOnPercent(gc, speed * 10.0, false);
-            sconst.fill(gc,new Rectangle(sconst.STAT_INT_X, sconst.STAT_Y_SCL + 2,
-                    (int) ((int) (speed * 10.0) * sconst.STAT_INTERNAL_SC), sconst.STAT_INTERNAL_H));
+            sconst.drawString(gc, "Speed", sconst.STAT_CAT_X, sconst.STAT_Y_SCL);
+            sconst.drawImage(gc, new RatioEffect(0, null, EffectId.FAST, 0).getIcon(gc), sconst.STAT_FX_X, sconst.STAT_Y_SCL);
+
+            // Draw Speed Bar
+            gc.fillRect(sconst.STAT_BAR_X, sconst.STAT_Y_SCL + 2,
+                (int) (speed * 10.0 * sconst.STAT_INTERNAL_SC), sconst.STAT_INTERNAL_H);
+
+            // Draw Health Label
             setColorBasedOnPercent(gc, hp * 10.0, false);
-            sconst.fill(gc,new Rectangle(sconst.STAT_INT_X, sconst.STAT_Y_SCL * 2 + 2,
-                    (int) ((int) (hp * 10.0) * sconst.STAT_INTERNAL_SC), sconst.STAT_INTERNAL_H));
+            sconst.drawString(gc, "Health", sconst.STAT_CAT_X, sconst.STAT_Y_SCL * 2);
+            sconst.drawImage(gc, new HealEffect(0, null).getIcon(gc), sconst.STAT_FX_X, sconst.STAT_Y_SCL * 2);
+
+            // Draw Health Bar
+            gc.fillRect(sconst.STAT_BAR_X, sconst.STAT_Y_SCL * 2 + 2,
+                (int) (hp * 10.0 * sconst.STAT_INTERNAL_SC), sconst.STAT_INTERNAL_H);
+
+            // Draw Shot Power Label
             setColorBasedOnPercent(gc, shoot * 10.0, false);
-            sconst.fill(gc,new Rectangle(sconst.STAT_INT_X, sconst.STAT_Y_SCL * 3 + 2,
-                    (int) ((int) (shoot * 10.0) * sconst.STAT_INTERNAL_SC), sconst.STAT_INTERNAL_H));
+            sconst.drawString(gc, "Shot Power", sconst.STAT_CAT_X - 18, sconst.STAT_Y_SCL * 3);
+            sconst.drawImage(gc, new ShootEffect(0, null).getIcon(gc), sconst.STAT_FX_X, sconst.STAT_Y_SCL * 3);
+
+            // Draw Shot Power Bar
+
+            gc.fillRect(sconst.STAT_BAR_X, sconst.STAT_Y_SCL * 3 + 2,
+                (int) (shoot * 10.0 * sconst.STAT_INTERNAL_SC), sconst.STAT_INTERNAL_H);
+
+            // Draw Steal Radius Label
             setColorBasedOnPercent(gc, steal * 10.0, false);
-            sconst.fill(gc,new Rectangle(sconst.STAT_INT_X, sconst.STAT_Y_SCL * 4 + 2,
-                    (int) ((int) (steal * 10.0) * sconst.STAT_INTERNAL_SC), sconst.STAT_INTERNAL_H));
+            sconst.drawString(gc, "Steal Radius", sconst.STAT_CAT_X - 18, sconst.STAT_Y_SCL * 4);
+            sconst.drawImage(gc, new EmptyEffect(0, null, EffectId.STEAL).getIcon(gc), sconst.STAT_FX_X, sconst.STAT_Y_SCL * 4);
 
+            // Draw Steal Radius Bar
+            gc.fillRect(sconst.STAT_BAR_X, sconst.STAT_Y_SCL * 4 + 2,
+                (int) (steal * 10.0 * sconst.STAT_INTERNAL_SC), sconst.STAT_INTERNAL_H);
 
+            // Draw Class Selection and Text
             String e = Titan.titanEText.get(controlsHeld.classSelection);
             String r = Titan.titanRText.get(controlsHeld.classSelection);
             String text = Titan.titanText.get(controlsHeld.classSelection);
+
             gc.setFill(Color.GRAY);
             gc.setFont(new Font("Verdana", sconst.OVR_DESC_FONT));
-            sconst.drawString(gc,controlsHeld.classSelection.toString(), sconst.OVR_DESC_FONT - 2, sconst.OVR_DESC_Y - sconst.OVR_DESC_FONT - 4);
+            sconst.drawString(gc, controlsHeld.classSelection.toString(), sconst.OVR_DESC_FONT - 2, sconst.OVR_DESC_Y - sconst.OVR_DESC_FONT - 4);
+
             gc.setFill(Color.BLACK);
-            sconst.drawString(gc,text, sconst.OVR_DESC_FONT - 2, sconst.OVR_DESC_Y);
+            sconst.drawString(gc, text, sconst.OVR_DESC_FONT - 2, sconst.OVR_DESC_Y);
+
             gc.setFont(new Font("Verdana", sconst.ABIL_DESC_FONT));
 
-            sconst.drawImage(gc,new CooldownQ(0, null)
-                    .getIcon(gc), sconst.ICON_ABIL_X, sconst.E_ABIL_Y);
-            sconst.drawString(gc,e, sconst.DESC_ABIL_X, sconst.E_DESC_Y);
-            sconst.drawImage(gc,new CooldownW(0, null)
-                    .getIcon(gc), sconst.ICON_ABIL_X, sconst.R_ABIL_Y);
-            sconst.drawString(gc,r, sconst.DESC_ABIL_X, sconst.R_DESC_Y);
+            // Draw Cooldown Abilities
+            sconst.drawImage(gc, new CooldownQ(0, null).getIcon(gc), sconst.ICON_ABIL_X, sconst.E_ABIL_Y);
+            sconst.drawString(gc, e, sconst.DESC_ABIL_X, sconst.E_DESC_Y);
+
+            sconst.drawImage(gc, new CooldownW(0, null).getIcon(gc), sconst.ICON_ABIL_X, sconst.R_ABIL_Y);
+            sconst.drawString(gc, r, sconst.DESC_ABIL_X, sconst.R_DESC_Y);
         }
     }
 
@@ -1889,9 +1849,9 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
             String goalsAway = Integer.toString((int) game.away.score);
             String minorGoalsAway = Integer.toString((int) ((game.away.score - (int) game.away.score) * 4));
 
-            gc.setStroke(new Color(0f, 0f, 1f, .5f));
+            gc.setFill(new Color(0f, 0f, 1f, .5f));
             sconst.drawString(gc, goalsHome, 180, 704);
-            gc.setStroke(new Color(1f, 1f, 1f, .5f));
+            gc.setFill(new Color(1f, 1f, 1f, .5f));
             sconst.drawString(gc, goalsAway, 799, 704);
 
             //draw minor goals
@@ -1916,19 +1876,19 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                 if (game.underControl.id.equals(on.id) && !e.toString().contains("ATTACKED")) {
                     sconst.setFont(gc, new Font("Verdana", 72));
                     if (e.effect == EffectId.ROOT) {
-                        gc.setStroke(new Color(.36f, .51f, .28f, .4f));
+                        gc.setFill(new Color(.36f, .51f, .28f, .4f));
                         sconst.drawString(gc, "Rooted!", 450, 300);
                     }
                     if (e.effect == EffectId.SLOW) {
-                        gc.setStroke(new Color(.45f, .9f, .75f, .4f));
+                        gc.setFill(new Color(.45f, .9f, .75f, .4f));
                         sconst.drawString(gc, "Slowed!", 450, 300);
                     }
                     if (e.effect == EffectId.STUN) {
-                        gc.setStroke(new Color(1f, .74f, 0f, .4f));
+                        gc.setFill(new Color(1f, .74f, 0f, .4f));
                         sconst.drawString(gc, "Stunned!", 450, 300);
                     }
                     if (e.effect == EffectId.STEAL) {
-                        gc.setStroke(new Color(0f, 0f, 0f, .4f));
+                        gc.setFill(new Color(0f, 0f, 0f, .4f));
                         sconst.drawString(gc, "Stolen!", 450, 300);
                     }
                     if (e.getIcon(gc) != null) {
@@ -1944,7 +1904,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                         // Restore the original blend mode and opacity
                         gc.setGlobalBlendMode(originalBlendMode);
                         gc.setGlobalAlpha(1.0); // Reset transparency level to opaque
-                        gc.setStroke(new Color(1f, 1f, 1f, .5f));
+                        gc.setFill(new Color(1f, 1f, 1f, .5f));
                         double xt = sconst.adjX(x);
                         double wt = sconst.adjX(32);
                         double yt = sconst.adjY(657);
@@ -1973,7 +1933,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
     }
 
     private void drawTimerWarnings(GraphicsContext gc) {
-        gc.setStroke(new Color(0f, 1f, 0f, .4f));
+        gc.setFill(new Color(0f, 1f, 0f, .4f));
         Font font = new Font("Verdana", 32);
         sconst.setFont(gc, font);
         final double FPS = 1000 / game.GAMETICK_MS;
@@ -1982,7 +1942,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
         time = (int) (time * 10.0) / 10.0;
         timeStr += time;
         sconst.drawString(gc, timeStr, 614, 711);
-        gc.setStroke(new Color(0f, 0f, 0f, .4f));
+        gc.setFill(new Color(0f, 0f, 0f, .4f));
         setBottomText(gc, (int) time);
         sconst.drawString(gc, bottomText, 480, 664);
     }
@@ -1993,31 +1953,31 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
         bottomText = "";
         final int WARN = 30, FWARN = 10, CHWARN = 4;
         if (timer >= game.GOALIE_DISABLE_TIME - WARN && timer < game.GOALIE_DISABLE_TIME - FWARN) {
-            gc.setStroke(new Color(.9f, .9f, 0f, .4f));
+            gc.setFill(new Color(.9f, .9f, 0f, .4f));
             bottomText = "GOALIES VANISHING WARNING";
         } else if (timer >= game.GOALIE_DISABLE_TIME - FWARN && timer < game.GOALIE_DISABLE_TIME) {
-            gc.setStroke(new Color(1f, 0f, 0f, .4f));
+            gc.setFill(new Color(1f, 0f, 0f, .4f));
             bottomText = "GOALIES VANISHING WARNING";
         } else if (timer >= game.GOALIE_DISABLE_TIME && timer < game.GOALIE_DISABLE_TIME - CHWARN) {
-            gc.setStroke(new Color(1f, 0f, 0f, .4f));
+            gc.setFill(new Color(1f, 0f, 0f, .4f));
             bottomText = "GOALIES VANISHED";
         } else if (timer >= (game.options.suddenDeathIndex * 60) - WARN && timer < (game.options.suddenDeathIndex * 60) - FWARN) {
-            gc.setStroke(new Color(.9f, .9f, 0f, .6f));
+            gc.setFill(new Color(.9f, .9f, 0f, .6f));
             bottomText = "SUDDEN DEATH WARNING";
         } else if (timer >= (game.options.suddenDeathIndex * 60) - FWARN && timer < (game.options.suddenDeathIndex * 60)) {
-            gc.setStroke(new Color(1f, 0f, 0f, .6f));
+            gc.setFill(new Color(1f, 0f, 0f, .6f));
             bottomText = "SUDDEN DEATH WARNING";
         } else if (timer >= (game.options.suddenDeathIndex * 60) && timer < (game.options.suddenDeathIndex * 60) - CHWARN) {
-            gc.setStroke(new Color(1f, 0f, 0f, 1f));
+            gc.setFill(new Color(1f, 0f, 0f, 1f));
             bottomText = "SUDDEN DEATH ENABLED";
         } else if (timer >= (game.options.tieIndex * 60) - WARN && timer < (game.options.tieIndex * 60) - FWARN) {
-            gc.setStroke(new Color(.9f, .9f, 0f, 1f));
+            gc.setFill(new Color(.9f, .9f, 0f, 1f));
             bottomText = "TIE GAME WARNING";
         } else if (timer >= (game.options.tieIndex * 60) - FWARN && timer < (game.options.tieIndex * 60)) {
-            gc.setStroke(new Color(1f, 0f, 0f, 1f));
+            gc.setFill(new Color(1f, 0f, 0f, 1f));
             bottomText = "TIE GAME WARNING";
         } else if (timer >= (game.options.tieIndex * 60) && timer < (game.options.tieIndex * 60) - CHWARN) {
-            gc.setStroke(new Color(1f, 0f, 0f, 1f));
+            gc.setFill(new Color(1f, 0f, 0f, 1f));
             bottomText = "TIE GAME";
         }
     }
@@ -2025,16 +1985,16 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
     private void setColorFromCharge(GraphicsContext gc, String str) {
         switch (str) {
             case "1":
-                gc.setStroke(new Color(.4f, 1f, 0f, .8f));
+                gc.setFill(new Color(.4f, 1f, 0f, .8f));
                 break;
             case "2":
-                gc.setStroke(new Color(.94f, .90f, .33f, .8f));
+                gc.setFill(new Color(.94f, .90f, .33f, .8f));
                 break;
             case "3":
-                gc.setStroke(new Color(1f, .15f, .15f, .8f));
+                gc.setFill(new Color(1f, .15f, .15f, .8f));
                 break;
             default:
-                gc.setStroke(new Color(.6f, .6f, .6f, .8f));
+                gc.setFill(new Color(.6f, .6f, .6f, .8f));
         }
     }
 
@@ -2047,6 +2007,8 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
     }
 
     protected void setColorBasedOnPercent(GraphicsContext gc, double inputPercent, boolean translucent) {
+        gc.setFill(new Color(redColorFromPercent(inputPercent),
+                greenColorFromPercent(inputPercent), .54f, translucent ? .5f : 1f));
         gc.setStroke(new Color(redColorFromPercent(inputPercent),
                 greenColorFromPercent(inputPercent), .54f, translucent ? .5f : 1f));
     }
@@ -2356,6 +2318,32 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
         index -= 1;
         index /= 4;
         return 120 * index + 195;
+    }
+
+    public void handle(MouseEvent mouseEvent) {
+        // Handle mouse dragged and mouse moved events
+        if(mouseEvent.getEventType() == MouseEvent.MOUSE_MOVED || mouseEvent.getEventType() == MouseEvent.MOUSE_DRAGGED) {
+            controlsHeld.posX = sconst.invertMouseX((int) mouseEvent.getX());
+            controlsHeld.posY = sconst.invertMouseY((int) mouseEvent.getY());
+            controlsHeld.camX = camX;
+            controlsHeld.camY = camY;
+        } else if (mouseEvent.getEventType() == MouseEvent.MOUSE_PRESSED) {
+            if (phase == GamePhase.INGAME || phase == GamePhase.TUTORIAL) {
+                controlsHeld.posX = sconst.invertMouseX((int) mouseEvent.getX());
+                controlsHeld.posY = sconst.invertMouseY((int) mouseEvent.getY());
+                if (mouseEvent.isPrimaryButtonDown()) {
+                    controlsConfig.mapKeyPress(game, controlsHeld, "LMB", shotSound);
+                }
+                if (mouseEvent.isSecondaryButtonDown()) {
+                    controlsConfig.mapKeyPress(game, controlsHeld, "RMB", shotSound);
+                }
+                controlsHeld.camX = camX;
+                controlsHeld.camY = camY;
+            }
+        } else if (mouseEvent.getEventType() == MouseEvent.MOUSE_RELEASED) {
+            controlsConfig.mapKeyRelease(controlsHeld, "LMB");
+            controlsConfig.mapKeyRelease(controlsHeld, "RMB");
+        }
     }
 
     protected class TerminableExecutor implements Runnable {

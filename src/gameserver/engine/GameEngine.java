@@ -171,15 +171,32 @@ public class GameEngine extends Game {
         return new GoalHoop[0];
     }
 
+    public boolean ballIntersectsEllipse(double ballX, double ballY, GoalHoop goal) {
+        // Get the ellipse's center and radii
+        double goalCenterX = goal.x; // Assuming `getCenterX()` returns the center X of the ellipse
+        double goalCenterY = goal.y; // Assuming `getCenterY()` returns the center Y of the ellipse
+        double goalRadiusX = goal.w; // The horizontal radius of the ellipse (half the width)
+        double goalRadiusY = goal.h; // The vertical radius of the ellipse (half the height)
+
+        // Translate the ball's center to the ellipse's coordinate system (normalize)
+        double dx = ballX - goalCenterX;
+        double dy = ballY - goalCenterY;
+
+        // Normalize the distance by the ellipse radii to handle the ellipse's shape
+        double normalizedDistanceX = dx / goalRadiusX;
+        double normalizedDistanceY = dy / goalRadiusY;
+
+        // Check if the normalized distance is within the unit circle
+        return (normalizedDistanceX * normalizedDistanceX + normalizedDistanceY * normalizedDistanceY) <= 1.0;
+    }
+
     public void detectGoals() {
         //If ball is in the air
         if(contactExemptBall()){
             return;
         }
-        Rectangle ballBounds = new Rectangle((int) this.ball.X, (int) this.ball.Y, 30, 30);
         for (GoalHoop goal : this.lowGoals) {
-            GoalSprite tempGoal = new GoalSprite(goal, 0, 0, new ScreenConst(1920, 1080)); //Just for using the g2d intersect method
-            if (tempGoal.intersects(ballBounds.getBoundsInLocal()) && goal.checkReady()) {
+            if (ballIntersectsEllipse(this.ball.X, this.ball.Y, goal) && goal.checkReady()) {
                 Team enemy, us;
                 if (goal.team == TeamAffiliation.HOME) {
                     us = this.away;
@@ -196,21 +213,21 @@ public class GameEngine extends Game {
                 }
                 us.score += .25;
                 checkWinCondition(false);//somewhat intentional to check condition before ghost removal
-                enemy.score = Math.floor(enemy.score); //Reset any of the other teams ghostpoints
+                enemy.score = Math.floor(enemy.score); //Reset any of the other teams ghostpoints.
             }
         }
-        for (GoalHoop hoop : this.hiGoals) {
+
+        for (GoalHoop goal : this.hiGoals) {
             Team us, enemy;
-            if (hoop.team == TeamAffiliation.HOME) {
+            if (goal.team == TeamAffiliation.HOME) {
                 us = this.away;
                 enemy = this.home;
             } else { //(goal.team == TeamAffiliation.AWAY)
                 us = this.home;
                 enemy = this.away;
             }
-            GoalSprite tempGoal = new GoalSprite(hoop, 0, 0, new ScreenConst(1920, 1080)); //Just for using the g2d intersect method
-            if (tempGoal.intersects(ballBounds.getBoundsInLocal()) && hoop.checkReady()) {
-                hoop.trigger();
+            if (ballIntersectsEllipse(this.ball.X, this.ball.Y, goal) && goal.checkReady()) {
+                goal.trigger();
                 //Cash in all ghost/combo points for a full point
                 long iPart = (long) us.score;
                 double fPart = us.score - iPart;

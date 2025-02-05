@@ -99,11 +99,11 @@ public class ScreenConst {
     }
 
     public int adjX(int v) {
-        return v / CAL_X * X;
+        return (int) ((double)v / (double) CAL_X * (double)X);
     }
 
     public int adjY(int v) {
-        return v / CAL_Y * Y;
+        return (int) ((double)v / (double) CAL_Y * (double)Y);
     }
 
     public int invertMouseX(int i){
@@ -169,25 +169,6 @@ public class ScreenConst {
                     ellipse.getCenterY() - ellipse.getRadiusY(),
                     ellipse.getRadiusX() * 2,
                     ellipse.getRadiusY() * 2);
-    }
-
-    public void fill(GraphicsContext gc, Polygon p) {
-        int size = p.getPoints().size() / 2;
-        double[] adjustedXPoints = new double[size];
-        double[] adjustedYPoints = new double[size];
-
-        for (int i = 0; i < size; i++) {
-            adjustedXPoints[i] = p.getPoints().get(i * 2);
-            adjustedYPoints[i] = p.getPoints().get(i * 2 + 1);
-        }
-
-        // Debugging output
-        System.out.println("Polygon points:");
-        for (int i = 0; i < size; i++) {
-            System.out.println("Point " + i + ": (" + adjustedXPoints[i] + ", " + adjustedYPoints[i] + ")");
-        }
-
-        gc.fillPolygon(adjustedXPoints, adjustedYPoints, size);
     }
 
 

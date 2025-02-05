@@ -24,7 +24,6 @@ public abstract class Effect implements Serializable {
 
     public Image getIcon(GraphicsContext gc) {
         String imagePath = "res/Effects/" + this.getEffect().toString() + ".png";
-        System.out.println(imagePath);
         Image im = sconst.loadImage(imagePath);
         return sconst.getScaledImage(im, 32, 32);
     }
