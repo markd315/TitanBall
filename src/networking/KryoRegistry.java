@@ -1,8 +1,6 @@
 package networking;
 
 import client.graphical.GoalSprite;
-import client.graphical.Images;
-import client.graphical.StaticImage;
 import com.esotericsoftware.kryo.Kryo;
 import gameserver.Const;
 import gameserver.TutorialOverrides;
@@ -98,8 +96,6 @@ public class KryoRegistry {
         kryo.register(DistanceFilter.class);
         kryo.register(Ability.class);
         kryo.register(AbilityStrategy.class);
-        kryo.register(StaticImage.class);
-        kryo.register(Images.class);
         kryo.register(RangeCircle.class);
         kryo.register(StatEngine.class);
 

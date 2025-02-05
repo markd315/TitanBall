@@ -1,18 +1,19 @@
 package gameserver.entity;
 
-import java.awt.*;
+import javafx.scene.paint.Color;
+
 import java.io.Serializable;
 
 public class RangeCircle  implements Serializable {
     protected int radius;
-    protected float[] color = new float[4];
+    protected double[] color = new double[4];
 
     public RangeCircle(Color color, int radius){
         this.radius = radius;
         this.color[0] = color.getRed()/256.0f;
         this.color[1] = color.getGreen()/256.0f;
         this.color[2] = color.getBlue()/256.0f;
-        this.color[3] = color.getAlpha()/256.0f;
+        this.color[3] = color.getOpacity()/256.0f;
     }
     public RangeCircle(int radius){
         this.radius = radius;
@@ -45,6 +46,6 @@ public class RangeCircle  implements Serializable {
         this.color[0] = color.getRed()/256.0f;
         this.color[1] = color.getGreen()/256.0f;
         this.color[2] = color.getBlue()/256.0f;
-        this.color[3] = color.getAlpha()/256.0f;
+        this.color[3] = color.getOpacity()/256.0f;
     }
 }

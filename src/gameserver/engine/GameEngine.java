@@ -17,14 +17,14 @@ import gameserver.entity.minions.Tickable;
 import gameserver.gamemanager.GamePhase;
 import gameserver.gamemanager.ManagedGame;
 import gameserver.models.Game;
+import javafx.geometry.Bounds;
+import javafx.scene.shape.Rectangle;
 import networking.ClientPacket;
 import networking.KeyDifferences;
 import networking.PlayerDivider;
 import org.joda.time.Instant;
 import util.Util;
 
-import java.awt.*;
-import java.awt.geom.Rectangle2D;
 import java.util.List;
 import java.util.*;
 import java.util.concurrent.Executors;
@@ -179,7 +179,7 @@ public class GameEngine extends Game {
         Rectangle ballBounds = new Rectangle((int) this.ball.X, (int) this.ball.Y, 30, 30);
         for (GoalHoop goal : this.lowGoals) {
             GoalSprite tempGoal = new GoalSprite(goal, 0, 0, new ScreenConst(1920, 1080)); //Just for using the g2d intersect method
-            if (tempGoal.intersects(ballBounds) && goal.checkReady()) {
+            if (tempGoal.intersects(ballBounds.getBoundsInLocal()) && goal.checkReady()) {
                 Team enemy, us;
                 if (goal.team == TeamAffiliation.HOME) {
                     us = this.away;
@@ -209,7 +209,7 @@ public class GameEngine extends Game {
                 enemy = this.away;
             }
             GoalSprite tempGoal = new GoalSprite(hoop, 0, 0, new ScreenConst(1920, 1080)); //Just for using the g2d intersect method
-            if (tempGoal.intersects(ballBounds) && hoop.checkReady()) {
+            if (tempGoal.intersects(ballBounds.getBoundsInLocal()) && hoop.checkReady()) {
                 hoop.trigger();
                 //Cash in all ghost/combo points for a full point
                 long iPart = (long) us.score;
@@ -237,12 +237,12 @@ public class GameEngine extends Game {
         if (titanInPossession().isPresent() && titanInPossession().get().getType() == TitanType.GOALIE) {
             for (GoalHoop goal : this.lowGoals) {
                 GoalSprite tempGoal = new GoalSprite(goal, 0, 0, new ScreenConst(1920, 1080)); //Just for using the g2d intersect method
-                Rectangle2D ballBounds = ball.asRect();
+                Bounds ballBounds = ball.asRect();
                 while (tempGoal.intersects(ballBounds)) {
                     ballBounds = ball.asRect();
-                    int wRad = (int) ((tempGoal.width - 1) / 2);
-                    int hRad = (int) ((tempGoal.height - 1) / 2);
-                    double ang = Util.degreesFromCoords(tempGoal.x + wRad - ball.X - ball.centerDist, tempGoal.y + hRad - ball.Y - ball.centerDist);
+                    int wRad = (int) ((tempGoal.getRadiusX() - 1) / 2);
+                    int hRad = (int) ((tempGoal.getRadiusY() - 1) / 2);
+                    double ang = Util.degreesFromCoords(tempGoal.getCenterX() + wRad - ball.X - ball.centerDist, tempGoal.getCenterY() + hRad - ball.Y - ball.centerDist);
                     ang += 180; //Run away, not towards
                     double dx = Math.cos(Math.toRadians((ang)));
                     double dy = Math.sin(Math.toRadians((ang)));
@@ -256,12 +256,12 @@ public class GameEngine extends Game {
     protected void minorHoopBounce() {
         for (GoalHoop goal : this.lowGoals) {
             GoalSprite tempGoal = new GoalSprite(goal, 0, 0, new ScreenConst(1920, 1080)); //Just for using the g2d intersect method
-            Rectangle2D ballBounds = ball.asRect();
+            Bounds ballBounds = ball.asRect();
             while (tempGoal.intersects(ballBounds)) {
                 ballBounds = ball.asRect();
-                int wRad = (int) ((tempGoal.width - 1) / 2);
-                int hRad = (int) ((tempGoal.height - 1) / 2);
-                double ang = Util.degreesFromCoords(tempGoal.x + wRad - ball.X - ball.centerDist, tempGoal.y + hRad - ball.Y - ball.centerDist);
+                int wRad = (int) ((tempGoal.getRadiusX() - 1) / 2);
+                int hRad = (int) ((tempGoal.getRadiusY() - 1) / 2);
+                double ang = Util.degreesFromCoords(tempGoal.getCenterX() + wRad - ball.X - ball.centerDist, tempGoal.getCenterY() + hRad - ball.Y - ball.centerDist);
                 ang += 180; //Kick it away, not towards
                 double dx = Math.cos(Math.toRadians((ang)));
                 double dy = Math.sin(Math.toRadians((ang)));
@@ -1076,7 +1076,7 @@ public class GameEngine extends Game {
     }
 
     private boolean ownGoal() {
-        Rectangle ballBounds = new Rectangle((int) this.ball.X, (int) this.ball.Y, 30, 30);
+        Bounds ballBounds = new Rectangle((int) this.ball.X, (int) this.ball.Y, 30, 30).getBoundsInLocal();
         for(GoalHoop lowgoal : lowGoals){
             GoalSprite tempGoal = new GoalSprite(lowgoal, 0, 0, new ScreenConst(1920, 1080)); //Just for using the g2d intersect method
             if(tempGoal.intersects(ballBounds)){
@@ -1114,7 +1114,7 @@ public class GameEngine extends Game {
     public void intersectBall(int numSel, int valuePlayerX, int valuePlayerY) {
         Rectangle r1 = new Rectangle(valuePlayerX + SPRITE_X_EMPTY / 2, valuePlayerY + SPRITE_Y_EMPTY / 2, 70 - SPRITE_X_EMPTY, 70 - SPRITE_Y_EMPTY);
         r1 = goalieHitboxOverride(numSel, r1);
-        Rectangle r2 = new Rectangle((int) ball.X, (int) ball.Y, 30, 30);
+        Bounds r2 = new Rectangle((int) ball.X, (int) ball.Y, 30, 30).getBoundsInLocal();
         if ((r1.intersects(r2))) {
             Titan t = players[numSel - 1];
             if (t.id.equals(players[numSel - 1].id) && !t.id.equals(lastPossessed)) {
@@ -1235,8 +1235,8 @@ public class GameEngine extends Game {
                 }// Bot intersection control with ball and passing ball in case of automatic control
                 if (!tip.isPresent()) {
                     Rectangle ballTangle = new Rectangle((int) ball.X, (int) ball.Y, ball.width, ball.height);
-                    Rectangle playertangle = new Rectangle((int) players[pIndex].X + SPRITE_X_EMPTY / 2, (int) players[pIndex].Y + SPRITE_Y_EMPTY / 2,
-                            players[pIndex].width - SPRITE_X_EMPTY, players[pIndex].height - SPRITE_Y_EMPTY);
+                    Bounds playertangle = new Rectangle((int) players[pIndex].X + SPRITE_X_EMPTY / 2, (int) players[pIndex].Y + SPRITE_Y_EMPTY / 2,
+                            players[pIndex].width - SPRITE_X_EMPTY, players[pIndex].height - SPRITE_Y_EMPTY).getBoundsInLocal();
                     if (ballTangle.intersects(playertangle)) {
                         //clientFromIndex(pIndex + 1).selection = pIndex + 1;
                         players[pIndex].possession = 1;
@@ -1306,7 +1306,7 @@ public class GameEngine extends Game {
             XMAX = c.GOALIE_XA_MAX;
             XMIN = c.GOALIE_XA_MIN;
         }
-        Rectangle ballBounds = new Rectangle((int) this.ball.X, (int) this.ball.Y, 30, 30);
+        Bounds ballBounds = new Rectangle((int) this.ball.X, (int) this.ball.Y, 30, 30).getBoundsInLocal();
         for (GoalHoop goal : this.lowGoals) {
             GoalSprite tempGoal = new GoalSprite(goal, 0, 0, new ScreenConst(1920, 1080)); //Just for using the g2d intersect method
             if (goalie.possession == 1 &&

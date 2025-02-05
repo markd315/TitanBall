@@ -1,13 +1,24 @@
 package client.graphical;
 
-import client.TitanballClient;
+import javafx.scene.SnapshotParameters;
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.image.Image;
+import javafx.scene.image.WritableImage;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Ellipse;
+import javafx.scene.shape.Polygon;
+import javafx.scene.shape.Rectangle;
+import javafx.scene.text.Font;
 
-import java.awt.*;
-import java.awt.geom.AffineTransform;
-import java.awt.geom.Ellipse2D;
-import java.awt.image.BufferedImage;
+import java.io.File;
 
 public class ScreenConst {
+
+    private int X;
+    private int Y;
+    public static int calX = 1920;
+    public static int calY = 1080;
+
     public ScreenConst(int xSize, int ySize) {
         this.X = xSize;
         this.Y = ySize;
@@ -42,73 +53,56 @@ public class ScreenConst {
         STAT_INT_X = adjX(1103);
     }
 
-    public void drawString(Graphics2D g2D, String payload, int x, int y) {
+    public void drawString(GraphicsContext gc, String payload, double x, double y) {
         x = adjX(x);
         y = adjY(y);
-        g2D.drawString(payload, x, y);
+        gc.fillText(payload, x, y);
     }
 
-    public void setFont(Graphics2D g2D, Font verdana) {
-        int size = verdana.getSize();
-        size = adjY(size);//doing both X and Y seems to leave it too big?
-        g2D.setFont(new Font(verdana.getName(), verdana.getStyle(), size));
+    public void setFont(GraphicsContext gc, Font font) {
+        double size = font.getSize();
+        size = adjY(size);
+        gc.setFont(new Font(font.getName(), size));
     }
 
-    public Image loadImage(Images image, String filename, TitanballClient context){
-        return loadImage(image, filename, context, 1.0, 1.0);
-    }
-
-    public Image loadImage(Images image, String filename, TitanballClient context, double wMult, double hMult){
-        image.loadImage(filename);
-        int w = (int) (image.getImage().getWidth(context) * wMult);
-        int h = (int) (image.getImage().getHeight(context) * hMult);
-        BufferedImage bi = Images.resize(toBi(image.getImage()), adjX(w), adjY(h));
-        return bi;
-    }
-
-    public void drawImage(Graphics2D g2D, Image image, int x, int y, TitanballClient context) {
-        x = adjX(x);
-        y = adjY(y);
-        g2D.drawImage(image, x, y, context);
-    }
-
-    private BufferedImage toBi(Image img) {
-        if (img instanceof BufferedImage) {
-            return (BufferedImage) img;
+    public Image loadImage(String path) {
+        try {
+            // Debugging output
+            File file = new File(path);
+            //System.out.println("Absolute path: " + file.getAbsolutePath());
+            java.net.URL resource = file.toURI().toURL();
+            if (resource == null) {
+                System.err.println("Resource not found: " + path);
+                return null;
+            }
+            //System.out.println("Resource found at: " + resource);
+            return new Image(resource.toString());
+        } catch (Exception e) {
+            System.err.println("Error loading image: " + e.getMessage());
+            return null;
         }
-
-        // Create a buffered image with transparency
-        BufferedImage bimage = new BufferedImage(img.getWidth(null), img.getHeight(null), BufferedImage.TYPE_INT_ARGB);
-
-        // Draw the image on to the buffered image
-        Graphics2D bGr = bimage.createGraphics();
-        bGr.drawImage(img, 0, 0, null);
-        bGr.dispose();
-
-        // Return the buffered image
-        return bimage;
     }
 
-    public void drawImage(Graphics2D g2D, Image image, AffineTransform at, TitanballClient context) {
-        double x = adjX((int) at.getTranslateX());
-        double y = adjY((int) at.getTranslateY());
-        at.setToTranslation(x, y);
-        int w = image.getWidth(context);
-        int h = image.getHeight(context);
-        BufferedImage bi = Images.resize(toBi(image), w, h);
-        g2D.drawImage(bi, at, context);
+    public void drawImage(GraphicsContext gc, Image image, double x, double y) {
+        x = adjX(x);
+        y = adjY(y);
+        gc.drawImage(image, x, y);
     }
 
     public double adjX(double v) {
-        return v / (double) calX * (double) X;
+        return v / calX * X;
     }
 
-    private int adjX(int i) {
-        return (int) (((double)i * X) / calX);
+    public double adjY(double v) {
+        return v / calY * Y;
     }
 
-    public int adjY(int i) {
-        return (int) (((double)i * Y) / calY);
+    public int adjX(int v) {
+        return v / calX * X;
+    }
+
+    public int adjY(int v) {
+        return v / calY * Y;
     }
 
     public int invertMouseX(int i){
@@ -118,11 +112,6 @@ public class ScreenConst {
     public int invertMouseY(int i){
         return (int) (((double)i * calY) / Y);
     }
-
-    public int X;
-    public int Y;
-    public static int calX = 1920; //client originally calibrated for this resolution
-    public static int calY = 1080;
 
     public final int RESULT_IMG_X;
     public final int RESULT_IMG_Y;
@@ -154,27 +143,54 @@ public class ScreenConst {
     public final int R_DESC_Y;
     public final int STAT_INT_X;
 
-    public void draw(Graphics2D g2D, GoalSprite goal) {
-        goal.height = adjY((int) goal.height);
-        goal.width = adjX(goal.width);
-        goal.x = adjX(goal.x);
-        goal.y = adjY((int) goal.y);
-        g2D.draw(goal);
+    public void draw(GraphicsContext gc, GoalSprite goal) {
+        goal.setRadiusY(adjY(goal.getRadiusY()));
+        goal.setRadiusX(adjX(goal.getRadiusX()));
+        goal.setCenterX(adjX(goal.getCenterX()));
+        goal.setCenterY(adjY(goal.getCenterY()));
+        gc.strokeOval(goal.getCenterX() - goal.getRadiusX(), goal.getCenterY() - goal.getRadiusY(), goal.getRadiusX() * 2, goal.getRadiusY() * 2);
     }
 
-    public void fill(Graphics2D g2D, Rectangle rectangle) {
-        rectangle = new Rectangle((int) adjX(rectangle.getX()),
-                adjY((int) rectangle.getY()),
-                (int) adjX(rectangle.getWidth()),
-                adjY((int) rectangle.getHeight()));
-        g2D.fill(rectangle);
+    public void fill(GraphicsContext gc, Rectangle rectangle) {
+        rectangle = new Rectangle(adjX(rectangle.getX()),
+                adjY(rectangle.getY()),
+                adjX(rectangle.getWidth()),
+                adjY(rectangle.getHeight()));
+        gc.fillRect(rectangle.getX(), rectangle.getY(), rectangle.getWidth(), rectangle.getHeight());
     }
 
-    public void fill(Graphics2D g2D, Ellipse2D.Double ell) {
-        ell = new Ellipse2D.Double(adjX(ell.getX()),
-                adjY((int) ell.getY()),
-                adjX(ell.getWidth()),
-                adjY((int) ell.getHeight()));
-        g2D.fill(ell);
+    public void fill(GraphicsContext gc, Ellipse ellipse) {
+        ellipse = new Ellipse(adjX(ellipse.getCenterX()),
+                adjY(ellipse.getCenterY()),
+                adjX(ellipse.getRadiusX()),
+                adjY(ellipse.getRadiusY()));
+        gc.fillOval(ellipse.getCenterX() - ellipse.getRadiusX(),
+                    ellipse.getCenterY() - ellipse.getRadiusY(),
+                    ellipse.getRadiusX() * 2,
+                    ellipse.getRadiusY() * 2);
+    }
+
+    public void fill(GraphicsContext gc, Polygon p) {
+        double[] adjustedXPoints = new double[p.getPoints().size() / 2];
+        double[] adjustedYPoints = new double[p.getPoints().size() / 2];
+
+        for (int i = 0; i < p.getPoints().size(); i += 2) {
+            adjustedXPoints[i / 2] = adjX(p.getPoints().get(i));
+            adjustedYPoints[i / 2] = adjY(p.getPoints().get(i + 1));
+        }
+        gc.fillPolygon(adjustedXPoints, adjustedYPoints, adjustedXPoints.length);
+    }
+
+    public Image getScaledImage(GraphicsContext gc, Image srcImg, int width, int height) {
+        WritableImage scaledImage = new WritableImage(width, height);
+        SnapshotParameters params = new SnapshotParameters();
+        params.setFill(Color.TRANSPARENT);
+        gc.getCanvas().snapshot(params, scaledImage);
+        return scaledImage;
+    }
+
+    public void drawImage(GraphicsContext gc, Image image, int x, int y, int sizeX, int sizeY) {
+        Image scaledImage = getScaledImage(gc, image, sizeX, sizeY);
+        gc.drawImage(scaledImage, x, y, sizeX, sizeY);
     }
 }

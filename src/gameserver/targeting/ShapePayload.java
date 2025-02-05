@@ -3,19 +3,23 @@ package gameserver.targeting;
 import client.graphical.ScreenConst;
 import gameserver.engine.TeamAffiliation;
 import gameserver.entity.Titan;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Ellipse;
+import javafx.scene.shape.Polygon;
+import javafx.scene.shape.Rectangle;
+import javafx.scene.shape.Shape;
 import org.joda.time.Instant;
 
-import java.awt.*;
-import java.awt.geom.Ellipse2D;
 import java.io.Serializable;
 
 public class ShapePayload  implements Serializable {
     private static final int COLLIDER_DISP_MS = 400;
     int x, y, w, h;
     double rot;
-    ShapeSelector type;
-    private int[] xp, yp;
-    protected float[] color = new float[4];
+    ShapePayload.ShapeSelector type;
+    private double[] xp;
+    private double[] yp;
+    protected double[] color = new double[4];
     public Instant dispUntil;
     public boolean disp;
 
@@ -24,37 +28,46 @@ public class ShapePayload  implements Serializable {
         this(s, 0.0);
     }
 
-    public ShapePayload(Shape s, double rot){
-        if(s instanceof Ellipse2D.Double){
+
+    public ShapePayload(Shape s, double rot) {
+        if (s instanceof Ellipse) {
             this.type = ShapeSelector.ELLIPSE;
-        }
-        else if(s instanceof Polygon){
+            Ellipse ellipse = (Ellipse) s;
+            this.x = (int) (ellipse.getCenterX() - ellipse.getRadiusX());
+            this.y = (int) (ellipse.getCenterY() - ellipse.getRadiusY());
+            this.h = (int) (ellipse.getRadiusY() * 2);
+            this.w = (int) (ellipse.getRadiusX() * 2);
+        } else if (s instanceof Polygon) {
             this.type = ShapeSelector.TRI;
             Polygon poly = (Polygon) s;
-            this.xp = poly.xpoints;
-            this.yp = poly.ypoints;
-        }
-        else if(s instanceof Rectangle){
+            this.xp = poly.getPoints().stream().filter(i -> poly.getPoints().indexOf(i) % 2 == 0).mapToDouble(i -> i).toArray();
+            this.yp = poly.getPoints().stream().filter(i -> poly.getPoints().indexOf(i) % 2 != 0).mapToDouble(i -> i).toArray();
+        } else if (s instanceof Rectangle) {
             this.type = ShapeSelector.RECT;
+            Rectangle rect = (Rectangle) s;
+            this.x = (int) rect.getX();
+            this.y = (int) rect.getY();
+            this.h = (int) rect.getHeight();
+            this.w = (int) rect.getWidth();
         }
-        this.x = (int) s.getBounds().getX();
-        this.y = (int) s.getBounds().getY();
-        this.h = s.getBounds().height;
-        this.w = s.getBounds().width;
+
         this.rot = rot;
         trigger();
     }
 
-    public Shape from(){
-        if(this.type == ShapeSelector.ELLIPSE){
-            return new Ellipse2D.Double(this.x, this.y, this.w, this.h);
-        }
-        if(this.type == ShapeSelector.TRI){
-            return new Polygon(this.xp, this.yp, 3);
-        }
-        return new Rectangle(this.x, this.y, this.w, this.h);
-
+    public Shape from() {
+    if (this.type == ShapeSelector.ELLIPSE) {
+        return new Ellipse(this.x + this.w / 2, this.y + this.h / 2, this.w / 2, this.h / 2);
     }
+    if (this.type == ShapeSelector.TRI) {
+        Polygon polygon = new Polygon();
+        for (int i = 0; i < this.xp.length; i++) {
+            polygon.getPoints().addAll(this.xp[i], this.yp[i]);
+        }
+        return polygon;
+    }
+    return new Rectangle(this.x, this.y, this.w, this.h);
+}
 
     public Shape fromWithCamera(int camX, int camY, ScreenConst sconst) {
         if(this.type == ShapeSelector.ELLIPSE){
@@ -62,17 +75,17 @@ public class ShapePayload  implements Serializable {
             double wt = sconst.adjX(w);
             double yt = sconst.adjY(y - camY);
             double ht = sconst.adjY(h);
-            return new Ellipse2D.Double(xt, yt, wt, ht);
+            return new Ellipse(xt, yt, wt, ht);
         }
         if(this.type == ShapeSelector.TRI){
-            for(int i=0; i<xp.length; i++){
-                this.xp[i] = (int) sconst.adjX(this.xp[i] - camX);
-                this.yp[i] = sconst.adjY(this.xp[i] - camY);
+            Polygon polygon = new Polygon();
+            for (int i = 0; i < this.xp.length; i++) {
+                polygon.getPoints().addAll(this.xp[i], this.yp[i]);
             }
-            return new Polygon(this.xp, this.yp, 3);
+            return polygon;
         }
-        int xt = (int) sconst.adjX(x - camX);
-        int wt = (int) sconst.adjX(w);
+        int xt = sconst.adjX(x - camX);
+        int wt = sconst.adjX(w);
         int yt = sconst.adjY(y - camY);
         int ht = sconst.adjY(h);
         return new Rectangle(xt, yt, wt, ht);
@@ -80,29 +93,29 @@ public class ShapePayload  implements Serializable {
 
     public void setColor(Titan caster) {
         if(caster.team == TeamAffiliation.HOME){
-            setColor(Color.blue);
+            setColor(Color.BLUE);
             return;
         }
         if(caster.team == TeamAffiliation.AWAY){
-            setColor(Color.white);
+            setColor(Color.WHITE);
             return;
         }
-        setColor(Color.gray);
+        setColor(Color.GRAY);
     }
 
     private void setColor(Color color){
-        this.color = new float[4];
-        this.color[0] = color.getRed()/256.0f;
-        this.color[1] = color.getGreen()/256.0f;
-        this.color[2] = color.getBlue()/256.0f;
-        this.color[3] = color.getAlpha()/256.0f;
+        this.color = new double[4];
+        this.color[0] = color.getRed()/256.0;
+        this.color[1] = color.getGreen()/256.0;
+        this.color[2] = color.getBlue()/256.0;
+        this.color[3] = color.getOpacity()/256.0;
     }
 
     public enum ShapeSelector{
         RECT, TRI, ELLIPSE
     }
 
-    public Color getColor() {
+    public javafx.scene.paint.Paint getColor() {
         return new Color(color[0], color[1], color[2], color[3]);
     }
 

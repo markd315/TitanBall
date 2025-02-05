@@ -1,26 +1,29 @@
 package client.graphical;
 
 import gameserver.entity.TitanType;
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.image.Image;
 
-import javax.swing.*;
-import java.awt.*;
 import java.util.HashMap;
 
-public class SelectClassSkins extends Images {
+public class SelectClassSkins{
 	int cursor =0;
 	int frame=0;
 	static HashMap<String, Image> cache = new HashMap<>();
+    static ScreenConst sconst = new ScreenConst(1920, 1080);
+
+
 	public SelectClassSkins(int cursor, int frame) {
 		this.cursor = cursor;
 		this.frame = frame;
 		initTeam();
 	}
 
-    public static Image pullImage(TitanType type, int frame){
-        return pullImage(type, frame, 70, 70);
+    public static Image pullImage(GraphicsContext gc, TitanType type, int frame){
+        return pullImage(gc, type, frame, 70, 70);
     }
 
-	public static Image pullImage(TitanType type, int frame, int x, int y){
+	public static Image pullImage(GraphicsContext gc, TitanType type, int frame, int x, int y){
 	    int cursor = 0;
         if(type == TitanType.GOALIE){
             cursor = 1;
@@ -65,9 +68,10 @@ public class SelectClassSkins extends Images {
         if (cache.containsKey(imageKey)){
             return cache.get(imageKey);
         }
-        ImageIcon rsi = new ImageIcon(imageKey);
-        Image im = rsi.getImage();
-        return getBufferedFrom(im, x, y);
+        Image im = new Image(imageKey);
+
+        // Scale the image using ScreenConst method
+        return sconst.getScaledImage(gc, im, x, y);
     }
 
 	public static String decodeImage(int cursor, int frame){
@@ -171,10 +175,10 @@ public class SelectClassSkins extends Images {
         return fileName;
     }
 
-	public void initTeam() {
+	public Image initTeam() {
         //decode cursor
         String fileName = decodeImage(cursor, frame);
-        loadImage (fileName);
+        return sconst.loadImage(fileName);
 	}
 
 }

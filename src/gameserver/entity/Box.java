@@ -1,11 +1,11 @@
 package gameserver.entity;
 
 import gameserver.engine.GameEngine;
+import javafx.geometry.Bounds;
+import javafx.scene.shape.Ellipse;
+import javafx.scene.shape.Rectangle;
+import javafx.scene.shape.Shape;
 
-import java.awt.*;
-import java.awt.geom.Area;
-import java.awt.geom.Ellipse2D;
-import java.awt.geom.Rectangle2D;
 import java.io.Serializable;
 import java.util.Optional;
 import java.util.UUID;
@@ -35,34 +35,64 @@ public class Box extends Coordinates  implements Serializable {
         return collidesSolidWhich(context, solids, 0, 0);
     }
 
+    
 
-    public boolean collidesAny(GameEngine context, Box[] boxes, int yd, int xd){
-        Shape cmp = new Rectangle((int)this.X + xd, (int)this.Y + yd, this.width, this.height);
+    public boolean collidesAny(GameEngine context, Box[] boxes, int yd, int xd) {
+        // Create the comparison shape
+        Shape cmp;
         if (this instanceof Titan) {
-            cmp = new Rectangle((int)(this.X + xd + context.SPRITE_X_EMPTY/2), (int)(this.Y + yd + context.SPRITE_Y_EMPTY/2),
-                    this.width - context.SPRITE_X_EMPTY, this.height - context.SPRITE_Y_EMPTY);
+            cmp = new Rectangle(
+                this.X + xd + context.SPRITE_X_EMPTY / 2,
+                this.Y + yd + context.SPRITE_Y_EMPTY / 2,
+                this.width - context.SPRITE_X_EMPTY,
+                this.height - context.SPRITE_Y_EMPTY
+            );
+        } else {
+            cmp = new Rectangle(
+                this.X + xd,
+                this.Y + yd,
+                this.width,
+                this.height
+            );
         }
-        boolean ret = false;
+    
+        // Iterate over boxes and check for collisions
         for (Box collCheck : boxes) {
             if (collCheck.id != this.id &&
-                    (!(collCheck instanceof Entity) || (((Entity) collCheck).health > 0))) {
+                (!(collCheck instanceof Entity) || (((Entity) collCheck).health > 0))) {
                 if (collCheck instanceof Titan) {
-                    //Titans don't take up their full hitboxes. Mostly.
-                    //It's twice as much because we only adjust the "collCheck" collider
-                    Area inter = new Area(new Rectangle((int)collCheck.X + context.SPRITE_X_EMPTY/2, (int)collCheck.Y + context.SPRITE_Y_EMPTY/2,
-                            collCheck.width - context.SPRITE_X_EMPTY, collCheck.height - context.SPRITE_Y_EMPTY));
-                    Area cmpa = new Area(cmp);
-                    inter.intersect(cmpa);
-                    if (!inter.isEmpty()) {
+                    // Titans don't take up their full hitboxes. Mostly.
+                    // It's twice as much because we only adjust the "collCheck" collider
+                    Shape inter = new Rectangle(
+                        collCheck.X + context.SPRITE_X_EMPTY / 2,
+                        collCheck.Y + context.SPRITE_Y_EMPTY / 2,
+                        collCheck.width - context.SPRITE_X_EMPTY,
+                        collCheck.height - context.SPRITE_Y_EMPTY
+                    );
+    
+                    // Use Shape.intersect to check for intersection
+                    Shape intersection = Shape.intersect(inter, cmp);
+                    if (intersection.getBoundsInLocal().getWidth() > 0 || intersection.getBoundsInLocal().getHeight() > 0) {
                         return true;
                     }
-                } else if (cmp.intersects(new Rectangle((int)collCheck.X, (int)collCheck.Y, collCheck.width, collCheck.height))) {
-                    return true;
+                } else {
+                    // Check for intersection with a regular Rectangle shape
+                    Shape collCheckShape = new Rectangle(
+                        collCheck.X,
+                        collCheck.Y,
+                        collCheck.width,
+                        collCheck.height
+                    );
+    
+                    // Use Shape.intersect to check for intersection
+                    Shape intersection = Shape.intersect(collCheckShape, cmp);
+                    if (intersection.getBoundsInLocal().getWidth() > 0 || intersection.getBoundsInLocal().getHeight() > 0) {
+                        return true;
+                    }
                 }
-
             }
         }
-        return ret;
+        return false;
     }
 
     public boolean collidesSolid(GameEngine context, Box[] solids, double yd, double xd) {
@@ -71,35 +101,54 @@ public class Box extends Coordinates  implements Serializable {
     }
 
     public Optional<Box> collidesSolidWhich(GameEngine context, Box[] solids, double yd, double xd) {
-        Shape cmp = new Rectangle.Double(this.X + xd, this.Y + yd, this.width, this.height);
+        Shape cmp;
         if (this instanceof Titan) {
-            cmp = new Ellipse2D.Double(this.X + xd + context.SPRITE_X_EMPTY/2, this.Y + yd + context.SPRITE_Y_EMPTY/2,
-                    this.width - context.SPRITE_X_EMPTY, this.height - context.SPRITE_Y_EMPTY);
+            cmp = new Ellipse(
+                this.X + xd + context.SPRITE_X_EMPTY / 2,
+                this.Y + yd + context.SPRITE_Y_EMPTY / 2,
+                (this.width - context.SPRITE_X_EMPTY) / 2,
+                (this.height - context.SPRITE_Y_EMPTY) / 2
+            );
+        } else {
+            cmp = new Rectangle(
+                this.X + xd,
+                this.Y + yd,
+                this.width,
+                this.height
+            );
         }
-        Optional<Box> ret = Optional.empty();
+
         for (Box collCheck : solids) {
             if (collCheck != null && collCheck.id != this.id &&
-                    (!(collCheck instanceof Entity) || (((Entity) collCheck).health > 0))) {
+                (!(collCheck instanceof Entity) || (((Entity) collCheck).health > 0))) {
+                Shape inter;
                 if (collCheck instanceof Titan) {
-                    //Titans don't take up their full hitboxes. Mostly.
-                    //It's twice as much because we only adjust the "collCheck" collider
-                    Area inter = new Area(new Rectangle((int)collCheck.X + context.SPRITE_X_EMPTY/2, (int)collCheck.Y + context.SPRITE_Y_EMPTY/2,
-                            collCheck.width - context.SPRITE_X_EMPTY, collCheck.height - context.SPRITE_Y_EMPTY));
-                    Area cmpa = new Area(cmp);
-                    inter.intersect(cmpa);
-                    if (!inter.isEmpty()) {
-                        if(performIntersection(context, collCheck)){
-                            return Optional.of(collCheck);
-                        }
-                    }
-                } else if (cmp.intersects(new Rectangle((int)collCheck.X, (int)collCheck.Y, collCheck.width, collCheck.height))) {
-                    if(performIntersection(context, collCheck)){
+                    inter = new Rectangle(
+                        collCheck.X + context.SPRITE_X_EMPTY / 2,
+                        collCheck.Y + context.SPRITE_Y_EMPTY / 2,
+                        collCheck.width - context.SPRITE_X_EMPTY,
+                        collCheck.height - context.SPRITE_Y_EMPTY
+                    );
+                } else {
+                    inter = new Rectangle(
+                        collCheck.X,
+                        collCheck.Y,
+                        collCheck.width,
+                        collCheck.height
+                    );
+                }
+
+                // Use Shape.intersect to check for intersection
+                Shape intersection = Shape.intersect(inter, cmp);
+                if (intersection.getBoundsInLocal().getWidth() > 0 || intersection.getBoundsInLocal().getHeight() > 0) {
+                    if (performIntersection(context, collCheck)) {
                         return Optional.of(collCheck);
                     }
                 }
             }
         }
-        return ret;
+
+        return Optional.empty();
     }
 
     private boolean performIntersection(GameEngine context, Box collCheck){
@@ -127,8 +176,8 @@ public class Box extends Coordinates  implements Serializable {
             return true;
     }
 
-    public Rectangle2D asRect() {
-        return new Rectangle((int)this.X, (int)this.Y, this.width, this.height);
+    public Bounds asRect() {
+        return new Rectangle((int)this.X, (int)this.Y, this.width, this.height).getBoundsInLocal();
     }
 
     public boolean ballNearestEdgeisX(Box ball) {

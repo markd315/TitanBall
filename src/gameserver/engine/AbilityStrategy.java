@@ -16,10 +16,13 @@ import gameserver.targeting.Targeting;
 import gameserver.targeting.core.Filter;
 import gameserver.targeting.core.Limiter;
 import gameserver.targeting.core.Selector;
+import javafx.geometry.Bounds;
+import javafx.geometry.Point2D;
+import javafx.scene.shape.Ellipse;
+import javafx.scene.shape.Rectangle;
+import javafx.scene.shape.Shape;
 import util.Util;
 
-import java.awt.*;
-import java.awt.geom.Ellipse2D;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -79,14 +82,14 @@ public class AbilityStrategy implements Serializable {
         int cd = (int) (caster.cooldownFactor * cdSeconds * 1000);
         dist *= caster.rangeFactor;
         context.effectPool.addUniqueEffect(new CooldownW(cd, caster), context);
-        shape = new Ellipse2D.Double(0, 0, 2, 2);
+        shape = new Ellipse(0, 0, 2, 2);
         sel = new Selector(shape, SelectorOffset.MOUSE_CENTER, c.FAR_RANGE);
         new Targeting(sel, champions, nearest, context)
                 .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
-        Rectangle re = sel.latestCollider.getBounds();
+        Bounds re = sel.latestCollider.getBoundsInLocal();
         int limitt = 0;
         while (limitt < dist) {
-            double ang = Util.degreesFromCoords(re.getX() - caster.X - 35, re.getY() - caster.Y - 35);
+            double ang = Util.degreesFromCoords(re.getMinX() - caster.X - 35, re.getMinY() - caster.Y - 35);
             double dx = Math.cos(Math.toRadians((ang)));
             double dy = Math.sin(Math.toRadians((ang)));
             if (!caster.collidesSolid(context, context.allSolids, (int) dx, (int) dy)) { //collision
@@ -120,7 +123,7 @@ public class AbilityStrategy implements Serializable {
         dmg *= caster.damageFactor;
         double range = c.getI("titan.slash.range") * caster.rangeFactor;
         context.effectPool.addUniqueEffect(new CooldownQ((int) (cdMs * caster.cooldownFactor), caster), context);
-        shape = new Ellipse2D.Double(0, 0, range, range);
+        shape = new Ellipse(0, 0, range, range);
         sel = new Selector(shape, SelectorOffset.CAST_CENTER, c.FAR_RANGE);
         appliedTo = new Targeting(sel, notFriendly, unlimited, context)
                 .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
@@ -131,7 +134,7 @@ public class AbilityStrategy implements Serializable {
     }
 
     public void kickSelectedTarget() {
-        shape = new Ellipse2D.Double(0, 0, 1, 1);
+        shape = new Ellipse(0, 0, 1, 1);
         sel = new Selector(shape, SelectorOffset.MOUSE_CENTER, (int) (c.getI("titan.kick.range") * caster.rangeFactor));
         appliedTo = new Targeting(sel, champions, nearest, context)
                 .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
@@ -181,8 +184,12 @@ public class AbilityStrategy implements Serializable {
                 (context.c.GOALIE_Y_MIN + 24),
                 context.c.GOALIE_XA_MAX - context.c.GOALIE_XA_MIN + 29,
                 context.c.GOALIE_Y_MAX - (context.c.GOALIE_Y_MIN) + 10);
-        if (goalA.intersects(corners) || goalH.intersects(corners)
-                || goalA.contains(corners) || goalH.contains(corners)) {
+        if (goalA.getBoundsInLocal().intersects(corners.getBoundsInLocal()) ||
+        goalH.getBoundsInLocal().intersects(corners.getBoundsInLocal()) ||
+        goalA.contains(new Point2D(corners.getBoundsInLocal().getMinX(), corners.getBoundsInLocal().getMinY())) ||
+        goalA.contains(new Point2D(corners.getBoundsInLocal().getMaxX(), corners.getBoundsInLocal().getMaxY())) ||
+        goalH.contains(new Point2D(corners.getBoundsInLocal().getMinX(), corners.getBoundsInLocal().getMinY())) ||
+        goalH.contains(new Point2D(corners.getBoundsInLocal().getMaxX(), corners.getBoundsInLocal().getMaxY()))) {
             return false; //redzone
         }
         return inBounds(corners);
@@ -192,14 +199,16 @@ public class AbilityStrategy implements Serializable {
         Rectangle bounds = new Rectangle(context.c.MIN_X, context.c.MIN_Y,
                 context.c.MAX_X - context.c.MIN_X,
                 context.c.MAX_Y - context.c.MIN_Y);
-        return corners.intersects(bounds) || bounds.contains(corners);
+        return corners.intersects(bounds.getBoundsInLocal()) || 
+                bounds.contains(new Point2D(corners.getBoundsInLocal().getMinX(), corners.getBoundsInLocal().getMinY())) ||
+                bounds.contains(new Point2D(corners.getBoundsInLocal().getMinX(), corners.getBoundsInLocal().getMinY()));
     }
 
     public void scatter(int rangeIn, int scatterDist, int cdms) {
         int range = (int) (rangeIn * caster.rangeFactor);
         context.effectPool.addUniqueEffect(
                 new CooldownW((int) (caster.cooldownFactor * cdms), caster), context);
-        shape = new Ellipse2D.Double(0, 0, range, range);
+        shape = new Ellipse(0, 0, range, range);
         sel = new Selector(shape, SelectorOffset.CAST_CENTER, c.FAR_RANGE);
         appliedTo = new Targeting(sel, champions, unlimited, context)
                 .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
@@ -241,7 +250,7 @@ public class AbilityStrategy implements Serializable {
     public void heal() {
         int dur = (int) (c.getI("titan.heal.dur") * caster.durationsFactor);
         int range = (int) (c.getI("titan.heal.range") * caster.rangeFactor);
-        shape = new Ellipse2D.Double(0, 0, 1, 1);
+        shape = new Ellipse(0, 0, 1, 1);
         sel = new Selector(shape, SelectorOffset.MOUSE_CENTER,
                 range);
         appliedTo = new Targeting(sel, friendlyIncSelf, mouseNear, context)
@@ -308,7 +317,7 @@ public class AbilityStrategy implements Serializable {
     public void suckBall() {
         int range = (int) (c.getI("titan.suck.range") * caster.rangeFactor);
         goOnCooldown(caster, "titan.suck.cdms", 'Q');
-        shape = new Ellipse2D.Double(0, 0, range, range);
+        shape = new Ellipse(0, 0, range, range);
         sel = new Selector(shape, SelectorOffset.CAST_CENTER, c.FAR_RANGE);
         //To update the region to caster loc
         sel.select(Collections.EMPTY_SET, x, y, caster);
@@ -364,7 +373,7 @@ public class AbilityStrategy implements Serializable {
         int range = (int) (c.getI("titan.flashbang.range") * caster.rangeFactor);
         int dur = (int) (durMillis * caster.durationsFactor);
         goOnCooldown(caster, "titan.flashbang.cdms", 'Q');
-        shape = new Ellipse2D.Double(0, 0, range, range);
+        shape = new Ellipse(0, 0, range, range);
         sel = new Selector(shape, SelectorOffset.CAST_CENTER, c.FAR_RANGE);
         appliedTo = new Targeting(sel, champions, nearest, context)
                 .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
@@ -382,6 +391,7 @@ public class AbilityStrategy implements Serializable {
         //To update the region to caster loc
         sel.select(Collections.EMPTY_SET, x, y, caster);
         corners = sel.getLatestColliderBounds();
+
         if (corners.getWidth() > 0 && inBoundsNotRedzone(corners)) {
             goOnCooldown(caster, "titan.molotov.cdms", 'W');
             context.entityPool.add(new Fire(caster, (int) corners.getX(), (int) corners.getY()));
@@ -396,7 +406,7 @@ public class AbilityStrategy implements Serializable {
         int range = (int) (c.getI("titan.stun.range") * caster.rangeFactor);
         int dur = (int) (durMillis * caster.durationsFactor);
         goOnCooldown(caster, "titan.stun.cdms", 'Q');
-        shape = new Ellipse2D.Double(0, 0, range, range);
+        shape = new Ellipse(0, 0, range, range);
         sel = new Selector(shape, SelectorOffset.CAST_CENTER, c.FAR_RANGE);
         appliedTo = new Targeting(sel, champions, nearest, context)
                 .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
@@ -429,13 +439,13 @@ public class AbilityStrategy implements Serializable {
             goOnCooldown(caster, "titan.steal.cdms", 'S');
             if (context.titanInPossession().isPresent()) {
                 Titan tip = context.titanInPossession().get();
-                shape = new Ellipse2D.Double(0, 0, caster.stealRad * 2, caster.stealRad * 2);
+                shape = new Ellipse(0, 0, caster.stealRad * 2, caster.stealRad * 2);
                 sel = new Selector(shape, SelectorOffset.CAST_CENTER, c.FAR_RANGE);
                 new Targeting(sel, champions, unlimited, context)
                         .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
-                double x = sel.getLatestColliderCircle().x;
-                double y = sel.getLatestColliderCircle().y;
-                double r = sel.getLatestColliderCircle().height / 2.0;
+                double x = sel.getLatestColliderCircle().getCenterX();
+                double y = sel.getLatestColliderCircle().getCenterY();
+                double r = sel.getLatestColliderCircle().getRadiusY() / 2.0;
                 if (context.ball.intersectCircle(x, y, r) && context.ballVisible) {
                     context.stats.grant(context, tip, StatEngine.StatEnum.TURNOVERS);
                     context.stats.grant(context, caster, StatEngine.StatEnum.STEALS);
