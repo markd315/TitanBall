@@ -5,11 +5,12 @@ import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.image.Image;
 
 import java.util.HashMap;
+import java.util.Map;
 
 public class SelectClassSkins{
 	int cursor =0;
 	int frame=0;
-	static HashMap<String, Image> cache = new HashMap<>();
+	static Map<String, Image> cache = new HashMap<>();
     static ScreenConst sconst = new ScreenConst(1920, 1080);
 
 
@@ -65,10 +66,11 @@ public class SelectClassSkins{
             cursor = 13;
         }
         String imageKey = decodeImage(cursor, frame);
-        if (cache.containsKey(imageKey)){
-            return cache.get(imageKey);
+        System.out.println(imageKey);
+         if (cache.containsKey(imageKey)){
+             return cache.get(imageKey);
         }
-        Image im = new Image(imageKey);
+        Image im = sconst.loadImage(imageKey);
 
         // Scale the image using ScreenConst method
         return sconst.getScaledImage(gc, im, x, y);

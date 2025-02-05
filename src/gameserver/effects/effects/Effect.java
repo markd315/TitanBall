@@ -14,8 +14,6 @@ import org.joda.time.Instant;
 import java.io.Serializable;
 
 public abstract class Effect implements Serializable {
-
-    private GraphicsContext gc = null;
     public Entity on;
 
     public abstract void onActivate(GameEngine context);
@@ -24,16 +22,17 @@ public abstract class Effect implements Serializable {
     ScreenConst sconst = new ScreenConst(1920, 1080);
 
 
-    public Image getIcon() {
+    public Image getIcon(GraphicsContext gc) {
         String imagePath = "res/Effects/" + this.getEffect().toString() + ".png";
-        Image im = new Image(getClass().getResourceAsStream(imagePath));
+        System.out.println(imagePath);
+        Image im = sconst.loadImage(imagePath);
         return sconst.getScaledImage(gc, im, 32, 32);
     }
 
 
-    public ImageView getIconTrans() {
+    public ImageView getIconTrans(GraphicsContext gc) {
         String imagePath = "res/Effects/" + this.getEffect().toString() + ".png";
-        Image im = new Image(getClass().getResourceAsStream(imagePath));
+        Image im = sconst.loadImage(imagePath);
         Image scaledImage = sconst.getScaledImage(gc, im, 32, 32);
 
         ImageView imageView = new ImageView(scaledImage);
@@ -46,18 +45,18 @@ public abstract class Effect implements Serializable {
     }
 
 
-    public javafx.scene.image.Image getIconBig() {
+    public javafx.scene.image.Image getIconBig(GraphicsContext gc) {
         String imagePath = "res/Effects/" + this.getEffect().toString() + ".png";
         // Load and scale the image to 64x64
-        javafx.scene.image.Image iconBig = new javafx.scene.image.Image(getClass().getResourceAsStream(imagePath), 64, 64, false, true);
-        return iconBig;
+        Image iconBig = sconst.loadImage(imagePath);
+        return sconst.getScaledImage(gc, iconBig, 64, 64);
     }
 
-    public javafx.scene.image.Image getIconSmall() {
+    public javafx.scene.image.Image getIconSmall(GraphicsContext gc) {
         String imagePath = "res/Effects/" + this.getEffect().toString() + ".png";
         // Load and scale the image to 16x16
-        javafx.scene.image.Image iconSmall = new javafx.scene.image.Image(getClass().getResourceAsStream(imagePath), 16, 16, false, true);
-        return iconSmall;
+        Image iconSmall = sconst.loadImage(imagePath);
+        return sconst.getScaledImage(gc, iconSmall, 16, 16);
     }
 
 
@@ -95,13 +94,6 @@ public abstract class Effect implements Serializable {
         );
     }
 
-    public boolean check(){ //Read-only action, perform whenever
-        if(Instant.now().isAfter(getEnd())){
-            return false;
-        }
-        return true;
-    }
-
     public void cull(GameEngine context){
         onCease(context);
         this.setEnd(Instant.now());
@@ -110,28 +102,10 @@ public abstract class Effect implements Serializable {
     }
 
     public Effect(EffectId effect, Entity on, int durationMillis){
-        this(null, effect, on, durationMillis, 0);
-    }
-
-    public Effect(GraphicsContext gc, EffectId effect, Entity on, int durationMillis){
-        this(gc, effect, on, durationMillis, 0);
+        this(effect, on, durationMillis, 0);
     }
 
     public Effect(EffectId effect, Entity on, int durationMillis, int delayMillis){
-        this.on = on;
-        this.effect = effect;
-        this.duration = durationMillis;
-        this.delay = delayMillis;
-        this.active = false;
-        this.everActive = false;
-        this.percentLeft = 100.0;
-        Instant now = Instant.now();
-        begin = now.plus(delayMillis);
-        end = begin.plus(durationMillis);
-    }
-
-    public Effect(GraphicsContext gc, EffectId effect, Entity on, int durationMillis, int delayMillis){
-        this.gc = gc;
         this.on = on;
         this.effect = effect;
         this.duration = durationMillis;

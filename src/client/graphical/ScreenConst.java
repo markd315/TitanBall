@@ -57,6 +57,7 @@ public class ScreenConst {
         x = adjX(x);
         y = adjY(y);
         gc.fillText(payload, x, y);
+        System.out.println(payload);
     }
 
     public void setFont(GraphicsContext gc, Font font) {
