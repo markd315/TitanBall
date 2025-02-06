@@ -2,6 +2,7 @@ package gameserver.gamemanager;
 
 import authserver.SpringContextBridge;
 import authserver.users.identities.UserService;
+import com.esotericsoftware.kryonet.Client;
 import com.esotericsoftware.kryonet.Connection;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;

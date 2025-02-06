@@ -60,15 +60,15 @@ public class Selector  implements Serializable {
                 break;
         }
         Shape shape = new Kryo().copy(sizeDef);
-        // Create an affine transform
-        Affine rot = new Affine();
-        // Translate to center
-        rot.append(new Translate(centerX - shape.getBoundsInLocal().getWidth() / 2, centerY - shape.getBoundsInLocal().getHeight() / 2));
-        // Rotate the shape
-        rot.append(new Rotate(Math.toDegrees(shapeAngle), centerX, centerY));
 
-        // Apply the transform to the shape
-        shape.getTransforms().add(rot);
+        Bounds bounds = shape.getBoundsInLocal();
+        double shapeCenterX = bounds.getMinX() + bounds.getWidth() / 2;
+        double shapeCenterY = bounds.getMinY() + bounds.getHeight() / 2;
+
+        Affine transform = new Affine();
+        transform.append(new Translate(centerX - shapeCenterX, centerY - shapeCenterY));
+        transform.append(new Rotate(Math.toDegrees(shapeAngle), centerX, centerY));
+        shape.getTransforms().add(transform);
 
         // Set the latest collider
         latestCollider = shape;
@@ -95,6 +95,7 @@ public class Selector  implements Serializable {
 
     private boolean collide(Entity entity, Shape s) {
         Rectangle r = new Rectangle((int)entity.X, (int)entity.Y, entity.width, entity.height);
+
         if(entity instanceof Titan){
             r = new Rectangle((int)entity.X + 15, (int)entity.Y + 5, entity.width - 30, entity.height - 10);
         }
