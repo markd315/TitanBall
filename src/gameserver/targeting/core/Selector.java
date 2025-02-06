@@ -5,6 +5,7 @@ import com.esotericsoftware.kryo.Kryo;
 import gameserver.entity.Entity;
 import gameserver.entity.Titan;
 import gameserver.targeting.SelectorOffset;
+import javafx.geometry.Bounds;
 import javafx.geometry.Point2D;
 import javafx.scene.shape.Ellipse;
 import javafx.scene.shape.Rectangle;
@@ -42,9 +43,7 @@ public class Selector  implements Serializable {
             System.out.println("Aimed too far, handle later");
             return ret;
         }
-        double mouseAngle, shapeAngle = getMouseAngleRadians(mX, mY, casting);
-        int xLoc = (int)casting.X + (casting.width /2);
-        int yLoc = (int)casting.Y + (casting.height /2);
+        double shapeAngle = getMouseAngleRadians(mX, mY, casting);
         switch(offset){
             case CAST_TO_MOUSE:
                 centerX = (mX + (int)casting.X)/2;
@@ -57,8 +56,6 @@ public class Selector  implements Serializable {
                 break;
             case CAST_CENTER:
             default:
-                centerX = xLoc;
-                centerY = yLoc;
                 shapeAngle = 0.0;
                 break;
         }
@@ -97,35 +94,26 @@ public class Selector  implements Serializable {
     }
 
     private boolean collide(Entity entity, Shape s) {
-    Rectangle r = new Rectangle(entity.X, entity.Y, entity.width, entity.height);
-    if (entity instanceof Titan) {
-        r = new Rectangle(entity.X + 15, entity.Y + 5, entity.width - 30, entity.height - 10);
+        Rectangle r = new Rectangle((int)entity.X, (int)entity.Y, entity.width, entity.height);
+        if(entity instanceof Titan){
+            r = new Rectangle((int)entity.X + 15, (int)entity.Y + 5, entity.width - 30, entity.height - 10);
+        }
+        Shape intersection = Shape.intersect(r, s);
+        return intersection.getBoundsInLocal().getWidth() > 0 && intersection.getBoundsInLocal().getHeight() > 0;
     }
-
-    // Convert bounds to points and check for containment
-    Point2D topLeft = new Point2D((float) r.getX(), (float) r.getY());
-    Point2D topRight = new Point2D((float) r.getX() + (float) r.getWidth(), (float) r.getY());
-    Point2D bottomLeft = new Point2D((float) r.getX(), (float) r.getY() + (float) r.getHeight());
-    Point2D bottomRight = new Point2D((float) r.getX() +(float)  r.getWidth(), (float) r.getY() + (float) r.getHeight());
-
-    return s.getBoundsInLocal().intersects(r.getBoundsInLocal()) ||
-           s.contains(topLeft) || s.contains(topRight) ||
-           s.contains(bottomLeft) || s.contains(bottomRight);
-}
 
     public Rectangle getLatestColliderBounds() {
         if (latestCollider == null) {
             return new Rectangle(99999, 9999, 0, 0);
         }
-        javafx.geometry.Bounds bounds = latestCollider.getBoundsInLocal();
+        Bounds bounds = latestCollider.getBoundsInLocal();
         return new Rectangle(bounds.getMinX(), bounds.getMinY(), bounds.getWidth(), bounds.getHeight());
     }
 
     public Ellipse getLatestColliderCircle() {
-        if (latestCollider == null) {
+        if (latestCollider == null || !(latestCollider instanceof Ellipse)) {
             return new Ellipse(99999, 9999, 0, 0);
         }
-        javafx.geometry.Bounds bounds = latestCollider.getBoundsInLocal();
-        return new Ellipse(bounds.getMinX(), bounds.getMinY(), bounds.getWidth(), bounds.getHeight());
+        return (Ellipse) latestCollider;
     }
 }
