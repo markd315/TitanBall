@@ -63,8 +63,9 @@ public class Selector implements Serializable {
                 break;
         }
 
-        // Copy shape and log original bounds
-        Shape shape = new Kryo().copy(sizeDef);
+        System.out.println("casting " + sizeDef);
+        Shape shape = Shape.union(sizeDef, new Rectangle(0, 0)); // Creates a copy
+        System.out.println("copied");
         Bounds bounds = shape.getBoundsInLocal();
         System.out.println("Shape original bounds: " + bounds);
 
