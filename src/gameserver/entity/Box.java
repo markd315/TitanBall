@@ -138,8 +138,8 @@ public class Box extends Coordinates  implements Serializable {
             return true;
     }
 
-    public Rectangle asRect() {
-        return new Rectangle((int)this.X, (int)this.Y, this.width, this.height);
+    public Bounds asBounds() {
+        return new Rectangle((int)this.X, (int)this.Y, this.width, this.height).getBoundsInLocal();
     }
 
     public boolean ballNearestEdgeisX(Box ball) {

@@ -254,9 +254,9 @@ public class GameEngine extends Game {
         if (titanInPossession().isPresent() && titanInPossession().get().getType() == TitanType.GOALIE) {
             for (GoalHoop goal : this.lowGoals) {
                 GoalSprite tempGoal = new GoalSprite(goal, 0, 0, new ScreenConst(1920, 1080)); //Just for using the g2d intersect method
-                Bounds ballBounds = ball.asRect();
+                Bounds ballBounds = ball.asBounds();
                 while (tempGoal.intersects(ballBounds)) {
-                    ballBounds = ball.asRect();
+                    ballBounds = ball.asBounds();
                     int wRad = (int) ((tempGoal.getRadiusX() - 1) / 2);
                     int hRad = (int) ((tempGoal.getRadiusY() - 1) / 2);
                     double ang = Util.degreesFromCoords(tempGoal.getCenterX() + wRad - ball.X - ball.centerDist, tempGoal.getCenterY() + hRad - ball.Y - ball.centerDist);
@@ -273,9 +273,9 @@ public class GameEngine extends Game {
     protected void minorHoopBounce() {
         for (GoalHoop goal : this.lowGoals) {
             GoalSprite tempGoal = new GoalSprite(goal, 0, 0, new ScreenConst(1920, 1080)); //Just for using the g2d intersect method
-            Bounds ballBounds = ball.asRect();
+            Bounds ballBounds = ball.asBounds();
             while (tempGoal.intersects(ballBounds)) {
-                ballBounds = ball.asRect();
+                ballBounds = ball.asBounds();
                 int wRad = (int) ((tempGoal.getRadiusX() - 1) / 2);
                 int hRad = (int) ((tempGoal.getRadiusY() - 1) / 2);
                 double ang = Util.degreesFromCoords(tempGoal.getCenterX() + wRad - ball.X - ball.centerDist, tempGoal.getCenterY() + hRad - ball.Y - ball.centerDist);

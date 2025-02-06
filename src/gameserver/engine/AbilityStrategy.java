@@ -321,7 +321,7 @@ public class AbilityStrategy implements Serializable {
         sel = new Selector(shape, SelectorOffset.CAST_CENTER, c.FAR_RANGE);
         //To update the region to caster loc
         sel.select(Collections.EMPTY_SET, x, y, caster);
-        if (sel.latestCollider.intersects(context.ball.asRect()) && !context.anyPoss()) {
+        if (sel.latestCollider.intersects(context.ball.asBounds()) && !context.anyPoss()) {
             double tx = caster.X + caster.centerDist - context.ball.centerDist;
             double ty = caster.Y + caster.centerDist - context.ball.centerDist;
             double ang = Util.degreesFromCoords(tx - context.ball.X, ty - context.ball.Y);
