@@ -15,10 +15,14 @@ import java.io.Serializable;
 
 public class ScreenConst implements Serializable {
     public static final long serialVersionUID = 1L;
-    private int X;
-    private int Y;
-    public static final int CAL_X = 1920;
-    public static final int CAL_Y = 1080;
+    private int X =0;
+    private int Y = 0;
+    public static int CAL_X = 1920;
+    public static int CAL_Y = 1080;
+
+    public ScreenConst(){
+
+    }
 
     public ScreenConst(int xSize, int ySize) {
         this.X = xSize;
@@ -114,35 +118,35 @@ public class ScreenConst implements Serializable {
         return (int) (((double)i * CAL_Y) / Y);
     }
 
-    public final int RESULT_IMG_X;
-    public final int RESULT_IMG_Y;
-    public final int STATS_FONT;
-    public final double STATS_MEDAL;
-    public final int BALL_PTR_X;
-    public final int BALL_PTR_Y;
-    public final int GOAL_TXT_X;
-    public final int GOAL_TXT_Y;
-    public final double CAM_MAX_X;
-    public final double CAM_MAX_Y;
-    public final int STAT_CAT_FONT;
-    public final int STAT_EXTERNAL_H;
-    public final int STAT_INTERNAL_H;
-    public final int STAT_EXTERNAL_W;
-    public final double STAT_INTERNAL_SC;
-    public final int STAT_CAT_X;
-    public final int STAT_FX_X;
-    public final int STAT_Y_SCL;
-    public final int STAT_BAR_X;
-    public final int DESC_ABIL_X;
-    public final int ICON_ABIL_X;
-    public final int OVR_DESC_FONT;
-    public final int ABIL_DESC_FONT;
-    public final int OVR_DESC_Y;
-    public final int E_ABIL_Y;
-    public final int E_DESC_Y;
-    public final int R_ABIL_Y;
-    public final int R_DESC_Y;
-    public final int STAT_INT_X;
+    public int RESULT_IMG_X =0;
+    public int RESULT_IMG_Y =0;
+    public int STATS_FONT =0;
+    public double STATS_MEDAL =0;
+    public int BALL_PTR_X =0;
+    public int BALL_PTR_Y =0;
+    public int GOAL_TXT_X =0;
+    public int GOAL_TXT_Y =0;
+    public double CAM_MAX_X =0;
+    public double CAM_MAX_Y =0;
+    public int STAT_CAT_FONT =0;
+    public int STAT_EXTERNAL_H =0;
+    public int STAT_INTERNAL_H =0;
+    public int STAT_EXTERNAL_W =0;
+    public double STAT_INTERNAL_SC =0;
+    public int STAT_CAT_X =0;
+    public int STAT_FX_X =0;
+    public int STAT_Y_SCL =0;
+    public int STAT_BAR_X =0;
+    public int DESC_ABIL_X =0;
+    public int ICON_ABIL_X =0;
+    public int OVR_DESC_FONT =0;
+    public int ABIL_DESC_FONT =0;
+    public int OVR_DESC_Y =0;
+    public int E_ABIL_Y =0;
+    public int E_DESC_Y =0;
+    public int R_ABIL_Y =0;
+    public int R_DESC_Y =0;
+    public int STAT_INT_X;
 
     public void draw(GraphicsContext gc, GoalSprite goal) {
         goal.setRadiusY(adjY(goal.getRadiusY()));

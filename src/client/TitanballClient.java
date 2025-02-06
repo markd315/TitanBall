@@ -26,6 +26,7 @@ import gameserver.models.Game;
 import gameserver.targeting.ShapePayload;
 import gameserver.gamemanager.GamePhase;
 import javafx.event.EventHandler;
+import javafx.event.EventType;
 import javafx.geometry.Insets;
 import javafx.scene.SnapshotParameters;
 import javafx.scene.canvas.Canvas;
@@ -51,6 +52,7 @@ import networking.PlayerDivider;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
 import org.json.JSONObject;
+import org.springframework.security.core.parameters.P;
 import util.Util;
 
 import java.io.File;
@@ -217,15 +219,19 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
         fireReconnect();
     }
 
-    Image getScaledImage(Image srcImg, int width, int height) {
-        GraphicsContext gc = canvas.getGraphicsContext2D();
-        sconst.drawImage(gc,srcImg, 0, 0, width, height);
+    public Image getScaledImage(Image srcImg, int width, int height) {
+        ImageView imageView = new ImageView(srcImg);
+        imageView.setFitWidth(width);
+        imageView.setFitHeight(height);
+        imageView.setPreserveRatio(true);
+
         WritableImage scaledImage = new WritableImage(width, height);
         SnapshotParameters params = new SnapshotParameters();
         params.setFill(Color.TRANSPARENT);
-        canvas.snapshot(params, scaledImage);
+
+        imageView.snapshot(params, scaledImage);
         return scaledImage;
-    }
+}
 
     public int indexSelected() {
         for (int i = 0; i < game.players.length; i++) {
@@ -871,7 +877,6 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
         for (RangeCircle ri : clientCircles) { //draw these on top of enemies, but the shot underneath
             gc.setLineWidth(2);
             gc.setStroke(ri.getColor());
-            System.out.println("Drawing circle at " + ri.getRadius() + " from " + ri.getColor());
             Titan t = game.underControl;
             if (ri.getRadius() > 0) {
                 //don't show Artisan Suck with ball
@@ -2320,12 +2325,13 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
 
     public void handle(MouseEvent mouseEvent) {
         // Handle mouse dragged and mouse moved events
-        if(mouseEvent.getEventType() == MouseEvent.MOUSE_MOVED) {
+        EventType<? extends MouseEvent> type = mouseEvent.getEventType();
+        if(type == MouseEvent.MOUSE_MOVED || type == MouseEvent.MOUSE_DRAGGED) {
             controlsHeld.posX = sconst.invertMouseX((int) mouseEvent.getX());
             controlsHeld.posY = sconst.invertMouseY((int) mouseEvent.getY());
             controlsHeld.camX = camX;
             controlsHeld.camY = camY;
-        } else if (mouseEvent.getEventType() == MouseEvent.MOUSE_PRESSED || mouseEvent.getEventType() == MouseEvent.MOUSE_DRAGGED) {
+        } else if (type == MouseEvent.MOUSE_PRESSED ) {
             if (phase == GamePhase.INGAME || phase == GamePhase.TUTORIAL) {
                 controlsHeld.posX = sconst.invertMouseX((int) mouseEvent.getX());
                 controlsHeld.posY = sconst.invertMouseY((int) mouseEvent.getY());
@@ -2338,9 +2344,11 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                 controlsHeld.camX = camX;
                 controlsHeld.camY = camY;
             }
-        } else if (mouseEvent.getEventType() == MouseEvent.MOUSE_RELEASED) {
+        } else if (type == MouseEvent.MOUSE_RELEASED) {
             controlsConfig.mapKeyRelease(controlsHeld, "LMB");
             controlsConfig.mapKeyRelease(controlsHeld, "RMB");
+        } else {
+            System.out.println("Unknown mouse event type: " + type);
         }
     }
 
