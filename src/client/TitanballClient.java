@@ -585,7 +585,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
 
             gameserverConn.addListener(new Listener() {
                 public synchronized void received(Connection connection, Object object) {
-                     System.out.println("type of object: " + object.getClass().getName());
+                     //System.out.println("type of object: " + object.getClass().getName());
                      if (object instanceof Game) {
                          game = (GameEngine) object;
                      }

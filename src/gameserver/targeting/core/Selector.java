@@ -1,6 +1,5 @@
 package gameserver.targeting.core;
 
-
 import com.esotericsoftware.kryo.Kryo;
 import gameserver.entity.Entity;
 import gameserver.entity.Titan;
@@ -64,22 +63,23 @@ public class Selector implements Serializable {
                 break;
         }
 
-        // Copy and transform shape
+        // Copy shape and log original bounds
         Shape shape = new Kryo().copy(sizeDef);
         Bounds bounds = shape.getBoundsInLocal();
-        double shapeCenterX = bounds.getMinX() + bounds.getWidth() / 2;
-        double shapeCenterY = bounds.getMinY() + bounds.getHeight() / 2;
-
         System.out.println("Shape original bounds: " + bounds);
 
+        // Correct transformation: Translate first, then rotate
         Affine transform = new Affine();
-        transform.append(new Translate(centerX - shapeCenterX, centerY - shapeCenterY));
+        transform.append(new Translate(centerX - (bounds.getMinX() + bounds.getWidth() / 2),
+                                       centerY - (bounds.getMinY() + bounds.getHeight() / 2)));
         transform.append(new Rotate(Math.toDegrees(shapeAngle), centerX, centerY));
+
+        // Apply transform
         shape.getTransforms().add(transform);
 
         latestCollider = shape;
-
-        System.out.println("Transformed shape bounds: " + shape.getBoundsInLocal());
+        Bounds transformedBounds = shape.getBoundsInLocal();
+        System.out.println("Transformed shape bounds: " + transformedBounds);
 
         // Entity collision check
         for (Entity e : input) {
@@ -111,10 +111,12 @@ public class Selector implements Serializable {
             r = new Rectangle((int) entity.X + 15, (int) entity.Y + 5, entity.width - 30, entity.height - 10);
         }
 
-        boolean collides = s.getBoundsInLocal().intersects(r.getBoundsInLocal());
+        Bounds entityBounds = r.getBoundsInLocal();
+        Bounds shapeBounds = s.getBoundsInLocal();
+        boolean collides = entityBounds.intersects(shapeBounds);
 
-        System.out.println("Collision check: Entity Bounds: " + r.getBoundsInLocal() +
-                " | Selector Bounds: " + s.getBoundsInLocal() +
+        System.out.println("Collision check: Entity Bounds: " + entityBounds +
+                " | Selector Bounds: " + shapeBounds +
                 " | Result: " + collides);
 
         return collides;
