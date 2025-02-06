@@ -91,7 +91,6 @@ public class Selector implements Serializable {
                 System.out.println("No collision.");
             }
         }
-
         return ret;
     }
 
