@@ -30,7 +30,6 @@ import javafx.geometry.Insets;
 import javafx.scene.SnapshotParameters;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
-import javafx.scene.control.Button;
 import javafx.scene.effect.BlendMode;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -163,8 +162,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
         intro = sconst.loadImage("res/Court/logo2.png");
         ballTexture = sconst.loadImage("res/Court/ballA.png");
         ballBTexture = sconst.loadImage("res/Court/ballB.png");
-        Image tmp = getScaledImage(ballTexture, 30, 30);
-        ballLobTexture = getScaledImage(tmp, 45, 45);
+        ballLobTexture = getScaledImage(ballTexture, 45, 45);
         ballFTexture = sconst.loadImage("res/Court/ballFA.png");
         ballFBTexture = sconst.loadImage("res/Court/ballFB.png");
         ballPtr = sconst.loadImage("res/Court/ballptr.png");
@@ -870,8 +868,9 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
             }
         }
         for (RangeCircle ri : clientCircles) { //draw these on top of enemies, but the shot underneath
-            gc.setLineWidth(3);
+            gc.setLineWidth(2);
             gc.setStroke(ri.getColor());
+            System.out.println("Drawing circle at " + ri.getRadius() + " from " + ri.getColor());
             Titan t = game.underControl;
             if (ri.getRadius() > 0) {
                 //don't show Artisan Suck with ball
@@ -880,14 +879,11 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                     int h = w;
                     int x = (int) t.X + (t.width / 2) - w / 2;
                     int y = (int) t.Y + (t.height / 2) - h / 2;
-                    System.out.println("Original: x=" + x + " y=" + y + " w=" + w + " h=" + h);
                     x = sconst.adjX(x - camX);
                     y = sconst.adjY(y - camY);
                     h = sconst.adjY(h);
                     w = sconst.adjX(w);
-                    System.out.println("Adjusted: x=" + x + " y=" + y + " w=" + w + " h=" + h);
                     gc.strokeOval(x, y, w, h);
-                    gc.strokeOval(100, 100, 200, 200); // Hardcoded circle in visible space
                 }
             }
         }
@@ -2322,12 +2318,12 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
 
     public void handle(MouseEvent mouseEvent) {
         // Handle mouse dragged and mouse moved events
-        if(mouseEvent.getEventType() == MouseEvent.MOUSE_MOVED || mouseEvent.getEventType() == MouseEvent.MOUSE_DRAGGED) {
+        if(mouseEvent.getEventType() == MouseEvent.MOUSE_MOVED) {
             controlsHeld.posX = sconst.invertMouseX((int) mouseEvent.getX());
             controlsHeld.posY = sconst.invertMouseY((int) mouseEvent.getY());
             controlsHeld.camX = camX;
             controlsHeld.camY = camY;
-        } else if (mouseEvent.getEventType() == MouseEvent.MOUSE_PRESSED) {
+        } else if (mouseEvent.getEventType() == MouseEvent.MOUSE_PRESSED || mouseEvent.getEventType() == MouseEvent.MOUSE_DRAGGED) {
             if (phase == GamePhase.INGAME || phase == GamePhase.TUTORIAL) {
                 controlsHeld.posX = sconst.invertMouseX((int) mouseEvent.getX());
                 controlsHeld.posY = sconst.invertMouseY((int) mouseEvent.getY());

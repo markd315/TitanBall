@@ -99,11 +99,11 @@ public class ScreenConst {
     }
 
     public int adjX(int v) {
-        return (int) ((double)v / (double) CAL_X * (double)X);
+        return (int) ((double)v / (double) CAL_X * X);
     }
 
     public int adjY(int v) {
-        return (int) ((double)v / (double) CAL_Y * (double)Y);
+        return (int) ((double)v / (double) CAL_Y * Y);
     }
 
     public int invertMouseX(int i){
