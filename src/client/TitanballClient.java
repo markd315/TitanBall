@@ -150,6 +150,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
     ScheduledExecutorService exec = Executors.newScheduledThreadPool(1);
     private TeamAffiliation saved_team;
     private PlayerDivider saved_player_divider;
+    private boolean initialUpdate = false;
 
     public TitanballClient(TitanballWindow titanballWindow, int xSize, int ySize, double scl, HttpClient loginClient, Map<String, String> keymap, boolean createListeners, boolean darkTheme) {
         this.darkTheme = darkTheme;
@@ -606,11 +607,13 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                     controlsHeld.masteries = masteries;
                     controlsHeld.camX = camX;
                     controlsHeld.camY = camY;
-                    
                     try {
-                        System.out.println("Initial update sending");
-                        gameserverConn.sendTCP(controlsHeld);
-                        System.out.println("Initial update sent");
+                        if (! initialUpdate) {
+                            System.out.println("Initial update sending");
+                            initialUpdate = true;
+                            gameserverConn.sendTCP(controlsHeld);
+                            System.out.println("Initial update sent");
+                        }
                     } catch (KryoException e) {
                         System.out.println("kryo end");
                         System.out.println(game.ended);

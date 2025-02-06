@@ -108,6 +108,7 @@ public class TitanballWindow extends Application {
         scene.setOnMousePressed(client::handle);
         scene.setOnMouseReleased(client::handle);
         scene.setOnMouseMoved(client::handle);
+        scene.setOnMouseDragged(client::handle);
         primaryStage.setScene(scene);
         primaryStage.show();
         startGameLoop();

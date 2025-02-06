@@ -97,7 +97,6 @@ public class ManagedGame {
                 uniqueEmails.add(p.getEmail());
             }
         }
-        System.out.println("uniqueEmails " + uniqueEmails.size());
         return (uniqueEmails.size() == availableSlots.size()); // Check if all players are connected
     }
 
@@ -105,7 +104,6 @@ public class ManagedGame {
         boolean connFound = connectionQueued(queue, c);
         String email = Util.jwtExtractEmail(token);
         boolean emailFound = accountQueued(queue, email);
-        System.out.println(email + " c found" + connFound + " e found " + emailFound);
         if(!connFound){
             if(emailFound){ //rejoin unstarted game
                 for(PlayerConnection p : queue){
