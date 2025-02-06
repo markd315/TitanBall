@@ -1,25 +1,29 @@
 package client;
 
 import client.forms.LoginForm;
+import client.forms.LoginListener;
 import com.esotericsoftware.kryonet.Client;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import gameserver.gamemanager.GamePhase;
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.layout.Pane;
 import javafx.stage.Stage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Map;
 import java.util.Scanner;
+import java.util.concurrent.CountDownLatch;
 
 
 public class TitanballWindow extends Application {
+    private static final Logger log = LoggerFactory.getLogger(TitanballWindow.class);
     private static HttpClient loginClient;
     private int xSize = 1920, ySize = 1080;
     private double scl = 1.5;
@@ -115,26 +119,58 @@ public class TitanballWindow extends Application {
         fio.close();
     }
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) {
         loginClient = new HttpClient();
+
+        // Create a CountDownLatch to wait for the login process
+        CountDownLatch latch = new CountDownLatch(1);
+
+        // Runnable to save refresh token after login
+        Runnable saveRefreshToken = () -> {
+            try {
+                writeRefreshToken(loginClient.refreshToken);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            latch.countDown();  // Count down to signal that the token is saved and login is complete
+        };
+
+        // Create the login listener
+        LoginListener loginListener = new LoginListener(loginClient, null, null, null, saveRefreshToken);
+
+        // Try reading the refresh token from a file and refresh if valid
         try {
             Scanner sc = new Scanner(new File("session.jwt"));
             loginClient.refreshToken = sc.nextLine();
             sc.close();
+
             if (loginClient.refresh(loginClient.refreshToken) != 200) {
                 throw new Exception("Refresh token invalid!");
             }
+
+            // If refresh token is valid, save it
             writeRefreshToken(loginClient.refreshToken);
         } catch (Exception ex) {
-            LoginForm authFrame = new LoginForm(loginClient);
-            authFrame.setVisible(false);
-            authFrame.dispose();
-            writeRefreshToken(loginClient.refreshToken);
+            // Show the login form to the user on the JavaFX thread
+            Platform.runLater(() -> {
+                LoginForm authForm = new LoginForm(loginClient, saveRefreshToken);
+                loginListener.setForm(authForm);
+            });
+
+            // Wait until the latch is counted down, indicating that the login process is complete
+            try {
+                latch.await();  // Block until the form is submitted and the refresh token is saved
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
         }
+
+        // Proceed once login is successful and the refresh token is saved
         String finalToken = loginClient.token;
         String finalRefreshToken = loginClient.refreshToken;
         System.out.println(finalToken + " bearer");
         System.out.println(finalRefreshToken + " refresh");
         launch(args);
     }
+
 }
