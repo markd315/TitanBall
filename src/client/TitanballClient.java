@@ -844,7 +844,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
             }
         } else {
             RangeCircle steal = new RangeCircle(
-                    Color.SKYBLUE, game.underControl.stealRad);
+                    Color.TURQUOISE, game.underControl.stealRad);
             clientCircles.add(steal);
         }
 
