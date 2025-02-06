@@ -7,14 +7,14 @@ import javafx.scene.image.Image;
 import javafx.scene.image.WritableImage;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Ellipse;
-import javafx.scene.shape.Polygon;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 
 import java.io.File;
+import java.io.Serializable;
 
-public class ScreenConst {
-
+public class ScreenConst implements Serializable {
+    public static final long serialVersionUID = 1L;
     private int X;
     private int Y;
     public static final int CAL_X = 1920;
