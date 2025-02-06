@@ -111,7 +111,7 @@ public class Selector  implements Serializable {
     }
 
     public Ellipse getLatestColliderCircle() {
-        if (latestCollider == null || !(latestCollider instanceof Ellipse)) {
+        if (!(latestCollider instanceof Ellipse)) {
             return new Ellipse(99999, 9999, 0, 0);
         }
         return (Ellipse) latestCollider;

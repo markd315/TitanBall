@@ -57,7 +57,11 @@ public class ShapePayload  implements Serializable {
 
     public Shape from() {
     if (this.type == ShapeSelector.ELLIPSE) {
-        return new Ellipse(this.x + this.w / 2, this.y + this.h / 2, this.w / 2, this.h / 2);
+        return new Ellipse(
+                this.x + this.w / 2,
+                this.y + this.h / 2,
+                this.w / 2,
+                this.h / 2);
     }
     if (this.type == ShapeSelector.TRI) {
         Polygon polygon = new Polygon();
@@ -75,7 +79,7 @@ public class ShapePayload  implements Serializable {
             double wt = sconst.adjX(w);
             double yt = sconst.adjY(y - camY);
             double ht = sconst.adjY(h);
-            return new Ellipse(xt, yt, wt, ht);
+            return new Ellipse(xt + wt/2, yt + ht/2, wt/2, ht/2);
         }
         if(this.type == ShapeSelector.TRI){
             Polygon polygon = new Polygon();
