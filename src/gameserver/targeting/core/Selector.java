@@ -71,16 +71,24 @@ public class Selector implements Serializable {
 
         // Correct transformation: Translate first, then rotate
         Affine transform = new Affine();
-        transform.append(new Translate(centerX - (bounds.getMinX() + bounds.getWidth() / 2),
-                                       centerY - (bounds.getMinY() + bounds.getHeight() / 2)));
-        transform.append(new Rotate(Math.toDegrees(shapeAngle), centerX, centerY));
+        // Just move to the center point directly
+        transform.append(new Translate(centerX, centerY));
+
+        // Apply rotation around this point if needed
+        if (shapeAngle != 0.0) {
+            transform.append(new Rotate(Math.toDegrees(shapeAngle), 0, 0));
+        }
 
         // Apply transform
         shape.getTransforms().add(transform);
 
-        latestCollider = shape;
+        // Debug logging
         Bounds transformedBounds = shape.getBoundsInLocal();
+        System.out.println("After transform - Center point: (" + centerX + ", " + centerY + ")");
+        System.out.println("Shape dimensions: width=" + bounds.getWidth() + ", height=" + bounds.getHeight());
         System.out.println("Transformed shape bounds: " + transformedBounds);
+
+        latestCollider = shape;
 
         // Entity collision check
         for (Entity e : input) {
