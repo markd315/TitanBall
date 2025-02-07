@@ -439,15 +439,9 @@ public class AbilityStrategy implements Serializable {
             goOnCooldown(caster, "titan.steal.cdms", 'S');
             if (context.titanInPossession().isPresent()) {
                 Titan tip = context.titanInPossession().get();
-                shape = new Ellipse(0, 0, caster.stealRad * 2, caster.stealRad * 2);
-                sel = new Selector(shape, SelectorOffset.CAST_CENTER, c.FAR_RANGE);
-                new Targeting(sel, champions, unlimited, context)
-                        .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
-                double x = sel.getLatestColliderCircle().getCenterX();
-                double y = sel.getLatestColliderCircle().getCenterY();
-                double r = sel.getLatestColliderCircle().getRadiusY() / 2.0;
-                System.out.println("xyr " + x + " " + y + " " + r);
-                if (context.ball.intersectCircle(x, y, r) && context.ballVisible) {
+                double tipCenterX = tip.X + tip.width / 2;
+                double tipCenterY = tip.Y + tip.height / 2;
+                if (context.ball.intersectCircle(tipCenterX, tipCenterY, caster.stealRad) && context.ballVisible) {
                     System.out.println("intersect");
                     context.stats.grant(context, tip, StatEngine.StatEnum.TURNOVERS);
                     context.stats.grant(context, caster, StatEngine.StatEnum.STEALS);
