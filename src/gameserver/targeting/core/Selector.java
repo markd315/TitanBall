@@ -138,7 +138,11 @@ public class Selector implements Serializable {
 
     public Ellipse getLatestColliderCircle() {
         if (!(latestCollider instanceof Ellipse)) {
-            return new Ellipse(99999, 9999, 0, 0);
+            double centerX = latestCollider.getBoundsInLocal().getMinX() + latestCollider.getBoundsInLocal().getMaxX() / 2;
+            double centerY = latestCollider.getBoundsInLocal().getMinY() + latestCollider.getBoundsInLocal().getMaxY() / 2;
+            double radiusX = (latestCollider.getBoundsInLocal().getMaxX() - latestCollider.getBoundsInLocal().getMinX()) / 2;
+            double radiusY = (latestCollider.getBoundsInLocal().getMaxY() - latestCollider.getBoundsInLocal().getMinY()) / 2;
+            return new Ellipse(centerX, centerY, radiusX, radiusY);
         }
         return (Ellipse) latestCollider;
     }
