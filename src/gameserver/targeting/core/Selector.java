@@ -65,27 +65,27 @@ public class Selector implements Serializable {
 
         System.out.println("casting " + sizeDef);
         Shape shape = Shape.union(sizeDef, new Rectangle(0, 0)); // Creates a copy
-        System.out.println("copied");
-        Bounds bounds = shape.getBoundsInLocal();
-        System.out.println("Shape original bounds: " + bounds);
+        System.out.println("Shape original bounds: " + shape.getBoundsInLocal());
 
-        // Correct transformation: Translate first, then rotate
+                // Get shape bounds before transformation
+        Bounds originalBounds = shape.getBoundsInLocal();
+        double shapeCenterX = originalBounds.getMinX() + originalBounds.getWidth() / 2;
+        double shapeCenterY = originalBounds.getMinY() + originalBounds.getHeight() / 2;
+
+        // Apply transform to move and rotate the shape
         Affine transform = new Affine();
-        // Just move to the center point directly
-        transform.append(new Translate(centerX, centerY));
+        transform.append(new Translate(centerX - shapeCenterX, centerY - shapeCenterY));
+        transform.append(new Rotate(Math.toDegrees(shapeAngle), centerX, centerY));
 
-        // Apply rotation around this point if needed
-        if (shapeAngle != 0.0) {
-            transform.append(new Rotate(Math.toDegrees(shapeAngle), 0, 0));
-        }
-
-        // Apply transform
         shape.getTransforms().add(transform);
 
+        // Force shape transformation to persist
+        latestCollider = Shape.union(shape, shape);  // Forces recalculation
+        latestCollider.getTransforms().add(transform);
+
         // Debug logging
-        Bounds transformedBounds = shape.getBoundsInLocal();
-        System.out.println("After transform - Center point: (" + centerX + ", " + centerY + ")");
-        System.out.println("Shape dimensions: width=" + bounds.getWidth() + ", height=" + bounds.getHeight());
+        Bounds transformedBounds = latestCollider.localToScene(latestCollider.getBoundsInLocal());
+        System.out.println("Transformed shape: " + latestCollider);
         System.out.println("Transformed shape bounds: " + transformedBounds);
 
         latestCollider = shape;
@@ -93,7 +93,7 @@ public class Selector implements Serializable {
         // Entity collision check
         for (Entity e : input) {
             System.out.println("Checking collision with Entity at (" + e.X + ", " + e.Y + ")...");
-            if (collide(e, shape)) {
+            if (collide(e, transformedBounds)) {
                 System.out.println("Entity selected!");
                 ret.add(e);
             } else {
@@ -112,7 +112,7 @@ public class Selector implements Serializable {
         return Math.toRadians(theta);
     }
 
-    private boolean collide(Entity entity, Shape s) {
+    private boolean collide(Entity entity, Bounds shapeBounds) {
         Rectangle r = new Rectangle((int) entity.X, (int) entity.Y, entity.width, entity.height);
 
         if (entity instanceof Titan) {
@@ -120,7 +120,6 @@ public class Selector implements Serializable {
         }
 
         Bounds entityBounds = r.getBoundsInLocal();
-        Bounds shapeBounds = s.getBoundsInLocal();
         boolean collides = entityBounds.intersects(shapeBounds);
 
         System.out.println("Collision check: Entity Bounds: " + entityBounds +
