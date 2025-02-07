@@ -446,7 +446,9 @@ public class AbilityStrategy implements Serializable {
                 double x = sel.getLatestColliderCircle().getCenterX();
                 double y = sel.getLatestColliderCircle().getCenterY();
                 double r = sel.getLatestColliderCircle().getRadiusY() / 2.0;
+                System.out.println("xyr " + x + " " + y + " " + r);
                 if (context.ball.intersectCircle(x, y, r) && context.ballVisible) {
+                    System.out.println("intersect");
                     context.stats.grant(context, tip, StatEngine.StatEnum.TURNOVERS);
                     context.stats.grant(context, caster, StatEngine.StatEnum.STEALS);
                     tip.possession = 0;

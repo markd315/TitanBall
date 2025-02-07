@@ -93,18 +93,13 @@ public class Box extends Coordinates  implements Serializable {
         return false;
     }
 
-    public boolean intersectCircle(double x2, double y2, double r2)
-    {
-        double r1 = (this.width + this.height) / 4.0;
-        double centerX = (- this.width/2.0) + this.X;
-        double centerY = (- this.height/2.0) + this.Y;
-        double distSq = (centerX - x2) * (centerX - x2) +
-                (centerY - y2) * (centerY - y2);
-        double radSumSq = (r1 + r2) * (r1 + r2);
-        if (distSq >= radSumSq)
-            return false;
-        else
-            return true;
+    public boolean intersectCircle(double x2, double y2, double r2) {
+        Ellipse e = new Ellipse(this.X, this.Y, this.width, this.height);
+        System.out.println("elipse " + e);
+        double distSq = (e.getCenterX() - x2) * (e.getCenterX()- x2) +
+                (e.getCenterY() - y2) * (e.getCenterY()- y2);
+        //return True if the center of the circle is within the ellipse
+        return distSq <= (r2 * r2);
     }
 
     public Bounds asBounds() {
