@@ -1,11 +1,13 @@
 package gameserver.engine;
 
+import com.fasterxml.jackson.core.ObjectCodec;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import gameserver.effects.EffectId;
 import gameserver.effects.EffectPool;
 import gameserver.effects.effects.Effect;
 import gameserver.entity.Titan;
 import networking.PlayerDivider;
-import org.json.JSONObject;
 
 import java.io.Serializable;
 import java.util.*;
@@ -15,6 +17,7 @@ import static java.util.stream.Collectors.toMap;
 
 public class StatEngine  implements Serializable {
     private List<Map<String, Double>> gamestats;
+    private ObjectMapper mapper = new ObjectMapper();
 
     public boolean statConditionalMet(PlayerDivider pl, StatEnum category, double threshold){
         Map<String, Double> statmap = gamestats.get(category.index);
@@ -48,34 +51,33 @@ public class StatEngine  implements Serializable {
         return gamestats.get(en.index);
     }
 
-    public JSONObject statsOf(PlayerDivider t) {
+    public ObjectNode statsOf(PlayerDivider t) {
         return statsOf(t.email);
     }
 
-    public JSONObject statsOf(String email) {
-        JSONObject stats = new JSONObject();
-        for (Map<String, Double> category : gamestats) {
-            String name = StatEnum.valueOf(gamestats.indexOf(category)).toString();
-            if (category.containsKey(email)) {
-                stats.put(name, category.get(email));
-            } else {
-                stats.put(name, 0.0);
-            }
+    public ObjectNode statsOf(String email) {
+        ObjectNode stats = mapper.createObjectNode();
+        for (int i = 0; i < gamestats.size(); i++) {
+            Map<String, Double> category = gamestats.get(i);
+            String name = StatEnum.valueOf(i).toString();
+            stats.put(name, category.getOrDefault(email, 0.0));
         }
         return stats;
     }
 
-    public JSONObject ranksOf(PlayerDivider t) {
-        JSONObject ranks = new JSONObject();
-        for (Map<String, Double> category : gamestats) {
-            String name = StatEnum.valueOf(gamestats.indexOf(category)).toString();
+    public ObjectNode ranksOf(PlayerDivider t) {
+        ObjectNode ranks = mapper.createObjectNode();
+        for (int i = 0; i < gamestats.size(); i++) {
+            Map<String, Double> category = gamestats.get(i);
+            String name = StatEnum.valueOf(i).toString();
             double actual = category.getOrDefault(t.email, 0.0);
+
             List<Double> toSort = new ArrayList<>(category.values());
-            if (actual == 0.0) {
-                toSort.add(actual);
-            }
+            if (actual == 0.0) toSort.add(actual);
+
             discernAndSortStat(name, toSort);
             int rank = toSort.indexOf(actual) + 1;
+
             ranks.put(name, rank);
         }
         return ranks;

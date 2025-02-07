@@ -24,7 +24,7 @@ import java.util.concurrent.CountDownLatch;
 
 public class TitanballWindow extends Application {
     private static final Logger log = LoggerFactory.getLogger(TitanballWindow.class);
-    private static HttpClient loginClient;
+    private static AuthServerInterface loginClient;
     private int xSize = 1920, ySize = 1080;
     private double scl = 1.5;
     private Map<String, String> keymap;
@@ -121,7 +121,7 @@ public class TitanballWindow extends Application {
     }
 
     public static void main(String[] args) {
-        loginClient = new HttpClient();
+        loginClient = new AuthServerInterface();
 
         // Create a CountDownLatch to wait for the login process
         CountDownLatch latch = new CountDownLatch(1);
@@ -144,12 +144,9 @@ public class TitanballWindow extends Application {
             Scanner sc = new Scanner(new File("session.jwt"));
             loginClient.refreshToken = sc.nextLine();
             sc.close();
-
             if (loginClient.refresh(loginClient.refreshToken) != 200) {
                 throw new Exception("Refresh token invalid!");
             }
-
-            // If refresh token is valid, save it
             writeRefreshToken(loginClient.refreshToken);
         } catch (Exception ex) {
             // Show the login form to the user on the JavaFX thread

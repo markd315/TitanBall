@@ -9,7 +9,7 @@ import com.esotericsoftware.kryonet.Connection;
 import com.esotericsoftware.kryonet.FrameworkMessage;
 import com.esotericsoftware.kryonet.Listener;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mashape.unirest.http.exceptions.UnirestException;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import gameserver.Const;
 import gameserver.TutorialOverrides;
 import gameserver.effects.EffectId;
@@ -51,13 +51,12 @@ import networking.KryoRegistry;
 import networking.PlayerDivider;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
-import org.json.JSONObject;
-import org.springframework.security.core.parameters.P;
 import util.Util;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.net.ConnectException;
 import java.util.List;
 import java.util.*;
 import java.util.concurrent.Executors;
@@ -80,7 +79,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
     protected Kryo kryo = gameserverConn.getKryo();
     protected boolean camFollow = true;
     protected String token, refresh;
-    protected HttpClient loginClient;
+    protected AuthServerInterface loginClient;
     protected boolean instructionToggle = false;
     protected int staticFrame = 0, staticFrameCounter = 0;
     protected Masteries masteries;
@@ -152,7 +151,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
     private PlayerDivider saved_player_divider;
     private boolean initialUpdate = false;
 
-    public TitanballClient(TitanballWindow titanballWindow, int xSize, int ySize, double scl, HttpClient loginClient, Map<String, String> keymap, boolean createListeners, boolean darkTheme) {
+    public TitanballClient(TitanballWindow titanballWindow, int xSize, int ySize, double scl, AuthServerInterface loginClient, Map<String, String> keymap, boolean createListeners, boolean darkTheme) {
         this.darkTheme = darkTheme;
         //this.parentWindow = titanballWindow;
         this.xSize = xSize;
@@ -275,10 +274,9 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
             if (queued) {
                 try {
                     loginClient.retry401Catch503("leave", null);
-                } catch (UnirestException e) {
-                    // This is fine, server is in shutdown state so we have already been dequeued
+                } catch (Exception e) {
+                    return;
                 }
-                queued = false;
             }
             if (saved_team == TeamAffiliation.HOME){
                 team = game.home;
@@ -526,16 +524,17 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
     }
 
     protected void gameEndStatsAndRanks(GraphicsContext gc, PlayerDivider client) {
-        JSONObject stats = game.stats.statsOf(client);
-        JSONObject ranks = game.stats.ranksOf(client);
+        ObjectNode stats = game.stats.statsOf(client);
+        ObjectNode ranks = game.stats.ranksOf(client);
         int y = 425;
         Font font = new Font("Verdana", sconst.STATS_FONT);
         sconst.setFont(gc, font);
-        for (String stat : stats.keySet()) {
+        for (Iterator<String> it = stats.fieldNames(); it.hasNext(); ) {
+            String stat = it.next();
             gc.setFill(darkTheme ? Color.WHITE : Color.BLACK);
             sconst.drawString(gc, stat + ": " + stats.get(stat), 310, y);
-            if (ranks.has(stat) && ((int) ranks.get(stat) >= 1)) {
-                int rank = (int) ranks.get(stat);
+            if (ranks.has(stat) && ranks.get(stat).asInt() >= 1) {
+                int rank = ranks.get(stat).asInt();
                 setColorFromRank(gc, rank);
                 sconst.fill(gc,new Ellipse(sconst.STATS_MEDAL + 1, //subtractions for internal color circle
                         y - (sconst.STATS_FONT - 4) + 1,
@@ -625,7 +624,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
         }
     }
 
-    protected String requestOrQueueGame() throws UnirestException {
+    protected String requestOrQueueGame() throws Exception {
         if (!queued) {
             loginClient.retry401Catch503("join", this.tournamentCode);
             token = loginClient.token;
@@ -635,7 +634,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
             token = loginClient.token;
         }
         if (loginClient.gameId != null && loginClient.gameId.equals("NOT QUEUED")) {
-            throw new UnirestException("Server not accepting connections");
+            throw new Exception("Server not accepting connections");
         }
         if (loginClient.gameId != null && !loginClient.gameId.equals("WAITING")) {
             this.gameID = loginClient.gameId;
@@ -1513,8 +1512,8 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
         if (key == KeyCode.ESCAPE && phase == GamePhase.WAIT_FOR_GAME) {
             try {
                 loginClient.retry401Catch503("leave", null);
-            } catch (UnirestException e) {
-                // This is fine, the server is in shutdown mode so we have already been dequeued
+            } catch (Exception e) {
+                return;
             }
             queued = false;
             phase = GamePhase.DRAW_CLASS_SCREEN;

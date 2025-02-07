@@ -2,6 +2,7 @@ package client;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import gameserver.engine.GameEngine;
 import gameserver.entity.Titan;
 import gameserver.entity.TitanType;
@@ -22,18 +23,18 @@ public class ControlsConfig {
     }
     protected Map<String, String> keymap = null;
 
-    public ControlsConfig(boolean useRtsConfig){
-        ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+    public ControlsConfig(boolean useRtsConfig) {
+        // Create a new ObjectMapper with YAMLFactory for parsing YAML
+
+
+        ObjectMapper mapper = new ObjectMapper(new YAMLFactory()); // Use YAMLFactory for YAML parsing
         try {
-            if(useRtsConfig) {
+            if (useRtsConfig) {
                 keymap = mapper.readValue(new File("res/ctrls_example_rts.yaml"), HashMap.class);
-            }
-            else {
+            } else {
                 keymap = mapper.readValue(new File("res/config.yaml"), HashMap.class);
             }
-
         } catch (Exception e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         }
     }

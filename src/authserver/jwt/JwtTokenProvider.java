@@ -31,7 +31,7 @@ public class JwtTokenProvider {
         if (StringUtils.hasText(header) && header.startsWith("Bearer ")) {
             token = header.substring(7);
         }
-        Jws<Claims> claims = Jwts.parser().require("type","refresh").setSigningKey(jwtSecret).parseClaimsJws(token);
+        Jws<Claims> claims = Jwts.parser().require("type","refresh").setSigningKey(jwtSecret).build().parseSignedClaims(token);
         if(validateRefreshToken(token)){
             return bothFromEmail(claims.getBody().getSubject());
         }
@@ -81,7 +81,7 @@ public class JwtTokenProvider {
     public String getEmailFromJwt(String token) {
         Claims claims = Jwts.parser()
                 .setSigningKey(jwtSecret)
-                .parseClaimsJws(token)
+                .build().parseSignedClaims(token)
                 .getBody();
 
         return claims.getSubject();
@@ -89,7 +89,7 @@ public class JwtTokenProvider {
 
     public boolean validateToken(String authToken) {
         try {
-            Jws<Claims> claims = Jwts.parser().require("type","access").setSigningKey(jwtSecret).parseClaimsJws(authToken);
+            Jws<Claims> claims = Jwts.parser().require("type","access").setSigningKey(jwtSecret).build().parseSignedClaims(authToken);
             return claims.getBody().getExpiration().toInstant().isAfter(Instant.now());
         } catch (MalformedJwtException ex) {
             logger.error("Invalid JWT token");
@@ -103,7 +103,7 @@ public class JwtTokenProvider {
 
     public boolean validateIgnoreExpiration(String authToken, String secret) {
         try {
-            Jwts.parser().require("type","access").setSigningKey(secret).parseClaimsJws(authToken);
+            Jwts.parser().require("type","access").setSigningKey(secret).build().parseSignedClaims(authToken);
             return true;
         } catch (MalformedJwtException ex) {
             logger.error("Invalid JWT token");
@@ -117,7 +117,7 @@ public class JwtTokenProvider {
 
     public boolean validateRefreshToken(String authToken) {
         try {
-            Jws<Claims> claims = Jwts.parser().require("type","refresh").setSigningKey(jwtSecret).parseClaimsJws(authToken);
+            Jws<Claims> claims = Jwts.parser().require("type","refresh").setSigningKey(jwtSecret).build().parseSignedClaims(authToken);
             return claims.getBody().getExpiration().toInstant().isAfter(Instant.now());
         } catch (MalformedJwtException ex) {
             logger.error("Invalid JWT token");
