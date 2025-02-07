@@ -81,7 +81,6 @@ public class Selector implements Serializable {
 
         // Force shape transformation to persist
         latestCollider = Shape.union(shape, shape);  // Forces recalculation
-        latestCollider.getTransforms().add(transform);
 
         // Debug logging
         Bounds transformedBounds = latestCollider.localToScene(latestCollider.getBoundsInLocal());
