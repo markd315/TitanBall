@@ -3,10 +3,10 @@ package gameserver.entity.minions;
 import gameserver.engine.GameEngine;
 import gameserver.engine.TeamAffiliation;
 import gameserver.entity.*;
+import javafx.scene.paint.Color;
 import org.joda.time.Instant;
 import util.Util;
 
-import java.awt.*;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Optional;

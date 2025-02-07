@@ -10,9 +10,12 @@ import gameserver.entity.Titan;
 import gameserver.models.Game;
 import gameserver.targeting.ShapePayload;
 import gameserver.targeting.core.Selector;
+import javafx.geometry.Bounds;
+import javafx.scene.shape.Ellipse;
+import javafx.scene.shape.Polygon;
+import javafx.scene.shape.Rectangle;
+import javafx.scene.shape.Shape;
 
-import java.awt.*;
-import java.awt.geom.Ellipse2D;
 import java.io.Serializable;
 
 public class Ability implements Serializable {
@@ -152,19 +155,20 @@ public class Ability implements Serializable {
         if (sel != null && sel.latestCollider != null) {
             //sel has the bounds, shape has the correct class.
             //so we inject the sel bounds back into the shape class and eventually use the camera to render it
-            Rectangle bounds = sel.latestCollider.getBounds();
-            if (shape instanceof Ellipse2D.Double) {
+            Shape bounds = sel.latestCollider;
+            if (shape instanceof Ellipse) {
+                Ellipse e = (Ellipse) shape;
                 context.colliders.add(
-                        new ShapePayload(new Ellipse2D.Double(bounds.getX(), bounds.getY(),
-                                bounds.getWidth(), bounds.getHeight())));
+                        new ShapePayload(new Ellipse(e.getCenterX(), e.getCenterY(),
+                                e.getRadiusX(), e.getRadiusY())));
             } else if (shape instanceof Polygon) {
                 //this won't work probably
                 context.colliders.add(
                         new ShapePayload(sel.latestCollider));
             } else if (shape instanceof Rectangle) {
+                Bounds b = bounds.getBoundsInLocal();
                 context.colliders.add(
-                        new ShapePayload(new Rectangle((int) bounds.getX(), (int) bounds.getY(),
-                                (int) bounds.getWidth(), (int) bounds.getHeight())));
+                        new ShapePayload(new Rectangle(b.getMinX(), b.getMinY(), b.getWidth(), b.getHeight())));
             }
             context.colliders.get(context.colliders.size() - 1).setColor(caster);
         }

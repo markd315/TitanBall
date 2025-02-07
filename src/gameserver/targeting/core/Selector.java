@@ -1,26 +1,28 @@
 package gameserver.targeting.core;
 
-
 import com.esotericsoftware.kryo.Kryo;
 import gameserver.entity.Entity;
 import gameserver.entity.Titan;
 import gameserver.targeting.SelectorOffset;
+import javafx.geometry.Bounds;
+import javafx.geometry.Point2D;
+import javafx.scene.shape.Ellipse;
+import javafx.scene.shape.Rectangle;
+import javafx.scene.shape.Shape;
+import javafx.scene.transform.Affine;
+import javafx.scene.transform.Rotate;
+import javafx.scene.transform.Translate;
 import util.Util;
 
-import java.awt.*;
-import java.awt.geom.AffineTransform;
-import java.awt.geom.Ellipse2D;
-import java.awt.geom.Point2D;
 import java.io.Serializable;
 import java.util.HashSet;
 import java.util.Set;
 
-public class Selector  implements Serializable {
-    //Region-based selection of entities
+public class Selector implements Serializable {
+    // Region-based selection of entities
     public Shape sizeDef, latestCollider;
-    //sizeDef does not have updated cast info, and is a prototype
     SelectorOffset offset;
-    int offsetRange; //Applies to mouse-center and cast-to-mouse
+    int offsetRange; // Applies to mouse-center and cast-to-mouse
 
     public Selector(Shape shape, SelectorOffset offset, int offsetRange) {
         this.sizeDef = shape;
@@ -28,23 +30,27 @@ public class Selector  implements Serializable {
         this.offsetRange = offsetRange;
     }
 
-    //TODO assumes mX and mY are camera-adjusted
-    public Set<Entity> select(Set<Entity> input, int mX, int mY, Entity casting){
+    public Set<Entity> select(Set<Entity> input, int mX, int mY, Entity casting) {
         Set<Entity> ret = new HashSet<>();
 
-        double attemptedRange = Point2D.distance(mX, mY, casting.X + casting.width/2, casting.Y + casting.height/2);
-        if(attemptedRange > offsetRange && offset != SelectorOffset.CAST_CENTER){
-            System.out.println("Aimed too far, handle later");
+        double centerX = casting.X + casting.width / 2;
+        double centerY = casting.Y + casting.height / 2;
+        double attemptedRange = new Point2D(mX, mY).distance(new Point2D(centerX, centerY));
+
+        System.out.println("Selecting entities...");
+        System.out.println("Mouse: (" + mX + ", " + mY + ") | Caster: (" + centerX + ", " + centerY + ")");
+        System.out.println("Attempted range: " + attemptedRange + ", Max range: " + offsetRange);
+
+        if (attemptedRange > offsetRange && offset != SelectorOffset.CAST_CENTER) {
+            System.out.println("Aimed too far, ignoring selection.");
             return ret;
         }
-        double mouseAngle, shapeAngle = getMouseAngleRadians(mX, mY, casting);
-        int centerX, centerY;
-        int xLoc = (int)casting.X + (casting.width /2);
-        int yLoc = (int)casting.Y + (casting.height /2);
-        switch(offset){
+
+        double shapeAngle = getMouseAngleRadians(mX, mY, casting);
+        switch (offset) {
             case CAST_TO_MOUSE:
-                centerX = (mX + (int)casting.X)/2;
-                centerY = (mY + (int)casting.Y)/2;
+                centerX = (mX + (int) casting.X) / 2;
+                centerY = (mY + (int) casting.Y) / 2;
                 break;
             case MOUSE_CENTER:
                 centerX = mX;
@@ -53,58 +59,91 @@ public class Selector  implements Serializable {
                 break;
             case CAST_CENTER:
             default:
-                centerX = xLoc;
-                centerY = yLoc;
                 shapeAngle = 0.0;
                 break;
         }
-        Shape shape = new Kryo().copy(sizeDef);
-        AffineTransform rot = new AffineTransform();
-        rot.translate(centerX - shape.getBounds().width / 2, centerY - shape.getBounds().height / 2);
-        rot.rotate(shapeAngle); //Defaults to mouse angle unless it was changed
-        shape = rot.createTransformedShape(shape);
+
+        System.out.println("casting " + sizeDef);
+        Shape shape = Shape.union(sizeDef, new Rectangle(0, 0)); // Creates a copy
+        System.out.println("Shape original bounds: " + shape.getBoundsInLocal());
+
+                // Get shape bounds before transformation
+        Bounds originalBounds = shape.getBoundsInLocal();
+        double shapeCenterX = originalBounds.getMinX() + originalBounds.getWidth() / 2;
+        double shapeCenterY = originalBounds.getMinY() + originalBounds.getHeight() / 2;
+
+        // Apply transform to move and rotate the shape
+        Affine transform = new Affine();
+        transform.append(new Translate(centerX - shapeCenterX, centerY - shapeCenterY));
+        transform.append(new Rotate(Math.toDegrees(shapeAngle), centerX, centerY));
+
+        shape.getTransforms().add(transform);
+
+        // Force shape transformation to persist
+        latestCollider = Shape.union(shape, shape);  // Forces recalculation
+
+        // Debug logging
+        Bounds transformedBounds = latestCollider.localToScene(latestCollider.getBoundsInLocal());
+        System.out.println("Transformed shape: " + latestCollider);
+        System.out.println("Transformed shape bounds: " + transformedBounds);
+
         latestCollider = shape;
 
-        //System.out.println("rect " + shape + shape.getBounds().toString());
-        for(Entity e : input){
-            //System.out.println("" + e.team + e.health);
-            if(collide(e, shape)){
-                //System.out.println("adding^");
+        // Entity collision check
+        for (Entity e : input) {
+            System.out.println("Checking collision with Entity at (" + e.X + ", " + e.Y + ")...");
+            if (collide(e, transformedBounds)) {
+                System.out.println("Entity selected!");
                 ret.add(e);
+            } else {
+                System.out.println("No collision.");
             }
         }
         return ret;
     }
 
     private double getMouseAngleRadians(int mX, int mY, Entity casting) {
-        int xLoc = (int)casting.X + (casting.width /2);
-        int yLoc = (int)casting.Y + (casting.height /2);
-        int xClick = ((mX - xLoc));
-        int yClick = (-1 * ((mY - yLoc)));
+        int xLoc = (int) casting.X + (casting.width / 2);
+        int yLoc = (int) casting.Y + (casting.height / 2);
+        int xClick = (mX - xLoc);
+        int yClick = (-1 * (mY - yLoc));
         double theta = Util.degreesFromCoords(xClick, yClick);
         return Math.toRadians(theta);
     }
 
-    private boolean collide(Entity entity, Shape s) {
-        Rectangle r = new Rectangle((int)entity.X, (int)entity.Y, entity.width, entity.height);
-        if(entity instanceof Titan){
-            r = new Rectangle((int)entity.X + 15, (int)entity.Y + 5, entity.width - 30, entity.height - 10);
+    private boolean collide(Entity entity, Bounds shapeBounds) {
+        Rectangle r = new Rectangle((int) entity.X, (int) entity.Y, entity.width, entity.height);
+
+        if (entity instanceof Titan) {
+            r = new Rectangle((int) entity.X + 15, (int) entity.Y + 5, entity.width - 30, entity.height - 10);
         }
-        return s.intersects(r) || s.contains(r);
+
+        Bounds entityBounds = r.getBoundsInLocal();
+        boolean collides = entityBounds.intersects(shapeBounds);
+
+        System.out.println("Collision check: Entity Bounds: " + entityBounds +
+                " | Selector Bounds: " + shapeBounds +
+                " | Result: " + collides);
+
+        return collides;
     }
 
     public Rectangle getLatestColliderBounds() {
-        if(latestCollider == null){
-            return new Rectangle(99999,9999,0,0);
+        if (latestCollider == null) {
+            return new Rectangle(99999, 9999, 0, 0);
         }
-        return latestCollider.getBounds();
+        Bounds bounds = latestCollider.getBoundsInLocal();
+        return new Rectangle(bounds.getMinX(), bounds.getMinY(), bounds.getWidth(), bounds.getHeight());
     }
 
-    public Ellipse2D.Double getLatestColliderCircle() {
-        if(latestCollider == null){
-            return new Ellipse2D.Double(99999,9999,0,0);
+    public Ellipse getLatestColliderCircle() {
+        if (!(latestCollider instanceof Ellipse)) {
+            double centerX = latestCollider.getBoundsInLocal().getMinX() + latestCollider.getBoundsInLocal().getMaxX() / 2;
+            double centerY = latestCollider.getBoundsInLocal().getMinY() + latestCollider.getBoundsInLocal().getMaxY() / 2;
+            double radiusX = (latestCollider.getBoundsInLocal().getMaxX() - latestCollider.getBoundsInLocal().getMinX()) / 2;
+            double radiusY = (latestCollider.getBoundsInLocal().getMaxY() - latestCollider.getBoundsInLocal().getMinY()) / 2;
+            return new Ellipse(centerX, centerY, radiusX, radiusY);
         }
-        Rectangle r = latestCollider.getBounds();
-        return new Ellipse2D.Double(r.x, r.y, r.width, r.height);
+        return (Ellipse) latestCollider;
     }
 }

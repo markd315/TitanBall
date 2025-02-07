@@ -1,8 +1,7 @@
 package networking;
 
 import client.graphical.GoalSprite;
-import client.graphical.Images;
-import client.graphical.StaticImage;
+import client.graphical.ScreenConst;
 import com.esotericsoftware.kryo.Kryo;
 import gameserver.Const;
 import gameserver.TutorialOverrides;
@@ -98,8 +97,6 @@ public class KryoRegistry {
         kryo.register(DistanceFilter.class);
         kryo.register(Ability.class);
         kryo.register(AbilityStrategy.class);
-        kryo.register(StaticImage.class);
-        kryo.register(Images.class);
         kryo.register(RangeCircle.class);
         kryo.register(StatEngine.class);
 
@@ -116,6 +113,8 @@ public class KryoRegistry {
         kryo.register(HashMap.class);
         kryo.register(String.class);
         kryo.register(java.util.HashSet.class);
+        kryo.register(javafx.scene.paint.Color.class);
+        kryo.register(ScreenConst.class);
 
         kryo.register(byte.class);
         kryo.register(byte[].class);

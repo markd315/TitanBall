@@ -1,51 +1,63 @@
 package gameserver.effects.effects;
 
-import client.graphical.StaticImage;
+import client.graphical.ScreenConst;
 import gameserver.engine.GameEngine;
 import gameserver.effects.EffectId;
 import gameserver.entity.Entity;
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.effect.ColorAdjust;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
 
-import java.awt.*;
-import java.awt.image.RescaleOp;
 import java.io.Serializable;
 
 public abstract class Effect implements Serializable {
-
     public Entity on;
-    public StaticImage icon;
 
     public abstract void onActivate(GameEngine context);
     public abstract void onCease(GameEngine context);
     public abstract void onTick(GameEngine context); //Writes data, call once per game tick
+    ScreenConst sconst = new ScreenConst(1920, 1080);
 
-    public Image getIcon(){
-        icon = new StaticImage();
-        icon.loadImage("res/Effects/"+ this.getEffect().toString() +".png", 32, 32);
-        return icon.getImage();
+
+    public Image getIcon(GraphicsContext gc) {
+        String imagePath = "res/Effects/" + this.getEffect().toString() + ".png";
+        Image im = sconst.loadImage(imagePath);
+        return sconst.getScaledImage(im, 32, 32);
     }
 
-    public RescaleOp getIconTrans(){
-        icon = new StaticImage();
-        icon.loadImage("res/Effects/"+ this.getEffect().toString() +".png", 32, 32);
-        float[] scales = { 1f, 1f, 1f, 0.1f };
-        float[] offsets = new float[4];
-        RescaleOp rop = new RescaleOp(scales, offsets, null);
-        return rop;
+
+    public ImageView getIconTrans(GraphicsContext gc) {
+        String imagePath = "res/Effects/" + this.getEffect().toString() + ".png";
+        Image im = sconst.loadImage(imagePath);
+        Image scaledImage = sconst.getScaledImage(im, 32, 32);
+
+        ImageView imageView = new ImageView(scaledImage);
+        ColorAdjust colorAdjust = new ColorAdjust();
+        colorAdjust.setBrightness(-0.9); // Adjust brightness to simulate transparency
+        imageView.setEffect(colorAdjust);
+        imageView.setOpacity(0.1); // Set the opacity to make it transparent
+
+        return imageView;
     }
 
-    public Image getIconBig(){
-        icon = new StaticImage();
-        icon.loadImage("res/Effects/"+ this.getEffect().toString() +".png", 64, 64);
-        return icon.getImage();
+
+    public javafx.scene.image.Image getIconBig(GraphicsContext gc) {
+        String imagePath = "res/Effects/" + this.getEffect().toString() + ".png";
+        // Load and scale the image to 64x64
+        Image iconBig = sconst.loadImage(imagePath);
+        return sconst.getScaledImage(iconBig, 64, 64);
     }
 
-    public Image getIconSmall(){
-        icon = new StaticImage();
-        icon.loadImage("res/Effects/"+ this.getEffect().toString() +".png", 16, 16);
-        return icon.getImage();
+    public javafx.scene.image.Image getIconSmall(GraphicsContext gc) {
+        String imagePath = "res/Effects/" + this.getEffect().toString() + ".png";
+        // Load and scale the image to 16x16
+        Image iconSmall = sconst.loadImage(imagePath);
+        return sconst.getScaledImage(iconSmall, 16, 16);
     }
+
 
     public boolean tick(GameEngine context){//Removes from effect pool when expired
         if(Instant.now().isBefore(getBegin())){
@@ -79,13 +91,6 @@ public abstract class Effect implements Serializable {
         this.percentLeft = 100.0 - (100.0*
                 (subtract(Instant.now(), begin)) / (subtract(end, begin))
         );
-    }
-
-    public boolean check(){ //Read-only action, perform whenever
-        if(Instant.now().isAfter(getEnd())){
-            return false;
-        }
-        return true;
     }
 
     public void cull(GameEngine context){

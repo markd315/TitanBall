@@ -50,11 +50,11 @@ public class Targeting  implements Serializable {
     public Set<Entity> process(int mX, int mY, Entity casting, int ballX, int ballY){
         //System.out.println("processing");
         for(Entity e : entities){
-            //System.out.println("pool " + e.team + e.health);
+            System.out.println("pool " + e.team + e.health);
         }
         Set<Entity> ret = selector.select(entities, mX, mY, casting);
         for(Entity e : ret){
-            //System.out.println("sel " + e.team + e.health);
+            System.out.println("sel " + e.team + e.health);
         }
         ret = filter.process(ret, casting);
         for(Entity e : ret){
