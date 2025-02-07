@@ -7,9 +7,9 @@ import gameserver.effects.effects.Effect;
 import gameserver.effects.effects.RatioEffect;
 import gameserver.engine.GameEngine;
 import gameserver.engine.TeamAffiliation;
+import javafx.scene.paint.Color;
 import util.ConstOperations;
 
-import java.awt.*;
 import java.io.Serializable;
 import java.util.*;
 
@@ -410,8 +410,7 @@ public class Titan extends Entity  implements Serializable {
         return new RangeCircle(Color.GREEN, x);
     }
     private static RangeCircle r(int x){
-        Color purple = new Color(.45f, .0f, .85f);
-        return new RangeCircle(purple, x);
+        return new RangeCircle(Color.PURPLE, x);
     }
 
     public void pushMove() {

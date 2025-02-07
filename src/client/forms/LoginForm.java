@@ -1,58 +1,48 @@
 package client.forms;
 
 import client.HttpClient;
+import javafx.scene.Scene;
+import javafx.scene.control.*;
+import javafx.scene.layout.VBox;
+import javafx.stage.Stage;
+import javafx.geometry.Pos;
 
-import javax.swing.*;
-import java.awt.*;
 
-public class LoginForm extends JFrame{
-    public HttpClient client;
-    JLabel l1, l2, l3;
-    JTextField tf1;
-    JButton btn1;
-    JPasswordField p1;
-    public LoginForm(HttpClient client) {
-        this.client = client;
-        JFrame frame = new JFrame("Login Form");
-        l1 = new JLabel("Login Form");
-        l1.setForeground(Color.blue);
-        l1.setFont(new Font("Serif", Font.BOLD, 20));
+public class LoginForm extends Stage {
+    private Label l1, l2, l3;
+    TextField tf1;
+    PasswordField p1;
+    private Button btn1;
 
-        l2 = new JLabel("Username");
-        l3 = new JLabel("Password");
-        tf1 = new JTextField();
-        p1 = new JPasswordField();
-        btn1 = new JButton("Login");
+    public LoginForm(HttpClient client, Runnable onLoginSuccess) {
 
-        l1.setBounds(100, 30, 400, 30);
-        l2.setBounds(80, 70, 200, 30);
-        l3.setBounds(80, 110, 200, 30);
-        tf1.setBounds(300, 70, 200, 30);
-        p1.setBounds(300, 110, 200, 30);
-        btn1.setBounds(150, 160, 100, 30);
+        // Setup Stage
+        setTitle("Login Form");
 
-        frame.add(l1);
-        frame.add(l2);
-        frame.add(tf1);
-        frame.add(l3);
-        frame.add(p1);
-        frame.add(btn1);
+        // Create labels and fields
+        l1 = new Label("Login Form");
+        l1.setStyle("-fx-font-size: 20px; -fx-text-fill: blue;");
 
-        frame.setSize(650, 400);
-        frame.setLayout(null);
-        frame.setVisible(true);
-        LoginListener listener = new LoginListener();
-        listener.client = this.client;
-        btn1.addActionListener(listener); //Wait for submit
-        while(listener.client.token == null){
-            try {
-                listener.un = tf1.getText();
-                listener.pw = String.valueOf(p1.getPassword());
-            }catch (Exception ex){
+        l2 = new Label("Username");
+        tf1 = new TextField();
 
-            }
-            //JOptionPane.showMessageDialog(this,"Incorrect login or password","Error",JOptionPane.ERROR_MESSAGE);
-        }
-        this.client = listener.client;
+        l3 = new Label("Password");
+        p1 = new PasswordField();
+
+        btn1 = new Button("Login");
+
+        // Layout
+        VBox layout = new VBox(10);
+        layout.getChildren().addAll(l1, l2, tf1, l3, p1, btn1);
+        layout.setAlignment(Pos.CENTER);
+
+        Scene scene = new Scene(layout, 400, 300);
+        setScene(scene);
+
+        // Add LoginListener to the button
+        LoginListener listener = new LoginListener(client, tf1, p1, this, onLoginSuccess);
+        btn1.setOnAction(listener);
+
+        show();
     }
 }

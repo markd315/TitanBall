@@ -5,6 +5,7 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import gameserver.engine.GameEngine;
 import gameserver.entity.Titan;
 import gameserver.entity.TitanType;
+import javafx.scene.input.KeyCode;
 import networking.ClientPacket;
 
 import java.io.File;
@@ -37,8 +38,8 @@ public class ControlsConfig {
         }
     }
 
-    public boolean mapKeyPress(GameEngine game, ClientPacket prior, int newKey, Sound shotSound){
-        return mapKeyPress(game, prior, ""+newKey, shotSound);
+    public boolean mapKeyPress(GameEngine game, ClientPacket prior, KeyCode newKey, Sound shotSound){
+        return mapKeyPress(game, prior, newKey.getName(), shotSound);
     }
 
     //returns if detected, but also updates packet
@@ -184,7 +185,7 @@ public class ControlsConfig {
         return false;
     }
 
-    public boolean toggleInstructions(String newKey){
+    public boolean toggleInstructions(KeyCode newKey){
         if(keymap.containsKey(newKey)){
             if(keymap.get(newKey).equals("INSTR")){
                 return true;
@@ -192,7 +193,7 @@ public class ControlsConfig {
         }
         return false;
     }
-    public boolean fullScreen(String newKey){
+    public boolean fullScreen(KeyCode newKey){
         if(keymap.containsKey(newKey)){
             if(keymap.get(newKey).equals("FULL_SC")){
                 return true;

@@ -57,7 +57,6 @@ public class ServerApplication {
         server.start();
         //gameserver.setHardy(true);
         server.bind(54555);
-
         server.addListener(new Listener() {
             public void received(Connection connection, Object object) {
                 if (connection.getID() > 0) {
