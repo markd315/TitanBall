@@ -878,7 +878,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
             }
         }
         for (RangeCircle ri : clientCircles) { //draw these on top of enemies, but the shot underneath
-            gc.setLineWidth(2);
+            gc.setLineWidth(RANGE_SIZE);
             gc.setStroke(ri.getColor());
             Titan t = game.underControl;
             if (ri.getRadius() > 0) {
@@ -901,7 +901,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
             sconst.drawImage(gc,goalScored, sconst.GOAL_TXT_X, sconst.GOAL_TXT_Y);
         }
         if (game.colliders != null) {
-            gc.setLineWidth(6);
+            gc.setLineWidth(RANGE_SIZE);
             for (ShapePayload c : game.colliders) {
                 gc.setStroke(c.getColor());
                 Shape b = c.fromWithCamera(camX, camY, sconst);
@@ -1417,18 +1417,12 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
         if (ke.getEventType() == KeyEvent.KEY_RELEASED) {
             handleKeyReleased(ke);
         }
-        if (ke.getEventType() != KeyEvent.KEY_PRESSED) {
+        if (ke.getEventType() != KeyEvent.KEY_PRESSED && ke.getEventType() != KeyEvent.KEY_TYPED) {
             return; //only care about initial presses
         }
         KeyCode key = ke.getCode();
         if (game != null && (game.ended || game.phase == GamePhase.ENDED)) { // back to main after game
             if (key == KeyCode.BACK_SPACE || key == KeyCode.SPACE || key == KeyCode.ESCAPE || key == KeyCode.ENTER) {
-                /*
-                try {
-                    parentWindow.reset(true); // TODO tournament feature here for next games
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }*/
                 phase = GamePhase.SHOW_GAME_MODES;
             }
         }
