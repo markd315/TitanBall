@@ -21,7 +21,7 @@ import gameserver.entity.Entity;
 import gameserver.entity.RangeCircle;
 import gameserver.entity.Titan;
 import gameserver.entity.TitanType;
-import gameserver.entity.minions.*
+import gameserver.entity.minions.*;
 import gameserver.models.Game;
 import gameserver.targeting.ShapePayload;
 import gameserver.gamemanager.GamePhase;
@@ -29,7 +29,6 @@ import javafx.event.EventHandler;
 import javafx.event.EventType;
 import javafx.geometry.Insets;
 import javafx.scene.SnapshotParameters;
-import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.effect.BlendMode;
 import javafx.scene.image.Image;
@@ -56,7 +55,6 @@ import util.Util;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.net.ConnectException;
 import java.util.List;
 import java.util.*;
 import java.util.concurrent.Executors;
@@ -65,12 +63,10 @@ import java.util.concurrent.TimeUnit;
 
 public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
     protected final ScreenConst sconst;
-    private Canvas canvas = new Canvas();
-    private int RANGE_SIZE = 0;
-    private int SHOT_WIDTH = 0;
+    private int RANGE_SIZE;
+    private int SHOT_WIDTH;
     public ClientPacket controlsHeld = new ClientPacket();
     public Instant gamestart = null;
-    public Random rand;
     public Sound shotSound;
     protected Client gameserverConn = new Client(1024 * 1024, 256 * 1024); // 1mb and 256k
     protected String gameID;
@@ -78,7 +74,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
     protected GamePhase phase = GamePhase.CREDITS;
     protected Kryo kryo = gameserverConn.getKryo();
     protected boolean camFollow = true;
-    protected String token, refresh;
+    protected String token;
     protected AuthServerInterface loginClient;
     protected boolean instructionToggle = false;
     protected int staticFrame = 0, staticFrameCounter = 0;
@@ -143,8 +139,8 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
     private GameOptions tourneyOptions = new GameOptions();
     private int tourneyIndex = 0;
     private boolean fullScreen = true;
-    private double scl;
-    private boolean darkTheme;
+    private final double scl;
+    private final boolean darkTheme;
     private boolean queued = false;
     ScheduledExecutorService exec = Executors.newScheduledThreadPool(1);
     private TeamAffiliation saved_team;
@@ -588,9 +584,8 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                      if (object instanceof Game) {
                          game = (GameEngine) object;
                      }
-                     else if (object instanceof byte[]) {
-                        byte[] data = (byte[]) object;
-                        game = kryo.readObject(new Input(data), GameEngine.class);
+                     else if (object instanceof byte[] data) {
+                         game = kryo.readObject(new Input(data), GameEngine.class);
                      }
                      else if (object instanceof FrameworkMessage.KeepAlive) {
                         System.out.println("Got a keepalive from gameserver!");
@@ -858,7 +853,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
         }
 
         drawEntities(gc);
-        if (game.ballVisible == true) {
+        if (game.ballVisible) {
             if (game.anyPoss()) {
                 if (ballFrame == 0) {
                     sconst.drawImage(gc, ballTexture, ((int) game.ball.X - camX), ((int) game.ball.Y - camY));
@@ -896,7 +891,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
             }
         }
         drawPortalRanges(gc);
-        if (game.goalVisible == true) {
+        if (game.goalVisible) {
             sconst.drawImage(gc,goalScored, sconst.GOAL_TXT_X, sconst.GOAL_TXT_Y);
         }
         if (game.colliders != null) {
@@ -922,14 +917,14 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                 ri = ((Portal) e).rangeCircle;
             }
             if (ri != null) {
-                int w = (int) (ri.getRadius() * 2);
+                int w = ri.getRadius() * 2;
                 int h = w;
                 int x = (int) e.X + (e.width / 2) - w / 2;
                 int y = (int) e.Y + (e.height / 2) - h / 2;
-                x = (int) sconst.adjX(x - camX);
+                x = sconst.adjX(x - camX);
                 y = sconst.adjY(y - camY);
                 h = sconst.adjY(h);
-                w = (int) sconst.adjX(w);
+                w = sconst.adjX(w);
                 Ellipse ell = new Ellipse(x, y, w, h);
                 ShapePayload c = new ShapePayload(ell);
                 gc.setStroke(ri.getColor());
@@ -1098,8 +1093,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                 Collections.reverse(drawHp); //draw your team on top always
             for (Entity e : drawHp) {
                 if (e.health > 0.0) {
-                    if (e instanceof Titan) {
-                        Titan t = (Titan) e;
+                    if (e instanceof Titan t) {
                         if (game.underControl.team != t.team &&
                                 invisible(t)) {
                             continue;
@@ -1126,8 +1120,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                 f1 = wall;
                 f2 = wall;
             }
-            if (e instanceof BallPortal) {
-                BallPortal p = (BallPortal) e;
+            if (e instanceof BallPortal p) {
                 if (p.isCooldown(game.now)) {
                     f1 = bportalcd;
                     f2 = bportalcd;
@@ -1136,8 +1129,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                     f2 = bportal2;
                 }
             }
-            if (e instanceof Portal) {
-                Portal p = (Portal) e;
+            if (e instanceof Portal p) {
                 if (p.isCooldown(game.now)) {
                     f1 = portalcd;
                     f2 = portalcd;
@@ -1154,8 +1146,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                 f1 = cage;
                 f2 = f1;
             }
-            if (e instanceof Wolf) {
-                Wolf w = (Wolf) e;
+            if (e instanceof Wolf w) {
                 if (w.wolfPower == 1) {
                     if (w.facingRight) {
                         f1 = wolf1R;
@@ -1206,8 +1197,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
             Entity en = game.effectPool.getOn().get(i);
             //TODO evaluate whether or not to display cooldowns
             if (/*!e.toString().contains("COOLDOWN") &&*/ !e.toString().contains("ATTACKED")) {
-                if (en instanceof Titan) {
-                    Titan t = (Titan) en;
+                if (en instanceof Titan t) {
                     if (offset.containsKey(t.id) && !invisible(t)) {
                         sconst.drawImage(gc, e.getIconSmall(gc), (int) t.X + offset.get(t.id) - camX,
                                 (int) t.Y - 29 - camY);
@@ -1245,7 +1235,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
 
                 // Calculate health bar width based on the health percentage, and adjust it only once
                 int hpPercentage = (int) (100 * e.health / e.maxHealth);
-                int adjustedWidth = (int) sconst.adjX(hpPercentage);
+                int adjustedWidth = sconst.adjX(hpPercentage);
 
                 // Adjust the Y position for the health bar (since it’s based on the same adjusted Y)
                 int healthStatY = sconst.adjY((int) e.Y - 10 - camY);
@@ -1267,22 +1257,21 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                     gc.setFill(Color.BLUE);
                     xOffset = -5;
                 }
-                int x = (int) sconst.adjX((int) e.X + xOffset - camX);
+                int x = sconst.adjX((int) e.X + xOffset - camX);
                 int y = sconst.adjY((int) e.Y - 9 - camY);
                 Rectangle healthBar = new Rectangle(x, y,
-                        (int) sconst.adjX(66), sconst.adjY(8));
+                        sconst.adjX(66), sconst.adjY(8));
                 sconst.fill(gc,healthBar);
                 int hpPercentage = (int) (100 * e.health / e.maxHealth);
                 y = sconst.adjY((int) e.Y - 8 - camY);
                 Rectangle healthStat = new Rectangle(x,
                         y,
-                        (int) sconst.adjX(hpPercentage * 2 / 3), sconst.adjY(5));
+                        sconst.adjX(hpPercentage * 2 / 3), sconst.adjY(5));
                 setColorBasedOnPercent(gc, hpPercentage, false);
                 sconst.fill(gc,healthStat);
             }
         }
-        if (e instanceof Portal) {
-            Portal p = (Portal) e;
+        if (e instanceof Portal p) {
             if (p.isCooldown(game.now)) {
                 double durSpent = p.cooldownPercentOver(game.now);
                 setColorBasedOnPercent(gc, durSpent, false);
@@ -1290,8 +1279,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                 sconst.fill(gc,durBar);
             }
         }
-        if (e instanceof BallPortal) {
-            BallPortal p = (BallPortal) e;
+        if (e instanceof BallPortal p) {
             if (p.isCooldown(game.now)) {
                 double durSpent = p.cooldownPercentOver(game.now);
                 setColorBasedOnPercent(gc, durSpent, false);
@@ -1302,7 +1290,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
     }
 
     private void displayBuust(GraphicsContext gc, Titan t, int x) {
-        int adjustedY = sconst.adjY((int) t.Y - 4 - (int) camY);
+        int adjustedY = sconst.adjY((int) t.Y - 4 - camY);
 
         // Set stroke color based on fuel level
         if (t.fuel > 25) {
