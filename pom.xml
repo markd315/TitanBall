@@ -191,6 +191,12 @@
             <artifactId>jjwt-impl</artifactId>
             <version>0.12.6</version> <!-- Make sure to use the latest version -->
         </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <version>0.12.6</version>
+            <scope>runtime</scope>
+        </dependency>
 
         <!-- Joda Time -->
         <dependency>
