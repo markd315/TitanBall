@@ -79,10 +79,8 @@ public class Selector implements Serializable {
         latestCollider = Shape.union(shape, new Rectangle(0, 0));  // Forces recalculation
 
         Bounds transformedBounds = latestCollider.localToScene(latestCollider.getBoundsInLocal());
-        System.out.println("Transformed shape bounds: " + transformedBounds);
 
         for (Entity e : input) {
-            System.out.println("Checking collision with Entity at (" + e.X + ", " + e.Y + ")...");
             if (collide(e, transformedBounds)) {
                 ret.add(e);
             }
@@ -108,10 +106,6 @@ public class Selector implements Serializable {
 
         Bounds entityBounds = r.getBoundsInLocal();
         boolean collides = entityBounds.intersects(shapeBounds);
-
-        System.out.println("Collision check: Entity Bounds: " + entityBounds +
-                " | Selector Bounds: " + shapeBounds +
-                " | Result: " + collides);
 
         return collides;
     }

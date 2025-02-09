@@ -76,11 +76,9 @@ public class Filter  implements Serializable {
         }
         if(this.team == TeamAffiliation.ENEMIES){
             if(caster.team == TeamAffiliation.HOME){
-                System.out.println("satisfies team");
                 return !in.equals(TeamAffiliation.HOME);
             }
             if(caster.team == TeamAffiliation.AWAY){
-                System.out.println("satisfies team");
                 return !in.equals(TeamAffiliation.AWAY);
             }
         }
