@@ -148,13 +148,6 @@ public class ScreenConst implements Serializable {
     public int R_DESC_Y =0;
     public int STAT_INT_X;
 
-    public void draw(GraphicsContext gc, GoalSprite goal) {
-        goal.setRadiusY(adjY(goal.getRadiusY()));
-        goal.setRadiusX(adjX(goal.getRadiusX()));
-        goal.setCenterX(adjX(goal.getCenterX()));
-        goal.setCenterY(adjY(goal.getCenterY()));
-        gc.strokeOval(goal.getCenterX() - goal.getRadiusX(), goal.getCenterY() - goal.getRadiusY(), goal.getRadiusX() * 2, goal.getRadiusY() * 2);
-    }
 
     public void fill(GraphicsContext gc, Rectangle rectangle) {
         rectangle = new Rectangle(adjX(rectangle.getX()),

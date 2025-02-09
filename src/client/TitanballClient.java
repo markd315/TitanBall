@@ -21,7 +21,7 @@ import gameserver.entity.Entity;
 import gameserver.entity.RangeCircle;
 import gameserver.entity.Titan;
 import gameserver.entity.TitanType;
-import gameserver.entity.minions.*;
+import gameserver.entity.minions.*
 import gameserver.models.Game;
 import gameserver.targeting.ShapePayload;
 import gameserver.gamemanager.GamePhase;

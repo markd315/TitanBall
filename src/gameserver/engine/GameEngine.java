@@ -257,9 +257,9 @@ public class GameEngine extends Game {
                 Bounds ballBounds = ball.asBounds();
                 while (tempGoal.intersects(ballBounds)) {
                     ballBounds = ball.asBounds();
-                    int wRad = (int) ((tempGoal.getRadiusX() - 1) / 2);
-                    int hRad = (int) ((tempGoal.getRadiusY() - 1) / 2);
-                    double ang = Util.degreesFromCoords(tempGoal.getCenterX() + wRad - ball.X - ball.centerDist, tempGoal.getCenterY() + hRad - ball.Y - ball.centerDist);
+                    int wRad = (tempGoal.getRadX() - 1) / 2;
+                    int hRad = (tempGoal.getRadY() - 1) / 2;
+                    double ang = Util.degreesFromCoords(tempGoal.getCx() + wRad - ball.X - ball.centerDist, tempGoal.getCy() + hRad - ball.Y - ball.centerDist);
                     ang += 180; //Run away, not towards
                     double dx = Math.cos(Math.toRadians((ang)));
                     double dy = Math.sin(Math.toRadians((ang)));
@@ -276,9 +276,9 @@ public class GameEngine extends Game {
             Bounds ballBounds = ball.asBounds();
             while (tempGoal.intersects(ballBounds)) {
                 ballBounds = ball.asBounds();
-                int wRad = (int) ((tempGoal.getRadiusX() - 1) / 2);
-                int hRad = (int) ((tempGoal.getRadiusY() - 1) / 2);
-                double ang = Util.degreesFromCoords(tempGoal.getCenterX() + wRad - ball.X - ball.centerDist, tempGoal.getCenterY() + hRad - ball.Y - ball.centerDist);
+                int wRad = (int) ((tempGoal.getRadX() - 1) / 2);
+                int hRad = (int) ((tempGoal.getRadY() - 1) / 2);
+                double ang = Util.degreesFromCoords(tempGoal.getCx() + wRad - ball.X - ball.centerDist, tempGoal.getCy() + hRad - ball.Y - ball.centerDist);
                 ang += 180; //Kick it away, not towards
                 double dx = Math.cos(Math.toRadians((ang)));
                 double dy = Math.sin(Math.toRadians((ang)));
