@@ -189,7 +189,7 @@
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-impl</artifactId>
-            <version>0.11.5</version> <!-- Make sure to use the latest version -->
+            <version>0.12.6</version> <!-- Make sure to use the latest version -->
         </dependency>
 
         <!-- Joda Time -->
