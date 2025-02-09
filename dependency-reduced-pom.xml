@@ -67,7 +67,7 @@
                 </goals>
                 <configuration>
                   <createDependencyReducedPom>false</createDependencyReducedPom>
-                  <finalName>shaded-client</finalName>
+                  <finalName>Titanball</finalName>
                   <transformers>
                     <transformer>
                       <mainClass>client.TitanballWindow</mainClass>
