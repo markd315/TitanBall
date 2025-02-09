@@ -2,7 +2,6 @@ package authserver.users.premades;
 
 import authserver.models.Premade;
 
-import javax.naming.InsufficientResourcesException;
 import java.util.List;
 import java.util.Optional;
 

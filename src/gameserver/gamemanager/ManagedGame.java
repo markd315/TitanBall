@@ -2,7 +2,6 @@ package gameserver.gamemanager;
 
 import authserver.SpringContextBridge;
 import authserver.users.identities.UserService;
-import com.esotericsoftware.kryonet.Client;
 import com.esotericsoftware.kryonet.Connection;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -171,12 +170,17 @@ public class ManagedGame {
                     PlayerDivider pd = dividerFromConn(client.getClient());
                     //Optimizing clone away by only hacking in the needed var fails because of occasional concurrency issue
                     Game update = (Game) deepClone(snapshot);
-
+                    if (update == null) {
+                        return;
+                    }
                     update.underControl = state.titanSelected(pd);
                     update.now = Instant.now();
                     if (client.getClient().isConnected()) {
                         client.getClient().sendTCP(anticheat(update));
                     }
+                }
+                catch (ConcurrentModificationException ex1){
+                    System.out.println("ConcurrentModificationException in update thread, skipping");
                 }
                 catch (Exception ex1){
                     ex1.printStackTrace();

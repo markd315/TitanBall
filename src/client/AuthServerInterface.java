@@ -9,7 +9,6 @@ import java.security.cert.X509Certificate;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;

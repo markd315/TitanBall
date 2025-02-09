@@ -1,6 +1,5 @@
 package gameserver.targeting.core;
 
-import com.esotericsoftware.kryo.Kryo;
 import gameserver.entity.Entity;
 import gameserver.entity.Titan;
 import gameserver.targeting.SelectorOffset;
@@ -37,10 +36,6 @@ public class Selector implements Serializable {
         double centerY = casting.Y + casting.height / 2;
         double attemptedRange = new Point2D(mX, mY).distance(new Point2D(centerX, centerY));
 
-        System.out.println("Selecting entities...");
-        System.out.println("Mouse: (" + mX + ", " + mY + ") | Caster: (" + centerX + ", " + centerY + ")");
-        System.out.println("Attempted range: " + attemptedRange + ", Max range: " + offsetRange);
-
         if (attemptedRange > offsetRange && offset != SelectorOffset.CAST_CENTER) {
             System.out.println("Aimed too far, ignoring selection.");
             return ret;
@@ -63,9 +58,7 @@ public class Selector implements Serializable {
                 break;
         }
 
-        System.out.println("casting " + sizeDef);
         Shape shape = Shape.union(sizeDef, new Rectangle(0, 0)); // Creates a copy
-        System.out.println("Shape original bounds: " + shape.getBoundsInLocal());
 
                 // Get shape bounds before transformation
         Bounds originalBounds = shape.getBoundsInLocal();
@@ -84,7 +77,6 @@ public class Selector implements Serializable {
 
         // Debug logging
         Bounds transformedBounds = latestCollider.localToScene(latestCollider.getBoundsInLocal());
-        System.out.println("Transformed shape: " + latestCollider);
         System.out.println("Transformed shape bounds: " + transformedBounds);
 
         latestCollider = shape;
@@ -93,10 +85,8 @@ public class Selector implements Serializable {
         for (Entity e : input) {
             System.out.println("Checking collision with Entity at (" + e.X + ", " + e.Y + ")...");
             if (collide(e, transformedBounds)) {
-                System.out.println("Entity selected!");
                 ret.add(e);
             } else {
-                System.out.println("No collision.");
             }
         }
         return ret;
