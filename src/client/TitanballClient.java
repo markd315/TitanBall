@@ -1534,7 +1534,6 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                 //TODO revisit fullscreen potential
                 //parentWindow.toggleFullscreen(fullScreen);
             }
-            updateServer.run();
             //TODO fix this, not really behaving like I want it to.
             // right now we miss keypresses if we dont have a packet update before the key is released
             //This is to prevent the server from missing keypresses

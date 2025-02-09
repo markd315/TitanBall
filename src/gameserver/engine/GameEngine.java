@@ -175,8 +175,8 @@ public class GameEngine extends Game {
         // Get the ellipse's center and radii
         double goalCenterX = goal.x; // Assuming `getCenterX()` returns the center X of the ellipse
         double goalCenterY = goal.y; // Assuming `getCenterY()` returns the center Y of the ellipse
-        double goalRadiusX = goal.w; // The horizontal radius of the ellipse (half the width)
-        double goalRadiusY = goal.h; // The vertical radius of the ellipse (half the height)
+        double goalRadiusX = goal.w / 2.0; // The horizontal radius of the ellipse (half the width)
+        double goalRadiusY = goal.h / 2.0; // The vertical radius of the ellipse (half the height)
 
         // Translate the ball's center to the ellipse's coordinate system (normalize)
         double dx = ballX - goalCenterX;
