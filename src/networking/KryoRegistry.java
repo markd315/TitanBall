@@ -113,7 +113,6 @@ public class KryoRegistry {
         kryo.register(HashMap.class);
         kryo.register(String.class);
         kryo.register(java.util.HashSet.class);
-        kryo.register(javafx.scene.paint.Color.class);
         kryo.register(ScreenConst.class);
 
         kryo.register(byte.class);
