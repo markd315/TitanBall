@@ -58,9 +58,10 @@ public class Selector implements Serializable {
                 break;
         }
 
-        Shape shape = Shape.union(sizeDef, new Rectangle(0, 0)); // Creates a copy
+        // Create a copy of the sizeDef shape
+        Shape shape = Shape.union(sizeDef, new Rectangle(0, 0));
 
-                // Get shape bounds before transformation
+        // Get shape bounds before transformation
         Bounds originalBounds = shape.getBoundsInLocal();
         double shapeCenterX = originalBounds.getMinX() + originalBounds.getWidth() / 2;
         double shapeCenterY = originalBounds.getMinY() + originalBounds.getHeight() / 2;
@@ -70,27 +71,24 @@ public class Selector implements Serializable {
         transform.append(new Translate(centerX - shapeCenterX, centerY - shapeCenterY));
         transform.append(new Rotate(Math.toDegrees(shapeAngle), centerX, centerY));
 
+        // Apply the transformation to the shape
+        shape.getTransforms().clear();
         shape.getTransforms().add(transform);
 
-        // Force shape transformation to persist
-        latestCollider = Shape.union(shape, shape);  // Forces recalculation
+        // Ensure latestCollider has the updated transformed shape
+        latestCollider = Shape.union(shape, new Rectangle(0, 0));  // Forces recalculation
 
-        // Debug logging
         Bounds transformedBounds = latestCollider.localToScene(latestCollider.getBoundsInLocal());
         System.out.println("Transformed shape bounds: " + transformedBounds);
 
-        latestCollider = shape;
-
-        // Entity collision check
         for (Entity e : input) {
             System.out.println("Checking collision with Entity at (" + e.X + ", " + e.Y + ")...");
             if (collide(e, transformedBounds)) {
                 ret.add(e);
-            } else {
             }
         }
-        return ret;
-    }
+    return ret;
+}
 
     private double getMouseAngleRadians(int mX, int mY, Entity casting) {
         int xLoc = (int) casting.X + (casting.width / 2);

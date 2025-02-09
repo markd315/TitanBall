@@ -22,8 +22,8 @@ public class GoalSprite implements Serializable {
     public GoalSprite(GoalHoop payload, int camX, int camY, ScreenConst sconst){
         setCy(sconst.adjY(payload.y - camY));
         setCx((sconst.adjX(payload.x - camX)));
-        setRadX(sconst.adjX(payload.w / 2));
-        setRadY(sconst.adjY(payload.h / 2));
+        setRadX(sconst.adjX(payload.w));
+        setRadY(sconst.adjY(payload.h));
         this.team = payload.team;
         this.nextAvailable = payload.nextAvailable;
         this.onCooldown = payload.onCooldown;

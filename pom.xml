@@ -276,5 +276,28 @@
             <artifactId>javafx-graphics</artifactId>
             <version>17.0.8</version>
         </dependency>
+        <!-- cross platform javafx
+        <dependency>
+          <groupId>org.openjfx</groupId>
+          <artifactId>javafx-graphics</artifactId>
+          <version>17.0.8</version>
+          <classifier>win</classifier>
+          <scope>provided</scope>
+        </dependency>
+        <dependency>
+          <groupId>org.openjfx</groupId>
+          <artifactId>javafx-graphics</artifactId>
+          <version>17.0.8</version>
+          <classifier>mac</classifier>
+          <scope>provided</scope>
+        </dependency>
+        <dependency>
+          <groupId>org.openjfx</groupId>
+          <artifactId>javafx-graphics</artifactId>
+          <version>17.0.8</version>
+          <classifier>linux</classifier>
+          <scope>provided</scope>
+        </dependency>
+        -->
     </dependencies>
 </project>
