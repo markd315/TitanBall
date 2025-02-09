@@ -581,12 +581,12 @@ public class ManagedGame {
             ObjectInputStream ois = new ObjectInputStream(bais);
             return ois.readObject();
         }
-        catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
         catch (ConcurrentModificationException e) {
             System.out.println("ConcurrentModificationException in update thread, skipping");
+            return null;
+        }
+        catch (Exception e) {
+            e.printStackTrace();
             return null;
         }
     }
