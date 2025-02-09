@@ -86,7 +86,6 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
     int cursor = 1; // For deciding classes and everything else
     int camX = 0;
     int camY = 0;
-    int round = 1;
     int ballFrame = 0;
     int ballFrameCounter = 0;
     File shotSoundFile = new File("res/Sound/shotsound.wav");
@@ -366,6 +365,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                 return;
             }
             else {
+                updateCamera();
                 if (this.game.effectPool.hasEffect(this.game.underControl, EffectId.BLIND)) {
                     sconst.setFont(gc, new Font("Verdana", 72));
                     gc.setFill(Color.DARKGRAY);
@@ -424,6 +424,18 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
             drawTeamScreen(gc);
         }
     }
+
+    private void updateCamera() {
+        if (camFollow) {
+            camX = (int) (game.underControl.X + 35 - (this.xSize / 3 / 1.5 * scl));
+            //if (camX > 820) camX = 820;
+            if (camX < 0) camX = 0;
+            camY = (int) (game.underControl.Y + 35 - (this.ySize / 3 / 1.5 * scl));
+            //if (camY > 480) camY = 480;
+            if (camY < 0) camY = 0;
+        }
+    }
+
     static File t0File = new File("res/Sound/tut0.wav");
     static File t1File = new File("res/Sound/tut1.wav");
     static File t2File = new File("res/Sound/tut2.wav");
@@ -722,14 +734,6 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
             controlsExplanation(gc);
             return;
         }
-        if (camFollow) {
-            camX = (int) (game.underControl.X + 35 - (this.xSize / 3 / 1.5 * scl));
-            //if (camX > 820) camX = 820;
-            if (camX < 0) camX = 0;
-            camY = (int) (game.underControl.Y + 35 - (this.ySize / 3 / 1.5 * scl));
-            //if (camY > 480) camY = 480;
-            if (camY < 0) camY = 0;
-        }
         sconst.drawImage(gc, field, (1 - camX), (1 - camY));
         gc.setLineWidth(6.0); // Set the stroke width
         for (GoalHoop goalData : game.lowGoals) {
@@ -909,32 +913,39 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
 
     private void drawPortalRanges(GraphicsContext gc) {
         for (Entity e : game.entityPool) {
-            RangeCircle ri = null;
-            if (e instanceof BallPortal && game.underControl.id.equals(((BallPortal) e).getCreatedById())) {
-                ri = ((BallPortal) e).rangeCircle;
-            }
-            if (e instanceof Portal && game.underControl.id.equals(((Portal) e).getCreatedById())) {
-                ri = ((Portal) e).rangeCircle;
-            }
-            if (ri != null) {
-                int w = ri.getRadius() * 2;
-                int h = w;
-                int x = (int) e.X + (e.width / 2) - w / 2;
-                int y = (int) e.Y + (e.height / 2) - h / 2;
-                x = sconst.adjX(x - camX);
-                y = sconst.adjY(y - camY);
-                h = sconst.adjY(h);
-                w = sconst.adjX(w);
-                Ellipse ell = new Ellipse(x, y, w, h);
-                ShapePayload c = new ShapePayload(ell);
-                gc.setStroke(ri.getColor());
-                Shape b = c.fromWithCamera(camX, camY, sconst);
-                gc.strokeOval(b.getBoundsInLocal().getMinX(),
-                        b.getBoundsInLocal().getMinY(),
-                        b.getBoundsInLocal().getWidth(),
-                        b.getBoundsInLocal().getHeight());
-            }
+        RangeCircle ri = null;
+        if (e instanceof BallPortal && game.underControl.id.equals(((BallPortal) e).getCreatedById())) {
+            ri = ((BallPortal) e).rangeCircle;
         }
+        if (e instanceof Portal && game.underControl.id.equals(((Portal) e).getCreatedById())) {
+            ri = ((Portal) e).rangeCircle;
+        }
+        if (ri != null) {
+            int radius = ri.getRadius();
+
+            // Calculate the center coordinates
+            int centerX = (int) (e.X + e.width / 2);
+            int centerY = (int) (e.Y + e.height / 2);
+
+            // Adjust the coordinates based on camera position and screen constants
+            int adjustedCenterX = sconst.adjX(centerX - camX);
+            int adjustedCenterY = sconst.adjY(centerY - camY);
+            int adjustedRadiusX = sconst.adjX(radius);
+            int adjustedRadiusY = sconst.adjY(radius);
+
+            // Create the ellipse centered on the portal
+            Ellipse ell = new Ellipse(adjustedCenterX, adjustedCenterY, adjustedRadiusX, adjustedRadiusY);
+            ShapePayload c = new ShapePayload(ell);
+            gc.setStroke(ri.getColor());
+            Shape b = c.fromWithCamera(camX, camY, sconst);
+
+            // Draw the ellipse
+            gc.strokeOval(b.getBoundsInLocal().getMinX(),
+                          b.getBoundsInLocal().getMinY(),
+                          b.getBoundsInLocal().getWidth(),
+                          b.getBoundsInLocal().getHeight());
+        }
+    }
     }
 
     private void drawPainHealIndicator(GraphicsContext gc, GameEngine game) {

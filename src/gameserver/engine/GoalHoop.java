@@ -21,6 +21,7 @@ public class GoalHoop implements Serializable {
         this.team = team;
     }
 
+    //shaky cam range, only update camera when painting
     public void trigger() {
         onCooldown = true;
 

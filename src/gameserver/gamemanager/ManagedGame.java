@@ -585,5 +585,9 @@ public class ManagedGame {
             e.printStackTrace();
             return null;
         }
+        catch (ConcurrentModificationException e) {
+            System.out.println("ConcurrentModificationException in update thread, skipping");
+            return null;
+        }
     }
 }
