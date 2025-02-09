@@ -60,7 +60,7 @@ public class Ability implements Serializable {
                     }
                     break;
                 case RANGER:
-                    strat.shootArrow(c.getI("titan.arrow.dmg"), c.getI("titan.arrow.cdms"));
+                    strat.shootArrow(c.getI("titan.arrow.dmg"));
                     //4.5 DPS
                     break;
                 case WARRIOR:

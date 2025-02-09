@@ -565,6 +565,22 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
         openConnection();
     }
 
+    Runnable updateServer = () -> {
+        if (controlsHeld != null && gameserverConn.isConnected()) {
+            controlsHeld.gameID = gameID;
+            controlsHeld.token = token;
+            controlsHeld.masteries = masteries;
+            gameserverConn.sendTCP(controlsHeld);
+        }
+        else if(!gameserverConn.isConnected()) {
+            gameserverConn.close();
+            gameserverConn = new Client(8 * 1024 * 1024, 1024 * 1024); //8mb and 1mb
+        }
+        else{
+            System.out.println("null controls held");
+        }
+    };
+
     public void openConnection() throws IOException {
         //TODO replace this with a socketio connection
         gameserverConn.start();
@@ -573,22 +589,6 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
         if (!gameserverConn.isConnected()) {
             gameserverConn.connect(999999999, "zanzalaz.com", 54555);
             //gameserverConn.connect(5000, "127.0.0.1", 54555);
-
-            Runnable updateServer = () -> {
-                if (controlsHeld != null && gameserverConn.isConnected()) {
-                    controlsHeld.gameID = gameID;
-                    controlsHeld.token = token;
-                    controlsHeld.masteries = masteries;
-                    gameserverConn.sendTCP(controlsHeld);
-                }
-                else if(!gameserverConn.isConnected()) {
-                    gameserverConn.close();
-                    gameserverConn = new Client(8 * 1024 * 1024, 1024 * 1024); //8mb and 1mb
-                }
-                else{
-                    System.out.println("null controls held");
-                }
-            };
 
             gameserverConn.addListener(new Listener() {
                 public synchronized void received(Connection connection, Object object) {
@@ -626,7 +626,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                     }
                 }
             });
-            exec.scheduleAtFixedRate(updateServer, 30, 30, TimeUnit.MILLISECONDS);
+            exec.scheduleAtFixedRate(updateServer, 15, 15, TimeUnit.MILLISECONDS);
             System.out.println("Updates scheduled");
         }
     }
@@ -1523,7 +1523,6 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
         if (key == KeyCode.SPACE && (phase == GamePhase.INGAME || phase == GamePhase.SCORE_FREEZE || phase == GamePhase.TUTORIAL)) {
             camFollow = !camFollow;
             controlsHeld.CAM = true;
-            //TODO play restart ding/click
         }
         if ((phase == GamePhase.INGAME) || phase == GamePhase.TUTORIAL) {
             controlsConfig.mapKeyPress(this.game, controlsHeld, key, this.shotSound);
@@ -1535,6 +1534,10 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                 //TODO revisit fullscreen potential
                 //parentWindow.toggleFullscreen(fullScreen);
             }
+            updateServer.run();
+            //TODO fix this, not really behaving like I want it to.
+            // right now we miss keypresses if we dont have a packet update before the key is released
+            //This is to prevent the server from missing keypresses
         }
         classKeys(key);
     }

@@ -416,7 +416,7 @@ public class AbilityStrategy implements Serializable {
         }
     }
 
-    public void shootArrow(double dmg, double cdMs) {
+    public void shootArrow(double dmg) {
         int range = (int) (c.getI("titan.arrow.range") * caster.rangeFactor);
         dmg *= caster.damageFactor;
         shape = new Rectangle(0, 0, 20, 20);
@@ -435,13 +435,13 @@ public class AbilityStrategy implements Serializable {
     }
 
     public boolean stealBall() {
-        if (!context.titanInPossession().isPresent() || !context.titanInPossession().get().id.equals(caster.id)) {
+        if (context.titanInPossession().isEmpty() || !context.titanInPossession().get().id.equals(caster.id)) {
             goOnCooldown(caster, "titan.steal.cdms", 'S');
             if (context.titanInPossession().isPresent()) {
                 Titan tip = context.titanInPossession().get();
-                double tipCenterX = tip.X + tip.width / 2;
-                double tipCenterY = tip.Y + tip.height / 2;
-                if (context.ball.intersectCircle(tipCenterX, tipCenterY, caster.stealRad) && context.ballVisible) {
+                double cCtrX = caster.X + tip.width / 2;
+                double cCtrY = caster.Y + tip.height / 2;
+                if (context.ball.intersectCircle(cCtrX, cCtrY, caster.stealRad) && context.ballVisible) {
                     System.out.println("intersect");
                     context.stats.grant(context, tip, StatEngine.StatEnum.TURNOVERS);
                     context.stats.grant(context, caster, StatEngine.StatEnum.STEALS);
