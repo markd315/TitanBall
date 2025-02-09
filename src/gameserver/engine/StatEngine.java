@@ -1,6 +1,5 @@
 package gameserver.engine;
 
-import com.fasterxml.jackson.core.ObjectCodec;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import gameserver.effects.EffectId;
@@ -15,9 +14,9 @@ import java.util.*;
 import static java.util.Arrays.stream;
 import static java.util.stream.Collectors.toMap;
 
-public class StatEngine  implements Serializable {
+public class StatEngine implements Serializable {
     private List<Map<String, Double>> gamestats;
-    private ObjectMapper mapper = new ObjectMapper();
+    private static final ObjectMapper mapper = new ObjectMapper();
 
     public boolean statConditionalMet(PlayerDivider pl, StatEnum category, double threshold){
         Map<String, Double> statmap = gamestats.get(category.index);
