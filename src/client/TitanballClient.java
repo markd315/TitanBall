@@ -928,8 +928,8 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
             int centerY = (int) (e.Y + e.height / 2);
 
             // Adjust the coordinates based on camera position and screen constants
-            int adjustedCenterX = sconst.adjX(centerX - camX);
-            int adjustedCenterY = sconst.adjY(centerY - camY);
+            int adjustedCenterX = sconst.adjX(centerX);
+            int adjustedCenterY = sconst.adjY(centerY);
             int adjustedRadiusX = sconst.adjX(radius);
             int adjustedRadiusY = sconst.adjY(radius);
 
