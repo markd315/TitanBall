@@ -890,7 +890,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
             if (!goalData.checkReady()) {
                 gc.setStroke(Color.RED);
                 if (goalData.frozen) {
-                    gc.setStroke(Color.ALICEBLUE);
+                    gc.setStroke(Color.SKYBLUE);
                 }
             } else if (checkSuddenDeath('L', enemy)) {
                 gc.setStroke(Color.GOLDENROD);
