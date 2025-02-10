@@ -880,31 +880,28 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
     private void drawGoals(GraphicsContext gc) {
         gc.setLineWidth(6.0); // Set the stroke width
         for (GoalHoop goalData : game.lowGoals) {
-            GoalSprite goal = new GoalSprite(goalData, camX, camY, sconst);
             Team enemy;
-            if (goal.team == TeamAffiliation.HOME) {
+            if (goalData.team == TeamAffiliation.HOME) {
                 enemy = game.away;
             } else { //(goal.team == TeamAffiliation.AWAY)
                 enemy = game.home;
             }
-            if (!goal.checkReady()) {
+            gc.setStroke(Color.LIGHTGRAY);
+            if (!goalData.checkReady()) {
                 gc.setStroke(Color.RED);
-                if (goal.frozen) {
+                if (goalData.frozen) {
                     gc.setStroke(Color.ALICEBLUE);
                 }
             } else if (checkSuddenDeath('L', enemy)) {
                 gc.setStroke(Color.GOLDENROD);
             } else if (enemy.score % 1.0 == .75) {
                 gc.setStroke(Color.DARKVIOLET);
-            } else {
-                gc.setStroke(Color.LIGHTGRAY);
             }
-            goal.draw(gc);
+            new GoalSprite(goalData, camX, camY, sconst).draw(gc);
         }
         for (GoalHoop goalData : game.hiGoals) {
-            GoalSprite goal = new GoalSprite(goalData, camX, camY, sconst);
             Team enemy;
-            if (goal.team == TeamAffiliation.HOME) {
+            if (goalData.team == TeamAffiliation.HOME) {
                 enemy = game.away;
             } else { //(goal.team == TeamAffiliation.AWAY)
                 enemy = game.home;
@@ -915,7 +912,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
             } else if (enemy.score % 1.0 == .75) {
                 gc.setStroke(Color.GREEN);
             }
-            goal.draw(gc);
+            new GoalSprite(goalData, camX, camY, sconst).draw(gc);
         }
     }
 
@@ -1810,8 +1807,8 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
         Font font = new Font("Verdana", 24);
         gc.setFill(Color.YELLOW);
         sconst.setFont(gc, font);
-        double milUntil = (new Duration(Instant.now(), gamestart)).getMillis();
-        //System.out.println(milUntil);
+        double milUntil = (new Duration(Instant.now(), gamestart)).getMillis() + 600;
+        //Added 600 because it seems to chronically be off by about that amount
         sconst.drawString(gc, String.format("Starting in %1.1f seconds", milUntil / 1000.0), 345, 220);
         font = new Font("Verdana", 48);
         gc.setFill(Color.RED);

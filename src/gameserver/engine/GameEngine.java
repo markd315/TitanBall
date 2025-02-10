@@ -237,36 +237,16 @@ public class GameEngine extends Game {
         }
     }
 
-
-    protected void goalieMinorHoopBounce() {
-        if (titanInPossession().isPresent() && titanInPossession().get().getType() == TitanType.GOALIE) {
-            for (GoalHoop goal : this.lowGoals) {
-                GoalSprite tempGoal = new GoalSprite(goal, 0, 0, new ScreenConst(1920, 1080)); //Just for using the g2d intersect method
-                Bounds ballBounds = ball.asBounds();
-                while (tempGoal.intersects(ballBounds)) {
-                    ballBounds = ball.asBounds();
-                    int wRad = (tempGoal.getRadX() - 1);
-                    int hRad = (tempGoal.getRadY() - 1);
-                    double ang = Util.degreesFromCoords(tempGoal.getCx() + wRad - ball.X - ball.centerDist, tempGoal.getCy() + hRad - ball.Y - ball.centerDist);
-                    ang += 180; //Run away, not towards
-                    double dx = Math.cos(Math.toRadians((ang)));
-                    double dy = Math.sin(Math.toRadians((ang)));
-                    titanInPossession().get().X += dx;
-                    titanInPossession().get().Y += dy;
-                }
-            }
-        }
-    }
-
     protected void minorHoopBounce() {
+        Bounds ballBounds = ball.asBounds();
         for (GoalHoop goal : this.lowGoals) {
-            GoalSprite tempGoal = new GoalSprite(goal, 0, 0, new ScreenConst(1920, 1080)); //Just for using the g2d intersect method
-            Bounds ballBounds = ball.asBounds();
-            while (tempGoal.intersects(ballBounds)) {
+            Ellipse ell = goal.ellipseCentered();
+            while (ell.intersects(ballBounds)) {
                 ballBounds = ball.asBounds();
-                int wRad = (tempGoal.getRadX() - 1);
-                int hRad = (tempGoal.getRadY() - 1);
-                double ang = Util.degreesFromCoords(tempGoal.getCx() + wRad - ball.X - ball.centerDist, tempGoal.getCy() + hRad - ball.Y - ball.centerDist);
+                double ang = Util.degreesFromCoords(
+                        ell.getCenterX() - ball.X - ball.centerDist,
+                        ell.getCenterY() - ball.Y - ball.centerDist
+                );
                 ang += 180; //Kick it away, not towards
                 double dx = Math.cos(Math.toRadians((ang)));
                 double dy = Math.sin(Math.toRadians((ang)));
@@ -315,9 +295,6 @@ public class GameEngine extends Game {
             if (client != null) {
                 client.setSelection(client.getPossibleSelection().get(0));
             }
-        }
-        for(ClientPacket packet : lastControlPacket){
-            packet = new ClientPacket();
         }
         lastPossessed = null;
         if (c.GOALIE_DISABLED) {
