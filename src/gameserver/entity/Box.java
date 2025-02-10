@@ -112,4 +112,8 @@ public class Box extends Coordinates  implements Serializable {
         double y2 = Math.abs((ball.Y + ball.height ) - (this.Y + this.height));
         return (x1 < y1 && x1 < y2) || (x2 < y1 && x2 < y2);
     }
+
+    public Ellipse ellipseCentered() {
+        return new Ellipse(this.X + (double) this.width /2, this.Y + (double) this.height /2, (double) this.width / 2, (double) this.height / 2);
+    }
 }

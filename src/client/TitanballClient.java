@@ -735,41 +735,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
             return;
         }
         sconst.drawImage(gc, field, (1 - camX), (1 - camY));
-        gc.setLineWidth(6.0); // Set the stroke width
-        for (GoalHoop goalData : game.lowGoals) {
-            GoalSprite goal = new GoalSprite(goalData, camX, camY, sconst);
-            Team enemy;
-            if (goal.team == TeamAffiliation.HOME) {
-                enemy = game.away;
-            } else { //(goal.team == TeamAffiliation.AWAY)
-                enemy = game.home;
-            }
-            if (!goal.checkReady()) {
-                gc.setStroke(Color.RED);
-                if (goal.frozen) {
-                    gc.setStroke(Color.web("#26ECEA")); // light blue
-                }
-            } else if (enemy.score % 1.0 == .75) {
-                gc.setStroke(Color.web("#CFA120")); // gold-like color
-            } else {
-                gc.setStroke(Color.LIGHTGRAY);
-            }
-            goal.draw(gc);
-        }
-        for (GoalHoop goalData : game.hiGoals) {
-            GoalSprite goal = new GoalSprite(goalData, camX, camY, sconst);
-            Team enemy;
-            if (goal.team == TeamAffiliation.HOME) {
-                enemy = game.away;
-            } else { //(goal.team == TeamAffiliation.AWAY)
-                enemy = game.home;
-            }
-            gc.setFill(Color.DARKGRAY);
-            if (enemy.score % 1.0 == .75) {
-                gc.setStroke(Color.GREEN);
-            }
-            goal.draw(gc);
-        }
+        drawGoals(gc);
         drawPainHealIndicator(gc, game);
         ArrayList<RangeCircle> clientCircles = new ArrayList<>();
         for (RangeCircle ri : game.underControl.rangeIndicators) {
@@ -909,6 +875,67 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                         b.getBoundsInLocal().getHeight());
             }
         }
+    }
+
+    private void drawGoals(GraphicsContext gc) {
+        gc.setLineWidth(6.0); // Set the stroke width
+        for (GoalHoop goalData : game.lowGoals) {
+            GoalSprite goal = new GoalSprite(goalData, camX, camY, sconst);
+            Team enemy;
+            if (goal.team == TeamAffiliation.HOME) {
+                enemy = game.away;
+            } else { //(goal.team == TeamAffiliation.AWAY)
+                enemy = game.home;
+            }
+            if (!goal.checkReady()) {
+                gc.setStroke(Color.RED);
+                if (goal.frozen) {
+                    gc.setStroke(Color.ALICEBLUE);
+                }
+            } else if (checkSuddenDeath('L', enemy)) {
+                gc.setStroke(Color.GOLDENROD);
+            } else if (enemy.score % 1.0 == .75) {
+                gc.setStroke(Color.DARKVIOLET);
+            } else {
+                gc.setStroke(Color.LIGHTGRAY);
+            }
+            goal.draw(gc);
+        }
+        for (GoalHoop goalData : game.hiGoals) {
+            GoalSprite goal = new GoalSprite(goalData, camX, camY, sconst);
+            Team enemy;
+            if (goal.team == TeamAffiliation.HOME) {
+                enemy = game.away;
+            } else { //(goal.team == TeamAffiliation.AWAY)
+                enemy = game.home;
+            }
+            gc.setFill(Color.DARKGRAY);
+            if (checkSuddenDeath('H', enemy)) {
+                gc.setStroke(Color.GOLDENROD);
+            } else if (enemy.score % 1.0 == .75) {
+                gc.setStroke(Color.GREEN);
+            }
+            goal.draw(gc);
+        }
+    }
+
+    private boolean checkSuddenDeath(char lOrH, Team enemy) {
+        double diff;
+        switch (lOrH) {
+            case 'H':
+                double fPart = enemy.score - ((int) enemy.score);
+                diff = (fPart * 4 + 1) - fPart;
+                break;
+            case 'L':
+                diff = .25;
+                break;
+            default:
+                return false;
+        }
+        enemy.score += diff;
+        boolean willEnd = game.checkWinCondition(true);
+        enemy.score -= diff;
+        return willEnd;
     }
 
     private void drawPortalRanges(GraphicsContext gc) {
@@ -1222,8 +1249,18 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                     }
                 }
 
+                //TODO goal detection is severely shifted up. radius seems about right though
+                //triggering RED incorrectly when the ball scores a sidegoal
+                //should also show BLACK when the goal is a sudden death situation
             }
         }
+        for (Titan t : game.players){ //Add icon if boosting
+            if (t.isBoosting) {
+                EmptyEffect speed = new EmptyEffect(50, t, EffectId.FAST);
+                sconst.drawImage(gc, speed.getIconSmall(gc), (int) t.X + offset.get(t.id) - camX,
+                                (int) t.Y - 29 - camY);
+            }
+        }//note, if you add any other effect overrides, increment the offset above
     }
 
     protected void drawHealthBar(GraphicsContext gc, Entity e) {
@@ -1861,14 +1898,10 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
             setColorFromCharge(gc, minorGoalsAway);
             sconst.drawString(gc, minorGoalsAway + "/4", 848, 701);
 
-            sconst.setFont(gc, new Font("Verdana", 9));
-            //get usernmame from titan via token decoded jwt
-            String jwt = controlsHeld.token;
-            String username = Util.jwtExtractEmail(jwt);
-            sconst.drawString(gc, username, 920, 701);
+
+            displayEmail(gc);
             gc.setFill(Color.RED);
             int x = xSize / 4;
-            //addBoostIcons();
             for (int i = 0; i < game.effectPool.getEffects().size(); i++) {
                 Effect e = game.effectPool.getEffects().get(i);
                 Entity on = game.effectPool.getOn().get(i);
@@ -1890,48 +1923,61 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                         gc.setFill(new Color(0f, 0f, 0f, .4f));
                         sconst.drawString(gc, "Stolen!", 450, 300);
                     }
-                    if (e.getIcon(gc) != null) {
-                        BlendMode originalBlendMode = gc.getGlobalBlendMode();
-
-                        // Set the new blend mode to handle transparency
-                        gc.setGlobalBlendMode(BlendMode.SRC_OVER);
-                        gc.setGlobalAlpha(0.5); // Set the transparency level
-
-                        // Draw the image
-                        gc.drawImage(e.getIcon(gc), x, 689);
-
-                        // Restore the original blend mode and opacity
-                        gc.setGlobalBlendMode(originalBlendMode);
-                        gc.setGlobalAlpha(1.0); // Reset transparency level to opaque
-                        gc.setFill(new Color(1f, 1f, 1f, .5f));
-                        double xt = sconst.adjX(x);
-                        double wt = sconst.adjX(32);
-                        double yt = sconst.adjY(657);
-                        double ht = sconst.adjY(32);
-                        gc.fillArc(xt, yt, wt, ht, 90, -360, ArcType.ROUND);
-                        double percentBar = 100.0 - e.getPercentLeft();
-                        if (percentBar > 100) {
-                            percentBar = 99.99999;
-                        }
-                        if (percentBar < 0) {
-                            percentBar = 0.000001;
-                        }
-                        setColorBasedOnPercent(gc, percentBar, true);
-                        double coverage = e.getPercentLeft() / 100.0 * 360.0;
-                        xt = sconst.adjX(x + 2);
-                        wt = sconst.adjX(28);
-                        yt = sconst.adjY(659);
-                        ht = sconst.adjY(28);
-                        gc.fillArc(xt, yt, wt, ht, 90, coverage, ArcType.ROUND);
-                        x += 32;
-                    }
+                    x = effectDurationTimers(gc, e, x); // side effect: x coord incremented
                 }
             }
-            drawTimerWarnings(gc);
+            drawGameTimerWarnings(gc);
         }
     }
 
-    private void drawTimerWarnings(GraphicsContext gc) {
+    private int effectDurationTimers(GraphicsContext gc, Effect e, int x) {
+        if (e.getIcon(gc) != null) {
+            BlendMode originalBlendMode = gc.getGlobalBlendMode();
+
+            // Set the new blend mode to handle transparency
+            gc.setGlobalBlendMode(BlendMode.SRC_OVER);
+            gc.setGlobalAlpha(0.5); // Set the transparency level
+
+            // Draw the image
+            gc.drawImage(e.getIcon(gc), x, 689);
+
+            // Restore the original blend mode and opacity
+            gc.setGlobalBlendMode(originalBlendMode);
+            gc.setGlobalAlpha(1.0); // Reset transparency level to opaque
+            gc.setFill(new Color(1f, 1f, 1f, .5f));
+            double xt = sconst.adjX(x);
+            double wt = sconst.adjX(32);
+            double yt = sconst.adjY(657);
+            double ht = sconst.adjY(32);
+            gc.fillArc(xt, yt, wt, ht, 90, -360, ArcType.ROUND);
+            double percentBar = 100.0 - e.getPercentLeft();
+            if (percentBar > 100) {
+                percentBar = 99.99999;
+            }
+            if (percentBar < 0) {
+                percentBar = 0.000001;
+            }
+            setColorBasedOnPercent(gc, percentBar, true);
+            double coverage = e.getPercentLeft() / 100.0 * 360.0;
+            xt = sconst.adjX(x + 2);
+            wt = sconst.adjX(28);
+            yt = sconst.adjY(659);
+            ht = sconst.adjY(28);
+            gc.fillArc(xt, yt, wt, ht, 90, coverage, ArcType.ROUND);
+            x += 32;
+        }
+        return x;
+    }
+
+    private void displayEmail(GraphicsContext gc) {
+        sconst.setFont(gc, new Font("Verdana", 12));
+        //get usernmame from titan via token decoded jwt
+        String jwt = controlsHeld.token;
+        String username = Util.jwtExtractEmail(jwt);
+        sconst.drawString(gc, username, 920, 701);
+    }
+
+    private void drawGameTimerWarnings(GraphicsContext gc) {
         gc.setFill(new Color(0f, 1f, 0f, .4f));
         Font font = new Font("Verdana", 32);
         sconst.setFont(gc, font);
