@@ -1,6 +1,6 @@
 package client.forms;
 
-import client.HttpClient;
+import client.AuthServerInterface;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.scene.control.PasswordField;
@@ -9,13 +9,13 @@ import javafx.scene.control.TextField;
 
 public class LoginListener implements EventHandler<ActionEvent> {
     private final Runnable onLoginSuccess;
-    private HttpClient client;
+    private AuthServerInterface client;
     private TextField tf1;
     private PasswordField p1;
     private LoginForm form;
     private String token;
 
-    public LoginListener(HttpClient client, TextField tf1, PasswordField p1, LoginForm form, Runnable onLoginSuccess) {
+    public LoginListener(AuthServerInterface client, TextField tf1, PasswordField p1, LoginForm form, Runnable onLoginSuccess) {
         this.client = client;
         this.tf1 = tf1;
         this.p1 = p1;

@@ -94,8 +94,7 @@ public class Box extends Coordinates  implements Serializable {
     }
 
     public boolean intersectCircle(double x2, double y2, double r2) {
-        Ellipse e = new Ellipse(this.X, this.Y, this.width, this.height);
-        System.out.println("elipse " + e);
+        Ellipse e = new Ellipse(this.X + this.width/2, this.Y + this.height/2, this.width, this.height);
         double distSq = (e.getCenterX() - x2) * (e.getCenterX()- x2) +
                 (e.getCenterY() - y2) * (e.getCenterY()- y2);
         //return True if the center of the circle is within the ellipse
@@ -112,5 +111,9 @@ public class Box extends Coordinates  implements Serializable {
         double y1 = Math.abs(ball.Y - this.Y);
         double y2 = Math.abs((ball.Y + ball.height ) - (this.Y + this.height));
         return (x1 < y1 && x1 < y2) || (x2 < y1 && x2 < y2);
+    }
+
+    public Ellipse ellipseCentered() {
+        return new Ellipse(this.X + (double) this.width /2, this.Y + (double) this.height /2, (double) this.width / 2, (double) this.height / 2);
     }
 }

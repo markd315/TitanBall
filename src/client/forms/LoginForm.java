@@ -1,6 +1,6 @@
 package client.forms;
 
-import client.HttpClient;
+import client.AuthServerInterface;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.VBox;
@@ -14,7 +14,7 @@ public class LoginForm extends Stage {
     PasswordField p1;
     private Button btn1;
 
-    public LoginForm(HttpClient client, Runnable onLoginSuccess) {
+    public LoginForm(AuthServerInterface client, Runnable onLoginSuccess) {
 
         // Setup Stage
         setTitle("Login Form");

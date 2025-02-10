@@ -1,5 +1,6 @@
 package authserver.models.DTO;
 
+
 import javax.validation.constraints.NotBlank;
 
 public class ActivationRequest {

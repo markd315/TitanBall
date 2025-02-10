@@ -18,6 +18,7 @@ import gameserver.gamemanager.GamePhase;
 import gameserver.gamemanager.ManagedGame;
 import gameserver.models.Game;
 import javafx.geometry.Bounds;
+import javafx.scene.shape.Ellipse;
 import javafx.scene.shape.Rectangle;
 import networking.ClientPacket;
 import networking.KeyDifferences;
@@ -171,23 +172,10 @@ public class GameEngine extends Game {
         return new GoalHoop[0];
     }
 
-    public boolean ballIntersectsEllipse(double ballX, double ballY, GoalHoop goal) {
-        // Get the ellipse's center and radii
-        double goalCenterX = goal.x; // Assuming `getCenterX()` returns the center X of the ellipse
-        double goalCenterY = goal.y; // Assuming `getCenterY()` returns the center Y of the ellipse
-        double goalRadiusX = goal.w; // The horizontal radius of the ellipse (half the width)
-        double goalRadiusY = goal.h; // The vertical radius of the ellipse (half the height)
-
-        // Translate the ball's center to the ellipse's coordinate system (normalize)
-        double dx = ballX - goalCenterX;
-        double dy = ballY - goalCenterY;
-
-        // Normalize the distance by the ellipse radii to handle the ellipse's shape
-        double normalizedDistanceX = dx / goalRadiusX;
-        double normalizedDistanceY = dy / goalRadiusY;
-
-        // Check if the normalized distance is within the unit circle
-        return (normalizedDistanceX * normalizedDistanceX + normalizedDistanceY * normalizedDistanceY) <= 1.0;
+    public boolean ballIntersectsEllipse(GoalHoop goal) {
+        Ellipse g = goal.ellipseCentered();
+        Ellipse b = ball.ellipseCentered();
+        return b.getBoundsInLocal().intersects(g.getBoundsInLocal());
     }
 
     public void detectGoals() {
@@ -196,7 +184,7 @@ public class GameEngine extends Game {
             return;
         }
         for (GoalHoop goal : this.lowGoals) {
-            if (ballIntersectsEllipse(this.ball.X, this.ball.Y, goal) && goal.checkReady()) {
+            if (ballIntersectsEllipse(goal) && goal.checkReady()) {
                 Team enemy, us;
                 if (goal.team == TeamAffiliation.HOME) {
                     us = this.away;
@@ -218,15 +206,15 @@ public class GameEngine extends Game {
         }
 
         for (GoalHoop goal : this.hiGoals) {
-            Team us, enemy;
-            if (goal.team == TeamAffiliation.HOME) {
-                us = this.away;
-                enemy = this.home;
-            } else { //(goal.team == TeamAffiliation.AWAY)
-                us = this.home;
-                enemy = this.away;
-            }
-            if (ballIntersectsEllipse(this.ball.X, this.ball.Y, goal) && goal.checkReady()) {
+            if (ballIntersectsEllipse(goal) && goal.checkReady()) {
+                Team us, enemy;
+                if (goal.team == TeamAffiliation.HOME) {
+                    us = this.away;
+                    enemy = this.home;
+                } else { //(goal.team == TeamAffiliation.AWAY)
+                    us = this.home;
+                    enemy = this.away;
+                }
                 goal.trigger();
                 //Cash in all ghost/combo points for a full point
                 long iPart = (long) us.score;
@@ -249,36 +237,16 @@ public class GameEngine extends Game {
         }
     }
 
-
-    protected void goalieMinorHoopBounce() {
-        if (titanInPossession().isPresent() && titanInPossession().get().getType() == TitanType.GOALIE) {
-            for (GoalHoop goal : this.lowGoals) {
-                GoalSprite tempGoal = new GoalSprite(goal, 0, 0, new ScreenConst(1920, 1080)); //Just for using the g2d intersect method
-                Bounds ballBounds = ball.asBounds();
-                while (tempGoal.intersects(ballBounds)) {
-                    ballBounds = ball.asBounds();
-                    int wRad = (int) ((tempGoal.getRadiusX() - 1) / 2);
-                    int hRad = (int) ((tempGoal.getRadiusY() - 1) / 2);
-                    double ang = Util.degreesFromCoords(tempGoal.getCenterX() + wRad - ball.X - ball.centerDist, tempGoal.getCenterY() + hRad - ball.Y - ball.centerDist);
-                    ang += 180; //Run away, not towards
-                    double dx = Math.cos(Math.toRadians((ang)));
-                    double dy = Math.sin(Math.toRadians((ang)));
-                    titanInPossession().get().X += dx;
-                    titanInPossession().get().Y += dy;
-                }
-            }
-        }
-    }
-
     protected void minorHoopBounce() {
+        Bounds ballBounds = ball.asBounds();
         for (GoalHoop goal : this.lowGoals) {
-            GoalSprite tempGoal = new GoalSprite(goal, 0, 0, new ScreenConst(1920, 1080)); //Just for using the g2d intersect method
-            Bounds ballBounds = ball.asBounds();
-            while (tempGoal.intersects(ballBounds)) {
+            Ellipse ell = goal.ellipseCentered();
+            while (ell.intersects(ballBounds)) {
                 ballBounds = ball.asBounds();
-                int wRad = (int) ((tempGoal.getRadiusX() - 1) / 2);
-                int hRad = (int) ((tempGoal.getRadiusY() - 1) / 2);
-                double ang = Util.degreesFromCoords(tempGoal.getCenterX() + wRad - ball.X - ball.centerDist, tempGoal.getCenterY() + hRad - ball.Y - ball.centerDist);
+                double ang = Util.degreesFromCoords(
+                        ell.getCenterX() - ball.X - ball.centerDist,
+                        ell.getCenterY() - ball.Y - ball.centerDist
+                );
                 ang += 180; //Kick it away, not towards
                 double dx = Math.cos(Math.toRadians((ang)));
                 double dy = Math.sin(Math.toRadians((ang)));
@@ -327,9 +295,6 @@ public class GameEngine extends Game {
             if (client != null) {
                 client.setSelection(client.getPossibleSelection().get(0));
             }
-        }
-        for(ClientPacket packet : lastControlPacket){
-            packet = new ClientPacket();
         }
         lastPossessed = null;
         if (c.GOALIE_DISABLED) {
@@ -1772,7 +1737,7 @@ public class GameEngine extends Game {
         return Optional.empty();
     }
 
-    public boolean checkWinCondition(boolean clientSide) {
+    public boolean checkWinCondition(boolean forceContinueGame) {
         int SOFT_WIN = this.options.playToIndex;
         int WIN_BY = this.options.winByIndex;
         int HARD_WIN = this.options.hardWinIndex;
@@ -1802,7 +1767,7 @@ public class GameEngine extends Game {
                 }
             }
         }
-        if (over && !clientSide) {
+        if (over && !forceContinueGame) {
             if (homeDifferential > 0) {
                 triggerWin(home);
             } else if (homeDifferential < 0) {

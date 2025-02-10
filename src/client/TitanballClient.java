@@ -9,7 +9,7 @@ import com.esotericsoftware.kryonet.Connection;
 import com.esotericsoftware.kryonet.FrameworkMessage;
 import com.esotericsoftware.kryonet.Listener;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mashape.unirest.http.exceptions.UnirestException;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import gameserver.Const;
 import gameserver.TutorialOverrides;
 import gameserver.effects.EffectId;
@@ -29,7 +29,6 @@ import javafx.event.EventHandler;
 import javafx.event.EventType;
 import javafx.geometry.Insets;
 import javafx.scene.SnapshotParameters;
-import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.effect.BlendMode;
 import javafx.scene.image.Image;
@@ -51,8 +50,6 @@ import networking.KryoRegistry;
 import networking.PlayerDivider;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
-import org.json.JSONObject;
-import org.springframework.security.core.parameters.P;
 import util.Util;
 
 import java.io.File;
@@ -66,12 +63,10 @@ import java.util.concurrent.TimeUnit;
 
 public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
     protected final ScreenConst sconst;
-    private Canvas canvas = new Canvas();
-    private int RANGE_SIZE = 0;
-    private int SHOT_WIDTH = 0;
+    private int RANGE_SIZE;
+    private int SHOT_WIDTH;
     public ClientPacket controlsHeld = new ClientPacket();
     public Instant gamestart = null;
-    public Random rand;
     public Sound shotSound;
     protected Client gameserverConn = new Client(1024 * 1024, 256 * 1024); // 1mb and 256k
     protected String gameID;
@@ -79,8 +74,8 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
     protected GamePhase phase = GamePhase.CREDITS;
     protected Kryo kryo = gameserverConn.getKryo();
     protected boolean camFollow = true;
-    protected String token, refresh;
-    protected HttpClient loginClient;
+    protected String token;
+    protected AuthServerInterface loginClient;
     protected boolean instructionToggle = false;
     protected int staticFrame = 0, staticFrameCounter = 0;
     protected Masteries masteries;
@@ -91,7 +86,6 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
     int cursor = 1; // For deciding classes and everything else
     int camX = 0;
     int camY = 0;
-    int round = 1;
     int ballFrame = 0;
     int ballFrameCounter = 0;
     File shotSoundFile = new File("res/Sound/shotsound.wav");
@@ -144,15 +138,15 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
     private GameOptions tourneyOptions = new GameOptions();
     private int tourneyIndex = 0;
     private boolean fullScreen = true;
-    private double scl;
-    private boolean darkTheme;
+    private final double scl;
+    private final boolean darkTheme;
     private boolean queued = false;
     ScheduledExecutorService exec = Executors.newScheduledThreadPool(1);
     private TeamAffiliation saved_team;
     private PlayerDivider saved_player_divider;
     private boolean initialUpdate = false;
 
-    public TitanballClient(TitanballWindow titanballWindow, int xSize, int ySize, double scl, HttpClient loginClient, Map<String, String> keymap, boolean createListeners, boolean darkTheme) {
+    public TitanballClient(TitanballWindow titanballWindow, int xSize, int ySize, double scl, AuthServerInterface loginClient, Map<String, String> keymap, boolean createListeners, boolean darkTheme) {
         this.darkTheme = darkTheme;
         //this.parentWindow = titanballWindow;
         this.xSize = xSize;
@@ -275,10 +269,9 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
             if (queued) {
                 try {
                     loginClient.retry401Catch503("leave", null);
-                } catch (UnirestException e) {
-                    // This is fine, server is in shutdown state so we have already been dequeued
+                } catch (Exception e) {
+                    return;
                 }
-                queued = false;
             }
             if (saved_team == TeamAffiliation.HOME){
                 team = game.home;
@@ -372,6 +365,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                 return;
             }
             else {
+                updateCamera();
                 if (this.game.effectPool.hasEffect(this.game.underControl, EffectId.BLIND)) {
                     sconst.setFont(gc, new Font("Verdana", 72));
                     gc.setFill(Color.DARKGRAY);
@@ -430,6 +424,18 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
             drawTeamScreen(gc);
         }
     }
+
+    private void updateCamera() {
+        if (camFollow) {
+            camX = (int) (game.underControl.X + 35 - (this.xSize / 3 / 1.5 * scl));
+            //if (camX > 820) camX = 820;
+            if (camX < 0) camX = 0;
+            camY = (int) (game.underControl.Y + 35 - (this.ySize / 3 / 1.5 * scl));
+            //if (camY > 480) camY = 480;
+            if (camY < 0) camY = 0;
+        }
+    }
+
     static File t0File = new File("res/Sound/tut0.wav");
     static File t1File = new File("res/Sound/tut1.wav");
     static File t2File = new File("res/Sound/tut2.wav");
@@ -526,16 +532,17 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
     }
 
     protected void gameEndStatsAndRanks(GraphicsContext gc, PlayerDivider client) {
-        JSONObject stats = game.stats.statsOf(client);
-        JSONObject ranks = game.stats.ranksOf(client);
+        ObjectNode stats = game.stats.statsOf(client);
+        ObjectNode ranks = game.stats.ranksOf(client);
         int y = 425;
         Font font = new Font("Verdana", sconst.STATS_FONT);
         sconst.setFont(gc, font);
-        for (String stat : stats.keySet()) {
+        for (Iterator<String> it = stats.fieldNames(); it.hasNext(); ) {
+            String stat = it.next();
             gc.setFill(darkTheme ? Color.WHITE : Color.BLACK);
             sconst.drawString(gc, stat + ": " + stats.get(stat), 310, y);
-            if (ranks.has(stat) && ((int) ranks.get(stat) >= 1)) {
-                int rank = (int) ranks.get(stat);
+            if (ranks.has(stat) && ranks.get(stat).asInt() >= 1) {
+                int rank = ranks.get(stat).asInt();
                 setColorFromRank(gc, rank);
                 sconst.fill(gc,new Ellipse(sconst.STATS_MEDAL + 1, //subtractions for internal color circle
                         y - (sconst.STATS_FONT - 4) + 1,
@@ -558,6 +565,22 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
         openConnection();
     }
 
+    Runnable updateServer = () -> {
+        if (controlsHeld != null && gameserverConn.isConnected()) {
+            controlsHeld.gameID = gameID;
+            controlsHeld.token = token;
+            controlsHeld.masteries = masteries;
+            gameserverConn.sendTCP(controlsHeld);
+        }
+        else if(!gameserverConn.isConnected()) {
+            gameserverConn.close();
+            gameserverConn = new Client(8 * 1024 * 1024, 1024 * 1024); //8mb and 1mb
+        }
+        else{
+            System.out.println("null controls held");
+        }
+    };
+
     public void openConnection() throws IOException {
         //TODO replace this with a socketio connection
         gameserverConn.start();
@@ -567,31 +590,14 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
             gameserverConn.connect(999999999, "zanzalaz.com", 54555);
             //gameserverConn.connect(5000, "127.0.0.1", 54555);
 
-            Runnable updateServer = () -> {
-                if (controlsHeld != null && gameserverConn.isConnected()) {
-                    controlsHeld.gameID = gameID;
-                    controlsHeld.token = token;
-                    controlsHeld.masteries = masteries;
-                    gameserverConn.sendTCP(controlsHeld);
-                }
-                else if(!gameserverConn.isConnected()) {
-                    gameserverConn.close();
-                    gameserverConn = new Client(8 * 1024 * 1024, 1024 * 1024); //8mb and 1mb
-                }
-                else{
-                    System.out.println("null controls held");
-                }
-            };
-
             gameserverConn.addListener(new Listener() {
                 public synchronized void received(Connection connection, Object object) {
                      //System.out.println("type of object: " + object.getClass().getName());
                      if (object instanceof Game) {
                          game = (GameEngine) object;
                      }
-                     else if (object instanceof byte[]) {
-                        byte[] data = (byte[]) object;
-                        game = kryo.readObject(new Input(data), GameEngine.class);
+                     else if (object instanceof byte[] data) {
+                         game = kryo.readObject(new Input(data), GameEngine.class);
                      }
                      else if (object instanceof FrameworkMessage.KeepAlive) {
                         System.out.println("Got a keepalive from gameserver!");
@@ -620,12 +626,12 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                     }
                 }
             });
-            exec.scheduleAtFixedRate(updateServer, 30, 30, TimeUnit.MILLISECONDS);
+            exec.scheduleAtFixedRate(updateServer, 15, 15, TimeUnit.MILLISECONDS);
             System.out.println("Updates scheduled");
         }
     }
 
-    protected String requestOrQueueGame() throws UnirestException {
+    protected String requestOrQueueGame() throws Exception {
         if (!queued) {
             loginClient.retry401Catch503("join", this.tournamentCode);
             token = loginClient.token;
@@ -635,7 +641,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
             token = loginClient.token;
         }
         if (loginClient.gameId != null && loginClient.gameId.equals("NOT QUEUED")) {
-            throw new UnirestException("Server not accepting connections");
+            throw new Exception("Server not accepting connections");
         }
         if (loginClient.gameId != null && !loginClient.gameId.equals("WAITING")) {
             this.gameID = loginClient.gameId;
@@ -728,50 +734,8 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
             controlsExplanation(gc);
             return;
         }
-        if (camFollow) {
-            camX = (int) (game.underControl.X + 35 - (this.xSize / 3 / 1.5 * scl));
-            //if (camX > 820) camX = 820;
-            if (camX < 0) camX = 0;
-            camY = (int) (game.underControl.Y + 35 - (this.ySize / 3 / 1.5 * scl));
-            //if (camY > 480) camY = 480;
-            if (camY < 0) camY = 0;
-        }
         sconst.drawImage(gc, field, (1 - camX), (1 - camY));
-        gc.setLineWidth(6.0); // Set the stroke width
-        for (GoalHoop goalData : game.lowGoals) {
-            GoalSprite goal = new GoalSprite(goalData, camX, camY, sconst);
-            Team enemy;
-            if (goal.team == TeamAffiliation.HOME) {
-                enemy = game.away;
-            } else { //(goal.team == TeamAffiliation.AWAY)
-                enemy = game.home;
-            }
-            if (!goal.checkReady()) {
-                gc.setStroke(Color.RED);
-                if (goal.frozen) {
-                    gc.setStroke(Color.web("#26ECEA")); // light blue
-                }
-            } else if (enemy.score % 1.0 == .75) {
-                gc.setStroke(Color.web("#CFA120")); // gold-like color
-            } else {
-                gc.setStroke(Color.LIGHTGRAY);
-            }
-            goal.draw(gc);
-        }
-        for (GoalHoop goalData : game.hiGoals) {
-            GoalSprite goal = new GoalSprite(goalData, camX, camY, sconst);
-            Team enemy;
-            if (goal.team == TeamAffiliation.HOME) {
-                enemy = game.away;
-            } else { //(goal.team == TeamAffiliation.AWAY)
-                enemy = game.home;
-            }
-            gc.setFill(Color.DARKGRAY);
-            if (enemy.score % 1.0 == .75) {
-                gc.setStroke(Color.GREEN);
-            }
-            goal.draw(gc);
-        }
+        drawGoals(gc);
         drawPainHealIndicator(gc, game);
         ArrayList<RangeCircle> clientCircles = new ArrayList<>();
         for (RangeCircle ri : game.underControl.rangeIndicators) {
@@ -859,7 +823,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
         }
 
         drawEntities(gc);
-        if (game.ballVisible == true) {
+        if (game.ballVisible) {
             if (game.anyPoss()) {
                 if (ballFrame == 0) {
                     sconst.drawImage(gc, ballTexture, ((int) game.ball.X - camX), ((int) game.ball.Y - camY));
@@ -897,7 +861,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
             }
         }
         drawPortalRanges(gc);
-        if (game.goalVisible == true) {
+        if (game.goalVisible) {
             sconst.drawImage(gc,goalScored, sconst.GOAL_TXT_X, sconst.GOAL_TXT_Y);
         }
         if (game.colliders != null) {
@@ -913,34 +877,99 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
         }
     }
 
+    private void drawGoals(GraphicsContext gc) {
+        gc.setLineWidth(6.0); // Set the stroke width
+        for (GoalHoop goalData : game.lowGoals) {
+            Team enemy;
+            if (goalData.team == TeamAffiliation.HOME) {
+                enemy = game.away;
+            } else { //(goal.team == TeamAffiliation.AWAY)
+                enemy = game.home;
+            }
+            gc.setStroke(Color.LIGHTGRAY);
+            if (!goalData.checkReady()) {
+                gc.setStroke(Color.RED);
+                if (goalData.frozen) {
+                    gc.setStroke(Color.SKYBLUE);
+                }
+            } else if (checkSuddenDeath('L', enemy)) {
+                gc.setStroke(Color.GOLDENROD);
+            } else if (enemy.score % 1.0 == .75) {
+                gc.setStroke(Color.DARKVIOLET);
+            }
+            new GoalSprite(goalData, camX, camY, sconst).draw(gc);
+        }
+        for (GoalHoop goalData : game.hiGoals) {
+            Team enemy;
+            if (goalData.team == TeamAffiliation.HOME) {
+                enemy = game.away;
+            } else { //(goal.team == TeamAffiliation.AWAY)
+                enemy = game.home;
+            }
+            gc.setFill(Color.DARKGRAY);
+            if (checkSuddenDeath('H', enemy)) {
+                gc.setStroke(Color.GOLDENROD);
+            } else if (enemy.score % 1.0 == .75) {
+                gc.setStroke(Color.GREEN);
+            }
+            new GoalSprite(goalData, camX, camY, sconst).draw(gc);
+        }
+    }
+
+    private boolean checkSuddenDeath(char lOrH, Team enemy) {
+        double diff;
+        switch (lOrH) {
+            case 'H':
+                double fPart = enemy.score - ((int) enemy.score);
+                diff = (fPart * 4 + 1) - fPart;
+                break;
+            case 'L':
+                diff = .25;
+                break;
+            default:
+                return false;
+        }
+        enemy.score += diff;
+        boolean willEnd = game.checkWinCondition(true);
+        enemy.score -= diff;
+        return willEnd;
+    }
+
     private void drawPortalRanges(GraphicsContext gc) {
         for (Entity e : game.entityPool) {
-            RangeCircle ri = null;
-            if (e instanceof BallPortal && game.underControl.id.equals(((BallPortal) e).getCreatedById())) {
-                ri = ((BallPortal) e).rangeCircle;
-            }
-            if (e instanceof Portal && game.underControl.id.equals(((Portal) e).getCreatedById())) {
-                ri = ((Portal) e).rangeCircle;
-            }
-            if (ri != null) {
-                int w = (int) (ri.getRadius() * 2);
-                int h = w;
-                int x = (int) e.X + (e.width / 2) - w / 2;
-                int y = (int) e.Y + (e.height / 2) - h / 2;
-                x = (int) sconst.adjX(x - camX);
-                y = sconst.adjY(y - camY);
-                h = sconst.adjY(h);
-                w = (int) sconst.adjX(w);
-                Ellipse ell = new Ellipse(x, y, w, h);
-                ShapePayload c = new ShapePayload(ell);
-                gc.setStroke(ri.getColor());
-                Shape b = c.fromWithCamera(camX, camY, sconst);
-                gc.strokeOval(b.getBoundsInLocal().getMinX(),
-                        b.getBoundsInLocal().getMinY(),
-                        b.getBoundsInLocal().getWidth(),
-                        b.getBoundsInLocal().getHeight());
-            }
+        RangeCircle ri = null;
+        if (e instanceof BallPortal && game.underControl.id.equals(((BallPortal) e).getCreatedById())) {
+            ri = ((BallPortal) e).rangeCircle;
         }
+        if (e instanceof Portal && game.underControl.id.equals(((Portal) e).getCreatedById())) {
+            ri = ((Portal) e).rangeCircle;
+        }
+        if (ri != null) {
+            int radius = ri.getRadius();
+
+            // Calculate the center coordinates
+            int centerX = (int) (e.X + e.width / 2);
+            int centerY = (int) (e.Y + e.height / 2);
+
+            // Adjust the coordinates based on camera position and screen constants
+            int adjustedCenterX = sconst.adjX(centerX);
+            int adjustedCenterY = sconst.adjY(centerY);
+            int adjustedRadiusX = sconst.adjX(radius);
+            int adjustedRadiusY = sconst.adjY(radius);
+
+            // Create the ellipse centered on the portal
+            Ellipse ell = new Ellipse(adjustedCenterX, adjustedCenterY, adjustedRadiusX, adjustedRadiusY);
+            ShapePayload c = new ShapePayload(ell);
+            gc.setStroke(ri.getColor());
+            Shape b = c.fromWithCamera(camX, camY, sconst);
+
+            // Draw the ellipse
+            gc.strokeOval(b.getBoundsInLocal().getMinX(),
+                          b.getBoundsInLocal().getMinY(),
+                          b.getBoundsInLocal().getWidth(),
+                          b.getBoundsInLocal().getHeight());
+        }
+    }
     }
 
     private void drawPainHealIndicator(GraphicsContext gc, GameEngine game) {
@@ -1099,8 +1128,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                 Collections.reverse(drawHp); //draw your team on top always
             for (Entity e : drawHp) {
                 if (e.health > 0.0) {
-                    if (e instanceof Titan) {
-                        Titan t = (Titan) e;
+                    if (e instanceof Titan t) {
                         if (game.underControl.team != t.team &&
                                 invisible(t)) {
                             continue;
@@ -1127,8 +1155,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                 f1 = wall;
                 f2 = wall;
             }
-            if (e instanceof BallPortal) {
-                BallPortal p = (BallPortal) e;
+            if (e instanceof BallPortal p) {
                 if (p.isCooldown(game.now)) {
                     f1 = bportalcd;
                     f2 = bportalcd;
@@ -1137,8 +1164,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                     f2 = bportal2;
                 }
             }
-            if (e instanceof Portal) {
-                Portal p = (Portal) e;
+            if (e instanceof Portal p) {
                 if (p.isCooldown(game.now)) {
                     f1 = portalcd;
                     f2 = portalcd;
@@ -1155,8 +1181,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                 f1 = cage;
                 f2 = f1;
             }
-            if (e instanceof Wolf) {
-                Wolf w = (Wolf) e;
+            if (e instanceof Wolf w) {
                 if (w.wolfPower == 1) {
                     if (w.facingRight) {
                         f1 = wolf1R;
@@ -1207,8 +1232,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
             Entity en = game.effectPool.getOn().get(i);
             //TODO evaluate whether or not to display cooldowns
             if (/*!e.toString().contains("COOLDOWN") &&*/ !e.toString().contains("ATTACKED")) {
-                if (en instanceof Titan) {
-                    Titan t = (Titan) en;
+                if (en instanceof Titan t) {
                     if (offset.containsKey(t.id) && !invisible(t)) {
                         sconst.drawImage(gc, e.getIconSmall(gc), (int) t.X + offset.get(t.id) - camX,
                                 (int) t.Y - 29 - camY);
@@ -1222,8 +1246,18 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                     }
                 }
 
+                //TODO goal detection is severely shifted up. radius seems about right though
+                //triggering RED incorrectly when the ball scores a sidegoal
+                //should also show BLACK when the goal is a sudden death situation
             }
         }
+        for (Titan t : game.players){ //Add icon if boosting
+            if (t.isBoosting) {
+                EmptyEffect speed = new EmptyEffect(50, t, EffectId.FAST);
+                sconst.drawImage(gc, speed.getIconSmall(gc), (int) t.X + offset.get(t.id) - camX,
+                                (int) t.Y - 29 - camY);
+            }
+        }//note, if you add any other effect overrides, increment the offset above
     }
 
     protected void drawHealthBar(GraphicsContext gc, Entity e) {
@@ -1246,7 +1280,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
 
                 // Calculate health bar width based on the health percentage, and adjust it only once
                 int hpPercentage = (int) (100 * e.health / e.maxHealth);
-                int adjustedWidth = (int) sconst.adjX(hpPercentage);
+                int adjustedWidth = sconst.adjX(hpPercentage);
 
                 // Adjust the Y position for the health bar (since it’s based on the same adjusted Y)
                 int healthStatY = sconst.adjY((int) e.Y - 10 - camY);
@@ -1268,22 +1302,21 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                     gc.setFill(Color.BLUE);
                     xOffset = -5;
                 }
-                int x = (int) sconst.adjX((int) e.X + xOffset - camX);
+                int x = sconst.adjX((int) e.X + xOffset - camX);
                 int y = sconst.adjY((int) e.Y - 9 - camY);
                 Rectangle healthBar = new Rectangle(x, y,
-                        (int) sconst.adjX(66), sconst.adjY(8));
+                        sconst.adjX(66), sconst.adjY(8));
                 sconst.fill(gc,healthBar);
                 int hpPercentage = (int) (100 * e.health / e.maxHealth);
                 y = sconst.adjY((int) e.Y - 8 - camY);
                 Rectangle healthStat = new Rectangle(x,
                         y,
-                        (int) sconst.adjX(hpPercentage * 2 / 3), sconst.adjY(5));
+                        sconst.adjX(hpPercentage * 2 / 3), sconst.adjY(5));
                 setColorBasedOnPercent(gc, hpPercentage, false);
                 sconst.fill(gc,healthStat);
             }
         }
-        if (e instanceof Portal) {
-            Portal p = (Portal) e;
+        if (e instanceof Portal p) {
             if (p.isCooldown(game.now)) {
                 double durSpent = p.cooldownPercentOver(game.now);
                 setColorBasedOnPercent(gc, durSpent, false);
@@ -1291,8 +1324,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                 sconst.fill(gc,durBar);
             }
         }
-        if (e instanceof BallPortal) {
-            BallPortal p = (BallPortal) e;
+        if (e instanceof BallPortal p) {
             if (p.isCooldown(game.now)) {
                 double durSpent = p.cooldownPercentOver(game.now);
                 setColorBasedOnPercent(gc, durSpent, false);
@@ -1303,7 +1335,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
     }
 
     private void displayBuust(GraphicsContext gc, Titan t, int x) {
-        int adjustedY = sconst.adjY((int) t.Y - 4 - (int) camY);
+        int adjustedY = sconst.adjY((int) t.Y - 4 - camY);
 
         // Set stroke color based on fuel level
         if (t.fuel > 25) {
@@ -1513,8 +1545,8 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
         if (key == KeyCode.ESCAPE && phase == GamePhase.WAIT_FOR_GAME) {
             try {
                 loginClient.retry401Catch503("leave", null);
-            } catch (UnirestException e) {
-                // This is fine, the server is in shutdown mode so we have already been dequeued
+            } catch (Exception e) {
+                return;
             }
             queued = false;
             phase = GamePhase.DRAW_CLASS_SCREEN;
@@ -1525,7 +1557,6 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
         if (key == KeyCode.SPACE && (phase == GamePhase.INGAME || phase == GamePhase.SCORE_FREEZE || phase == GamePhase.TUTORIAL)) {
             camFollow = !camFollow;
             controlsHeld.CAM = true;
-            //TODO play restart ding/click
         }
         if ((phase == GamePhase.INGAME) || phase == GamePhase.TUTORIAL) {
             controlsConfig.mapKeyPress(this.game, controlsHeld, key, this.shotSound);
@@ -1537,6 +1568,9 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                 //TODO revisit fullscreen potential
                 //parentWindow.toggleFullscreen(fullScreen);
             }
+            //TODO fix this, not really behaving like I want it to.
+            // right now we miss keypresses if we dont have a packet update before the key is released
+            //This is to prevent the server from missing keypresses
         }
         classKeys(key);
     }
@@ -1773,8 +1807,8 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
         Font font = new Font("Verdana", 24);
         gc.setFill(Color.YELLOW);
         sconst.setFont(gc, font);
-        double milUntil = (new Duration(Instant.now(), gamestart)).getMillis();
-        //System.out.println(milUntil);
+        double milUntil = (new Duration(Instant.now(), gamestart)).getMillis() + 600;
+        //Added 600 because it seems to chronically be off by about that amount
         sconst.drawString(gc, String.format("Starting in %1.1f seconds", milUntil / 1000.0), 345, 220);
         font = new Font("Verdana", 48);
         gc.setFill(Color.RED);
@@ -1861,14 +1895,10 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
             setColorFromCharge(gc, minorGoalsAway);
             sconst.drawString(gc, minorGoalsAway + "/4", 848, 701);
 
-            sconst.setFont(gc, new Font("Verdana", 9));
-            //get usernmame from titan via token decoded jwt
-            String jwt = controlsHeld.token;
-            String username = Util.jwtExtractEmail(jwt);
-            sconst.drawString(gc, username, 920, 701);
+
+            displayEmail(gc);
             gc.setFill(Color.RED);
             int x = xSize / 4;
-            //addBoostIcons();
             for (int i = 0; i < game.effectPool.getEffects().size(); i++) {
                 Effect e = game.effectPool.getEffects().get(i);
                 Entity on = game.effectPool.getOn().get(i);
@@ -1890,48 +1920,61 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                         gc.setFill(new Color(0f, 0f, 0f, .4f));
                         sconst.drawString(gc, "Stolen!", 450, 300);
                     }
-                    if (e.getIcon(gc) != null) {
-                        BlendMode originalBlendMode = gc.getGlobalBlendMode();
-
-                        // Set the new blend mode to handle transparency
-                        gc.setGlobalBlendMode(BlendMode.SRC_OVER);
-                        gc.setGlobalAlpha(0.5); // Set the transparency level
-
-                        // Draw the image
-                        gc.drawImage(e.getIcon(gc), x, 689);
-
-                        // Restore the original blend mode and opacity
-                        gc.setGlobalBlendMode(originalBlendMode);
-                        gc.setGlobalAlpha(1.0); // Reset transparency level to opaque
-                        gc.setFill(new Color(1f, 1f, 1f, .5f));
-                        double xt = sconst.adjX(x);
-                        double wt = sconst.adjX(32);
-                        double yt = sconst.adjY(657);
-                        double ht = sconst.adjY(32);
-                        gc.fillArc(xt, yt, wt, ht, 90, -360, ArcType.ROUND);
-                        double percentBar = 100.0 - e.getPercentLeft();
-                        if (percentBar > 100) {
-                            percentBar = 99.99999;
-                        }
-                        if (percentBar < 0) {
-                            percentBar = 0.000001;
-                        }
-                        setColorBasedOnPercent(gc, percentBar, true);
-                        double coverage = e.getPercentLeft() / 100.0 * 360.0;
-                        xt = sconst.adjX(x + 2);
-                        wt = sconst.adjX(28);
-                        yt = sconst.adjY(659);
-                        ht = sconst.adjY(28);
-                        gc.fillArc(xt, yt, wt, ht, 90, coverage, ArcType.ROUND);
-                        x += 32;
-                    }
+                    x = effectDurationTimers(gc, e, x); // side effect: x coord incremented
                 }
             }
-            drawTimerWarnings(gc);
+            drawGameTimerWarnings(gc);
         }
     }
 
-    private void drawTimerWarnings(GraphicsContext gc) {
+    private int effectDurationTimers(GraphicsContext gc, Effect e, int x) {
+        if (e.getIcon(gc) != null) {
+            BlendMode originalBlendMode = gc.getGlobalBlendMode();
+
+            // Set the new blend mode to handle transparency
+            gc.setGlobalBlendMode(BlendMode.SRC_OVER);
+            gc.setGlobalAlpha(0.5); // Set the transparency level
+
+            // Draw the image
+            gc.drawImage(e.getIcon(gc), x, 689);
+
+            // Restore the original blend mode and opacity
+            gc.setGlobalBlendMode(originalBlendMode);
+            gc.setGlobalAlpha(1.0); // Reset transparency level to opaque
+            gc.setFill(new Color(1f, 1f, 1f, .5f));
+            double xt = sconst.adjX(x);
+            double wt = sconst.adjX(32);
+            double yt = sconst.adjY(657);
+            double ht = sconst.adjY(32);
+            gc.fillArc(xt, yt, wt, ht, 90, -360, ArcType.ROUND);
+            double percentBar = 100.0 - e.getPercentLeft();
+            if (percentBar > 100) {
+                percentBar = 99.99999;
+            }
+            if (percentBar < 0) {
+                percentBar = 0.000001;
+            }
+            setColorBasedOnPercent(gc, percentBar, true);
+            double coverage = e.getPercentLeft() / 100.0 * 360.0;
+            xt = sconst.adjX(x + 2);
+            wt = sconst.adjX(28);
+            yt = sconst.adjY(659);
+            ht = sconst.adjY(28);
+            gc.fillArc(xt, yt, wt, ht, 90, coverage, ArcType.ROUND);
+            x += 32;
+        }
+        return x;
+    }
+
+    private void displayEmail(GraphicsContext gc) {
+        sconst.setFont(gc, new Font("Verdana", 12));
+        //get usernmame from titan via token decoded jwt
+        String jwt = controlsHeld.token;
+        String username = Util.jwtExtractEmail(jwt);
+        sconst.drawString(gc, username, 920, 701);
+    }
+
+    private void drawGameTimerWarnings(GraphicsContext gc) {
         gc.setFill(new Color(0f, 1f, 0f, .4f));
         Font font = new Font("Verdana", 32);
         sconst.setFont(gc, font);

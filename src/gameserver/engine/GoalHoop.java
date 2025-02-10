@@ -1,9 +1,8 @@
 package gameserver.engine;
 
 
+import javafx.scene.shape.Ellipse;
 import org.joda.time.Instant;
-
-import java.awt.geom.Rectangle2D;
 import java.io.Serializable;
 
 public class GoalHoop implements Serializable {
@@ -52,11 +51,8 @@ public class GoalHoop implements Serializable {
     public GoalHoop(){
     }
 
-    public Instant getNextAvailable(){
-        return nextAvailable;
-    }
-
-    public Rectangle2D asRect() {
-        return new Rectangle2D.Double(x, y, w, h);
+    public Ellipse ellipseCentered() {
+        return new Ellipse(this.x + (double) this.w /2, this.y + (double) this.h /2,
+                (double) this.w / 2, (double) this.h / 2);
     }
 }
