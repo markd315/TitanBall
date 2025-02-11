@@ -3,6 +3,8 @@ package networking;
 import client.graphical.GoalSprite;
 import client.graphical.ScreenConst;
 import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
 import gameserver.Const;
 import gameserver.TutorialOverrides;
 import gameserver.effects.EffectId;
@@ -24,13 +26,40 @@ import gameserver.targeting.core.Selector;
 import org.joda.time.Instant;
 import util.ConstOperations;
 
+import java.io.ByteArrayOutputStream;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class KryoRegistry {
-    public static void register(Kryo kryo){
+    private static Kryo kryo;
+    private Object deserializeWithKryo(String base64String) {
+        try {
+            byte[] data = Base64.getDecoder().decode(base64String);
+            Input input = new Input(data);
+            return kryo.readClassAndObject(input);
+        } catch (Exception e) {
+            System.err.println("Failed to deserialize WebSocket message: " + e.getMessage());
+            return null;
+        }
+    }
+
+    private String serializeWithKryo(Object object) {
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+             Output output = new Output(baos)) {
+            kryo.writeClassAndObject(output, object);
+            output.close();
+            return Base64.getEncoder().encodeToString(baos.toByteArray());
+        } catch (Exception e) {
+            System.err.println("Failed to serialize WebSocket message: " + e.getMessage());
+            return "";
+        }
+    }
+
+    public static void register(Kryo in){
+        kryo = in;
         UUIDSerializer uSer = new UUIDSerializer();
         AtomicBooleanSerializer aSer = new AtomicBooleanSerializer();
 

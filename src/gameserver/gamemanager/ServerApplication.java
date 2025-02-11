@@ -8,14 +8,20 @@ import authserver.matchmaking.Rating;
 import authserver.models.User;
 import authserver.users.PersistenceManager;
 import com.esotericsoftware.kryo.Kryo;
-import com.esotericsoftware.kryonet.Connection;
-import com.esotericsoftware.kryonet.FrameworkMessage;
-import com.esotericsoftware.kryonet.Listener;
-import com.esotericsoftware.kryonet.Server;
+import com.esotericsoftware.kryo.io.Input;
 import gameserver.engine.GameEngine;
 import gameserver.engine.GameOptions;
 import gameserver.engine.TeamAffiliation;
 import gameserver.entity.Titan;
+import io.netty.bootstrap.ServerBootstrap;
+import io.netty.channel.*;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.SocketChannel;
+import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.handler.codec.http.HttpObjectAggregator;
+import io.netty.handler.codec.http.HttpServerCodec;
+import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
+import io.netty.handler.codec.http.websocketx.WebSocketServerProtocolHandler;
 import networking.ClientPacket;
 import networking.KryoRegistry;
 import networking.PlayerDivider;
@@ -25,6 +31,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.*;
+
 
 public class ServerApplication {
     public static final boolean PAYWALL = false;
@@ -51,31 +58,60 @@ public class ServerApplication {
 
 
     public static void main(String[] args) throws IOException {
-        Server server = new Server(8 * 1024 * 1024, 1024 * 1024); //8mb and 1mb
-        Kryo kryo = server.getKryo();
+        EventLoopGroup bossGroup = new NioEventLoopGroup(1);
+        EventLoopGroup workerGroup = new NioEventLoopGroup();
+
+        Kryo kryo = new Kryo();
         KryoRegistry.register(kryo);
-        server.start();
-        //gameserver.setHardy(true);
-        server.bind(54555);
-        server.addListener(new Listener() {
-            public void received(Connection connection, Object object) {
-                if (connection.getID() > 0) {
-                    if (object instanceof FrameworkMessage.KeepAlive) {
-                        // delegate keepalives so that game will start
-                        delegatePacket(connection, null);
-                    }
-                    if (object instanceof ClientPacket) {
-                        String token = ((ClientPacket) object).token;
-                        if (token == null) {
-                            //System.out.println("token null");
-                            return;
-                        }
-                        delegatePacket(connection, (ClientPacket) object);
-                    }
-                }
-            }
-        });
-        System.out.println("server listening 54555 for game changes");
+        try {
+            ServerBootstrap b = new ServerBootstrap();
+            b.group(bossGroup, workerGroup)
+             .channel(NioServerSocketChannel.class)
+             .option(ChannelOption.SO_BACKLOG, 100)
+             .childHandler(new ChannelInitializer<SocketChannel>() {
+                 @Override
+                 public void initChannel(SocketChannel ch) {
+                     ch.pipeline().addLast(
+                         new HttpServerCodec(),
+                         new HttpObjectAggregator(65536),
+                         new WebSocketServerProtocolHandler("/ws"),
+                         new SimpleChannelInboundHandler<TextWebSocketFrame>() {
+                             @Override
+                             protected void channelRead0(ChannelHandlerContext ctx, TextWebSocketFrame frame) {
+                                 String message = frame.text();
+                                 Object object =  kryo.readObject(new Input(message.getBytes()), Object.class);
+                                 if (object instanceof ClientPacket clientPacket) {
+                                     if (clientPacket.token == null) {
+                                         return;
+                                     }
+                                     delegatePacket(ctx.channel(), clientPacket);
+                                 }
+                             }
+
+                             @Override
+                             public void handlerAdded(ChannelHandlerContext ctx) {
+                                 System.out.println("Client connected: " + ctx.channel().id());
+                             }
+
+                             @Override
+                             public void handlerRemoved(ChannelHandlerContext ctx) {
+                                 System.out.println("Client disconnected: " + ctx.channel().id());
+                             }
+                         }
+                     );
+                 }
+             });
+
+            ChannelFuture f = b.bind(54555).sync();
+            System.out.println("WebSocket server listening on port 54555");
+            f.channel().closeFuture().sync();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        } finally {
+            bossGroup.shutdownGracefully();
+            workerGroup.shutdownGracefully();
+        }
+
     }
 
     public static void addNewGame(String id, GameOptions op, Collection<String> gameFor) {
@@ -100,7 +136,7 @@ public class ServerApplication {
         }
     }
 
-    public static void delegatePacket(Connection connection, ClientPacket packet) {
+    public static void delegatePacket(Channel connection, ClientPacket packet) {
         instantiateSpringContext();
         checkGameExpiry();
         //System.out.println("delegating from game " + packet.gameID);

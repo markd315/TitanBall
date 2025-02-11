@@ -4,10 +4,6 @@ import client.graphical.*;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.KryoException;
 import com.esotericsoftware.kryo.io.Input;
-import com.esotericsoftware.kryonet.Client;
-import com.esotericsoftware.kryonet.Connection;
-import com.esotericsoftware.kryonet.FrameworkMessage;
-import com.esotericsoftware.kryonet.Listener;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import gameserver.Const;
@@ -25,6 +21,15 @@ import gameserver.entity.minions.*;
 import gameserver.models.Game;
 import gameserver.targeting.ShapePayload;
 import gameserver.gamemanager.GamePhase;
+import io.netty.bootstrap.Bootstrap;
+import io.netty.channel.*;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.SocketChannel;
+import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.handler.codec.http.HttpClientCodec;
+import io.netty.handler.codec.http.HttpObjectAggregator;
+import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
+import io.netty.handler.codec.http.websocketx.WebSocketClientProtocolHandler;
 import javafx.event.EventHandler;
 import javafx.event.EventType;
 import javafx.geometry.Insets;
@@ -55,6 +60,7 @@ import util.Util;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.net.URI;
 import java.util.List;
 import java.util.*;
 import java.util.concurrent.Executors;
@@ -67,12 +73,11 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
     private int SHOT_WIDTH;
     public ClientPacket controlsHeld = new ClientPacket();
     public Instant gamestart = null;
-    public Sound shotSound;
-    protected Client gameserverConn = new Client(1024 * 1024, 256 * 1024); // 1mb and 256k
+    public Sound shotSound;// 1mb and 256k
     protected String gameID;
     protected GameEngine game;
     protected GamePhase phase = GamePhase.CREDITS;
-    protected Kryo kryo = gameserverConn.getKryo();
+    protected Kryo kryo = new Kryo();
     protected boolean camFollow = true;
     protected String token;
     protected AuthServerInterface loginClient;
@@ -145,6 +150,8 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
     private TeamAffiliation saved_team;
     private PlayerDivider saved_player_divider;
     private boolean initialUpdate = false;
+    private Channel gameserverChannel;
+
 
     public TitanballClient(TitanballWindow titanballWindow, int xSize, int ySize, double scl, AuthServerInterface loginClient, Map<String, String> keymap, boolean createListeners, boolean darkTheme) {
         this.darkTheme = darkTheme;
@@ -226,7 +233,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
 
         imageView.snapshot(params, scaledImage);
         return scaledImage;
-}
+    }
 
     public int indexSelected() {
         for (int i = 0; i < game.players.length; i++) {
@@ -562,73 +569,160 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
         ballFrameCounter = 0;
         camX = 500;
         camY = 300;
-        openConnection();
+        try {
+            openConnection();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     Runnable updateServer = () -> {
-        if (controlsHeld != null && gameserverConn.isConnected()) {
+        if (controlsHeld != null && gameserverChannel != null && gameserverChannel.isActive()) {
             controlsHeld.gameID = gameID;
             controlsHeld.token = token;
             controlsHeld.masteries = masteries;
-            gameserverConn.sendTCP(controlsHeld);
+
+            String serializedData = serialize(controlsHeld);
+            gameserverChannel.writeAndFlush(new TextWebSocketFrame(serializedData));
         }
-        else if(!gameserverConn.isConnected()) {
-            gameserverConn.close();
-            gameserverConn = new Client(8 * 1024 * 1024, 1024 * 1024); //8mb and 1mb
+        else if (gameserverChannel == null || !gameserverChannel.isActive()) {
+            System.out.println("Reconnecting to game server...");
+            try {
+                gameserverChannel.close(); // Ensure the old channel is properly closed
+            } catch (Exception ignored) {}
+
+            Bootstrap bootstrap = new Bootstrap();
+            EventLoopGroup group = new NioEventLoopGroup();
+
+            bootstrap.group(group)
+                .channel(NioSocketChannel.class)
+                .handler(new ChannelInitializer<SocketChannel>() {
+                    @Override
+                    protected void initChannel(SocketChannel ch) {
+                        ch.pipeline().addLast(
+                            new HttpClientCodec(),
+                            new HttpObjectAggregator(8192),
+                            new WebSocketClientProtocolHandler(URI.create("ws://zanzalaz.com:54555/ws")),
+                            new SimpleChannelInboundHandler<TextWebSocketFrame>() {
+                                @Override
+                                protected void channelRead0(ChannelHandlerContext ctx, TextWebSocketFrame frame) {
+                                    Object object = kryo.readObject(new Input(frame.text().getBytes()), Object.class);
+
+                                    if (object instanceof Game) {
+                                        game = (GameEngine) object;
+                                    } else if (object instanceof byte[] data) {
+                                        game = kryo.readObject(new Input(data), GameEngine.class);
+                                    } else {
+                                        System.out.println("Got a non-game from gameserver!");
+                                    }
+
+                                    game.began = true;
+                                    phase = game.phase;
+                                    controlsHeld.gameID = gameID;
+                                    controlsHeld.token = token;
+                                    controlsHeld.masteries = masteries;
+                                    controlsHeld.camX = camX;
+                                    controlsHeld.camY = camY;
+
+                                    if (!initialUpdate) {
+                                        System.out.println("Initial update sending");
+                                        initialUpdate = true;
+                                        ctx.writeAndFlush(new TextWebSocketFrame(serialize(controlsHeld)));
+                                        System.out.println("Initial update sent");
+                                    }
+                                }
+
+                                @Override
+                                public void channelActive(ChannelHandlerContext ctx) {
+                                    System.out.println("Reconnected to game server!");
+                                    gameserverChannel = ctx.channel();
+                                }
+
+                                @Override
+                                public void channelInactive(ChannelHandlerContext ctx) {
+                                    System.out.println("Disconnected from game server!");
+                                }
+                            }
+                        );
+                    }
+                });
+
+            try {
+                ChannelFuture future = bootstrap.connect("zanzalaz.com", 54555).sync();
+                gameserverChannel = future.channel();
+                System.out.println("Game server reconnected.");
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
-        else{
-            System.out.println("null controls held");
+        else {
+            System.out.println("null controlsHeld");
         }
     };
 
-    public void openConnection() throws IOException {
-        //TODO replace this with a socketio connection
-        gameserverConn.start();
-        //gameserverConn.setHardy(true);
-        KryoRegistry.register(kryo);
-        if (!gameserverConn.isConnected()) {
-            gameserverConn.connect(999999999, "zanzalaz.com", 54555);
-            //gameserverConn.connect(5000, "127.0.0.1", 54555);
 
-            gameserverConn.addListener(new Listener() {
-                public synchronized void received(Connection connection, Object object) {
-                     //System.out.println("type of object: " + object.getClass().getName());
-                     if (object instanceof Game) {
-                         game = (GameEngine) object;
-                     }
-                     else if (object instanceof byte[] data) {
-                         game = kryo.readObject(new Input(data), GameEngine.class);
-                     }
-                     else if (object instanceof FrameworkMessage.KeepAlive) {
-                        System.out.println("Got a keepalive from gameserver!");
-                        return;
-                    }
-                     else {
-                         System.out.println("Got a non-game from gameserver!");
-                     }
-                    game.began = true;
-                    phase = game.phase;
-                    controlsHeld.gameID = gameID;
-                    controlsHeld.token = token;
-                    controlsHeld.masteries = masteries;
-                    controlsHeld.camX = camX;
-                    controlsHeld.camY = camY;
-                    try {
-                        if (! initialUpdate) {
-                            System.out.println("Initial update sending");
-                            initialUpdate = true;
-                            gameserverConn.sendTCP(controlsHeld);
-                            System.out.println("Initial update sent");
+    public void openConnection() throws IOException, InterruptedException {
+        Bootstrap bootstrap = new Bootstrap();
+        EventLoopGroup group = new NioEventLoopGroup();
+
+        bootstrap.group(group)
+        .channel(NioSocketChannel.class)
+        .handler(new ChannelInitializer<SocketChannel>() {
+            @Override
+            protected void initChannel(SocketChannel ch) {
+                ch.pipeline().addLast(
+                    new HttpClientCodec(),
+                    new HttpObjectAggregator(8192),
+                    new WebSocketClientProtocolHandler(URI.create("ws://zanzalaz.com:54555/ws")),
+                    new SimpleChannelInboundHandler<TextWebSocketFrame>() {
+                        @Override
+                        protected void channelRead0(ChannelHandlerContext ctx, TextWebSocketFrame frame) {
+                            Object object = deserialize(frame.text());
+
+                            if (object instanceof Game) {
+                                game = (GameEngine) object;
+                            } else if (object instanceof byte[] data) {
+                                game = kryo.readObject(new Input(data), GameEngine.class);
+                            } else {
+                                System.out.println("Got a non-game from gameserver!");
+                            }
+
+                            game.began = true;
+                            phase = game.phase;
+                            controlsHeld.gameID = gameID;
+                            controlsHeld.token = token;
+                            controlsHeld.masteries = masteries;
+                            controlsHeld.camX = camX;
+                            controlsHeld.camY = camY;
+
+                            if (!initialUpdate) {
+                                System.out.println("Initial update sending");
+                                initialUpdate = true;
+                                ctx.writeAndFlush(new TextWebSocketFrame(serialize(controlsHeld)));
+                                System.out.println("Initial update sent");
+                            }
                         }
-                    } catch (KryoException e) {
-                        System.out.println("kryo end");
-                        System.out.println(game.ended);
+
+                        @Override
+                        public void channelActive(ChannelHandlerContext ctx) {
+                            System.out.println("Connected to game server!");
+                        }
+
+                        @Override
+                        public void channelInactive(ChannelHandlerContext ctx) {
+                            System.out.println("Disconnected from game server!");
+                        }
                     }
-                }
-            });
-            exec.scheduleAtFixedRate(updateServer, 15, 15, TimeUnit.MILLISECONDS);
-            System.out.println("Updates scheduled");
-        }
+                );
+            }
+        });
+
+        ChannelFuture future = bootstrap.connect("zanzalaz.com", 54555);
+        future.sync();
+        System.out.println("Client connected");
+
+        exec.scheduleAtFixedRate(updateServer, 15, 15, TimeUnit.MILLISECONDS);
+        System.out.println("Updates scheduled");
     }
 
     protected String requestOrQueueGame() throws Exception {
