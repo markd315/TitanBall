@@ -35,7 +35,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class KryoRegistry {
     private static Kryo kryo;
-    private Object deserializeWithKryo(String base64String) {
+    public Object deserializeWithKryo(String base64String) {
         try {
             byte[] data = Base64.getDecoder().decode(base64String);
             Input input = new Input(data);
@@ -46,7 +46,7 @@ public class KryoRegistry {
         }
     }
 
-    private String serializeWithKryo(Object object) {
+    public String serializeWithKryo(Object object) {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
              Output output = new Output(baos)) {
             kryo.writeClassAndObject(output, object);

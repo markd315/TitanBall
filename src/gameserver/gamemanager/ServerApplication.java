@@ -157,7 +157,7 @@ public class ServerApplication {
                     if (mg.gameContainsEmail(Collections.singleton(email))) {
                         System.out.println("found a game for " + email + " to rejoin");
                         mg.replaceConnectionForSameUser(connection, packet.token);
-                        System.out.println("passing connection " + connection.getID() + " to game " + mg.gameId);
+                        System.out.println("passing connection " + connection.id() + " to game " + mg.gameId);
                         mg.delegatePacket(connection, packet);
                     }
                 }

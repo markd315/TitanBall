@@ -1,7 +1,8 @@
 package networking;
 
-import com.esotericsoftware.kryonet.Connection;
 import gameserver.engine.GameEngine;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelId;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -25,7 +26,7 @@ public class PlayerDivider  implements Serializable {
         this.email = pc.email;
     }
 
-    public int id;
+    public ChannelId id;
     public int selection;
     public List<Integer> possibleSelection = new ArrayList<>();
     public int wasVictorious = 0; // to decide the victory or defeat at the end of a match
@@ -34,7 +35,7 @@ public class PlayerDivider  implements Serializable {
         return selection;
     }
 
-    public int getId(){return id;}
+    public ChannelId getId(){return id;}
 
     public void setSelection(int selection) {
         this.selection = selection;
@@ -70,7 +71,7 @@ public class PlayerDivider  implements Serializable {
         return this.email;
     }
 
-    public void setId(Connection connection) {
-        this.id = connection.getID();
+    public void setId(Channel connection) {
+        this.id = connection.id();
     }
 }
