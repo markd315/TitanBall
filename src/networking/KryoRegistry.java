@@ -65,7 +65,6 @@ public class KryoRegistry {
 
     public static void register(Kryo in){
         kryo = in;
-        kryo.a
         UUIDSerializer uSer = new UUIDSerializer();
         AtomicBooleanSerializer aSer = new AtomicBooleanSerializer();
 
