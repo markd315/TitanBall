@@ -1816,7 +1816,6 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
     }
 
     protected void masteryDelta(int index, int delta) {
-        System.out.println("mastery delta " + index + " " + delta);
         Masteries oldMasteries = new Masteries(masteries);
         switch (index) {
             case 0:

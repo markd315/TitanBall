@@ -35,13 +35,12 @@ import java.util.*;
 
 public class ServerApplication {
     public static final boolean PAYWALL = false;
+    private static final int PORT = 54555;
     static Map<String, ManagedGame> states = new HashMap<>(); //game UUID onto game
 
     static Matchmaker matchmaker;
 
     static PersistenceManager persistenceManager;
-
-    static JwtTokenProvider tp = new JwtTokenProvider();
 
     static Properties prop;
     static String appSecret;
@@ -63,6 +62,7 @@ public class ServerApplication {
 
         Kryo kryo = new Kryo();
         KryoRegistry.register(kryo);
+        Channel serverChannel = null;
         try {
             ServerBootstrap b = new ServerBootstrap();
             b.group(bossGroup, workerGroup)
@@ -79,7 +79,7 @@ public class ServerApplication {
                              @Override
                              protected void channelRead0(ChannelHandlerContext ctx, TextWebSocketFrame frame) {
                                  String message = frame.text();
-                                 Object object =  kryo.readObject(new Input(message.getBytes()), Object.class);
+                                 Object object = KryoRegistry.deserializeWithKryo(message);
                                  if (object instanceof ClientPacket clientPacket) {
                                      if (clientPacket.token == null) {
                                          return;
@@ -102,18 +102,38 @@ public class ServerApplication {
                  }
              });
 
-            ChannelFuture f = b.bind(54555).syncUninterruptibly();
-            System.out.println("WebSocket server listening on port 54555");
-            f.channel().closeFuture().addListener(future -> {
+            serverChannel = b.bind(PORT).syncUninterruptibly().channel();
+            System.out.println("WebSocket server listening on port " + PORT);
+
+            // Ensure the server stays open and processes events
+            serverChannel.closeFuture().addListener(future -> {
+                // This listener will be triggered when the server channel is closed
                 System.out.println("Server closed.");
                 bossGroup.shutdownGracefully();
                 workerGroup.shutdownGracefully();
             });
-        } finally {
-            bossGroup.shutdownGracefully();
-            workerGroup.shutdownGracefully();
-        }
 
+            // Main thread will continue running here, allowing other setup operations
+            System.out.println("Main thread is running, WebSocket server is active.");
+
+            // Keep the server running indefinitely
+            // This can be done using a "dummy" blocking call, or a different mechanism for a proper shutdown signal.
+            // For example, you can use a `CountDownLatch` or `Thread.sleep()`, etc.
+            Thread.sleep(Long.MAX_VALUE);  // Keeps the main thread running indefinitely, ensuring the server stays open
+
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        } finally {
+            // Graceful shutdown hook to ensure cleanup when the process is terminated
+            Channel finalServerChannel = serverChannel;
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                if (finalServerChannel != null && finalServerChannel.isOpen()) {
+                    finalServerChannel.close();
+                }
+                bossGroup.shutdownGracefully();
+                workerGroup.shutdownGracefully();
+            }));
+        }
     }
 
     public static void addNewGame(String id, GameOptions op, Collection<String> gameFor) {

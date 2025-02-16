@@ -35,7 +35,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class KryoRegistry {
     private static Kryo kryo;
-    public Object deserializeWithKryo(String base64String) {
+    public static Object deserializeWithKryo(String base64String) {
         try {
             byte[] data = Base64.getDecoder().decode(base64String);
             Input input = new Input(data);
@@ -46,11 +46,10 @@ public class KryoRegistry {
         }
     }
 
-    public String serializeWithKryo(Object object) {
+    public static String serializeWithKryo(Object object) {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
              Output output = new Output(baos)) {
             kryo.writeClassAndObject(output, object);
-            output.close();
             return Base64.getEncoder().encodeToString(baos.toByteArray());
         } catch (Exception e) {
             System.err.println("Failed to serialize WebSocket message: " + e.getMessage());
