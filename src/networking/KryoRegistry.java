@@ -26,6 +26,7 @@ import gameserver.targeting.core.Selector;
 import org.joda.time.Instant;
 import util.ConstOperations;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.util.Base64;
 import java.util.HashMap;
@@ -38,7 +39,11 @@ public class KryoRegistry {
     public static Object deserializeWithKryo(String base64String) {
         try {
             byte[] data = Base64.getDecoder().decode(base64String);
-            Input input = new Input(data);
+
+            // Set an appropriate buffer size (at least the length of the data or a minimum size)
+            int bufferSize = Math.max(data.length, 4096); // Minimum buffer size of 4KB
+            Input input = new Input(new ByteArrayInputStream(data), bufferSize);
+
             return kryo.readClassAndObject(input);
         } catch (Exception e) {
             System.err.println("Failed to deserialize WebSocket message: " + e.getMessage());
@@ -48,8 +53,9 @@ public class KryoRegistry {
 
     public static String serializeWithKryo(Object object) {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
-             Output output = new Output(baos)) {
+             Output output = new Output(baos, 4096)) { // Set a buffer size of 4KB minimum
             kryo.writeClassAndObject(output, object);
+            output.flush(); // Ensure all data is written before encoding
             return Base64.getEncoder().encodeToString(baos.toByteArray());
         } catch (Exception e) {
             System.err.println("Failed to serialize WebSocket message: " + e.getMessage());
@@ -59,6 +65,7 @@ public class KryoRegistry {
 
     public static void register(Kryo in){
         kryo = in;
+        kryo.a
         UUIDSerializer uSer = new UUIDSerializer();
         AtomicBooleanSerializer aSer = new AtomicBooleanSerializer();
 
