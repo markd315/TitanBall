@@ -55,13 +55,9 @@ public class ServerApplication {
         }
     }
 
-
-    public static void main(String[] args) throws IOException {
+    public static void startServer() {
         EventLoopGroup bossGroup = new NioEventLoopGroup(1);
         EventLoopGroup workerGroup = new NioEventLoopGroup();
-
-        Kryo kryo = new Kryo();
-        KryoRegistry.register(kryo);
         Channel serverChannel = null;
         try {
             ServerBootstrap b = new ServerBootstrap();
@@ -134,6 +130,12 @@ public class ServerApplication {
                 workerGroup.shutdownGracefully();
             }));
         }
+    }
+
+    public static void main(String[] args) throws IOException {
+        Kryo kryo = new Kryo();
+        KryoRegistry.register(kryo);
+        new Thread(ServerApplication::startServer).start();
     }
 
     public static void addNewGame(String id, GameOptions op, Collection<String> gameFor) {
