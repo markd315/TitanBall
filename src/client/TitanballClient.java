@@ -21,6 +21,7 @@ import gameserver.models.Game;
 import gameserver.targeting.ShapePayload;
 import gameserver.gamemanager.GamePhase;
 import io.netty.bootstrap.Bootstrap;
+import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
@@ -618,16 +619,22 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                                     new SimpleChannelInboundHandler<TextWebSocketFrame>() {
                                         @Override
                                         protected void channelRead0(ChannelHandlerContext ctx, TextWebSocketFrame frame) {
-                                            Object object = kryo.readObject(new Input(frame.text().getBytes()), Object.class);
+                                            ByteBuf byteBuf = frame.content();  // Get the ByteBuf from the WebSocket frame
+                                            byte[] data = new byte[byteBuf.readableBytes()];  // Allocate a byte array to hold the content
+                                            byteBuf.readBytes(data);  // Read the data into the byte array
 
+                                            // Convert the byte array to a Base64 string (for consistency with your previous code)
+                                            String base64Message = Base64.getEncoder().encodeToString(data);
+                                            System.out.println("Received base64 message: " + base64Message);
+
+                                            // Deserialize the Base64 encoded message using Kryo
+                                            Object object = KryoRegistry.deserializeWithKryo(base64Message);
                                             if (object instanceof Game) {
                                                 game = (GameEngine) object;
-                                            } else if (object instanceof byte[] data) {
-                                                game = kryo.readObject(new Input(data), GameEngine.class);
                                             } else {
                                                 System.out.println("Got a non-game from gameserver!");
                                             }
-
+                                            byteBuf.release();
                                             game.began = true;
                                             phase = game.phase;
                                             controlsHeld.gameID = gameID;
@@ -667,6 +674,8 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                 System.out.println("Game server reconnected.");
             } catch (InterruptedException e) {
                 e.printStackTrace();
+            } finally {
+                buffer.release();
             }
         } else {
             System.out.println("null controlsHeld");

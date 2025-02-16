@@ -8,12 +8,13 @@ import authserver.matchmaking.Rating;
 import authserver.models.User;
 import authserver.users.PersistenceManager;
 import com.esotericsoftware.kryo.Kryo;
-import com.esotericsoftware.kryo.io.Input;
 import gameserver.engine.GameEngine;
 import gameserver.engine.GameOptions;
 import gameserver.engine.TeamAffiliation;
 import gameserver.entity.Titan;
 import io.netty.bootstrap.ServerBootstrap;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
@@ -30,6 +31,7 @@ import util.Util;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 
@@ -74,9 +76,17 @@ public class ServerApplication {
                          new SimpleChannelInboundHandler<TextWebSocketFrame>() {
                              @Override
                              protected void channelRead0(ChannelHandlerContext ctx, TextWebSocketFrame frame) {
-                                 String message = frame.text();
-                                 System.out.println(message);
-                                 Object object = KryoRegistry.deserializeWithKryo(message);
+                                 ByteBuf byteBuf = frame.content();  // Get the ByteBuf from the WebSocket frame
+                                 byte[] data = new byte[byteBuf.readableBytes()];  // Allocate a byte array to hold the content
+                                 byteBuf.readBytes(data);  // Read the data into the byte array
+
+                                 // Convert the byte array to a Base64 string (for consistency with your previous code)
+                                 String base64Message = Base64.getEncoder().encodeToString(data);
+                                 System.out.println("Received base64 message: " + base64Message);
+
+                                 // Deserialize the Base64 encoded message using Kryo
+                                 Object object = KryoRegistry.deserializeWithKryo(base64Message);
+                                 byteBuf.release();
                                  if (object instanceof ClientPacket clientPacket) {
                                      if (clientPacket.token == null) {
                                          return;
