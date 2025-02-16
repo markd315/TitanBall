@@ -69,12 +69,13 @@ public class ServerApplication {
                  public void initChannel(SocketChannel ch) {
                      ch.pipeline().addLast(
                          new HttpServerCodec(),
-                         new HttpObjectAggregator(65536),
+                         new HttpObjectAggregator(18 * 1024 * 1024),
                          new WebSocketServerProtocolHandler("/ws"),
                          new SimpleChannelInboundHandler<TextWebSocketFrame>() {
                              @Override
                              protected void channelRead0(ChannelHandlerContext ctx, TextWebSocketFrame frame) {
                                  String message = frame.text();
+                                 System.out.println(message);
                                  Object object = KryoRegistry.deserializeWithKryo(message);
                                  if (object instanceof ClientPacket clientPacket) {
                                      if (clientPacket.token == null) {

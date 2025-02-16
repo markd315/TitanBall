@@ -586,6 +586,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
             controlsHeld.masteries = masteries;
 
             String serializedData = kryoregistry.serializeWithKryo(controlsHeld);
+            System.out.println(serializedData);
             gameserverChannel.writeAndFlush(new TextWebSocketFrame(serializedData));
         } else if (gameserverChannel == null || !gameserverChannel.isActive()) {
             System.out.println("Reconnecting to game server...");
@@ -604,7 +605,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                         protected void initChannel(SocketChannel ch) {
                             ch.pipeline().addLast(
                                     new HttpClientCodec(),
-                                    new HttpObjectAggregator(8192),
+                                    new HttpObjectAggregator(16 * 1024 * 1024),
                                     new WebSocketClientProtocolHandler(
                                             WebSocketClientHandshakerFactory.newHandshaker(
                                                     URI.create("ws://zanzalaz.com:54555/ws"),
