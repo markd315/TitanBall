@@ -40,8 +40,12 @@ public class KryoRegistry {
         try {
             byte[] data = Base64.getDecoder().decode(base64String);
 
-            // Set an appropriate buffer size (at least the length of the data or a minimum size)
-            int bufferSize = Math.max(data.length, 4096); // Minimum buffer size of 4KB
+            if (data.length == 0) {
+                System.err.println("Failed to deserialize WebSocket message: Decoded data buffer is empty");
+                return null;
+            }
+
+            int bufferSize = Math.max(data.length, 4096);
             Input input = new Input(new ByteArrayInputStream(data), bufferSize);
 
             return kryo.readClassAndObject(input);
@@ -53,9 +57,9 @@ public class KryoRegistry {
 
     public static String serializeWithKryo(Object object) {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
-             Output output = new Output(baos, 4096)) { // Set a buffer size of 4KB minimum
+             Output output = new Output(baos, 4096)) { // Ensure proper buffer size
             kryo.writeClassAndObject(output, object);
-            output.flush(); // Ensure all data is written before encoding
+            output.flush(); // Ensure data is fully written
             return Base64.getEncoder().encodeToString(baos.toByteArray());
         } catch (Exception e) {
             System.err.println("Failed to serialize WebSocket message: " + e.getMessage());

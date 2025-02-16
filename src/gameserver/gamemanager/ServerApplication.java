@@ -76,24 +76,24 @@ public class ServerApplication {
                          new SimpleChannelInboundHandler<TextWebSocketFrame>() {
                              @Override
                              protected void channelRead0(ChannelHandlerContext ctx, TextWebSocketFrame frame) {
-                                 ByteBuf byteBuf = frame.content();  // Get the ByteBuf from the WebSocket frame
-                                 byte[] data = new byte[byteBuf.readableBytes()];  // Allocate a byte array to hold the content
-                                 byteBuf.readBytes(data);  // Read the data into the byte array
+                                try {
+                                    String message = frame.text();
+                                    System.out.println("Received base64 message: " + message);
+                                    frame.retain();
 
-                                 // Convert the byte array to a Base64 string (for consistency with your previous code)
-                                 String base64Message = Base64.getEncoder().encodeToString(data);
-                                 System.out.println("Received base64 message: " + base64Message);
-
-                                 // Deserialize the Base64 encoded message using Kryo
-                                 Object object = KryoRegistry.deserializeWithKryo(base64Message);
-                                 byteBuf.release();
-                                 if (object instanceof ClientPacket clientPacket) {
-                                     if (clientPacket.token == null) {
-                                         return;
-                                     }
-                                     delegatePacket(ctx.channel(), clientPacket);
-                                 }
-                             }
+                                    Object object = KryoRegistry.deserializeWithKryo(message);
+                                    if (object instanceof ClientPacket clientPacket) {
+                                        if (clientPacket.token == null) {
+                                            return;
+                                        }
+                                        delegatePacket(ctx.channel(), clientPacket);
+                                    }
+                                } catch (Exception e) {
+                                    System.err.println("Failed to process WebSocket message: " + e.getMessage());
+                                } finally {
+                                    frame.release(); // Ensure the buffer is released
+                                }
+                            }
 
                              @Override
                              public void handlerAdded(ChannelHandlerContext ctx) {
