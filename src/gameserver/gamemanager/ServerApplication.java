@@ -102,11 +102,13 @@ public class ServerApplication {
                  }
              });
 
-            ChannelFuture f = b.bind(54555).sync();
+            ChannelFuture f = b.bind(54555).syncUninterruptibly();
             System.out.println("WebSocket server listening on port 54555");
-            f.channel().closeFuture().sync();
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+            f.channel().closeFuture().addListener(future -> {
+                System.out.println("Server closed.");
+                bossGroup.shutdownGracefully();
+                workerGroup.shutdownGracefully();
+            });
         } finally {
             bossGroup.shutdownGracefully();
             workerGroup.shutdownGracefully();
