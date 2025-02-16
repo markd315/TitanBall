@@ -674,8 +674,6 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                 System.out.println("Game server reconnected.");
             } catch (InterruptedException e) {
                 e.printStackTrace();
-            } finally {
-                buffer.release();
             }
         } else {
             System.out.println("null controlsHeld");
