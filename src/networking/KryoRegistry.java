@@ -5,6 +5,7 @@ import client.graphical.ScreenConst;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import com.github.luben.zstd.Zstd;
 import gameserver.Const;
 import gameserver.TutorialOverrides;
 import gameserver.effects.EffectId;
@@ -45,6 +46,7 @@ public class KryoRegistry {
     public static Object deserializeWithKryo(String base64String) {
         try {
             byte[] data = Base64.getDecoder().decode(base64String);
+
             System.out.println("Decoded message size: " + data.length + " bytes");
             if (data.length == 0) {
                 System.err.println("Failed to deserialize WebSocket message: Decoded data buffer is empty");
@@ -52,7 +54,7 @@ public class KryoRegistry {
             }
 
             int bufferSize = Math.max(data.length, 8 * 1024 * 1024);
-            Input input = new Input(new ByteArrayInputStream(data), bufferSize);
+            Input input = new Input(new ByteArrayInputStream(Zstd.decompress(data, data.length * 10)), bufferSize);
 
             return kryoThreadLocal.get().readClassAndObject(input);
         } catch (Exception e) {
@@ -66,7 +68,7 @@ public class KryoRegistry {
              Output output = new Output(baos, 64 * 1024)) { // Ensure proper buffer size
             kryoThreadLocal.get().writeClassAndObject(output, object);
             output.flush(); // Ensure data is fully written
-            return Base64.getEncoder().encodeToString(baos.toByteArray());
+            return Base64.getEncoder().encodeToString(Zstd.compress(baos.toByteArray()));
         } catch (Exception e) {
             System.err.println("Failed to serialize WebSocket message: " + e.getMessage());
             return "";
