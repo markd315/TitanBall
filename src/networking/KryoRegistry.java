@@ -47,7 +47,7 @@ public class KryoRegistry {
         try {
             byte[] data = Base64.getDecoder().decode(base64String);
 
-            System.out.println("Decoded message size: " + data.length + " bytes");
+            //System.out.println("Decoded message size: " + data.length + " bytes");
             if (data.length == 0) {
                 System.err.println("Failed to deserialize WebSocket message: Decoded data buffer is empty");
                 return null;

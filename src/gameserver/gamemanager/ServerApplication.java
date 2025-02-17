@@ -181,7 +181,6 @@ public class ServerApplication {
         try {
             if (states.containsKey(packet.gameID)) {
                 ManagedGame state = states.get(packet.gameID);
-                System.out.println("passing connection " + connection.id()+ " to game " + state.gameId);
                 state.delegatePacket(connection, packet);
             }
             else {

@@ -514,7 +514,6 @@ public class GameEngine extends Game {
         lock();
         if (from != null) {
             if(logs){
-                System.out.println(from + " packet");
                 ObjectMapper mapper = new ObjectMapper();
                 try {
                     System.out.println(mapper.writeValueAsString(request));
@@ -523,7 +522,6 @@ public class GameEngine extends Game {
                 }
             }
             Titan t = titanFromPacket(from);
-            System.out.println("got titan " + t);
             if (t == null) {
                 System.out.println("got passed a bad titan index! Possibly from another game?");
                 return;

@@ -74,7 +74,6 @@ public class ManagedGame {
                     }
                 }
             }
-            System.out.println("processing packet within state next");
             state.processClientPacket(pd, request);
         }
     }
@@ -174,7 +173,6 @@ public class ManagedGame {
                     update.underControl = state.titanSelected(pd);
                     update.now = Instant.now();
                     if (client.getClient().isOpen()) {
-                        System.out.println("writing update to client " + client.getClient().id());
                         client.getClient().writeAndFlush(new TextWebSocketFrame(
                             KryoRegistry.serializeWithKryo(anticheat(update))
                         ));
