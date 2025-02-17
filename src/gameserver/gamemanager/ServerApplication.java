@@ -31,7 +31,6 @@ import util.Util;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 
@@ -83,6 +82,7 @@ public class ServerApplication {
                                     Object object = KryoRegistry.deserializeWithKryo(message);
                                     if (object instanceof ClientPacket clientPacket) {
                                         if (clientPacket.token == null) {
+                                            System.out.println("got a null token");
                                             return;
                                         }
                                         delegatePacket(ctx.channel(), clientPacket);
@@ -176,10 +176,9 @@ public class ServerApplication {
         //System.out.println("delegating from game " + packet.gameID);
         //System.out.println("game map size: " + states.size());
         try {
-            System.out.println("delegating from game " + packet.gameID);
             if (states.containsKey(packet.gameID)) {
                 ManagedGame state = states.get(packet.gameID);
-                //System.out.println("passing connection " + connection.getID() + " to game " + state.gameId);
+                System.out.println("passing connection " + connection.id()+ " to game " + state.gameId);
                 state.delegatePacket(connection, packet);
             }
             else {

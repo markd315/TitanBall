@@ -152,8 +152,8 @@ public class ManagedGame {
         clients = gameIncludedClients;
         Runnable updateClients = () -> {
             stateRef.set(state); // everyone gets the latest state once and no one gets a stale one or a fresher one
-            //System.out.println("updating clients now");
             Game snapshot = stateRef.get();
+            System.out.println("update clients with " + snapshot.began);
             if (snapshot == null || (snapshot.ended && snapshot.underControl == null)) {
                 if (snapshot != null) {
                     System.out.println("GameManager: skipping extra packets after game ended");
@@ -165,6 +165,7 @@ public class ManagedGame {
             }
             //remove if not connected
             clients.removeIf(client -> !client.getClient().isOpen());
+            System.out.println("clients size: " + clients.size());
             clients.parallelStream().forEach(client -> {
                 try{
                     PlayerDivider pd = dividerFromConn(client.getClient());

@@ -186,9 +186,15 @@
       <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>com.esotericsoftware</groupId>
-      <artifactId>kryonet</artifactId>
-      <version>2.22.0-RC1</version>
+      <groupId>com.esotericsoftware.kryo</groupId>
+      <artifactId>kryo</artifactId>
+      <version>2.24.0</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-all</artifactId>
+      <version>4.1.117.Final</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
