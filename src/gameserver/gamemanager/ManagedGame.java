@@ -13,10 +13,8 @@ import gameserver.entity.Entity;
 import gameserver.entity.Titan;
 import gameserver.models.Game;
 import io.netty.channel.Channel;
-import networking.CandidateGame;
-import networking.ClientPacket;
-import networking.PlayerConnection;
-import networking.PlayerDivider;
+import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
+import networking.*;
 import org.joda.time.Instant;
 import util.Util;
 
@@ -153,7 +151,6 @@ public class ManagedGame {
         Runnable updateClients = () -> {
             stateRef.set(state); // everyone gets the latest state once and no one gets a stale one or a fresher one
             Game snapshot = stateRef.get();
-            System.out.println("update clients with " + snapshot.began);
             if (snapshot == null || (snapshot.ended && snapshot.underControl == null)) {
                 if (snapshot != null) {
                     System.out.println("GameManager: skipping extra packets after game ended");
@@ -175,9 +172,14 @@ public class ManagedGame {
                         return;
                     }
                     update.underControl = state.titanSelected(pd);
+                    System.out.println("sending update to client " + client.getClient().id());
+                    System.out.println("client is open? " + client.getClient().isOpen());
                     update.now = Instant.now();
                     if (client.getClient().isOpen()) {
-                        client.getClient().writeAndFlush(anticheat(update));
+                        System.out.println("writing update to client " + client.getClient().id());
+                        client.getClient().writeAndFlush(new TextWebSocketFrame(
+                            KryoRegistry.serializeWithKryo(anticheat(update))
+                        ));
                     }
                 }
                 catch (ConcurrentModificationException ex1){

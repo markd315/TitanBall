@@ -587,7 +587,6 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
             controlsHeld.masteries = masteries;
 
             String serializedData = kryoregistry.serializeWithKryo(controlsHeld);
-            System.out.println(serializedData);
             gameserverChannel.writeAndFlush(new TextWebSocketFrame(serializedData));
         } else if (gameserverChannel == null || !gameserverChannel.isActive()) {
             System.out.println("Reconnecting to game server...");
@@ -619,38 +618,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                                     new SimpleChannelInboundHandler<TextWebSocketFrame>() {
                                         @Override
                                         protected void channelRead0(ChannelHandlerContext ctx, TextWebSocketFrame frame) {
-                                            ByteBuf byteBuf = frame.content();  // Get the ByteBuf from the WebSocket frame
-                                            byte[] data = new byte[byteBuf.readableBytes()];  // Allocate a byte array to hold the content
-                                            byteBuf.readBytes(data);  // Read the data into the byte array
-
-                                            // Convert the byte array to a Base64 string (for consistency with your previous code)
-                                            String base64Message = Base64.getEncoder().encodeToString(data);
-                                            // Deserialize the Base64 encoded message using Kryo
-                                            Object object = KryoRegistry.deserializeWithKryo(base64Message);
-                                            if (object instanceof Game) {
-                                                System.out.println("received game");
-                                                System.out.println(((Game) object).began);
-                                                game = (GameEngine) object;
-                                            } else {
-                                                System.out.println("Got a non-game from gameserver!");
-                                            }
-                                            byteBuf.release();
-                                            game.began = true;
-                                            phase = game.phase;
-                                            controlsHeld.gameID = gameID;
-                                            controlsHeld.token = token;
-                                            controlsHeld.masteries = masteries;
-                                            controlsHeld.camX = camX;
-                                            controlsHeld.camY = camY;
-
-                                            if (!initialUpdate) {
-                                                System.out.println("Initial update sending");
-                                                initialUpdate = true;
-                                                ctx.writeAndFlush(new TextWebSocketFrame(
-                                                        kryoregistry.serializeWithKryo(controlsHeld)
-                                                ));
-                                                System.out.println("Initial update sent");
-                                            }
+                                            ingestPacket(ctx, frame);
                                         }
 
                                         @Override
@@ -680,8 +648,44 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
         }
     };
 
+    private void ingestPacket(ChannelHandlerContext ctx, TextWebSocketFrame frame) {
+        System.out.println("Start of ingest packet");
+        try {
+            String message = frame.text();
+            frame.retain();
 
-    public void openConnection() throws IOException, InterruptedException {
+            Object object = KryoRegistry.deserializeWithKryo(message);
+            if (object instanceof Game) {
+                System.out.println("received game");
+                System.out.println(((Game) object).began);
+                game = (GameEngine) object;
+            } else {
+                System.out.println("Got a non-game from gameserver!");
+            }
+            game.began = true;
+            phase = game.phase;
+            controlsHeld.gameID = gameID;
+            controlsHeld.token = token;
+            controlsHeld.masteries = masteries;
+            controlsHeld.camX = camX;
+            controlsHeld.camY = camY;
+
+            if (!initialUpdate) {
+                System.out.println("Initial update sending");
+                initialUpdate = true;
+                ctx.writeAndFlush(new TextWebSocketFrame(
+                        kryoregistry.serializeWithKryo(controlsHeld)
+                ));
+                System.out.println("Initial update sent");
+            }
+        }
+        finally {
+            frame.release();
+        }
+    }
+
+
+    public void openConnection() throws InterruptedException {
         Bootstrap bootstrap = new Bootstrap();
         EventLoopGroup group = new NioEventLoopGroup();
 
@@ -705,32 +709,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                                 new SimpleChannelInboundHandler<TextWebSocketFrame>() {
                                     @Override
                                     protected void channelRead0(ChannelHandlerContext ctx, TextWebSocketFrame frame) {
-                                        Object object = kryoregistry.deserializeWithKryo(frame.text());
-
-                                        if (object instanceof Game) {
-                                            game = (GameEngine) object;
-                                        } else if (object instanceof byte[] data) {
-                                            game = kryo.readObject(new Input(data), GameEngine.class);
-                                        } else {
-                                            System.out.println("Got a non-game from gameserver!");
-                                        }
-
-                                        game.began = true;
-                                        phase = game.phase;
-                                        controlsHeld.gameID = gameID;
-                                        controlsHeld.token = token;
-                                        controlsHeld.masteries = masteries;
-                                        controlsHeld.camX = camX;
-                                        controlsHeld.camY = camY;
-
-                                        if (!initialUpdate) {
-                                            System.out.println("Initial update sending");
-                                            initialUpdate = true;
-                                            ctx.writeAndFlush(new TextWebSocketFrame(
-                                                    kryoregistry.serializeWithKryo(controlsHeld)
-                                            ));
-                                            System.out.println("Initial update sent");
-                                        }
+                                        ingestPacket(ctx, frame);
                                     }
 
                                     @Override
