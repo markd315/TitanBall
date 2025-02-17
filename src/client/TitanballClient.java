@@ -735,7 +735,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
         future.sync();
         System.out.println("Client connected");
 
-        exec.scheduleAtFixedRate(updateServer, 15, 100, TimeUnit.MILLISECONDS);
+        exec.scheduleAtFixedRate(updateServer, 15, 300, TimeUnit.MILLISECONDS);
         System.out.println("Updates scheduled");
     }
 
