@@ -625,11 +625,11 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
 
                                             // Convert the byte array to a Base64 string (for consistency with your previous code)
                                             String base64Message = Base64.getEncoder().encodeToString(data);
-                                            System.out.println("Received base64 message: " + base64Message);
-
                                             // Deserialize the Base64 encoded message using Kryo
                                             Object object = KryoRegistry.deserializeWithKryo(base64Message);
                                             if (object instanceof Game) {
+                                                System.out.println("received game");
+                                                System.out.println(((Game) object).began);
                                                 game = (GameEngine) object;
                                             } else {
                                                 System.out.println("Got a non-game from gameserver!");
@@ -751,7 +751,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
         future.sync();
         System.out.println("Client connected");
 
-        exec.scheduleAtFixedRate(updateServer, 15, 15, TimeUnit.MILLISECONDS);
+        exec.scheduleAtFixedRate(updateServer, 15, 100, TimeUnit.MILLISECONDS);
         System.out.println("Updates scheduled");
     }
 

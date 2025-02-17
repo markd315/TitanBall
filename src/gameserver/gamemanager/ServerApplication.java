@@ -78,7 +78,6 @@ public class ServerApplication {
                              protected void channelRead0(ChannelHandlerContext ctx, TextWebSocketFrame frame) {
                                 try {
                                     String message = frame.text();
-                                    System.out.println("Received base64 message: " + message);
                                     frame.retain();
 
                                     Object object = KryoRegistry.deserializeWithKryo(message);
@@ -177,6 +176,7 @@ public class ServerApplication {
         //System.out.println("delegating from game " + packet.gameID);
         //System.out.println("game map size: " + states.size());
         try {
+            System.out.println("delegating from game " + packet.gameID);
             if (states.containsKey(packet.gameID)) {
                 ManagedGame state = states.get(packet.gameID);
                 //System.out.println("passing connection " + connection.getID() + " to game " + state.gameId);
