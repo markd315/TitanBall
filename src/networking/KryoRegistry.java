@@ -39,13 +39,13 @@ public class KryoRegistry {
     public static Object deserializeWithKryo(String base64String) {
         try {
             byte[] data = Base64.getDecoder().decode(base64String);
-
+            System.out.println("Decoded message size: " + data.length + " bytes");
             if (data.length == 0) {
                 System.err.println("Failed to deserialize WebSocket message: Decoded data buffer is empty");
                 return null;
             }
 
-            int bufferSize = Math.max(data.length, 4096);
+            int bufferSize = Math.max(data.length, 8 * 1024 * 1024);
             Input input = new Input(new ByteArrayInputStream(data), bufferSize);
 
             return kryo.readClassAndObject(input);

@@ -662,8 +662,10 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
             } else {
                 System.out.println("Got a non-game from gameserver!");
             }
-            game.began = true;
-            phase = game.phase;
+            if (this.game != null) {
+                game.began = true;
+                phase = game.phase;
+            }
             controlsHeld.gameID = gameID;
             controlsHeld.token = token;
             controlsHeld.masteries = masteries;
