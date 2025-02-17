@@ -655,6 +655,9 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
             frame.retain();
 
             Object object = KryoRegistry.deserializeWithKryo(message);
+            if(object == null){
+                return;
+            }
             if (object instanceof Game) {
                 System.out.println("received game");
                 System.out.println(((Game) object).began);

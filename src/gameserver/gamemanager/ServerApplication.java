@@ -80,6 +80,9 @@ public class ServerApplication {
                                     frame.retain();
 
                                     Object object = KryoRegistry.deserializeWithKryo(message);
+                                    if(object == null){
+                                        return;
+                                    }
                                     if (object instanceof ClientPacket clientPacket) {
                                         if (clientPacket.token == null) {
                                             System.out.println("got a null token");
