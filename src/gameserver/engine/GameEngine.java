@@ -523,6 +523,7 @@ public class GameEngine extends Game {
                 }
             }
             Titan t = titanFromPacket(from);
+            System.out.println("got titan " + t);
             if (t == null) {
                 System.out.println("got passed a bad titan index! Possibly from another game?");
                 return;

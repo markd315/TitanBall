@@ -74,6 +74,7 @@ public class ManagedGame {
                     }
                 }
             }
+            System.out.println("processing packet within state next");
             state.processClientPacket(pd, request);
         }
     }
@@ -162,7 +163,6 @@ public class ManagedGame {
             }
             //remove if not connected
             clients.removeIf(client -> !client.getClient().isOpen());
-            System.out.println("clients size: " + clients.size());
             clients.parallelStream().forEach(client -> {
                 try{
                     PlayerDivider pd = dividerFromConn(client.getClient());
@@ -172,8 +172,6 @@ public class ManagedGame {
                         return;
                     }
                     update.underControl = state.titanSelected(pd);
-                    System.out.println("sending update to client " + client.getClient().id());
-                    System.out.println("client is open? " + client.getClient().isOpen());
                     update.now = Instant.now();
                     if (client.getClient().isOpen()) {
                         System.out.println("writing update to client " + client.getClient().id());
