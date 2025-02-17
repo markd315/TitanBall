@@ -36,6 +36,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class KryoRegistry {
     private static Kryo kryo;
+    private static final ThreadLocal<Kryo> kryoThreadLocal = ThreadLocal.withInitial(() -> {
+        Kryo kryo = new Kryo();
+        register(kryo);
+        return kryo;
+    });
+
     public static Object deserializeWithKryo(String base64String) {
         try {
             byte[] data = Base64.getDecoder().decode(base64String);
@@ -48,7 +54,7 @@ public class KryoRegistry {
             int bufferSize = Math.max(data.length, 8 * 1024 * 1024);
             Input input = new Input(new ByteArrayInputStream(data), bufferSize);
 
-            return kryo.readClassAndObject(input);
+            return kryoThreadLocal.get().readClassAndObject(input);
         } catch (Exception e) {
             System.err.println("Failed to deserialize WebSocket message: " + e.getMessage());
             return null;
@@ -57,8 +63,8 @@ public class KryoRegistry {
 
     public static String serializeWithKryo(Object object) {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
-             Output output = new Output(baos, 4096)) { // Ensure proper buffer size
-            kryo.writeClassAndObject(output, object);
+             Output output = new Output(baos, 64 * 1024)) { // Ensure proper buffer size
+            kryoThreadLocal.get().writeClassAndObject(output, object);
             output.flush(); // Ensure data is fully written
             return Base64.getEncoder().encodeToString(baos.toByteArray());
         } catch (Exception e) {
