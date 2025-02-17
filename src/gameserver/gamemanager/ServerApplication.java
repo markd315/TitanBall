@@ -1,6 +1,7 @@
 package gameserver.gamemanager;
 
 import authserver.SpringContextBridge;
+import authserver.jwt.JwtTokenProvider;
 import authserver.matchmaking.Match;
 import authserver.matchmaking.Matchmaker;
 import authserver.matchmaking.Rating;
@@ -12,6 +13,8 @@ import gameserver.engine.GameOptions;
 import gameserver.engine.TeamAffiliation;
 import gameserver.entity.Titan;
 import io.netty.bootstrap.ServerBootstrap;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;

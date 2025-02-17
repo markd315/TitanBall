@@ -2,6 +2,7 @@ package client;
 
 import client.graphical.*;
 import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Input;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import gameserver.Const;
@@ -20,6 +21,7 @@ import gameserver.models.Game;
 import gameserver.targeting.ShapePayload;
 import gameserver.gamemanager.GamePhase;
 import io.netty.bootstrap.Bootstrap;
+import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
@@ -51,7 +53,9 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.*;
 import javafx.scene.text.Font;
 import javafx.scene.transform.Affine;
-import networking.*;
+import networking.ClientPacket;
+import networking.KryoRegistry;
+import networking.PlayerDivider;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
 import util.Util;
@@ -65,8 +69,6 @@ import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-
-import static gameserver.gamemanager.ManagedGame.deepClone;
 
 public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
     protected final ScreenConst sconst;
@@ -660,17 +662,6 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                 System.out.println("received game");
                 System.out.println(((Game) object).began);
                 game = (GameEngine) object;
-            } else if (object instanceof GameStateDiff) {
-                System.out.println("Got a patch");
-                this.game.lock();
-                try {
-                    GameStateDiffer.applyPatch(this.game, (GameStateDiff) object);
-                } catch (Exception ex1){
-                    System.out.println("Error applying patch");
-                    ex1.printStackTrace();
-                } finally {
-                    this.game.unlock();
-                }
             } else {
                 System.out.println("Got a non-game from gameserver!");
             }

@@ -13,7 +13,6 @@ import gameserver.entity.Entity;
 import gameserver.entity.Titan;
 import gameserver.models.Game;
 import io.netty.channel.Channel;
-import io.netty.channel.ChannelId;
 import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
 import networking.*;
 import org.joda.time.Instant;
@@ -167,25 +166,18 @@ public class ManagedGame {
             clients.parallelStream().forEach(client -> {
                 try{
                     PlayerDivider pd = dividerFromConn(client.getClient());
+                    //Optimizing clone away by only hacking in the needed var fails because of occasional concurrency issue
                     Game update = (Game) deepClone(snapshot);
                     if (update == null) {
                         return;
                     }
                     update.underControl = state.titanSelected(pd);
                     update.now = Instant.now();
-                    Channel c = client.getClient();
                     if (client.getClient().isOpen()) {
-                        GameEngine stateToSend = (GameEngine) anticheat(state);
-                        if (! lastGameSent.containsKey(c.id())) {
-                            c.writeAndFlush(stateToSend);
-                        } else { //patch techniques
-                            System.out.println("Send a patch");
-                            stateToSend.lock();
-                            GameStateDiff diff = GameStateDiffer.computeDiff(lastGameSent.get(c.id()), stateToSend);
-                            c.writeAndFlush(diff);
-                            lastGameSent.put(c.id(), stateToSend);
-                            stateToSend.unlock();
-                        }
+                        System.out.println("writing update to client " + client.getClient().id());
+                        client.getClient().writeAndFlush(new TextWebSocketFrame(
+                            KryoRegistry.serializeWithKryo(anticheat(update))
+                        ));
                     }
                 }
                 catch (ConcurrentModificationException ex1){
@@ -289,8 +281,6 @@ public class ManagedGame {
         return null;
     }
 
-    public Map<ChannelId, GameEngine> lastGameSent = new HashMap<>();
-
     public void terminateConnections(AtomicReference<Game> stateRef) {
         System.out.println("terminating connections");
         //Client evaluates its own victory condition based on the score in the final packet
@@ -307,21 +297,11 @@ public class ManagedGame {
                     Game update = (Game) deepClone(snapshot);
                     update.underControl = state.titanSelected(pd);
                     update.now = Instant.now();
-                    Channel c = client.getClient();
                     if (client.getClient().isOpen()) {
-                        GameEngine stateToSend = (GameEngine) anticheat(state);
-                        if (! lastGameSent.containsKey(c.id())) {
-                            c.writeAndFlush(stateToSend);
-                        } else { //patch techniques
-                            stateToSend.lock();
-                            GameStateDiff diff = GameStateDiffer.computeDiff(lastGameSent.get(c.id()), stateToSend);
-                            c.writeAndFlush(diff);
-                            lastGameSent.put(c.id(), stateToSend);
-                            stateToSend.unlock();
-                        }
+                        client.getClient().writeAndFlush(anticheat(update));
                         //Wait for the client to receive the final update before closing
                         Thread.sleep(1200);
-                        c.close();
+                        client.getClient().close();
                     }
                 }
                 catch (Exception ex1) {
