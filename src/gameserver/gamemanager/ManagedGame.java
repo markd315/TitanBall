@@ -2,7 +2,6 @@ package gameserver.gamemanager;
 
 import authserver.SpringContextBridge;
 import authserver.users.identities.UserService;
-import com.esotericsoftware.kryonet.Connection;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import gameserver.Const;
@@ -13,10 +12,9 @@ import gameserver.engine.GameOptions;
 import gameserver.entity.Entity;
 import gameserver.entity.Titan;
 import gameserver.models.Game;
-import networking.CandidateGame;
-import networking.ClientPacket;
-import networking.PlayerConnection;
-import networking.PlayerDivider;
+import io.netty.channel.Channel;
+import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
+import networking.*;
 import org.joda.time.Instant;
 import util.Util;
 
@@ -49,7 +47,7 @@ public class ManagedGame {
     }
 
 
-    public void delegatePacket(Connection connection, ClientPacket request) {
+    public void delegatePacket(Channel connection, ClientPacket request) {
         if (state == null || state.phase != GamePhase.INGAME) {
             addOrReplaceNewClient(connection, clients, request.token);
         }
@@ -80,10 +78,10 @@ public class ManagedGame {
         }
     }
 
-    private PlayerDivider dividerFromConn(Connection connection) {
+    private PlayerDivider dividerFromConn(Channel connection) {
         for(PlayerDivider pc : state.clients){
             //System.out.println(pc.id);
-            if(connection.getID() == pc.id){
+            if(connection.id() == pc.id){
                 return pc;
             }
         }
@@ -100,7 +98,7 @@ public class ManagedGame {
         return (uniqueEmails.size() == availableSlots.size()); // Check if all players are connected
     }
 
-    void addOrReplaceNewClient(Connection c, List<PlayerConnection> queue, String token){
+    void addOrReplaceNewClient(Channel c, List<PlayerConnection> queue, String token){
         boolean connFound = connectionQueued(queue, c);
         String email = Util.jwtExtractEmail(token);
         boolean emailFound = accountQueued(queue, email);
@@ -116,7 +114,7 @@ public class ManagedGame {
                     System.out.println(p.toString());
                 }
                 System.out.println("adding NEW client");
-                System.out.println(c.getRemoteAddressTCP());
+                System.out.println(c.remoteAddress());
                 //We should be sorting the connections when the game actually starts, so doesn't matter
                 queue.add(new PlayerConnection(nextUnclaimedSlot(), c, email));
             }
@@ -152,7 +150,6 @@ public class ManagedGame {
         clients = gameIncludedClients;
         Runnable updateClients = () -> {
             stateRef.set(state); // everyone gets the latest state once and no one gets a stale one or a fresher one
-            //System.out.println("updating clients now");
             Game snapshot = stateRef.get();
             if (snapshot == null || (snapshot.ended && snapshot.underControl == null)) {
                 if (snapshot != null) {
@@ -164,7 +161,7 @@ public class ManagedGame {
                 return; //need undercontrol to decide winner clientside so we can't send this one
             }
             //remove if not connected
-            clients.removeIf(client -> !client.getClient().isConnected());
+            clients.removeIf(client -> !client.getClient().isOpen());
             clients.parallelStream().forEach(client -> {
                 try{
                     PlayerDivider pd = dividerFromConn(client.getClient());
@@ -175,8 +172,10 @@ public class ManagedGame {
                     }
                     update.underControl = state.titanSelected(pd);
                     update.now = Instant.now();
-                    if (client.getClient().isConnected()) {
-                        client.getClient().sendTCP(anticheat(update));
+                    if (client.getClient().isOpen()) {
+                        client.getClient().writeAndFlush(new TextWebSocketFrame(
+                            KryoRegistry.serializeWithKryo(anticheat(update))
+                        ));
                     }
                 }
                 catch (ConcurrentModificationException ex1){
@@ -249,10 +248,10 @@ public class ManagedGame {
         return availableSlots.get(claimIndex -1);
     }
 
-    private boolean connectionQueued(List<PlayerConnection> queue, Connection query){
+    private boolean connectionQueued(List<PlayerConnection> queue, Channel query){
         boolean connFound = false;
         for(PlayerConnection p : queue){
-            if (p.getClient().getID() == query.getID()){
+            if (p.getClient().id() == query.id()){
                 connFound = true;
             }
         }
@@ -270,7 +269,7 @@ public class ManagedGame {
         return false;
     }
 
-    public PlayerConnection replaceConnectionForSameUser(Connection connection, String token) {
+    public PlayerConnection replaceConnectionForSameUser(Channel connection, String token) {
         for (PlayerConnection pc : clients) {
             if (pc.getEmail().equals(Util.jwtExtractEmail(token))) {
                 pc.setClient(connection);
@@ -296,8 +295,8 @@ public class ManagedGame {
                     Game update = (Game) deepClone(snapshot);
                     update.underControl = state.titanSelected(pd);
                     update.now = Instant.now();
-                    if (client.getClient().isConnected()) {
-                        client.getClient().sendTCP(state);
+                    if (client.getClient().isOpen()) {
+                        client.getClient().writeAndFlush(anticheat(update));
                         //Wait for the client to receive the final update before closing
                         Thread.sleep(1200);
                         client.getClient().close();

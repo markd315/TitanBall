@@ -18,6 +18,10 @@ public class Filter  implements Serializable {
     TitanType type;
     boolean allowSelf;
     List<DistanceFilter> distanceFilters;
+
+    public Filter() {
+    }
+
     public Filter(TeamAffiliation any, TitanType any1, boolean allowSelf, List<DistanceFilter> distanceFilters) {
         this.team = any;
         this.type = any1;

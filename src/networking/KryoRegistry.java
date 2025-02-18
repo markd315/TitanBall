@@ -3,6 +3,9 @@ package networking;
 import client.graphical.GoalSprite;
 import client.graphical.ScreenConst;
 import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
+import com.github.luben.zstd.Zstd;
 import gameserver.Const;
 import gameserver.TutorialOverrides;
 import gameserver.effects.EffectId;
@@ -24,113 +27,153 @@ import gameserver.targeting.core.Selector;
 import org.joda.time.Instant;
 import util.ConstOperations;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class KryoRegistry {
-    public static void register(Kryo kryo){
+    private static final ThreadLocal<Kryo> kryoThreadLocal = ThreadLocal.withInitial(() -> {
+        Kryo kryo = new Kryo();
+        register(kryo);
+        return kryo;
+    });
+
+    public static Object deserializeWithKryo(String base64String) {
+        try {
+            byte[] data = Base64.getDecoder().decode(base64String);
+
+            //System.out.println("Decoded message size: " + data.length + " bytes");
+            if (data.length == 0) {
+                System.err.println("Failed to deserialize WebSocket message: Decoded data buffer is empty");
+                return null;
+            }
+
+            int bufferSize = Math.max(data.length, 8 * 1024 * 1024);
+            Input input = new Input(new ByteArrayInputStream(Zstd.decompress(data, data.length * 10)), bufferSize);
+
+            return kryoThreadLocal.get().readClassAndObject(input);
+        } catch (Exception e) {
+            System.err.println("Failed to deserialize WebSocket message: " + e.getMessage());
+            return null;
+        }
+    }
+
+    public static String serializeWithKryo(Object object) {
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+             Output output = new Output(baos, 64 * 1024)) { // Ensure proper buffer size
+            kryoThreadLocal.get().writeClassAndObject(output, object);
+            output.flush(); // Ensure data is fully written
+            return Base64.getEncoder().encodeToString(Zstd.compress(baos.toByteArray()));
+        } catch (Exception e) {
+            System.err.println("Failed to serialize WebSocket message: " + e.getMessage());
+            return "";
+        }
+    }
+
+    public static void register(Kryo in){
         UUIDSerializer uSer = new UUIDSerializer();
         AtomicBooleanSerializer aSer = new AtomicBooleanSerializer();
 
+        in.register(EffectId.class);
+        in.register(Effect.class);
+        in.register(TestEffect.class);
+        in.register(FlareEffect.class);
+        in.register(BleedEffect.class);
+        in.register(BombEffect.class);
+        in.register(EmptyEffect.class);
+        in.register(RatioEffect.class);
+        in.register(HealEffect.class);
+        in.register(DeadEffect.class);
+        in.register(DefenseEffect.class);
+        in.register(ShootEffect.class);
+        in.register(HideBallEffect.class);
+        in.register(CooldownQ.class);
+        in.register(CooldownW.class);
+        in.register(CooldownSteal.class);
+        in.register(CooldownCurve.class);
 
-        kryo.register(EffectId.class);
-        kryo.register(Effect.class);
-        kryo.register(TestEffect.class);
-        kryo.register(FlareEffect.class);
-        kryo.register(BleedEffect.class);
-        kryo.register(BombEffect.class);
-        kryo.register(EmptyEffect.class);
-        kryo.register(RatioEffect.class);
-        kryo.register(HealEffect.class);
-        kryo.register(DeadEffect.class);
-        kryo.register(DefenseEffect.class);
-        kryo.register(ShootEffect.class);
-        kryo.register(HideBallEffect.class);
-        kryo.register(CooldownQ.class);
-        kryo.register(CooldownW.class);
-        kryo.register(CooldownSteal.class);
-        kryo.register(CooldownCurve.class);
+        in.register(Collidable.class);
+        in.register(Box.class);
+        in.register(Trap.class);
+        in.register(Wall.class);
+        in.register(Portal.class);
+        in.register(BallPortal.class);
+        in.register(Cage.class);
+        in.register(Wolf.class);
+        in.register(Fire.class);
 
-        kryo.register(Collidable.class);
-        kryo.register(Box.class);
-        kryo.register(Trap.class);
-        kryo.register(Wall.class);
-        kryo.register(Portal.class);
-        kryo.register(BallPortal.class);
-        kryo.register(Cage.class);
-        kryo.register(Wolf.class);
-        kryo.register(Fire.class);
+        in.register(GameEngine.class, 95);
+        in.register(Game.class);
+        in.register(GoalHoop.class);
+        in.register(GoalHoop[].class);
+        in.register(ClientPacket.class);
+        in.register(ClientPacket[].class);
+        in.register(Titan.class);
+        in.register(Titan.TitanState.class);
+        in.register(Titan[].class);
+        in.register(TitanType.class);
+        in.register(TeamAffiliation.class);
+        in.register(Entity.class);
+        in.register(Entity[].class);
+        in.register(Coordinates.class);
+        in.register(GoalSprite.class);
+        in.register(ShapePayload.class);
+        in.register(PlayerDivider.class);
+        in.register(Masteries.class);
+        in.register(Team.class);
+        in.register(ShapePayload.class);
+        in.register(ShapePayload.ShapeSelector.class);
+        in.register(ClientPacket.ARTISAN_SHOT.class);
+        in.register(ClientPacket.class);
+        in.register(EffectPool.class);
+        in.register(Selector.class);
+        in.register(SelectorOffset.class);
+        in.register(SortBy.class);
+        in.register(ShapePayload.class);
+        in.register(Filter.class);
+        in.register(Limiter.class);
+        in.register(Targeting.class);
+        in.register(DistanceFilter.class);
+        in.register(Ability.class);
+        in.register(AbilityStrategy.class);
+        in.register(RangeCircle.class);
+        in.register(StatEngine.class);
 
-        kryo.register(GameEngine.class, 95);
-        kryo.register(Game.class);
-        kryo.register(GoalHoop.class);
-        kryo.register(GoalHoop[].class);
-        kryo.register(ClientPacket.class);
-        kryo.register(ClientPacket[].class);
-        kryo.register(Titan.class);
-        kryo.register(Titan.TitanState.class);
-        kryo.register(Titan[].class);
-        kryo.register(TitanType.class);
-        kryo.register(TeamAffiliation.class);
-        kryo.register(Entity.class);
-        kryo.register(Entity[].class);
-        kryo.register(Coordinates.class);
-        kryo.register(GoalSprite.class);
-        kryo.register(ShapePayload.class);
-        kryo.register(PlayerDivider.class);
-        kryo.register(Masteries.class);
-        kryo.register(Team.class);
-        kryo.register(ShapePayload.class);
-        kryo.register(ShapePayload.ShapeSelector.class);
-        kryo.register(ClientPacket.ARTISAN_SHOT.class);
-        kryo.register(ClientPacket.class);
-        kryo.register(EffectPool.class);
-        kryo.register(Selector.class);
-        kryo.register(SelectorOffset.class);
-        kryo.register(SortBy.class);
-        kryo.register(ShapePayload.class);
-        kryo.register(Filter.class);
-        kryo.register(Limiter.class);
-        kryo.register(Targeting.class);
-        kryo.register(DistanceFilter.class);
-        kryo.register(Ability.class);
-        kryo.register(AbilityStrategy.class);
-        kryo.register(RangeCircle.class);
-        kryo.register(StatEngine.class);
+        in.register(UUID.class, uSer);
+        in.register(AtomicBoolean.class, aSer);
+        in.register(Instant.class);
+        in.register(Integer.class);
+        in.register(Double.class);
+        in.register(Float.class);
+        in.register(Long.class);
+        in.register(java.util.ArrayList.class);
+        in.register(java.util.List.class);
+        in.register(Map.class);
+        in.register(HashMap.class);
+        in.register(String.class);
+        in.register(java.util.HashSet.class);
+        in.register(ScreenConst.class);
 
-        kryo.register(UUID.class, uSer);
-        kryo.register(AtomicBoolean.class, aSer);
-        kryo.register(Instant.class);
-        kryo.register(Integer.class);
-        kryo.register(Double.class);
-        kryo.register(Float.class);
-        kryo.register(Long.class);
-        kryo.register(java.util.ArrayList.class);
-        kryo.register(java.util.List.class);
-        kryo.register(Map.class);
-        kryo.register(HashMap.class);
-        kryo.register(String.class);
-        kryo.register(java.util.HashSet.class);
-        kryo.register(ScreenConst.class);
+        in.register(byte.class);
+        in.register(byte[].class);
+        in.register(int[].class);
+        in.register(int.class);
+        in.register(float[].class);
+        in.register(float.class);
+        in.register(double[].class);
+        in.register(double.class);
+        in.register(boolean[].class);
+        in.register(boolean.class);
+        in.register(Const.class);
+        in.register(ConstOperations.class);
+        in.register(GamePhase.class);
 
-        kryo.register(byte.class);
-        kryo.register(byte[].class);
-        kryo.register(int[].class);
-        kryo.register(int.class);
-        kryo.register(float[].class);
-        kryo.register(float.class);
-        kryo.register(double[].class);
-        kryo.register(double.class);
-        kryo.register(boolean[].class);
-        kryo.register(boolean.class);
-        kryo.register(Const.class);
-        kryo.register(ConstOperations.class);
-        kryo.register(GamePhase.class);
-
-        kryo.register(TutorialOverrides.class);
-        kryo.register(GameOptions.class);
+        in.register(TutorialOverrides.class);
+        in.register(GameOptions.class);
         //Log.DEBUG();
         //Log.TRACE();
     }

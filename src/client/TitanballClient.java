@@ -2,12 +2,7 @@ package client;
 
 import client.graphical.*;
 import com.esotericsoftware.kryo.Kryo;
-import com.esotericsoftware.kryo.KryoException;
 import com.esotericsoftware.kryo.io.Input;
-import com.esotericsoftware.kryonet.Client;
-import com.esotericsoftware.kryonet.Connection;
-import com.esotericsoftware.kryonet.FrameworkMessage;
-import com.esotericsoftware.kryonet.Listener;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import gameserver.Const;
@@ -25,6 +20,19 @@ import gameserver.entity.minions.*;
 import gameserver.models.Game;
 import gameserver.targeting.ShapePayload;
 import gameserver.gamemanager.GamePhase;
+import io.netty.bootstrap.Bootstrap;
+import io.netty.buffer.ByteBuf;
+import io.netty.channel.*;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.SocketChannel;
+import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.handler.codec.http.DefaultHttpHeaders;
+import io.netty.handler.codec.http.HttpClientCodec;
+import io.netty.handler.codec.http.HttpObjectAggregator;
+import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
+import io.netty.handler.codec.http.websocketx.WebSocketClientHandshakerFactory;
+import io.netty.handler.codec.http.websocketx.WebSocketClientProtocolHandler;
+import io.netty.handler.codec.http.websocketx.WebSocketVersion;
 import javafx.event.EventHandler;
 import javafx.event.EventType;
 import javafx.geometry.Insets;
@@ -55,6 +63,7 @@ import util.Util;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.net.URI;
 import java.util.List;
 import java.util.*;
 import java.util.concurrent.Executors;
@@ -67,12 +76,10 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
     private int SHOT_WIDTH;
     public ClientPacket controlsHeld = new ClientPacket();
     public Instant gamestart = null;
-    public Sound shotSound;
-    protected Client gameserverConn = new Client(1024 * 1024, 256 * 1024); // 1mb and 256k
+    public Sound shotSound;// 1mb and 256k
     protected String gameID;
     protected GameEngine game;
     protected GamePhase phase = GamePhase.CREDITS;
-    protected Kryo kryo = gameserverConn.getKryo();
     protected boolean camFollow = true;
     protected String token;
     protected AuthServerInterface loginClient;
@@ -145,6 +152,8 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
     private TeamAffiliation saved_team;
     private PlayerDivider saved_player_divider;
     private boolean initialUpdate = false;
+    private Channel gameserverChannel;
+
 
     public TitanballClient(TitanballWindow titanballWindow, int xSize, int ySize, double scl, AuthServerInterface loginClient, Map<String, String> keymap, boolean createListeners, boolean darkTheme) {
         this.darkTheme = darkTheme;
@@ -173,7 +182,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
         victory = sconst.loadImage("res/Court/victory.png");
         tie = sconst.loadImage("res/Court/tie.png");
         defeat = sconst.loadImage("res/Court/defeat.png");
-        if(darkTheme) {
+        if (darkTheme) {
             controlsExplanation = sconst.loadImage("res/Court/tutorial_whitetxt.png");
         } else {
             controlsExplanation = sconst.loadImage("res/Court/tutorial.png");
@@ -226,7 +235,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
 
         imageView.snapshot(params, scaledImage);
         return scaledImage;
-}
+    }
 
     public int indexSelected() {
         for (int i = 0; i < game.players.length; i++) {
@@ -273,11 +282,10 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                     return;
                 }
             }
-            if (saved_team == TeamAffiliation.HOME){
+            if (saved_team == TeamAffiliation.HOME) {
                 team = game.home;
                 enemy = game.away;
-            }
-            else  {
+            } else {
                 team = game.away;
                 enemy = game.home;
             }
@@ -292,14 +300,15 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
             game.phase = GamePhase.ENDED;
             return;
         }
-        if (phase == GamePhase.CREDITS){
+        if (phase == GamePhase.CREDITS) {
             creditPanel(gc);
             // request focus
             gc.getCanvas().requestFocus();
         }
         if (phase == GamePhase.CONTROLS) controlsExplanation(gc);
         if (phase == GamePhase.SHOW_GAME_MODES) showGameModes(gc);
-        if (phase == GamePhase.DRAW_CLASS_SCREEN) drawClassScreen(gc, true); //Attack screen settings starting here!
+        if (phase == GamePhase.DRAW_CLASS_SCREEN)
+            drawClassScreen(gc, true); //Attack screen settings starting here!
         if (phase == GamePhase.SET_MASTERIES) {
             if (tournamentCode.equals("")) {
                 tourneyOptions = new GameOptions();
@@ -363,8 +372,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
             if (over) {
                 phase = GamePhase.ENDED;
                 return;
-            }
-            else {
+            } else {
                 updateCamera();
                 if (this.game.effectPool.hasEffect(this.game.underControl, EffectId.BLIND)) {
                     sconst.setFont(gc, new Font("Verdana", 72));
@@ -405,7 +413,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
         }
         if (phase == GamePhase.TUTORIAL) {
             this.game = tut;
-            
+
             updateFrameBall();
             updateNarration(tut);
             if (this.game.phase == GamePhase.SHOW_GAME_MODES) { //finish tutorial
@@ -544,11 +552,11 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
             if (ranks.has(stat) && ranks.get(stat).asInt() >= 1) {
                 int rank = ranks.get(stat).asInt();
                 setColorFromRank(gc, rank);
-                sconst.fill(gc,new Ellipse(sconst.STATS_MEDAL + 1, //subtractions for internal color circle
+                sconst.fill(gc, new Ellipse(sconst.STATS_MEDAL + 1, //subtractions for internal color circle
                         y - (sconst.STATS_FONT - 4) + 1,
                         sconst.STATS_FONT - 2, sconst.STATS_FONT - 2));
                 gc.setFill(darkTheme ? Color.WHITE : Color.BLACK);
-                
+
                 sconst.fill(gc, new Ellipse(sconst.STATS_MEDAL,
                         y - (sconst.STATS_FONT - 4),
                         sconst.STATS_FONT, sconst.STATS_FONT));
@@ -562,73 +570,170 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
         ballFrameCounter = 0;
         camX = 500;
         camY = 300;
-        openConnection();
+        try {
+            openConnection();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     Runnable updateServer = () -> {
-        if (controlsHeld != null && gameserverConn.isConnected()) {
+        if (controlsHeld != null && gameserverChannel != null && gameserverChannel.isActive()) {
             controlsHeld.gameID = gameID;
             controlsHeld.token = token;
             controlsHeld.masteries = masteries;
-            gameserverConn.sendTCP(controlsHeld);
-        }
-        else if(!gameserverConn.isConnected()) {
-            gameserverConn.close();
-            gameserverConn = new Client(8 * 1024 * 1024, 1024 * 1024); //8mb and 1mb
-        }
-        else{
-            System.out.println("null controls held");
+
+            String serializedData = KryoRegistry.serializeWithKryo(controlsHeld);
+            gameserverChannel.writeAndFlush(new TextWebSocketFrame(serializedData));
+        } else if (gameserverChannel == null || !gameserverChannel.isActive()) {
+            System.out.println("Reconnecting to game server...");
+            try {
+                gameserverChannel.close(); // Ensure the old channel is properly closed
+            } catch (Exception ignored) {
+            }
+
+            Bootstrap bootstrap = new Bootstrap();
+            EventLoopGroup group = new NioEventLoopGroup();
+
+            bootstrap.group(group)
+                    .channel(NioSocketChannel.class)
+                    .handler(new ChannelInitializer<SocketChannel>() {
+                        @Override
+                        protected void initChannel(SocketChannel ch) {
+                            ch.pipeline().addLast(
+                                    new HttpClientCodec(),
+                                    new HttpObjectAggregator(16 * 1024 * 1024),
+                                    new WebSocketClientProtocolHandler(
+                                            WebSocketClientHandshakerFactory.newHandshaker(
+                                                    URI.create("ws://zanzalaz.com:54555/ws"),
+                                                    WebSocketVersion.V13,
+                                                    null,
+                                                    true,
+                                                    new DefaultHttpHeaders()
+                                            )
+                                    ),
+                                    new SimpleChannelInboundHandler<TextWebSocketFrame>() {
+                                        @Override
+                                        protected void channelRead0(ChannelHandlerContext ctx, TextWebSocketFrame frame) {
+                                            ingestPacket(ctx, frame);
+                                        }
+
+                                        @Override
+                                        public void channelActive(ChannelHandlerContext ctx) {
+                                            System.out.println("Reconnected to game server!");
+                                            gameserverChannel = ctx.channel();
+                                        }
+
+                                        @Override
+                                        public void channelInactive(ChannelHandlerContext ctx) {
+                                            System.out.println("Disconnected from game server!");
+                                        }
+                                    }
+                            );
+                        }
+                    });
+
+            try {
+                ChannelFuture future = bootstrap.connect("zanzalaz.com", 54555).sync();
+                gameserverChannel = future.channel();
+                System.out.println("Game server reconnected.");
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        } else {
+            System.out.println("null controlsHeld");
         }
     };
 
-    public void openConnection() throws IOException {
-        //TODO replace this with a socketio connection
-        gameserverConn.start();
-        //gameserverConn.setHardy(true);
-        KryoRegistry.register(kryo);
-        if (!gameserverConn.isConnected()) {
-            gameserverConn.connect(999999999, "zanzalaz.com", 54555);
-            //gameserverConn.connect(5000, "127.0.0.1", 54555);
+    private void ingestPacket(ChannelHandlerContext ctx, TextWebSocketFrame frame) {
+        System.out.println("Start of ingest packet");
+        try {
+            String message = frame.text();
+            frame.retain();
 
-            gameserverConn.addListener(new Listener() {
-                public synchronized void received(Connection connection, Object object) {
-                     //System.out.println("type of object: " + object.getClass().getName());
-                     if (object instanceof Game) {
-                         game = (GameEngine) object;
-                     }
-                     else if (object instanceof byte[] data) {
-                         game = kryo.readObject(new Input(data), GameEngine.class);
-                     }
-                     else if (object instanceof FrameworkMessage.KeepAlive) {
-                        System.out.println("Got a keepalive from gameserver!");
-                        return;
-                    }
-                     else {
-                         System.out.println("Got a non-game from gameserver!");
-                     }
-                    game.began = true;
-                    phase = game.phase;
-                    controlsHeld.gameID = gameID;
-                    controlsHeld.token = token;
-                    controlsHeld.masteries = masteries;
-                    controlsHeld.camX = camX;
-                    controlsHeld.camY = camY;
-                    try {
-                        if (! initialUpdate) {
-                            System.out.println("Initial update sending");
-                            initialUpdate = true;
-                            gameserverConn.sendTCP(controlsHeld);
-                            System.out.println("Initial update sent");
-                        }
-                    } catch (KryoException e) {
-                        System.out.println("kryo end");
-                        System.out.println(game.ended);
-                    }
-                }
-            });
-            exec.scheduleAtFixedRate(updateServer, 15, 15, TimeUnit.MILLISECONDS);
-            System.out.println("Updates scheduled");
+            Object object = KryoRegistry.deserializeWithKryo(message);
+            if(object == null){
+                return;
+            }
+            if (object instanceof Game) {
+                System.out.println("received game");
+                System.out.println(((Game) object).began);
+                game = (GameEngine) object;
+            } else {
+                System.out.println("Got a non-game from gameserver!");
+            }
+            if (this.game != null) {
+                game.began = true;
+                phase = game.phase;
+            }
+            controlsHeld.gameID = gameID;
+            controlsHeld.token = token;
+            controlsHeld.masteries = masteries;
+            controlsHeld.camX = camX;
+            controlsHeld.camY = camY;
+
+            if (!initialUpdate) {
+                System.out.println("Initial update sending");
+                initialUpdate = true;
+                ctx.writeAndFlush(new TextWebSocketFrame(
+                        KryoRegistry.serializeWithKryo(controlsHeld)
+                ));
+                System.out.println("Initial update sent");
+            }
         }
+        finally {
+            frame.release();
+        }
+    }
+
+
+    public void openConnection() throws InterruptedException {
+        Bootstrap bootstrap = new Bootstrap();
+        EventLoopGroup group = new NioEventLoopGroup();
+
+        bootstrap.group(group)
+                .channel(NioSocketChannel.class)
+                .handler(new ChannelInitializer<SocketChannel>() {
+                    @Override
+                    protected void initChannel(SocketChannel ch) {
+                        ch.pipeline().addLast(
+                                new HttpClientCodec(),
+                                new HttpObjectAggregator(8192),
+                                new WebSocketClientProtocolHandler(
+                                        WebSocketClientHandshakerFactory.newHandshaker(
+                                                URI.create("ws://zanzalaz.com:54555/ws"),
+                                                WebSocketVersion.V13,
+                                                null,
+                                                true,
+                                                new DefaultHttpHeaders()
+                                        )
+                                ),
+                                new SimpleChannelInboundHandler<TextWebSocketFrame>() {
+                                    @Override
+                                    protected void channelRead0(ChannelHandlerContext ctx, TextWebSocketFrame frame) {
+                                        ingestPacket(ctx, frame);
+                                    }
+
+                                    @Override
+                                    public void channelActive(ChannelHandlerContext ctx) {
+                                        System.out.println("Connected to game server!");
+                                    }
+
+                                    @Override
+                                    public void channelInactive(ChannelHandlerContext ctx) {
+                                        System.out.println("Disconnected from game server!");
+                                    }
+                                }
+                        );
+                    }
+                });
+
+        ChannelFuture future = bootstrap.connect("zanzalaz.com", 54555);
+        future.sync();
+        System.out.println("Client connected");
+
+        exec.scheduleAtFixedRate(updateServer, 15, 300, TimeUnit.MILLISECONDS);
+        System.out.println("Updates scheduled");
     }
 
     protected String requestOrQueueGame() throws Exception {
@@ -652,7 +757,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
 
     protected void creditPanel(GraphicsContext gc) {
         sconst.drawImage(gc, intro, 0, 0);
-        
+
         Font font = new Font("Verdana", 65);
         sconst.setFont(gc, font);
         sconst.drawString(gc, "Space to proceed", 370, 640);
@@ -667,19 +772,19 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
         transform.appendRotation(rot, sconst.BALL_PTR_X / 2, sconst.BALL_PTR_Y / 2);
         // 3. Translate to the position on the canvas
         transform.appendTranslation(xt, yt);
-    
+
         gc.setTransform(transform);
-        
+
         if (game.anyPoss()) {
-            sconst.drawImage(gc,ballPtr, 0, 0, sconst.BALL_PTR_X, sconst.BALL_PTR_Y);
+            sconst.drawImage(gc, ballPtr, 0, 0, sconst.BALL_PTR_X, sconst.BALL_PTR_Y);
         } else {
-            sconst.drawImage(gc,ballFPtr, 0, 0, sconst.BALL_PTR_X, sconst.BALL_PTR_Y);
+            sconst.drawImage(gc, ballFPtr, 0, 0, sconst.BALL_PTR_X, sconst.BALL_PTR_Y);
         }
-    
+
         // Reset the transform to default
         gc.setTransform(new Affine());
     }
-    
+
     public void displayBallArrow(GraphicsContext gc) {
         if (game == null) {
             //return;
@@ -718,8 +823,8 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
             rotTranslateArrow(gc, x, ySize - YCORR - (sconst.BALL_PTR_X / 2), rot);
         }
     }
-    
-    protected void graphicsDrawCurve(GraphicsContext gc, QuadCurve eL){
+
+    protected void graphicsDrawCurve(GraphicsContext gc, QuadCurve eL) {
         gc.beginPath();
         gc.moveTo(eL.getStartX(), eL.getStartY());
         gc.quadraticCurveTo(eL.getControlX(), eL.getControlY(), eL.getEndX(), eL.getEndY());
@@ -756,28 +861,28 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
             final double SHOT_DIST = sconst.adjX(316);
             final double BALL_HALF = sconst.adjX(15);
             Line lobBlock = new Line(
-                ox,
-                oy,
-                ox + ((.2 * LOB_DIST * pow + BALL_HALF) * Math.cos(angle)),
-                oy + ((.2 * LOB_DIST * pow + BALL_HALF) * Math.sin(angle))
+                    ox,
+                    oy,
+                    ox + ((.2 * LOB_DIST * pow + BALL_HALF) * Math.cos(angle)),
+                    oy + ((.2 * LOB_DIST * pow + BALL_HALF) * Math.sin(angle))
             );
             gc.setStroke(Color.YELLOW);
             gc.strokeLine(lobBlock.getStartX(), lobBlock.getStartY(), lobBlock.getEndX(), lobBlock.getEndY());
 
             Line lobFly = new Line(
-                ox + ((.2 * LOB_DIST * pow + BALL_HALF) * Math.cos(angle)),
-                oy + ((.2 * LOB_DIST * pow + BALL_HALF) * Math.sin(angle)),
-                ox + ((.75 * LOB_DIST * pow - BALL_HALF) * Math.cos(angle)),
-                oy + ((.75 * LOB_DIST * pow - BALL_HALF) * Math.sin(angle))
+                    ox + ((.2 * LOB_DIST * pow + BALL_HALF) * Math.cos(angle)),
+                    oy + ((.2 * LOB_DIST * pow + BALL_HALF) * Math.sin(angle)),
+                    ox + ((.75 * LOB_DIST * pow - BALL_HALF) * Math.cos(angle)),
+                    oy + ((.75 * LOB_DIST * pow - BALL_HALF) * Math.sin(angle))
             );
             gc.setStroke(Color.BLUE);
             gc.strokeLine(lobFly.getStartX(), lobFly.getStartY(), lobFly.getEndX(), lobFly.getEndY());
 
             Line lobCatch = new Line(
-                ox + ((.75 * LOB_DIST * pow - BALL_HALF) * Math.cos(angle)),
-                oy + ((.75 * LOB_DIST * pow - BALL_HALF) * Math.sin(angle)),
-                ox + (LOB_DIST * pow * Math.cos(angle)),
-                oy + (LOB_DIST * pow * Math.sin(angle))
+                    ox + ((.75 * LOB_DIST * pow - BALL_HALF) * Math.cos(angle)),
+                    oy + ((.75 * LOB_DIST * pow - BALL_HALF) * Math.sin(angle)),
+                    ox + (LOB_DIST * pow * Math.cos(angle)),
+                    oy + (LOB_DIST * pow * Math.sin(angle))
             );
             gc.setStroke(Color.YELLOW);
             gc.strokeLine(lobCatch.getStartX(), lobCatch.getStartY(), lobCatch.getEndX(), lobCatch.getEndY());
@@ -786,10 +891,10 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
             if (this.controlsHeld.artisanShot == ClientPacket.ARTISAN_SHOT.SHOT
                     || !game.underControl.getType().equals(TitanType.ARTISAN)) {
                 Line shot = new Line(
-                    ox + (LOB_DIST * pow * Math.cos(angle)),
-                    oy + (LOB_DIST * pow * Math.sin(angle)),
-                    ox + (SHOT_DIST * pow * Math.cos(angle)),
-                    oy + (SHOT_DIST * pow * Math.sin(angle))
+                        ox + (LOB_DIST * pow * Math.cos(angle)),
+                        oy + (LOB_DIST * pow * Math.sin(angle)),
+                        ox + (SHOT_DIST * pow * Math.cos(angle)),
+                        oy + (SHOT_DIST * pow * Math.sin(angle))
                 );
                 gc.setStroke(Color.DARKRED);
                 gc.strokeLine(shot.getStartX(), shot.getStartY(), shot.getEndX(), shot.getEndY());
@@ -862,7 +967,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
         }
         drawPortalRanges(gc);
         if (game.goalVisible) {
-            sconst.drawImage(gc,goalScored, sconst.GOAL_TXT_X, sconst.GOAL_TXT_Y);
+            sconst.drawImage(gc, goalScored, sconst.GOAL_TXT_X, sconst.GOAL_TXT_Y);
         }
         if (game.colliders != null) {
             gc.setLineWidth(RANGE_SIZE);
@@ -937,39 +1042,39 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
 
     private void drawPortalRanges(GraphicsContext gc) {
         for (Entity e : game.entityPool) {
-        RangeCircle ri = null;
-        if (e instanceof BallPortal && game.underControl.id.equals(((BallPortal) e).getCreatedById())) {
-            ri = ((BallPortal) e).rangeCircle;
+            RangeCircle ri = null;
+            if (e instanceof BallPortal && game.underControl.id.equals(((BallPortal) e).getCreatedById())) {
+                ri = ((BallPortal) e).rangeCircle;
+            }
+            if (e instanceof Portal && game.underControl.id.equals(((Portal) e).getCreatedById())) {
+                ri = ((Portal) e).rangeCircle;
+            }
+            if (ri != null) {
+                int radius = ri.getRadius();
+
+                // Calculate the center coordinates
+                int centerX = (int) (e.X + e.width / 2);
+                int centerY = (int) (e.Y + e.height / 2);
+
+                // Adjust the coordinates based on camera position and screen constants
+                int adjustedCenterX = sconst.adjX(centerX);
+                int adjustedCenterY = sconst.adjY(centerY);
+                int adjustedRadiusX = sconst.adjX(radius);
+                int adjustedRadiusY = sconst.adjY(radius);
+
+                // Create the ellipse centered on the portal
+                Ellipse ell = new Ellipse(adjustedCenterX, adjustedCenterY, adjustedRadiusX, adjustedRadiusY);
+                ShapePayload c = new ShapePayload(ell);
+                gc.setStroke(ri.getColor());
+                Shape b = c.fromWithCamera(camX, camY, sconst);
+
+                // Draw the ellipse
+                gc.strokeOval(b.getBoundsInLocal().getMinX(),
+                        b.getBoundsInLocal().getMinY(),
+                        b.getBoundsInLocal().getWidth(),
+                        b.getBoundsInLocal().getHeight());
+            }
         }
-        if (e instanceof Portal && game.underControl.id.equals(((Portal) e).getCreatedById())) {
-            ri = ((Portal) e).rangeCircle;
-        }
-        if (ri != null) {
-            int radius = ri.getRadius();
-
-            // Calculate the center coordinates
-            int centerX = (int) (e.X + e.width / 2);
-            int centerY = (int) (e.Y + e.height / 2);
-
-            // Adjust the coordinates based on camera position and screen constants
-            int adjustedCenterX = sconst.adjX(centerX);
-            int adjustedCenterY = sconst.adjY(centerY);
-            int adjustedRadiusX = sconst.adjX(radius);
-            int adjustedRadiusY = sconst.adjY(radius);
-
-            // Create the ellipse centered on the portal
-            Ellipse ell = new Ellipse(adjustedCenterX, adjustedCenterY, adjustedRadiusX, adjustedRadiusY);
-            ShapePayload c = new ShapePayload(ell);
-            gc.setStroke(ri.getColor());
-            Shape b = c.fromWithCamera(camX, camY, sconst);
-
-            // Draw the ellipse
-            gc.strokeOval(b.getBoundsInLocal().getMinX(),
-                          b.getBoundsInLocal().getMinY(),
-                          b.getBoundsInLocal().getWidth(),
-                          b.getBoundsInLocal().getHeight());
-        }
-    }
     }
 
     private void drawPainHealIndicator(GraphicsContext gc, GameEngine game) {
@@ -1251,11 +1356,11 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                 //should also show BLACK when the goal is a sudden death situation
             }
         }
-        for (Titan t : game.players){ //Add icon if boosting
+        for (Titan t : game.players) { //Add icon if boosting
             if (t.isBoosting) {
                 EmptyEffect speed = new EmptyEffect(50, t, EffectId.FAST);
                 sconst.drawImage(gc, speed.getIconSmall(gc), (int) t.X + offset.get(t.id) - camX,
-                                (int) t.Y - 29 - camY);
+                        (int) t.Y - 29 - camY);
             }
         }//note, if you add any other effect overrides, increment the offset above
     }
@@ -1306,14 +1411,14 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                 int y = sconst.adjY((int) e.Y - 9 - camY);
                 Rectangle healthBar = new Rectangle(x, y,
                         sconst.adjX(66), sconst.adjY(8));
-                sconst.fill(gc,healthBar);
+                sconst.fill(gc, healthBar);
                 int hpPercentage = (int) (100 * e.health / e.maxHealth);
                 y = sconst.adjY((int) e.Y - 8 - camY);
                 Rectangle healthStat = new Rectangle(x,
                         y,
                         sconst.adjX(hpPercentage * 2 / 3), sconst.adjY(5));
                 setColorBasedOnPercent(gc, hpPercentage, false);
-                sconst.fill(gc,healthStat);
+                sconst.fill(gc, healthStat);
             }
         }
         if (e instanceof Portal p) {
@@ -1321,7 +1426,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                 double durSpent = p.cooldownPercentOver(game.now);
                 setColorBasedOnPercent(gc, durSpent, false);
                 Rectangle durBar = new Rectangle((int) e.X + xOffset - camX, (int) e.Y - 1 - camY, (int) sconst.adjX(durSpent * 2 / 3), sconst.adjY(2));
-                sconst.fill(gc,durBar);
+                sconst.fill(gc, durBar);
             }
         }
         if (e instanceof BallPortal p) {
@@ -1329,7 +1434,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                 double durSpent = p.cooldownPercentOver(game.now);
                 setColorBasedOnPercent(gc, durSpent, false);
                 Rectangle durBar = new Rectangle((int) e.X + xOffset - camX, (int) e.Y - 1 - camY, (int) sconst.adjX(durSpent * 2 / 3), sconst.adjY(2));
-                sconst.fill(gc,durBar);
+                sconst.fill(gc, durBar);
             }
         }
     }
@@ -1373,7 +1478,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
 
             // Draw Speed Bar
             gc.fillRect(sconst.STAT_BAR_X, sconst.STAT_Y_SCL + 2,
-                (int) (speed * 10.0 * sconst.STAT_INTERNAL_SC), sconst.STAT_INTERNAL_H);
+                    (int) (speed * 10.0 * sconst.STAT_INTERNAL_SC), sconst.STAT_INTERNAL_H);
 
             // Draw Health Label
             setColorBasedOnPercent(gc, hp * 10.0, false);
@@ -1382,7 +1487,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
 
             // Draw Health Bar
             gc.fillRect(sconst.STAT_BAR_X, sconst.STAT_Y_SCL * 2 + 2,
-                (int) (hp * 10.0 * sconst.STAT_INTERNAL_SC), sconst.STAT_INTERNAL_H);
+                    (int) (hp * 10.0 * sconst.STAT_INTERNAL_SC), sconst.STAT_INTERNAL_H);
 
             // Draw Shot Power Label
             setColorBasedOnPercent(gc, shoot * 10.0, false);
@@ -1392,7 +1497,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
             // Draw Shot Power Bar
 
             gc.fillRect(sconst.STAT_BAR_X, sconst.STAT_Y_SCL * 3 + 2,
-                (int) (shoot * 10.0 * sconst.STAT_INTERNAL_SC), sconst.STAT_INTERNAL_H);
+                    (int) (shoot * 10.0 * sconst.STAT_INTERNAL_SC), sconst.STAT_INTERNAL_H);
 
             // Draw Steal Radius Label
             setColorBasedOnPercent(gc, steal * 10.0, false);
@@ -1401,7 +1506,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
 
             // Draw Steal Radius Bar
             gc.fillRect(sconst.STAT_BAR_X, sconst.STAT_Y_SCL * 4 + 2,
-                (int) (steal * 10.0 * sconst.STAT_INTERNAL_SC), sconst.STAT_INTERNAL_H);
+                    (int) (steal * 10.0 * sconst.STAT_INTERNAL_SC), sconst.STAT_INTERNAL_H);
 
             // Draw Class Selection and Text
             String e = Titan.titanEText.get(controlsHeld.classSelection);
@@ -1700,7 +1805,6 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
     }
 
     protected void masteryDelta(int index, int delta) {
-        System.out.println("mastery delta " + index + " " + delta);
         Masteries oldMasteries = new Masteries(masteries);
         switch (index) {
             case 0:
@@ -2186,18 +2290,18 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
 
         Image trophy = sconst.loadImage(rankname);
         Image trophy1v1 = sconst.loadImage(rank1v1name);
-        
+
         // Scale the images to twice their original size
         ImageView trophyView = new ImageView(trophy);
         trophyView.setFitWidth(trophy.getWidth() * 2);
         trophyView.setFitHeight(trophy.getHeight() * 2);
         trophy = trophyView.getImage();
-        
+
         ImageView trophy1v1View = new ImageView(trophy1v1);
         trophy1v1View.setFitWidth(trophy1v1.getWidth() * 2);
         trophy1v1View.setFitHeight(trophy1v1.getHeight() * 2);
         trophy1v1 = trophy1v1View.getImage();
-        
+
         sconst.drawImage(gc, trophy, 458, 115);
         sconst.drawImage(gc, trophy1v1, 458, 235);
         gc.setFill(Color.YELLOW);
@@ -2214,7 +2318,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
         if (game != null) {
             Image banCursor = sconst.loadImage("res/Court/draft/draftBanned.png");
             Image teamCursor = sconst.loadImage("res/Court/draft/draftPicked.png");
-            Image oppCursor = sconst.loadImage( "res/Court/draft/draftPicked2.png");
+            Image oppCursor = sconst.loadImage("res/Court/draft/draftPicked2.png");
             if (game.picksAndBans.containsKey("ban1")) {
                 int banIndex = classSelIndex(game.picksAndBans.get("ban1"));
                 sconst.drawImage(gc, banCursor, xCursor(banIndex), yCursor(banIndex));
@@ -2259,9 +2363,9 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                 int pickIndex = classSelIndex(game.picksAndBans.get("home3"));
                 sconst.drawImage(gc, oppCursor, xCursor(pickIndex), yCursor(pickIndex));
             }
-            if(game.phase == GamePhase.DRAFT_HOMEBAN || game.phase == GamePhase.DRAFT_AWAYBAN){
+            if (game.phase == GamePhase.DRAFT_HOMEBAN || game.phase == GamePhase.DRAFT_AWAYBAN) {
                 classCursor = sconst.loadImage("res/Court/draft/draftBan.png");
-            }else{
+            } else {
                 classCursor = sconst.loadImage("res/Court/draft/draft.png");
             }
             for (int i = 0; i <= 16; i++) {
@@ -2366,12 +2470,12 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
     public void handle(MouseEvent mouseEvent) {
         // Handle mouse dragged and mouse moved events
         EventType<? extends MouseEvent> type = mouseEvent.getEventType();
-        if(type == MouseEvent.MOUSE_MOVED || type == MouseEvent.MOUSE_DRAGGED) {
+        if (type == MouseEvent.MOUSE_MOVED || type == MouseEvent.MOUSE_DRAGGED) {
             controlsHeld.posX = sconst.invertMouseX((int) mouseEvent.getX());
             controlsHeld.posY = sconst.invertMouseY((int) mouseEvent.getY());
             controlsHeld.camX = camX;
             controlsHeld.camY = camY;
-        } else if (type == MouseEvent.MOUSE_PRESSED ) {
+        } else if (type == MouseEvent.MOUSE_PRESSED) {
             if (phase == GamePhase.INGAME || phase == GamePhase.TUTORIAL) {
                 controlsHeld.posX = sconst.invertMouseX((int) mouseEvent.getX());
                 controlsHeld.posY = sconst.invertMouseY((int) mouseEvent.getY());

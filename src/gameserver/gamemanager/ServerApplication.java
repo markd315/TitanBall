@@ -8,14 +8,21 @@ import authserver.matchmaking.Rating;
 import authserver.models.User;
 import authserver.users.PersistenceManager;
 import com.esotericsoftware.kryo.Kryo;
-import com.esotericsoftware.kryonet.Connection;
-import com.esotericsoftware.kryonet.FrameworkMessage;
-import com.esotericsoftware.kryonet.Listener;
-import com.esotericsoftware.kryonet.Server;
 import gameserver.engine.GameEngine;
 import gameserver.engine.GameOptions;
 import gameserver.engine.TeamAffiliation;
 import gameserver.entity.Titan;
+import io.netty.bootstrap.ServerBootstrap;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
+import io.netty.channel.*;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.SocketChannel;
+import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.handler.codec.http.HttpObjectAggregator;
+import io.netty.handler.codec.http.HttpServerCodec;
+import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
+import io.netty.handler.codec.http.websocketx.WebSocketServerProtocolHandler;
 import networking.ClientPacket;
 import networking.KryoRegistry;
 import networking.PlayerDivider;
@@ -26,15 +33,15 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.*;
 
+
 public class ServerApplication {
     public static final boolean PAYWALL = false;
+    private static final int PORT = 54555;
     static Map<String, ManagedGame> states = new HashMap<>(); //game UUID onto game
 
     static Matchmaker matchmaker;
 
     static PersistenceManager persistenceManager;
-
-    static JwtTokenProvider tp = new JwtTokenProvider();
 
     static Properties prop;
     static String appSecret;
@@ -49,33 +56,99 @@ public class ServerApplication {
         }
     }
 
+    public static void startServer() {
+        EventLoopGroup bossGroup = new NioEventLoopGroup(1);
+        EventLoopGroup workerGroup = new NioEventLoopGroup();
+        Channel serverChannel = null;
+        try {
+            ServerBootstrap b = new ServerBootstrap();
+            b.group(bossGroup, workerGroup)
+             .channel(NioServerSocketChannel.class)
+             .option(ChannelOption.SO_BACKLOG, 100)
+             .childHandler(new ChannelInitializer<SocketChannel>() {
+                 @Override
+                 public void initChannel(SocketChannel ch) {
+                     ch.pipeline().addLast(
+                         new HttpServerCodec(),
+                         new HttpObjectAggregator(18 * 1024 * 1024),
+                         new WebSocketServerProtocolHandler("/ws"),
+                         new SimpleChannelInboundHandler<TextWebSocketFrame>() {
+                             @Override
+                             protected void channelRead0(ChannelHandlerContext ctx, TextWebSocketFrame frame) {
+                                try {
+                                    String message = frame.text();
+                                    frame.retain();
+
+                                    Object object = KryoRegistry.deserializeWithKryo(message);
+                                    if(object == null){
+                                        return;
+                                    }
+                                    if (object instanceof ClientPacket clientPacket) {
+                                        if (clientPacket.token == null) {
+                                            System.out.println("got a null token");
+                                            return;
+                                        }
+                                        delegatePacket(ctx.channel(), clientPacket);
+                                    }
+                                } catch (Exception e) {
+                                    System.err.println("Failed to process WebSocket message: " + e.getMessage());
+                                } finally {
+                                    frame.release(); // Ensure the buffer is released
+                                }
+                            }
+
+                             @Override
+                             public void handlerAdded(ChannelHandlerContext ctx) {
+                                 System.out.println("Client connected: " + ctx.channel().id());
+                             }
+
+                             @Override
+                             public void handlerRemoved(ChannelHandlerContext ctx) {
+                                 System.out.println("Client disconnected: " + ctx.channel().id());
+                             }
+                         }
+                     );
+                 }
+             });
+
+            serverChannel = b.bind(PORT).syncUninterruptibly().channel();
+            System.out.println("WebSocket server listening on port " + PORT);
+
+            // Ensure the server stays open and processes events
+            serverChannel.closeFuture().addListener(future -> {
+                // This listener will be triggered when the server channel is closed
+                System.out.println("Server closed.");
+                bossGroup.shutdownGracefully();
+                workerGroup.shutdownGracefully();
+            });
+
+            // Main thread will continue running here, allowing other setup operations
+            System.out.println("Main thread is running, WebSocket server is active.");
+
+            // Keep the server running indefinitely
+            // This can be done using a "dummy" blocking call, or a different mechanism for a proper shutdown signal.
+            // For example, you can use a `CountDownLatch` or `Thread.sleep()`, etc.
+            Thread.sleep(Long.MAX_VALUE);  // Keeps the main thread running indefinitely, ensuring the server stays open
+
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        } finally {
+            // Graceful shutdown hook to ensure cleanup when the process is terminated
+            Channel finalServerChannel = serverChannel;
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                if (finalServerChannel != null && finalServerChannel.isOpen()) {
+                    finalServerChannel.close();
+                }
+                bossGroup.shutdownGracefully();
+                workerGroup.shutdownGracefully();
+            }));
+        }
+    }
 
     public static void main(String[] args) throws IOException {
-        Server server = new Server(8 * 1024 * 1024, 1024 * 1024); //8mb and 1mb
-        Kryo kryo = server.getKryo();
+        Kryo kryo = new Kryo();
         KryoRegistry.register(kryo);
-        server.start();
-        //gameserver.setHardy(true);
-        server.bind(54555);
-        server.addListener(new Listener() {
-            public void received(Connection connection, Object object) {
-                if (connection.getID() > 0) {
-                    if (object instanceof FrameworkMessage.KeepAlive) {
-                        // delegate keepalives so that game will start
-                        delegatePacket(connection, null);
-                    }
-                    if (object instanceof ClientPacket) {
-                        String token = ((ClientPacket) object).token;
-                        if (token == null) {
-                            //System.out.println("token null");
-                            return;
-                        }
-                        delegatePacket(connection, (ClientPacket) object);
-                    }
-                }
-            }
-        });
-        System.out.println("server listening 54555 for game changes");
+        new Thread(ServerApplication::startServer).start();
     }
 
     public static void addNewGame(String id, GameOptions op, Collection<String> gameFor) {
@@ -100,7 +173,7 @@ public class ServerApplication {
         }
     }
 
-    public static void delegatePacket(Connection connection, ClientPacket packet) {
+    public static void delegatePacket(Channel connection, ClientPacket packet) {
         instantiateSpringContext();
         checkGameExpiry();
         //System.out.println("delegating from game " + packet.gameID);
@@ -108,7 +181,6 @@ public class ServerApplication {
         try {
             if (states.containsKey(packet.gameID)) {
                 ManagedGame state = states.get(packet.gameID);
-                //System.out.println("passing connection " + connection.getID() + " to game " + state.gameId);
                 state.delegatePacket(connection, packet);
             }
             else {
@@ -121,7 +193,7 @@ public class ServerApplication {
                     if (mg.gameContainsEmail(Collections.singleton(email))) {
                         System.out.println("found a game for " + email + " to rejoin");
                         mg.replaceConnectionForSameUser(connection, packet.token);
-                        System.out.println("passing connection " + connection.getID() + " to game " + mg.gameId);
+                        System.out.println("passing connection " + connection.id() + " to game " + mg.gameId);
                         mg.delegatePacket(connection, packet);
                     }
                 }

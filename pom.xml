@@ -152,7 +152,11 @@
             <version>2.0.1.Final</version>  <!-- Correct version for Spring Boot 2 -->
         </dependency>
 
-
+        <dependency>
+            <groupId>com.github.luben</groupId>
+            <artifactId>zstd-jni</artifactId>
+            <version>1.5.6-10</version>
+        </dependency>
         <dependency>
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
@@ -210,9 +214,14 @@
         </dependency>
         <!-- remove this soon -->
         <dependency>
-            <groupId>com.esotericsoftware</groupId>
-            <artifactId>kryonet</artifactId>
-            <version>2.22.0-RC1</version>
+            <groupId>com.esotericsoftware.kryo</groupId>
+            <artifactId>kryo</artifactId>
+            <version>2.24.0</version>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-all</artifactId>
+            <version>4.1.117.Final</version>
         </dependency>
         <!-- Guava -->
         <dependency>

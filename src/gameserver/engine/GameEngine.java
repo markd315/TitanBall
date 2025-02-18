@@ -514,7 +514,6 @@ public class GameEngine extends Game {
         lock();
         if (from != null) {
             if(logs){
-                System.out.println(from + " packet");
                 ObjectMapper mapper = new ObjectMapper();
                 try {
                     System.out.println(mapper.writeValueAsString(request));
