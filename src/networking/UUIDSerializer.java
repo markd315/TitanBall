@@ -22,11 +22,11 @@ public class UUIDSerializer extends Serializer<UUID> {
 
     @Override
     public UUID read(final Kryo kryo, final Input input, final Class<UUID> type) {
-        if (input.readLong() == 0L && input.readLong() == 0L) {
-            return null;
-        }
         long firstLong = input.readLong();
         long secondLong = input.readLong();
+        if (firstLong == 0L && secondLong == 0L) {
+            return null;
+        }
         return new UUID(firstLong, secondLong);
     }
 }
