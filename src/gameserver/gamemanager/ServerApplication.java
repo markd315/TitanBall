@@ -160,11 +160,13 @@ public class ServerApplication {
 
     private static void cleanupCorruptStates(Collection<String> gameFor) {
         Set<String> rm = new HashSet<>();
-        for(String id : states.keySet()){
-            ManagedGame gt = states.get(id);
-            boolean userFound = gt.gameContainsEmail(gameFor);
-            if(userFound){
-                rm.add(id);
+        for(String email : gameFor){
+            for(String id : states.keySet()){
+                ManagedGame gt = states.get(id);
+                boolean userFound = gt.gameContainsEmail(email);
+                if(userFound){
+                    rm.add(id);
+                }
             }
         }
         for(String id : rm){
@@ -190,7 +192,7 @@ public class ServerApplication {
                 String email = Util.jwtExtractEmail(packet.token);
                 for (ManagedGame mg : states.values()) {
                     System.out.println("checking " + mg.gameId);
-                    if (mg.gameContainsEmail(Collections.singleton(email))) {
+                    if (mg.gameContainsEmail(email)) {
                         System.out.println("found a game for " + email + " to rejoin");
                         mg.replaceConnectionForSameUser(connection, packet.token);
                         System.out.println("passing connection " + connection.id() + " to game " + mg.gameId);

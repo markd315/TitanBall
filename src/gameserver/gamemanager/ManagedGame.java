@@ -258,12 +258,10 @@ public class ManagedGame {
         return connFound;
     }
 
-    public boolean gameContainsEmail(Collection<String> gameFor) {
-        for(String searchFor : gameFor){
-            for(PlayerConnection matches : this.clients){
-                if(matches.email.equals(searchFor)){
-                    return true;
-                }
+    public boolean gameContainsEmail(String email) {
+        for(PlayerConnection matches : this.clients){
+            if(matches.email.equals(email)){
+                return true;
             }
         }
         return false;
