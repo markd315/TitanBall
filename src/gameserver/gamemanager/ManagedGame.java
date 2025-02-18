@@ -163,26 +163,31 @@ public class ManagedGame {
             //remove if not connected
             clients.removeIf(client -> !client.getClient().isOpen());
             clients.parallelStream().forEach(client -> {
-                try{
-                    PlayerDivider pd = dividerFromConn(client.getClient());
-                    //Optimizing clone away by only hacking in the needed var fails because of occasional concurrency issue
-                    Game update = (Game) deepClone(snapshot);
-                    if (update == null) {
-                        return;
+                int retries = 5;
+                while (retries-- > 0) {
+                    try {
+                        PlayerDivider pd = dividerFromConn(client.getClient());
+                        //Optimizing clone away by only hacking in the needed var fails because of occasional concurrency issue
+                        Game update = deepClone(snapshot);
+                        if (update == null) {
+                            return;
+                        }
+                        update.underControl = state.titanSelected(pd);
+                        update.now = Instant.now();
+                        if (client.getClient().isOpen()) {
+                            client.getClient().writeAndFlush(new TextWebSocketFrame(
+                                    KryoRegistry.serializeWithKryo(anticheat(update))
+                            ));
+                        }
+                    } catch (ConcurrentModificationException ex1) {
+                        retries--;
+                        if (retries == 0) {
+                            System.err.println("ConcurrentModificationException after 5 retries, skipping update.");
+                            break;
+                        }
+                    } catch (Exception ex1) {
+                        ex1.printStackTrace();
                     }
-                    update.underControl = state.titanSelected(pd);
-                    update.now = Instant.now();
-                    if (client.getClient().isOpen()) {
-                        client.getClient().writeAndFlush(new TextWebSocketFrame(
-                            KryoRegistry.serializeWithKryo(anticheat(update))
-                        ));
-                    }
-                }
-                catch (ConcurrentModificationException ex1){
-                    System.out.println("ConcurrentModificationException in update thread, skipping");
-                }
-                catch (Exception ex1){
-                    ex1.printStackTrace();
                 }
             });
         };
@@ -290,7 +295,7 @@ public class ManagedGame {
             clients.parallelStream().forEach(client -> {
                 try{
                     PlayerDivider pd = dividerFromConn(client.getClient());
-                    Game update = (Game) deepClone(snapshot);
+                    Game update = deepClone(snapshot);
                     update.underControl = state.titanSelected(pd);
                     update.now = Instant.now();
                     if (client.getClient().isOpen()) {
@@ -569,22 +574,36 @@ public class ManagedGame {
         }*/
     }
 
-    public static Object deepClone(Object object) {
-        try {
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            ObjectOutputStream oos = new ObjectOutputStream(baos);
-            oos.writeObject(object);
-            ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
-            ObjectInputStream ois = new ObjectInputStream(bais);
-            return ois.readObject();
-        }
-        catch (ConcurrentModificationException e) {
-            System.out.println("ConcurrentModificationException in update thread, skipping");
+    public static <T> T deepClone(T object) {
+        if (object == null) {
             return null;
         }
-        catch (Exception e) {
-            e.printStackTrace();
-            return null;
+
+        int retries = 5;
+        while (retries-- > 0) {
+            try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                 ObjectOutputStream oos = new ObjectOutputStream(baos)) {
+
+                oos.writeObject(object);
+                oos.flush();
+
+                try (ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
+                     ObjectInputStream ois = new ObjectInputStream(bais)) {
+
+                    return (T) ois.readObject();
+                }
+            } catch (ConcurrentModificationException e) {
+                if (retries == 0) {
+                    System.err.println("ConcurrentModificationException after 5 retries, skipping clone.");
+                    return object; // Return original object as a fallback
+                }
+                System.err.println("ConcurrentModificationException in update thread, retrying...");
+            } catch (Exception e) {
+                e.printStackTrace();
+                return null;
+            }
         }
+        return null;
     }
+
 }
