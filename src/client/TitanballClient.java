@@ -80,8 +80,6 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
     protected String gameID;
     protected GameEngine game;
     protected GamePhase phase = GamePhase.CREDITS;
-    protected Kryo kryo = new Kryo();
-    protected KryoRegistry kryoregistry = new KryoRegistry();
     protected boolean camFollow = true;
     protected String token;
     protected AuthServerInterface loginClient;
@@ -163,7 +161,6 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
         this.xSize = xSize;
         this.ySize = ySize;
         this.scl = scl;
-        this.kryoregistry.register(kryo);
         RANGE_SIZE = Integer.parseInt(keymap.get("rangewidth").replaceAll("px", ""));
         SHOT_WIDTH = Integer.parseInt(keymap.get("shotwidth").replaceAll("px", ""));
         sconst = new ScreenConst(xSize, ySize);
@@ -586,7 +583,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
             controlsHeld.token = token;
             controlsHeld.masteries = masteries;
 
-            String serializedData = kryoregistry.serializeWithKryo(controlsHeld);
+            String serializedData = KryoRegistry.serializeWithKryo(controlsHeld);
             gameserverChannel.writeAndFlush(new TextWebSocketFrame(serializedData));
         } else if (gameserverChannel == null || !gameserverChannel.isActive()) {
             System.out.println("Reconnecting to game server...");
@@ -679,7 +676,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                 System.out.println("Initial update sending");
                 initialUpdate = true;
                 ctx.writeAndFlush(new TextWebSocketFrame(
-                        kryoregistry.serializeWithKryo(controlsHeld)
+                        KryoRegistry.serializeWithKryo(controlsHeld)
                 ));
                 System.out.println("Initial update sent");
             }
