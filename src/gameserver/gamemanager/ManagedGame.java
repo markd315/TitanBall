@@ -13,6 +13,7 @@ import gameserver.entity.Entity;
 import gameserver.entity.Titan;
 import gameserver.models.Game;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelId;
 import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
 import networking.*;
 import org.joda.time.Instant;
@@ -124,6 +125,8 @@ public class ManagedGame {
         }
     }
 
+    private Map<ChannelId, GameEngine> lastSentGameState = new HashMap<>();
+
     private void startGame(List<PlayerConnection> gameIncludedClients){
         if(state != null && state.away.score + state.home.score > 0){
             return; //Don't reset the game in this case lol
@@ -167,17 +170,38 @@ public class ManagedGame {
                 while (retries-- > 0) {
                     try {
                         PlayerDivider pd = dividerFromConn(client.getClient());
-                        //Optimizing clone away by only hacking in the needed var fails because of occasional concurrency issue
-                        Game update = deepClone(snapshot);
-                        if (update == null) {
+
+                        // Avoid full cloning when possible by using diffs
+                        GameEngine previousState = lastSentGameState.get(client.getClient().id());
+                        GameEngine currentState = (GameEngine) deepClone(snapshot);
+                        if (currentState == null) {
                             return;
                         }
-                        update.underControl = state.titanSelected(pd);
-                        update.now = Instant.now();
+
+                        currentState.underControl = state.titanSelected(pd);
+                        currentState.now = Instant.now();
+
                         if (client.getClient().isOpen()) {
-                            client.getClient().writeAndFlush(new TextWebSocketFrame(
-                                    KryoRegistry.serializeWithKryo(anticheat(update))
-                            ));
+                            if (previousState == null) {
+                                // First time sending full game state
+                                System.out.println("Sending full game state");
+                                lastSentGameState.put(client.getClient().id(), deepClone(currentState));
+                                client.getClient().writeAndFlush(new TextWebSocketFrame(
+                                    KryoRegistry.serializeWithKryo(anticheat(currentState))
+                                ));
+                            } else {
+                                // Compute and send only the diff
+                                GameDiff diff = GameDiff.diff(previousState, currentState);
+                                if (!diff.isEmpty()) {
+                                    System.out.println("Sending game diff");
+                                    client.getClient().writeAndFlush(new TextWebSocketFrame(
+                                        KryoRegistry.serializeWithKryo(diff)
+                                    ));
+                                    lastSentGameState.put(client.getClient().id(), deepClone(currentState)); // Update stored state
+                                } else {
+                                    System.out.println("No changes detected, skipping update.");
+                                }
+                            }
                         }
                     } catch (ConcurrentModificationException ex1) {
                         retries--;

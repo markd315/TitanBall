@@ -54,6 +54,7 @@ import javafx.scene.shape.*;
 import javafx.scene.text.Font;
 import javafx.scene.transform.Affine;
 import networking.ClientPacket;
+import networking.GameDiff;
 import networking.KryoRegistry;
 import networking.PlayerDivider;
 import org.joda.time.Duration;
@@ -659,7 +660,11 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                 System.out.println("received game");
                 System.out.println(((Game) object).began);
                 game = (GameEngine) object;
-            } else {
+            } if (object instanceof GameDiff) {
+                System.out.println("received game diff");
+                game = GameDiff.apply((GameDiff) object, game);
+            }
+            else {
                 System.out.println("Got a non-game from gameserver!");
             }
             if (this.game != null) {
