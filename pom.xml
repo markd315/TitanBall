@@ -290,6 +290,10 @@
             <artifactId>javafx-graphics</artifactId>
             <version>17.0.8</version>
         </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+        </dependency>
         <!-- cross platform javafx
         <dependency>
           <groupId>org.openjfx</groupId>
