@@ -174,6 +174,7 @@ public class KryoRegistry {
 
         in.register(TutorialOverrides.class);
         in.register(GameOptions.class);
+        in.register(GameDiff.class);
         //Log.DEBUG();
         //Log.TRACE();
     }

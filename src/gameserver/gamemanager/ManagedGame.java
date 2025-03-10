@@ -191,7 +191,7 @@ public class ManagedGame {
                                 ));
                             } else {
                                 // Compute and send only the diff
-                                Map<String, Object> diff = GameDiff.diff(previousState, currentState);
+                                GameDiff diff = new GameDiff(GameDiff.diff(previousState, currentState));
                                 if (!diff.isEmpty()) {
                                     System.out.println("Sending game diff");
                                     client.getClient().writeAndFlush(new TextWebSocketFrame(

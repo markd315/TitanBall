@@ -1,16 +1,22 @@
 package networking;
 
-import de.danielbechler.diff.ObjectDiffer;
 import de.danielbechler.diff.ObjectDifferBuilder;
 import de.danielbechler.diff.node.DiffNode;
-import de.danielbechler.diff.node.Visit;
 import gameserver.engine.GameEngine;
 
 import java.lang.reflect.*;
 import java.util.*;
 
 public class GameDiff {
-    private final Map<String, Object> changes = new HashMap<>();
+    private Map<String, Object> changes = new HashMap<>();
+
+    public GameDiff(Map<String, Object> changes) {
+        this.changes = changes;
+    }
+
+    public void apply(GameEngine game) {
+        apply(game, this);
+    }
 
     // Diffing method
     public static Map<String, Object> diff(GameEngine oldState, GameEngine newState) {
@@ -69,5 +75,9 @@ public class GameDiff {
         Field field = target.getClass().getDeclaredField(parts[parts.length - 1]);
         field.setAccessible(true);
         field.set(target, value);
+    }
+
+    public boolean isEmpty() {
+        return changes.isEmpty();
     }
 }

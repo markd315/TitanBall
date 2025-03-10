@@ -660,9 +660,9 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                 System.out.println("received game");
                 System.out.println(((Game) object).began);
                 game = (GameEngine) object;
-            } if (object instanceof GameDiff) {
+            } if (object instanceof GameDiff diff) {
                 System.out.println("received game diff");
-                GameDiff.apply(game, (GameDiff) object);
+                diff.apply(game);
             }
             else {
                 System.out.println("Got a non-game from gameserver!");
@@ -737,7 +737,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
         future.sync();
         System.out.println("Client connected");
 
-        exec.scheduleAtFixedRate(updateServer, 15, 30, TimeUnit.MILLISECONDS);
+        exec.scheduleWithFixedDelay(updateServer, 15, 30, TimeUnit.MILLISECONDS);
         System.out.println("Updates scheduled");
     }
 
