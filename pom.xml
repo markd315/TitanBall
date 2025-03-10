@@ -135,6 +135,11 @@
             <artifactId>hibernate-validator</artifactId>
             <version>8.0.0.Final</version>
         </dependency>
+        <dependency>
+            <groupId>de.danielbechler</groupId>
+            <artifactId>java-object-diff</artifactId>
+            <version>0.95</version>
+        </dependency>
 
         <dependency>
             <groupId>org.openjfx</groupId>

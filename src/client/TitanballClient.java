@@ -662,7 +662,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                 game = (GameEngine) object;
             } if (object instanceof GameDiff) {
                 System.out.println("received game diff");
-                game = GameDiff.apply((GameDiff) object, game);
+                GameDiff.apply(game, (GameDiff) object);
             }
             else {
                 System.out.println("Got a non-game from gameserver!");

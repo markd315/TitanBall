@@ -1,5 +1,9 @@
 package networking;
 
+import de.danielbechler.diff.ObjectDiffer;
+import de.danielbechler.diff.ObjectDifferBuilder;
+import de.danielbechler.diff.node.DiffNode;
+import de.danielbechler.diff.node.Visit;
 import gameserver.engine.GameEngine;
 
 import java.lang.reflect.*;
@@ -8,113 +12,62 @@ import java.util.*;
 public class GameDiff {
     private final Map<String, Object> changes = new HashMap<>();
 
-    public static GameDiff diff(GameEngine oldState, GameEngine newState) {
-        GameDiff gameDiff = new GameDiff();
-        computeDiff(oldState, newState, gameDiff, "");
-        return gameDiff;
-    }
+    // Diffing method
+    public static Map<String, Object> diff(GameEngine oldState, GameEngine newState) {
+        DiffNode rootNode = ObjectDifferBuilder.buildDefault().compare(newState, oldState);
 
-    public static GameEngine apply(GameDiff diff, GameEngine game) {
-        applyDiff(diff, game, "");
-        return game;
-    }
+        Map<String, Object> changes = new HashMap<>();
 
-    //Reflection-based deep diff computation
-    private static void computeDiff(Object oldObj, Object newObj, GameDiff diff, String path) {
-        if (oldObj == null || newObj == null || oldObj.getClass() != newObj.getClass()) {
-            diff.changes.put(path, newObj);
-            return;
-        }
+        rootNode.visit((node, visit) -> {
+            if (node.hasChanges() && !node.hasChildren()) { // Only leaf nodes store actual values
+                String path = node.getPath().toString();
+                Object changedValue = null;
 
-        Class<?> clazz = oldObj.getClass();
-
-        if (clazz.isPrimitive() || clazz.equals(String.class) || clazz.equals(Integer.class) ||
-                clazz.equals(Long.class) || clazz.equals(Boolean.class) || clazz.equals(Double.class) ||
-                clazz.equals(Float.class) || clazz.equals(UUID.class)) {
-            if (!Objects.equals(oldObj, newObj)) {
-                diff.changes.put(path, newObj);
-            }
-            return;
-        }
-
-        if (clazz.isArray()) {
-            int length = Array.getLength(newObj);
-            for (int i = 0; i < length; i++) {
-                Object oldElement = i < Array.getLength(oldObj) ? Array.get(oldObj, i) : null;
-                Object newElement = Array.get(newObj, i);
-                computeDiff(oldElement, newElement, diff, path + "[" + i + "]");
-            }
-            return;
-        }
-
-        if (Collection.class.isAssignableFrom(clazz)) {
-            List<?> oldList = (List<?>) oldObj;
-            List<?> newList = (List<?>) newObj;
-
-            for (int i = 0; i < newList.size(); i++) {
-                Object oldElement = i < oldList.size() ? oldList.get(i) : null;
-                computeDiff(oldElement, newList.get(i), diff, path + "[" + i + "]");
-            }
-            return;
-        }
-
-        if (Map.class.isAssignableFrom(clazz)) {
-            Map<?, ?> oldMap = (Map<?, ?>) oldObj;
-            Map<?, ?> newMap = (Map<?, ?>) newObj;
-
-            for (Object key : newMap.keySet()) {
-                computeDiff(oldMap.get(key), newMap.get(key), diff, path + "[" + key + "]");
-            }
-            return;
-        }
-
-        for (Field field : clazz.getDeclaredFields()) {
-            field.setAccessible(true);
-            try {
-                Object oldValue = field.get(oldObj);
-                Object newValue = field.get(newObj);
-                computeDiff(oldValue, newValue, diff, path + "." + field.getName());
-            } catch (IllegalAccessException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
-    private static void applyDiff(GameDiff diff, Object target, String path) {
-        if (target == null || diff.changes.isEmpty()) return;
-
-        Class<?> clazz = target.getClass();
-
-        // Apply primitive or directly updatable values
-        if (clazz.isPrimitive() || clazz.equals(String.class) || clazz.equals(Integer.class) ||
-                clazz.equals(Long.class) || clazz.equals(Boolean.class) || clazz.equals(Double.class) ||
-                clazz.equals(Float.class) || clazz.equals(UUID.class)) {
-            return; // No modification necessary for primitive root objects
-        }
-
-        // Apply changes for nested fields
-        for (Field field : clazz.getDeclaredFields()) {
-            field.setAccessible(true);
-            try {
-                String fieldPath = path + "." + field.getName();
-                if (diff.changes.containsKey(fieldPath)) {
-                    field.set(target, diff.changes.get(fieldPath)); // Directly apply the change
-                } else {
-                    Object fieldValue = field.get(target);
-                    applyDiff(diff, fieldValue, fieldPath); // Recurse for nested objects
+                // Determine the new value based on state
+                switch (node.getState()) {
+                    case ADDED:
+                        changedValue = node.canonicalGet(newState); // Gets new value
+                        break;
+                    case CHANGED:
+                        changedValue = node.canonicalGet(newState); // Gets modified value
+                        break;
+                    case REMOVED:
+                        changedValue = null; // Field was removed
+                        break;
                 }
-            } catch (IllegalAccessException e) {
+                System.out.println("Diffing " + path + " to " + changedValue);
+                changes.put(path, changedValue);
+            }
+        });
+        return changes;
+    }
+
+    // Apply the patch method (to update the game state based on diff)
+    public static void apply(GameEngine game, GameDiff diff) {
+        for (Map.Entry<String, Object> entry : diff.changes.entrySet()) {
+            try {
+                setFieldByPath(game, entry.getKey(), entry.getValue());
+            } catch (Exception e) {
+                System.err.println("Failed to apply diff for field: " + entry.getKey());
                 e.printStackTrace();
             }
         }
     }
 
-    @Override
-    public String toString() {
-        return changes.toString();
-    }
+    // Helper to apply the patch based on field paths
+    private static void setFieldByPath(Object obj, String path, Object value) throws Exception {
+        String[] parts = path.split("\\.");
+        Object target = obj;
 
-    public boolean isEmpty() {
-        return changes.isEmpty();
+        for (int i = 0; i < parts.length - 1; i++) {
+            String fieldName = parts[i];
+            Field field = target.getClass().getDeclaredField(fieldName);
+            field.setAccessible(true);
+            target = field.get(target);
+        }
+
+        Field field = target.getClass().getDeclaredField(parts[parts.length - 1]);
+        field.setAccessible(true);
+        field.set(target, value);
     }
 }
