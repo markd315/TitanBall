@@ -10,6 +10,8 @@ import java.util.*;
 public class GameDiff {
     private Map<String, Object> changes = new HashMap<>();
 
+    public GameDiff() {} //For kryo
+
     public GameDiff(Map<String, Object> changes) {
         this.changes = changes;
     }

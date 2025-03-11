@@ -193,13 +193,13 @@ public class ManagedGame {
                                 // Compute and send only the diff
                                 GameDiff diff = new GameDiff(GameDiff.diff(previousState, currentState));
                                 if (!diff.isEmpty()) {
-                                    System.out.println("Sending game diff");
+                                    //System.out.println("Sending game diff");
                                     client.getClient().writeAndFlush(new TextWebSocketFrame(
                                         KryoRegistry.serializeWithKryo(diff)
                                     ));
                                     lastSentGameState.put(client.getClient().id(), deepClone(currentState)); // Update stored state
                                 } else {
-                                    System.out.println("No changes detected, skipping update.");
+                                    //System.out.println("No changes detected, skipping update.");
                                 }
                             }
                         }
