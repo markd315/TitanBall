@@ -22,12 +22,6 @@ public class GameDiff {
      * @param newObj The new object with changes
      * @return A map with paths to changed values and their new values
      */
-    /**
-     * Compare two objects and return a map of differences
-     * @param oldObj The original object
-     * @param newObj The new object with changes
-     * @return A map with paths to changed values and their new values
-     */
     public static Map<String, Object> diff(Object oldObj, Object newObj) {
         Map<String, Object> changes = new HashMap<>();
         diffObjects(oldObj, newObj, "", changes);
@@ -215,18 +209,28 @@ public class GameDiff {
      * @param game The game to update
      */
     public void apply(GameEngine game) {
-        for (Map.Entry<String, Object> entry : changes.entrySet()) {
-            String path = entry.getKey();
-            Object value = entry.getValue();
+        try {
+            for (Map.Entry<String, Object> entry : changes.entrySet()) {
+                String path = entry.getKey();
+                Object value = entry.getValue();
 
-            applyChange(game, path, value);
+                try {
+                    applyChange(game, path, value);
+                } catch (Exception e) {
+                    System.err.println("Error applying change at path " + path + ": " + e.getMessage());
+                    // Continue with other changes
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Critical error applying diff: " + e.getMessage());
+            // Log the error but don't crash
         }
     }
 
     /**
      * Apply a single change to an object
      */
-    private static void applyChange(Object target, String path, Object value) {
+    private static void applyChange(Object target, String path, Object value) throws Exception {
         // Remove leading slash if present
         if (path.startsWith("/")) {
             path = path.substring(1);
@@ -236,49 +240,67 @@ public class GameDiff {
         String[] parts = path.split("/", 2);
         String currentPart = parts[0];
 
+        // Check if this part references an array element
+        if (currentPart.contains("[") && currentPart.endsWith("]")) {
+            applyArrayChange(target, currentPart, parts.length > 1 ? parts[1] : "", value);
+            return;
+        }
+
+        // Get field for this part
+        Field field = findField(target.getClass(), currentPart);
+        if (field == null) {
+            throw new IllegalArgumentException("Field not found: " + currentPart);
+        }
+
+        // Skip static and final fields
+        int modifiers = field.getModifiers();
+        if (Modifier.isStatic(modifiers) || Modifier.isFinal(modifiers)) {
+            return;
+        }
+
         try {
-            // Check if this part references an array element
-            if (currentPart.contains("[") && currentPart.endsWith("]")) {
-                applyArrayChange(target, currentPart, parts.length > 1 ? parts[1] : "", value);
-                return;
-            }
+            field.setAccessible(true);
 
-            // Get field for this part
-            Field field = findField(target.getClass(), currentPart);
-            if (field == null) {
-                throw new IllegalArgumentException("Field not found: " + currentPart);
-            }
-
-            // Skip static and final fields
-            int modifiers = field.getModifiers();
-            if (Modifier.isStatic(modifiers) || Modifier.isFinal(modifiers)) {
-                return;
-            }
-
-            try {
-                field.setAccessible(true);
-
-                if (parts.length > 1) {
-                    // We need to traverse deeper
-                    Object nextTarget = field.get(target);
+            if (parts.length > 1) {
+                // We need to traverse deeper
+                Object nextTarget = field.get(target);
+                if (nextTarget == null) {
+                    // Create a new instance if the field is null
+                    nextTarget = createInstance(field.getType());
                     if (nextTarget == null) {
-                        // Create a new instance if the field is null
-                        nextTarget = createInstance(field.getType());
-                        field.set(target, nextTarget);
+                        // If we can't create an instance, we can't continue
+                        return;
                     }
-                    applyChange(nextTarget, parts[1], value);
-                } else {
-                    // This is the final field, set the value
+                    field.set(target, nextTarget);
+                }
+                applyChange(nextTarget, parts[1], value);
+            } else {
+                // This is the final field, set the value
+                if (value != null || isPrimitiveOrBoxed(field.getType())) {
+                    // Only set non-null values or primitives (which can be default values)
                     Object convertedValue = convertValueIfNeeded(value, field.getType());
                     field.set(target, convertedValue);
                 }
-            } catch (SecurityException e) {
-                // Skip fields that can't be accessed due to security restrictions
             }
-        } catch (Exception e) {
-            // Log error and continue
-            System.err.println("Error applying change to path: " + path + ": " + e.getMessage());
+        } catch (SecurityException e) {
+            // Skip fields that can't be accessed due to security restrictions
+            throw new Exception("Security restrictions prevent accessing " + currentPart, e);
         }
+    }
+
+    /**
+     * Check if a class is a primitive type or its boxed equivalent
+     */
+    private static boolean isPrimitiveOrBoxed(Class<?> clazz) {
+        return clazz.isPrimitive() ||
+               clazz == Boolean.class ||
+               clazz == Character.class ||
+               clazz == Byte.class ||
+               clazz == Short.class ||
+               clazz == Integer.class ||
+               clazz == Long.class ||
+               clazz == Float.class ||
+               clazz == Double.class;
     }
 
     /**
@@ -308,6 +330,9 @@ public class GameDiff {
         if (collection == null) {
             // Create a new collection if null
             collection = createInstance(field.getType());
+            if (collection == null) {
+                return;
+            }
             field.set(target, collection);
         }
 
@@ -329,17 +354,20 @@ public class GameDiff {
         // Ensure array is large enough
         int length = Array.getLength(array);
         if (index >= length) {
-            throw new IndexOutOfBoundsException("Array index out of bounds: " + index);
+            // We can't resize arrays, so just ignore this change
+            return;
         }
 
         Object element = Array.get(array, index);
 
         if (remainingPath.isEmpty()) {
             // Set the value directly
-            Object convertedValue = convertValueIfNeeded(value, element.getClass());
-            Array.set(array, index, convertedValue);
-        } else {
-            // Navigate deeper
+            if (value != null || isPrimitiveOrBoxed(array.getClass().getComponentType())) {
+                Object convertedValue = convertValueIfNeeded(value, array.getClass().getComponentType());
+                Array.set(array, index, convertedValue);
+            }
+        } else if (element != null) {
+            // Only navigate deeper if element is not null
             applyChange(element, remainingPath, value);
         }
     }
@@ -350,26 +378,69 @@ public class GameDiff {
     @SuppressWarnings("unchecked")
     private static void handleListElement(List<?> list, int index, String remainingPath,
                                          Object value) throws Exception {
-        // Ensure list is large enough
-        while (list.size() <= index) {
-            ((List<Object>) list).add(null);
+        if (index < 0) {
+            throw new IndexOutOfBoundsException("Negative index: " + index);
         }
 
-        Object element = list.get(index);
+        // For safety, never expand a list more than 10000 elements at once
+        if (index >= list.size() && index - list.size() > 10000) {
+            throw new IndexOutOfBoundsException("Index too large: " + index);
+        }
+
+        // Ensure list is large enough but with safety
+        while (list.size() <= index) {
+            try {
+                // Try to get the component type for the list
+                Class<?> elementType = getListComponentType(list);
+                Object defaultValue = null;
+
+                if (elementType != null && !Object.class.equals(elementType)) {
+                    defaultValue = createInstance(elementType);
+                }
+
+                // Only add non-null values if possible
+                if (defaultValue != null) {
+                    ((List<Object>) list).add(defaultValue);
+                } else {
+                    // As a last resort, add null, but only if necessary
+                    if (remainingPath.isEmpty() && value != null) {
+                        ((List<Object>) list).add(null);
+                    } else {
+                        // Can't continue with null values and nested paths
+                        return;
+                    }
+                }
+            } catch (Exception e) {
+                // If we can't add elements safely, stop
+                return;
+            }
+        }
 
         if (remainingPath.isEmpty()) {
-            // Set the value directly
-            ((List<Object>) list).set(index, value);
-        } else {
-            // Create element if null
-            if (element == null) {
-                // Try to determine the element type
-                element = createGenericObject();
-                ((List<Object>) list).set(index, element);
+            // Set the value directly if not null
+            if (value != null) {
+                ((List<Object>) list).set(index, value);
             }
-            // Navigate deeper
-            applyChange(element, remainingPath, value);
+        } else {
+            Object element = list.get(index);
+            if (element != null) {
+                // Navigate deeper only if element is not null
+                applyChange(element, remainingPath, value);
+            }
         }
+    }
+
+    /**
+     * Attempt to determine the component type of a list
+     */
+    private static Class<?> getListComponentType(List<?> list) {
+        // Try to infer from existing elements
+        for (Object item : list) {
+            if (item != null) {
+                return item.getClass();
+            }
+        }
+        return null;
     }
 
     /**
@@ -389,34 +460,39 @@ public class GameDiff {
     }
 
     /**
-     * Create a new instance of a class
+     * Create a new instance of a class safely
      */
-    private static Object createInstance(Class<?> clazz) throws Exception {
-        if (clazz.isArray()) {
-            return Array.newInstance(clazz.getComponentType(), 10); // Default size
-        } else if (List.class.isAssignableFrom(clazz)) {
-            return new ArrayList<>();
-        } else if (Set.class.isAssignableFrom(clazz)) {
-            return new HashSet<>();
-        } else if (Map.class.isAssignableFrom(clazz)) {
-            return new HashMap<>();
-        } else {
-            try {
+    private static Object createInstance(Class<?> clazz) {
+        try {
+            if (clazz.isArray()) {
+                return Array.newInstance(clazz.getComponentType(), 0); // Start with empty array
+            } else if (List.class.isAssignableFrom(clazz)) {
+                return new ArrayList<>();
+            } else if (Set.class.isAssignableFrom(clazz)) {
+                return new HashSet<>();
+            } else if (Map.class.isAssignableFrom(clazz)) {
+                return new HashMap<>();
+            } else if (String.class.equals(clazz)) {
+                return "";
+            } else if (Boolean.class.equals(clazz) || boolean.class.equals(clazz)) {
+                return Boolean.FALSE;
+            } else if (Integer.class.equals(clazz) || int.class.equals(clazz)) {
+                return 0;
+            } else if (Long.class.equals(clazz) || long.class.equals(clazz)) {
+                return 0L;
+            } else if (Double.class.equals(clazz) || double.class.equals(clazz)) {
+                return 0.0;
+            } else if (Float.class.equals(clazz) || float.class.equals(clazz)) {
+                return 0.0f;
+            } else if (!clazz.isInterface() && !Modifier.isAbstract(clazz.getModifiers())) {
                 return clazz.getDeclaredConstructor().newInstance();
-            } catch (Exception e) {
-                // For classes without a no-arg constructor
-                return null;
             }
+        } catch (Exception e) {
+            // Ignore and return null
         }
+        return null;
     }
-    
-    /**
-     * Create a generic object for collections with unknown element types
-     */
-    private static Object createGenericObject() {
-        return new HashMap<String, Object>();
-    }
-    
+
     /**
      * Convert a value if needed to match the target type
      */
@@ -424,38 +500,53 @@ public class GameDiff {
         if (value == null) {
             return null;
         }
-        
+
         // If value is already of the right type, return it
         if (targetType.isAssignableFrom(value.getClass())) {
             return value;
         }
-        
-        // Handle primitive type conversions
-        if (targetType == int.class || targetType == Integer.class) {
-            if (value instanceof Number) {
-                return ((Number) value).intValue();
+
+        try {
+            // Handle primitive type conversions
+            if (targetType == int.class || targetType == Integer.class) {
+                if (value instanceof Number) {
+                    return ((Number) value).intValue();
+                }
+                return Integer.parseInt(value.toString());
+            } else if (targetType == boolean.class || targetType == Boolean.class) {
+                if (value instanceof Boolean) {
+                    return value;
+                }
+                return Boolean.parseBoolean(value.toString());
+            } else if (targetType == long.class || targetType == Long.class) {
+                if (value instanceof Number) {
+                    return ((Number) value).longValue();
+                }
+                return Long.parseLong(value.toString());
+            } else if (targetType == double.class || targetType == Double.class) {
+                if (value instanceof Number) {
+                    return ((Number) value).doubleValue();
+                }
+                return Double.parseDouble(value.toString());
+            } else if (targetType == float.class || targetType == Float.class) {
+                if (value instanceof Number) {
+                    return ((Number) value).floatValue();
+                }
+                return Float.parseFloat(value.toString());
             }
-            return Integer.parseInt(value.toString());
-        } else if (targetType == boolean.class || targetType == Boolean.class) {
-            if (value instanceof Boolean) {
-                return value;
+        } catch (Exception e) {
+            // If conversion fails, return null for reference types or default for primitives
+            if (targetType.isPrimitive()) {
+                if (targetType == boolean.class) return false;
+                if (targetType == int.class) return 0;
+                if (targetType == long.class) return 0L;
+                if (targetType == double.class) return 0.0;
+                if (targetType == float.class) return 0.0f;
+                if (targetType == byte.class) return (byte)0;
+                if (targetType == short.class) return (short)0;
+                if (targetType == char.class) return (char)0;
             }
-            return Boolean.parseBoolean(value.toString());
-        } else if (targetType == long.class || targetType == Long.class) {
-            if (value instanceof Number) {
-                return ((Number) value).longValue();
-            }
-            return Long.parseLong(value.toString());
-        } else if (targetType == double.class || targetType == Double.class) {
-            if (value instanceof Number) {
-                return ((Number) value).doubleValue();
-            }
-            return Double.parseDouble(value.toString());
-        } else if (targetType == float.class || targetType == Float.class) {
-            if (value instanceof Number) {
-                return ((Number) value).floatValue();
-            }
-            return Float.parseFloat(value.toString());
+            return null;
         }
         
         // For other types, just return the value and hope it works
