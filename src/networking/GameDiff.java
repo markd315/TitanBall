@@ -192,6 +192,13 @@ public class GameDiff {
         return fields;
     }
 
+    //todo bugs still that I noticed
+    // effect icons can be drawn in wrong places
+    // shoot range applied to wrong entities like other team or even the ball itself? (undercontrol abuse probably)
+    // double check range circles too
+    // other than that, it works fine
+
+
     /**
      * Check if the class is a system class that should be skipped for reflection
      */
