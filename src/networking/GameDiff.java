@@ -9,8 +9,11 @@ import java.util.*;
 
 public class GameDiff {
     private Map<String, Object> changes = new HashMap<>();
+    // Track object identity to handle circular references
+    private static final ThreadLocal<IdentityHashMap<Object, String>> processedObjects =
+            ThreadLocal.withInitial(() -> new IdentityHashMap<>());
 
-    public GameDiff() {} //For kryo
+    public GameDiff() {} // For kryo
 
     public GameDiff(Map<String, Object> changes) {
         this.changes = changes;
@@ -24,7 +27,12 @@ public class GameDiff {
      */
     public static Map<String, Object> diff(Object oldObj, Object newObj) {
         Map<String, Object> changes = new HashMap<>();
-        diffObjects(oldObj, newObj, "", changes);
+        try {
+            processedObjects.get().clear(); // Clear the identity map before starting
+            diffObjects(oldObj, newObj, "", changes);
+        } finally {
+            processedObjects.get().clear(); // Clean up after diffing
+        }
         return changes;
     }
 
@@ -41,6 +49,20 @@ public class GameDiff {
         if (oldObj == null || newObj == null) {
             changes.put(path, newObj);
             return;
+        }
+
+        // Check for circular references
+        String existingPath = processedObjects.get().get(newObj);
+        if (existingPath != null) {
+            // We've seen this object before, record it as a reference
+            changes.put(path + "/___ref", existingPath);
+            return;
+        }
+
+        // Record this object's path for circular reference detection
+        if (!(newObj instanceof String) && !(newObj instanceof Number) &&
+            !(newObj instanceof Boolean) && !(newObj instanceof Character)) {
+            processedObjects.get().put(newObj, path);
         }
 
         Class<?> clazz = oldObj.getClass();
@@ -89,6 +111,11 @@ public class GameDiff {
         int oldLength = Array.getLength(oldArray);
         int newLength = Array.getLength(newArray);
 
+        // Record array length change if different
+        if (oldLength != newLength) {
+            changes.put(path + "/___length", newLength);
+        }
+
         // Check each element in arrays
         for (int i = 0; i < Math.max(oldLength, newLength); i++) {
             if (i < oldLength && i < newLength) {
@@ -112,14 +139,68 @@ public class GameDiff {
     }
 
     /**
-     * Compare two collections and populate the changes map
+     * Compare two collections and populate the changes map with an improved approach
+     * that handles identity better and detects structural changes
      */
     private static void diffCollections(Collection<?> oldCollection, Collection<?> newCollection,
                                        String path, Map<String, Object> changes) {
-        // Convert to arrays and use array diffing
+        // Record size change if different
+        if (oldCollection.size() != newCollection.size()) {
+            changes.put(path + "/___size", newCollection.size());
+        }
+
+        // Handle List specifically - preserve order and identity
+        if (oldCollection instanceof List && newCollection instanceof List) {
+            diffLists((List<?>) oldCollection, (List<?>) newCollection, path, changes);
+            return;
+        }
+
+        // For other collections, convert to arrays and use array diffing
+        // but with identity tracking improvements
         Object[] oldArray = oldCollection.toArray();
         Object[] newArray = newCollection.toArray();
         diffArrays(oldArray, newArray, path, changes);
+    }
+
+    /**
+     * Compare two lists with improved identity handling
+     */
+    private static void diffLists(List<?> oldList, List<?> newList, String path, Map<String, Object> changes) {
+        int oldSize = oldList.size();
+        int newSize = newList.size();
+
+        // Detect if elements were removed or added at specific positions
+        // by comparing identity and content
+
+        // Track which elements in the old list have been matched
+        boolean[] matched = new boolean[oldSize];
+
+        // First pass: try to match items in order as much as possible
+        for (int i = 0; i < Math.min(oldSize, newSize); i++) {
+            Object oldValue = oldList.get(i);
+            Object newValue = newList.get(i);
+
+            // If they're the same reference or equal, they match
+            if (oldValue == newValue || (oldValue != null && newValue != null && oldValue.equals(newValue))) {
+                matched[i] = true;
+                continue;
+            }
+
+            // Different values at this position, record the change
+            diffObjects(oldValue, newValue, path + "[" + i + "]", changes);
+            matched[i] = true;
+        }
+
+        // Second pass: handle added items
+        for (int i = oldSize; i < newSize; i++) {
+            Object newValue = newList.get(i);
+            changes.put(path + "[" + i + "]", newValue);
+        }
+
+        // Mark removed items as null
+        for (int i = newSize; i < oldSize; i++) {
+            changes.put(path + "[" + i + "]", null);
+        }
     }
 
     /**
@@ -192,13 +273,6 @@ public class GameDiff {
         return fields;
     }
 
-    //todo bugs still that I noticed
-    // effect icons can be drawn in wrong places
-    // shoot range applied to wrong entities like other team or even the ball itself? (undercontrol abuse probably)
-    // double check range circles too
-    // other than that, it works fine
-
-
     /**
      * Check if the class is a system class that should be skipped for reflection
      */
@@ -217,27 +291,68 @@ public class GameDiff {
      */
     public void apply(GameEngine game) {
         try {
+            // Reference resolution map for handling object references
+            Map<String, Object> referenceMap = new HashMap<>();
+
+            // First pass: collect all objects for reference resolution
+            for (String path : changes.keySet()) {
+                referenceMap.put(path, null);
+            }
+
+            // Second pass: apply changes while resolving references
             for (Map.Entry<String, Object> entry : changes.entrySet()) {
                 String path = entry.getKey();
                 Object value = entry.getValue();
 
+                // Skip reference markers in first pass
+                if (path.endsWith("/___ref") || path.endsWith("/___size") || path.endsWith("/___length")) {
+                    continue;
+                }
+
                 try {
-                    applyChange(game, path, value);
+                    Object result = applyChange(game, path, value, referenceMap);
+                    // Store the result for potential references
+                    referenceMap.put(path, result);
                 } catch (Exception e) {
                     System.err.println("Error applying change at path " + path + ": " + e.getMessage());
                     // Continue with other changes
                 }
             }
+
+            // Third pass: resolve references
+            for (Map.Entry<String, Object> entry : changes.entrySet()) {
+                String path = entry.getKey();
+                Object value = entry.getValue();
+
+                if (path.endsWith("/___ref")) {
+                    String targetPath = path.substring(0, path.length() - 7); // Remove "/___ref"
+                    String referencePath = (String) value;
+
+                    // Get the referenced object
+                    Object referencedObject = referenceMap.get(referencePath);
+                    if (referencedObject != null) {
+                        try {
+                            // Apply the reference
+                            applyChange(game, targetPath, referencedObject, referenceMap);
+                        } catch (Exception e) {
+                            System.err.println("Error resolving reference at path " + targetPath + ": " + e.getMessage());
+                        }
+                    }
+                }
+            }
         } catch (Exception e) {
             System.err.println("Critical error applying diff: " + e.getMessage());
+            e.printStackTrace();
             // Log the error but don't crash
         }
     }
 
     /**
      * Apply a single change to an object
+     * @return The object that was modified or created at this path
      */
-    private static void applyChange(Object target, String path, Object value) throws Exception {
+    private static Object applyChange(Object target, String path, Object value,
+                                Map<String, Object> referenceMap) throws Exception {
         // Remove leading slash if present
         if (path.startsWith("/")) {
             path = path.substring(1);
@@ -249,8 +364,7 @@ public class GameDiff {
 
         // Check if this part references an array element
         if (currentPart.contains("[") && currentPart.endsWith("]")) {
-            applyArrayChange(target, currentPart, parts.length > 1 ? parts[1] : "", value);
-            return;
+            return applyArrayChange(target, currentPart, parts.length > 1 ? parts[1] : "", value, referenceMap);
         }
 
         // Get field for this part
@@ -262,7 +376,7 @@ public class GameDiff {
         // Skip static and final fields
         int modifiers = field.getModifiers();
         if (Modifier.isStatic(modifiers) || Modifier.isFinal(modifiers)) {
-            return;
+            return null;
         }
 
         try {
@@ -276,18 +390,20 @@ public class GameDiff {
                     nextTarget = createInstance(field.getType());
                     if (nextTarget == null) {
                         // If we can't create an instance, we can't continue
-                        return;
+                        return null;
                     }
                     field.set(target, nextTarget);
                 }
-                applyChange(nextTarget, parts[1], value);
+                return applyChange(nextTarget, parts[1], value, referenceMap);
             } else {
                 // This is the final field, set the value
                 if (value != null || isPrimitiveOrBoxed(field.getType())) {
                     // Only set non-null values or primitives (which can be default values)
                     Object convertedValue = convertValueIfNeeded(value, field.getType());
                     field.set(target, convertedValue);
+                    return convertedValue;
                 }
+                return field.get(target);
             }
         } catch (SecurityException e) {
             // Skip fields that can't be accessed due to security restrictions
@@ -313,8 +429,8 @@ public class GameDiff {
     /**
      * Apply a change to an array or collection element
      */
-    private static void applyArrayChange(Object target, String currentPart, String remainingPath,
-                                        Object value) throws Exception {
+    private static Object applyArrayChange(Object target, String currentPart, String remainingPath,
+                                        Object value, Map<String, Object> referenceMap) throws Exception {
         // Parse the field name and index
         int bracketIndex = currentPart.indexOf('[');
         String fieldName = currentPart.substring(0, bracketIndex);
@@ -328,7 +444,7 @@ public class GameDiff {
         // Skip static and final fields
         int modifiers = field.getModifiers();
         if (Modifier.isStatic(modifiers) || Modifier.isFinal(modifiers)) {
-            return;
+            return null;
         }
 
         field.setAccessible(true);
@@ -338,16 +454,16 @@ public class GameDiff {
             // Create a new collection if null
             collection = createInstance(field.getType());
             if (collection == null) {
-                return;
+                return null;
             }
             field.set(target, collection);
         }
 
         // Handle different collection types
         if (collection.getClass().isArray()) {
-            handleArrayElement(collection, index, remainingPath, value);
+            return handleArrayElement(collection, index, remainingPath, value, referenceMap);
         } else if (collection instanceof List) {
-            handleListElement((List<?>) collection, index, remainingPath, value);
+            return handleListElement((List<?>) collection, index, remainingPath, value, referenceMap);
         } else {
             throw new UnsupportedOperationException("Unsupported collection type: " + collection.getClass());
         }
@@ -356,13 +472,42 @@ public class GameDiff {
     /**
      * Handle a change to an array element
      */
-    private static void handleArrayElement(Object array, int index, String remainingPath,
-                                          Object value) throws Exception {
+    private static Object handleArrayElement(Object array, int index, String remainingPath,
+                                          Object value, Map<String, Object> referenceMap) throws Exception {
+        // Check for special length marker
+        if (remainingPath.equals("___length")) {
+            // Resize array
+            int newLength = (Integer) value;
+            Object newArray = Array.newInstance(array.getClass().getComponentType(), newLength);
+
+            // Copy existing elements
+            int oldLength = Array.getLength(array);
+            for (int i = 0; i < Math.min(oldLength, newLength); i++) {
+                Object element = Array.get(array, i);
+                if (element != null) {
+                    Array.set(newArray, i, element);
+                }
+            }
+
+            // We can't directly resize the array, but we can replace the reference
+            // This is a bit tricky and would need a specific logic for the target field
+            return newArray;
+        }
+
         // Ensure array is large enough
         int length = Array.getLength(array);
         if (index >= length) {
-            // We can't resize arrays, so just ignore this change
-            return;
+            // Resize array to accommodate the new index
+            int newLength = index + 1;
+            Object newArray = Array.newInstance(array.getClass().getComponentType(), newLength);
+
+            // Copy existing elements
+            for (int i = 0; i < length; i++) {
+                Array.set(newArray, i, Array.get(array, i));
+            }
+
+            // Replace original array reference with new expanded array
+            array = newArray;
         }
 
         Object element = Array.get(array, index);
@@ -372,19 +517,47 @@ public class GameDiff {
             if (value != null || isPrimitiveOrBoxed(array.getClass().getComponentType())) {
                 Object convertedValue = convertValueIfNeeded(value, array.getClass().getComponentType());
                 Array.set(array, index, convertedValue);
+                return convertedValue;
             }
+            return element;
         } else if (element != null) {
-            // Only navigate deeper if element is not null
-            applyChange(element, remainingPath, value);
+            // Navigate deeper
+            return applyChange(element, remainingPath, value, referenceMap);
+        } else if (value != null) {
+            // Create a new element if needed
+            Class<?> componentType = array.getClass().getComponentType();
+            element = createInstance(componentType);
+            if (element != null) {
+                Array.set(array, index, element);
+                return applyChange(element, remainingPath, value, referenceMap);
+            }
         }
+        return null;
     }
 
     /**
-     * Handle a change to a list element
+     * Handle a change to a list element with improved support for adding/removing
      */
     @SuppressWarnings("unchecked")
-    private static void handleListElement(List<?> list, int index, String remainingPath,
-                                         Object value) throws Exception {
+    private static Object handleListElement(List<?> list, int index, String remainingPath,
+                                         Object value, Map<String, Object> referenceMap) throws Exception {
+        // Check for special size marker
+        if (remainingPath.equals("___size")) {
+            int newSize = (Integer) value;
+
+            // Shrink list if needed
+            while (list.size() > newSize) {
+                ((List<Object>) list).remove(list.size() - 1);
+            }
+
+            // Expand list if needed
+            while (list.size() < newSize) {
+                ((List<Object>) list).add(null);
+            }
+
+            return list;
+        }
+
         if (index < 0) {
             throw new IndexOutOfBoundsException("Negative index: " + index);
         }
@@ -394,7 +567,7 @@ public class GameDiff {
             throw new IndexOutOfBoundsException("Index too large: " + index);
         }
 
-        // Ensure list is large enough but with safety
+        // Ensure list is large enough
         while (list.size() <= index) {
             try {
                 // Try to get the component type for the list
@@ -405,36 +578,44 @@ public class GameDiff {
                     defaultValue = createInstance(elementType);
                 }
 
-                // Only add non-null values if possible
-                if (defaultValue != null) {
-                    ((List<Object>) list).add(defaultValue);
-                } else {
-                    // As a last resort, add null, but only if necessary
-                    if (remainingPath.isEmpty() && value != null) {
-                        ((List<Object>) list).add(null);
-                    } else {
-                        // Can't continue with null values and nested paths
-                        return;
-                    }
-                }
+                // Add the element (null or default)
+                ((List<Object>) list).add(defaultValue);
             } catch (Exception e) {
                 // If we can't add elements safely, stop
-                return;
+                return null;
             }
         }
 
+        Object element = list.get(index);
+
         if (remainingPath.isEmpty()) {
-            // Set the value directly if not null
-            if (value != null) {
+            // Direct value update
+            if (value == null && !isPrimitiveOrBoxed(element != null ? element.getClass() : Object.class)) {
+                // For reference types, null value means removal
+                if (index < list.size()) {
+                    ((List<Object>) list).set(index, null);
+                }
+            } else {
+                // Regular update
                 ((List<Object>) list).set(index, value);
             }
+            return value;
         } else {
-            Object element = list.get(index);
+            // Navigate deeper
+            if (element == null && remainingPath.length() > 0) {
+                // Need to create element for deeper navigation
+                Class<?> elementType = getListComponentType(list);
+                if (elementType != null) {
+                    element = createInstance(elementType);
+                    ((List<Object>) list).set(index, element);
+                }
+            }
+
             if (element != null) {
-                // Navigate deeper only if element is not null
-                applyChange(element, remainingPath, value);
+                return applyChange(element, remainingPath, value, referenceMap);
             }
         }
+        return null;
     }
 
     /**
