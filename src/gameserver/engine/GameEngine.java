@@ -1834,4 +1834,33 @@ public class GameEngine extends Game {
             }
         }
     }
+
+    public void update() {
+        // Update possession state first
+        for (Titan t : players) {
+            if (t.possession == 1) {
+                // If this titan has possession, ensure no other titan has possession
+                for (Titan other : players) {
+                    if (other != t) {
+                        other.possession = 0;
+                    }
+                }
+                break;
+            }
+        }
+
+        // Update game state
+        super.update();
+        
+        // Ensure underControl is properly set
+        if (underControl != null) {
+            // Find the corresponding titan in the players list
+            for (Titan t : players) {
+                if (t.id.equals(underControl.id)) {
+                    underControl = t;
+                    break;
+                }
+            }
+        }
+    }
 }

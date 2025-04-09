@@ -136,7 +136,7 @@ public class ManagedGame {
 
     private Map<ChannelId, GameEngine> lastSentGameState = new HashMap<>();
     private final int MAX_DIFF_RETRIES = 3;
-    private final double DIFF_THRESHOLD = 0.7; // If more than 70% of the state changed, send full state
+    private final double DIFF_THRESHOLD = 0.6; // If more than 60% of the state changed, send full state
 
     private void startGame(List<PlayerConnection> gameIncludedClients){
         if(state != null && state.away.score + state.home.score > 0){
@@ -150,8 +150,6 @@ public class ManagedGame {
             instantiateSpringContext();
             gameIncludedClients = this.monteCarloBalance(gameIncludedClients);
             state.secondsToStart = c.getD("server.startDelay");
-            
-            // Use a CountDownLatch for more precise timing
             CountDownLatch startLatch = new CountDownLatch(5);
             for(int i=0; i<5; i++) {
                 exec.schedule(() -> {
@@ -191,7 +189,22 @@ public class ManagedGame {
                         GameEngine currentState = (GameEngine) deepClone(snapshot);
                         if (currentState == null) return;
 
-                        currentState.underControl = state.titanSelected(pd);
+                        // Ensure underControl is set correctly for this client
+                        Titan underControl = state.titanSelected(pd);
+                        currentState.underControl = underControl;
+                        
+                        // Ensure possession is set correctly based on the actual game state
+                        if (underControl != null) {
+                            // Find the corresponding titan in the current state
+                            for (Titan t : currentState.players) {
+                                if (t.id.equals(underControl.id)) {
+                                    // Update possession to match the actual game state
+                                    t.possession = underControl.possession;
+                                    break;
+                                }
+                            }
+                        }
+                        
                         currentState.now = Instant.now();
 
                         if (client.getClient().isOpen()) {
