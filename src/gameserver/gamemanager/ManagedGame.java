@@ -43,7 +43,7 @@ public class ManagedGame {
     public List<List<Integer>> availableSlots;
     int claimIndex = 0;
     final AtomicReference<Game> stateRef = new AtomicReference<>(state);
-    private final ScheduledExecutorService exec = Executors.newScheduledThreadPool(
+    private ScheduledExecutorService exec = Executors.newScheduledThreadPool(
         Runtime.getRuntime().availableProcessors(),
         r -> {
             Thread t = new Thread(r);
@@ -136,7 +136,7 @@ public class ManagedGame {
 
     private Map<ChannelId, GameEngine> lastSentGameState = new HashMap<>();
     private final int MAX_DIFF_RETRIES = 3;
-    private final int DIFF_THRESHOLD = 0.7; // If more than 70% of the state changed, send full state
+    private final double DIFF_THRESHOLD = 0.7; // If more than 70% of the state changed, send full state
 
     private void startGame(List<PlayerConnection> gameIncludedClients){
         if(state != null && state.away.score + state.home.score > 0){
@@ -204,7 +204,7 @@ public class ManagedGame {
                                 GameDiff diff = new GameDiff(GameDiff.diff(previousState, currentState));
                                 if (!diff.isEmpty()) {
                                     // Calculate change ratio to decide whether to send full state
-                                    double changeRatio = diff.getChangeRatio(previousState, currentState);
+                                    double changeRatio = diff.getChangeRatio(previousState);
                                     if (changeRatio > DIFF_THRESHOLD) {
                                         // Send full state if too much has changed
                                         lastSentGameState.put(client.getClient().id(), deepClone(currentState));

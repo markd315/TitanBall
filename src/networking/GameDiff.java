@@ -6,6 +6,8 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.*;
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectOutputStream;
 
 public class GameDiff {
     private Map<String, Object> changes = new HashMap<>();
@@ -744,5 +746,35 @@ public class GameDiff {
 
     public boolean isEmpty() {
         return changes.isEmpty();
+    }
+
+    /**
+     * Calculate the ratio of the diff size to the original state size in bytes
+     *
+     * @param previousState The original game state
+     * @return A ratio between 0 and 1 representing the relative size of the diff
+     */
+    public double getChangeRatio(GameEngine previousState) {
+        try {
+            // Serialize the diff
+            ByteArrayOutputStream diffOut = new ByteArrayOutputStream();
+            ObjectOutputStream diffOos = new ObjectOutputStream(diffOut);
+            diffOos.writeObject(this);
+            diffOos.close();
+            int diffSize = diffOut.size();
+
+            // Serialize the full state
+            ByteArrayOutputStream stateOut = new ByteArrayOutputStream();
+            ObjectOutputStream stateOos = new ObjectOutputStream(stateOut);
+            stateOos.writeObject(previousState);
+            stateOos.close();
+            int stateSize = stateOut.size();
+
+            // Calculate ratio
+            return (double) diffSize / stateSize;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return 1.0; // If serialization fails, default to sending full state
+        }
     }
 }
