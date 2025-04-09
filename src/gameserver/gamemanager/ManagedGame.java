@@ -43,7 +43,7 @@ public class ManagedGame {
     public List<List<Integer>> availableSlots;
     int claimIndex = 0;
     final AtomicReference<Game> stateRef = new AtomicReference<>(state);
-    private ScheduledExecutorService exec = Executors.newScheduledThreadPool(
+    ScheduledExecutorService exec = Executors.newScheduledThreadPool(
         Runtime.getRuntime().availableProcessors(),
         r -> {
             Thread t = new Thread(r);

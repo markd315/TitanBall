@@ -711,7 +711,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                                                 null,
                                                 true,
                                                 new DefaultHttpHeaders(),
-                                                true // Enable compression
+                                                1024 * 1024 * 8
                                         )
                                 ),
                                 new SimpleChannelInboundHandler<TextWebSocketFrame>() {
