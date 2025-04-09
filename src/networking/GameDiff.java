@@ -2,6 +2,7 @@ package networking;
 
 import gameserver.engine.GameEngine;
 
+import java.io.Serializable;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -9,7 +10,9 @@ import java.util.*;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectOutputStream;
 
-public class GameDiff {
+public class GameDiff implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private Map<String, Object> changes = new HashMap<>();
     // Special marker for REMOVE operations
     private static final Object REMOVAL_MARKER = new Object();
