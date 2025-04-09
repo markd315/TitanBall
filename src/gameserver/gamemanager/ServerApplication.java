@@ -71,7 +71,7 @@ public class ServerApplication {
                      ch.pipeline().addLast(
                          new HttpServerCodec(),
                          new HttpObjectAggregator(18 * 1024 * 1024),
-                         new WebSocketServerProtocolHandler("/ws"),
+                         new WebSocketServerProtocolHandler("/ws", null, true, 16 * 1024 * 1024, true),
                          new SimpleChannelInboundHandler<TextWebSocketFrame>() {
                              @Override
                              protected void channelRead0(ChannelHandlerContext ctx, TextWebSocketFrame frame) {

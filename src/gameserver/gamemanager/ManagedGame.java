@@ -29,6 +29,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.CountDownLatch;
 
 public class ManagedGame {
     public static final ServerMode SERVER_MODE = ServerMode.TRUETHREE;
@@ -42,7 +43,15 @@ public class ManagedGame {
     public List<List<Integer>> availableSlots;
     int claimIndex = 0;
     final AtomicReference<Game> stateRef = new AtomicReference<>(state);
-    ScheduledExecutorService exec;
+    private final ScheduledExecutorService exec = Executors.newScheduledThreadPool(
+        Runtime.getRuntime().availableProcessors(),
+        r -> {
+            Thread t = new Thread(r);
+            t.setName("GameUpdateThread-" + gameId);
+            t.setPriority(Thread.NORM_PRIORITY);
+            return t;
+        }
+    );
 
     public ManagedGame() {
     }
@@ -126,6 +135,8 @@ public class ManagedGame {
     }
 
     private Map<ChannelId, GameEngine> lastSentGameState = new HashMap<>();
+    private final int MAX_DIFF_RETRIES = 3;
+    private final int DIFF_THRESHOLD = 0.7; // If more than 70% of the state changed, send full state
 
     private void startGame(List<PlayerConnection> gameIncludedClients){
         if(state != null && state.away.score + state.home.score > 0){
@@ -139,12 +150,17 @@ public class ManagedGame {
             instantiateSpringContext();
             gameIncludedClients = this.monteCarloBalance(gameIncludedClients);
             state.secondsToStart = c.getD("server.startDelay");
-            for(int i=0; i<5; i++){
-                Thread.sleep(1000);
-                state.secondsToStart -=1;
+            
+            // Use a CountDownLatch for more precise timing
+            CountDownLatch startLatch = new CountDownLatch(5);
+            for(int i=0; i<5; i++) {
+                exec.schedule(() -> {
+                    state.secondsToStart -= 1;
+                    startLatch.countDown();
+                }, i, TimeUnit.SECONDS);
             }
-        }
-        catch (InterruptedException e) {
+            startLatch.await();
+        } catch (InterruptedException e) {
             e.printStackTrace();
         }
         exec = Executors.newScheduledThreadPool(gameIncludedClients.size());
@@ -152,61 +168,62 @@ public class ManagedGame {
         System.out.println("reassigning client list on startgame");
         clients = gameIncludedClients;
         Runnable updateClients = () -> {
-            stateRef.set(state); // everyone gets the latest state once and no one gets a stale one or a fresher one
+            stateRef.set(state);
             Game snapshot = stateRef.get();
             if (snapshot == null || (snapshot.ended && snapshot.underControl == null)) {
                 if (snapshot != null) {
                     System.out.println("GameManager: skipping extra packets after game ended");
-                }
-                else{
+                } else {
                     System.err.println("Warning: state is null, skipping update");
                 }
-                return; //need undercontrol to decide winner clientside so we can't send this one
+                return;
             }
-            //remove if not connected
+
             clients.removeIf(client -> !client.getClient().isOpen());
             clients.parallelStream().forEach(client -> {
-                int retries = 5;
+                int retries = MAX_DIFF_RETRIES;
                 while (retries-- > 0) {
                     try {
                         PlayerDivider pd = dividerFromConn(client.getClient());
+                        if (pd == null) continue;
 
-                        // Avoid full cloning when possible by using diffs
                         GameEngine previousState = lastSentGameState.get(client.getClient().id());
                         GameEngine currentState = (GameEngine) deepClone(snapshot);
-                        if (currentState == null) {
-                            return;
-                        }
+                        if (currentState == null) return;
 
                         currentState.underControl = state.titanSelected(pd);
                         currentState.now = Instant.now();
 
                         if (client.getClient().isOpen()) {
                             if (previousState == null) {
-                                // First time sending full game state
-                                System.out.println("Sending full game state");
                                 lastSentGameState.put(client.getClient().id(), deepClone(currentState));
                                 client.getClient().writeAndFlush(new TextWebSocketFrame(
                                     KryoRegistry.serializeWithKryo(anticheat(currentState))
                                 ));
                             } else {
-                                // Compute and send only the diff
                                 GameDiff diff = new GameDiff(GameDiff.diff(previousState, currentState));
                                 if (!diff.isEmpty()) {
-                                    //System.out.println("Sending game diff");
-                                    client.getClient().writeAndFlush(new TextWebSocketFrame(
-                                        KryoRegistry.serializeWithKryo(diff)
-                                    ));
-                                    lastSentGameState.put(client.getClient().id(), deepClone(currentState)); // Update stored state
-                                } else {
-                                    //System.out.println("No changes detected, skipping update.");
+                                    // Calculate change ratio to decide whether to send full state
+                                    double changeRatio = diff.getChangeRatio(previousState, currentState);
+                                    if (changeRatio > DIFF_THRESHOLD) {
+                                        // Send full state if too much has changed
+                                        lastSentGameState.put(client.getClient().id(), deepClone(currentState));
+                                        client.getClient().writeAndFlush(new TextWebSocketFrame(
+                                            KryoRegistry.serializeWithKryo(anticheat(currentState))
+                                        ));
+                                    } else {
+                                        // Send diff if changes are small
+                                        client.getClient().writeAndFlush(new TextWebSocketFrame(
+                                            KryoRegistry.serializeWithKryo(diff)
+                                        ));
+                                        lastSentGameState.put(client.getClient().id(), deepClone(currentState));
+                                    }
                                 }
                             }
                         }
                     } catch (ConcurrentModificationException ex1) {
-                        retries--;
                         if (retries == 0) {
-                            System.err.println("ConcurrentModificationException after 5 retries, skipping update.");
+                            System.err.println("ConcurrentModificationException after " + MAX_DIFF_RETRIES + " retries, skipping update.");
                             break;
                         }
                     } catch (Exception ex1) {
@@ -628,6 +645,18 @@ public class ManagedGame {
             }
         }
         return null;
+    }
+
+    @Override
+    protected void finalize() {
+        try {
+            exec.shutdown();
+            if (!exec.awaitTermination(5, TimeUnit.SECONDS)) {
+                exec.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            exec.shutdownNow();
+        }
     }
 
 }

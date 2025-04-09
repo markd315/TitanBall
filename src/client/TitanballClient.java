@@ -710,7 +710,8 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                                                 WebSocketVersion.V13,
                                                 null,
                                                 true,
-                                                new DefaultHttpHeaders()
+                                                new DefaultHttpHeaders(),
+                                                true // Enable compression
                                         )
                                 ),
                                 new SimpleChannelInboundHandler<TextWebSocketFrame>() {
@@ -1392,7 +1393,7 @@ public class TitanballClient extends Pane implements EventHandler<KeyEvent> {
                 int hpPercentage = (int) (100 * e.health / e.maxHealth);
                 int adjustedWidth = sconst.adjX(hpPercentage);
 
-                // Adjust the Y position for the health bar (since it’s based on the same adjusted Y)
+                // Adjust the Y position for the health bar (since it's based on the same adjusted Y)
                 int healthStatY = sconst.adjY((int) e.Y - 10 - camY);
 
                 setColorBasedOnPercent(gc, hpPercentage, false);
