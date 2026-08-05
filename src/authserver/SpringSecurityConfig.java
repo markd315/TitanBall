@@ -195,5 +195,7 @@ public class SpringSecurityConfig extends WebSecurityConfigurerAdapter {
 	 insert into classes (id, role) values(9,'GOLEM');
 	 insert into classes (id, role) values(10,'MAGE');
 	 insert into classes (id, role) values(11,'BUILDER');
+	 insert into classes (id, role) values(12, 'HOUNDMASTER');
+	 insert into classes (id, role) values(13, 'GRENADIER');
     //'pass' is the test password
  */

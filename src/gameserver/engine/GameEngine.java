@@ -32,6 +32,14 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * GameEngine runs the physics, movement, ability execution, collision detection,
+ * and game state logic for active matches.
+ *
+ * It initiates the game simulation loop via a ScheduledExecutorService that triggers
+ * gameTick() at a fixed interval (GAMETICK_MS). It processes input packets from clients
+ * and runs collision calculations for the ball, players, goals, and map boundary.
+ */
 public class GameEngine extends Game {
     private static boolean logs = false;
     protected Ability ability = new Ability();
@@ -514,7 +522,6 @@ public class GameEngine extends Game {
         lock();
         if (from != null) {
             if(logs){
-                System.out.println(from + " packet");
                 ObjectMapper mapper = new ObjectMapper();
                 try {
                     System.out.println(mapper.writeValueAsString(request));

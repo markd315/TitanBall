@@ -2,7 +2,6 @@ package gameserver.gamemanager;
 
 import authserver.SpringContextBridge;
 import authserver.users.identities.UserService;
-import com.esotericsoftware.kryonet.Connection;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import gameserver.Const;
@@ -13,10 +12,10 @@ import gameserver.engine.GameOptions;
 import gameserver.entity.Entity;
 import gameserver.entity.Titan;
 import gameserver.models.Game;
-import networking.CandidateGame;
-import networking.ClientPacket;
-import networking.PlayerConnection;
-import networking.PlayerDivider;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelId;
+import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
+import networking.*;
 import org.joda.time.Instant;
 import util.Util;
 
@@ -30,7 +29,14 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.CountDownLatch;
 
+/**
+ * ManagedGame acts as the container and lifecycle manager for a single game session.
+ * It manages connected clients via Netty Channels, schedules and executes the client state broadcast loop,
+ * applies delta-diffing (using GameDiff) to send only the changes to players, and executes basic
+ * server-side anti-cheat logic (censoring hidden/stealthed player locations).
+ */
 public class ManagedGame {
     public static final ServerMode SERVER_MODE = ServerMode.TRUETHREE;
     public ServerMode serverMode = SERVER_MODE;
@@ -43,13 +49,21 @@ public class ManagedGame {
     public List<List<Integer>> availableSlots;
     int claimIndex = 0;
     final AtomicReference<Game> stateRef = new AtomicReference<>(state);
-    ScheduledExecutorService exec;
+    ScheduledExecutorService exec = Executors.newScheduledThreadPool(
+        Runtime.getRuntime().availableProcessors(),
+        r -> {
+            Thread t = new Thread(r);
+            t.setName("GameUpdateThread-" + gameId);
+            t.setPriority(Thread.NORM_PRIORITY);
+            return t;
+        }
+    );
 
     public ManagedGame() {
     }
 
 
-    public void delegatePacket(Connection connection, ClientPacket request) {
+    public void delegatePacket(Channel connection, ClientPacket request) {
         if (state == null || state.phase != GamePhase.INGAME) {
             addOrReplaceNewClient(connection, clients, request.token);
         }
@@ -80,10 +94,10 @@ public class ManagedGame {
         }
     }
 
-    private PlayerDivider dividerFromConn(Connection connection) {
+    private PlayerDivider dividerFromConn(Channel connection) {
         for(PlayerDivider pc : state.clients){
             //System.out.println(pc.id);
-            if(connection.getID() == pc.id){
+            if(connection.id() == pc.id){
                 return pc;
             }
         }
@@ -100,7 +114,7 @@ public class ManagedGame {
         return (uniqueEmails.size() == availableSlots.size()); // Check if all players are connected
     }
 
-    void addOrReplaceNewClient(Connection c, List<PlayerConnection> queue, String token){
+    void addOrReplaceNewClient(Channel c, List<PlayerConnection> queue, String token){
         boolean connFound = connectionQueued(queue, c);
         String email = Util.jwtExtractEmail(token);
         boolean emailFound = accountQueued(queue, email);
@@ -116,7 +130,7 @@ public class ManagedGame {
                     System.out.println(p.toString());
                 }
                 System.out.println("adding NEW client");
-                System.out.println(c.getRemoteAddressTCP());
+                System.out.println(c.remoteAddress());
                 //We should be sorting the connections when the game actually starts, so doesn't matter
                 queue.add(new PlayerConnection(nextUnclaimedSlot(), c, email));
             }
@@ -125,6 +139,10 @@ public class ManagedGame {
             startGame(queue);
         }
     }
+
+    private Map<ChannelId, GameEngine> lastSentGameState = new HashMap<>();
+    private final int MAX_DIFF_RETRIES = 3;
+    private final double DIFF_THRESHOLD = 0.6; // If more than 60% of the state changed, send full state
 
     private void startGame(List<PlayerConnection> gameIncludedClients){
         if(state != null && state.away.score + state.home.score > 0){
@@ -138,12 +156,15 @@ public class ManagedGame {
             instantiateSpringContext();
             gameIncludedClients = this.monteCarloBalance(gameIncludedClients);
             state.secondsToStart = c.getD("server.startDelay");
-            for(int i=0; i<5; i++){
-                Thread.sleep(1000);
-                state.secondsToStart -=1;
+            CountDownLatch startLatch = new CountDownLatch(5);
+            for(int i=0; i<5; i++) {
+                exec.schedule(() -> {
+                    state.secondsToStart -= 1;
+                    startLatch.countDown();
+                }, i, TimeUnit.SECONDS);
             }
-        }
-        catch (InterruptedException e) {
+            startLatch.await();
+        } catch (InterruptedException e) {
             e.printStackTrace();
         }
         exec = Executors.newScheduledThreadPool(gameIncludedClients.size());
@@ -151,39 +172,94 @@ public class ManagedGame {
         System.out.println("reassigning client list on startgame");
         clients = gameIncludedClients;
         Runnable updateClients = () -> {
-            stateRef.set(state); // everyone gets the latest state once and no one gets a stale one or a fresher one
-            //System.out.println("updating clients now");
+            stateRef.set(state);
             Game snapshot = stateRef.get();
             if (snapshot == null || (snapshot.ended && snapshot.underControl == null)) {
                 if (snapshot != null) {
                     System.out.println("GameManager: skipping extra packets after game ended");
-                }
-                else{
+                } else {
                     System.err.println("Warning: state is null, skipping update");
                 }
-                return; //need undercontrol to decide winner clientside so we can't send this one
+                return;
             }
-            //remove if not connected
-            clients.removeIf(client -> !client.getClient().isConnected());
+
+            clients.removeIf(client -> !client.getClient().isOpen());
             clients.parallelStream().forEach(client -> {
-                try{
-                    PlayerDivider pd = dividerFromConn(client.getClient());
-                    //Optimizing clone away by only hacking in the needed var fails because of occasional concurrency issue
-                    Game update = (Game) deepClone(snapshot);
-                    if (update == null) {
-                        return;
+                int retries = MAX_DIFF_RETRIES;
+                while (retries-- > 0) {
+                    try {
+                        PlayerDivider pd = dividerFromConn(client.getClient());
+                        if (pd == null) continue;
+
+                        GameEngine previousState = lastSentGameState.get(client.getClient().id());
+                        GameEngine currentState = (GameEngine) deepClone(snapshot);
+                        if (currentState == null) return;
+
+                        // Ensure underControl is set correctly for this client
+                        Titan underControl = state.titanSelected(pd);
+                        currentState.underControl = underControl;
+                        
+                        // Ensure possession is set correctly based on the actual game state
+                        if (underControl != null) {
+                            // Find the corresponding titan in the current state
+                            for (Titan t : currentState.players) {
+                                if (t.id.equals(underControl.id)) {
+                                    // Update possession to match the actual game state
+                                    t.possession = underControl.possession;
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        // Ensure ball possession state is synchronized
+                        Optional<Titan> possessor = state.titanInPossession();
+                        if (possessor.isPresent()) {
+                            for (Titan t : currentState.players) {
+                                if (t.id.equals(possessor.get().id)) {
+                                    t.possession = 1;
+                                } else {
+                                    t.possession = 0;
+                                }
+                            }
+                        }
+                        
+                        currentState.now = Instant.now();
+
+                        if (client.getClient().isOpen()) {
+                            if (previousState == null) {
+                                lastSentGameState.put(client.getClient().id(), deepClone(currentState));
+                                client.getClient().writeAndFlush(new TextWebSocketFrame(
+                                    KryoRegistry.serializeWithKryo(anticheat(currentState))
+                                ));
+                            } else {
+                                GameDiff diff = new GameDiff(GameDiff.diff(previousState, currentState));
+                                if (!diff.isEmpty()) {
+                                    // Calculate change ratio to decide whether to send full state
+                                    double changeRatio = diff.getChangeRatio(previousState);
+                                    if (changeRatio > DIFF_THRESHOLD) {
+                                        // Send full state if too much has changed
+                                        lastSentGameState.put(client.getClient().id(), deepClone(currentState));
+                                        client.getClient().writeAndFlush(new TextWebSocketFrame(
+                                            KryoRegistry.serializeWithKryo(anticheat(currentState))
+                                        ));
+                                    } else {
+                                        // Send diff if changes are small
+                                        client.getClient().writeAndFlush(new TextWebSocketFrame(
+                                            KryoRegistry.serializeWithKryo(diff)
+                                        ));
+                                        lastSentGameState.put(client.getClient().id(), deepClone(currentState));
+                                    }
+                                }
+                            }
+                        }
+                    } catch (ConcurrentModificationException ex1) {
+                        if (retries == 0) {
+                            System.err.println("ConcurrentModificationException after " + MAX_DIFF_RETRIES + " retries, skipping update.");
+                            break;
+                        }
+                    } catch (Exception ex1) {
+                        ex1.printStackTrace();
                     }
-                    update.underControl = state.titanSelected(pd);
-                    update.now = Instant.now();
-                    if (client.getClient().isConnected()) {
-                        client.getClient().sendTCP(anticheat(update));
-                    }
-                }
-                catch (ConcurrentModificationException ex1){
-                    System.out.println("ConcurrentModificationException in update thread, skipping");
-                }
-                catch (Exception ex1){
-                    ex1.printStackTrace();
                 }
             });
         };
@@ -249,28 +325,26 @@ public class ManagedGame {
         return availableSlots.get(claimIndex -1);
     }
 
-    private boolean connectionQueued(List<PlayerConnection> queue, Connection query){
+    private boolean connectionQueued(List<PlayerConnection> queue, Channel query){
         boolean connFound = false;
         for(PlayerConnection p : queue){
-            if (p.getClient().getID() == query.getID()){
+            if (p.getClient().id() == query.id()){
                 connFound = true;
             }
         }
         return connFound;
     }
 
-    public boolean gameContainsEmail(Collection<String> gameFor) {
-        for(String searchFor : gameFor){
-            for(PlayerConnection matches : this.clients){
-                if(matches.email.equals(searchFor)){
-                    return true;
-                }
+    public boolean gameContainsEmail(String email) {
+        for(PlayerConnection matches : this.clients){
+            if(matches.email.equals(email)){
+                return true;
             }
         }
         return false;
     }
 
-    public PlayerConnection replaceConnectionForSameUser(Connection connection, String token) {
+    public PlayerConnection replaceConnectionForSameUser(Channel connection, String token) {
         for (PlayerConnection pc : clients) {
             if (pc.getEmail().equals(Util.jwtExtractEmail(token))) {
                 pc.setClient(connection);
@@ -293,11 +367,11 @@ public class ManagedGame {
             clients.parallelStream().forEach(client -> {
                 try{
                     PlayerDivider pd = dividerFromConn(client.getClient());
-                    Game update = (Game) deepClone(snapshot);
+                    Game update = deepClone(snapshot);
                     update.underControl = state.titanSelected(pd);
                     update.now = Instant.now();
-                    if (client.getClient().isConnected()) {
-                        client.getClient().sendTCP(state);
+                    if (client.getClient().isOpen()) {
+                        client.getClient().writeAndFlush(anticheat(update));
                         //Wait for the client to receive the final update before closing
                         Thread.sleep(1200);
                         client.getClient().close();
@@ -572,22 +646,48 @@ public class ManagedGame {
         }*/
     }
 
-    public static Object deepClone(Object object) {
+    public static <T> T deepClone(T object) {
+        if (object == null) {
+            return null;
+        }
+
+        int retries = 5;
+        while (retries-- > 0) {
+            try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                 ObjectOutputStream oos = new ObjectOutputStream(baos)) {
+
+                oos.writeObject(object);
+                oos.flush();
+
+                try (ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
+                     ObjectInputStream ois = new ObjectInputStream(bais)) {
+
+                    return (T) ois.readObject();
+                }
+            } catch (ConcurrentModificationException e) {
+                if (retries == 0) {
+                    System.err.println("ConcurrentModificationException after 5 retries, skipping clone.");
+                    return object; // Return original object as a fallback
+                }
+                System.err.println("ConcurrentModificationException in update thread, retrying...");
+            } catch (Exception e) {
+                e.printStackTrace();
+                return null;
+            }
+        }
+        return null;
+    }
+
+    @Override
+    protected void finalize() {
         try {
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            ObjectOutputStream oos = new ObjectOutputStream(baos);
-            oos.writeObject(object);
-            ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
-            ObjectInputStream ois = new ObjectInputStream(bais);
-            return ois.readObject();
-        }
-        catch (ConcurrentModificationException e) {
-            System.out.println("ConcurrentModificationException in update thread, skipping");
-            return null;
-        }
-        catch (Exception e) {
-            e.printStackTrace();
-            return null;
+            exec.shutdown();
+            if (!exec.awaitTermination(5, TimeUnit.SECONDS)) {
+                exec.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            exec.shutdownNow();
         }
     }
+
 }

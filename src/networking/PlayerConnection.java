@@ -1,35 +1,36 @@
 package networking;
 
-import com.esotericsoftware.kryonet.Connection;
+
+import io.netty.channel.Channel;
 
 import java.io.Serializable;
 import java.util.List;
 
 public class PlayerConnection extends PlayerDivider  implements Serializable {
-    public PlayerConnection(List<Integer> possibleSelection, Connection client, String email){
+    public PlayerConnection(List<Integer> possibleSelection, Channel client, String email){
         super(possibleSelection);
         this.possibleSelection = possibleSelection;
         selection = possibleSelection.get(0);
-        this.id = client.getID();
+        this.id = client.id();
         this.client = client;
         this.email = email;
     }
-    public Connection client;
+    public Channel client;
     public PlayerConnection(){}
-    public Connection getClient() {
+    public Channel getClient() {
         return client;
     }
 
-    public void setClient(Connection client) {
+    public void setClient(Channel client) {
         this.client = client;
     }
 
-    public void setId(int id) {
-        this.id = id;
+    public void setId(Channel channel) {
+        this.id = channel.id();
     }
 
     @Override
     public String toString(){
-        return "PC: {" + email + " " + client.getID() + "}";
+        return "PC: {" + email + " " + client.id() + "}";
     }
 }

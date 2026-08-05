@@ -2,7 +2,6 @@ package client;
 
 import client.forms.LoginForm;
 import client.forms.LoginListener;
-import com.esotericsoftware.kryonet.Client;
 import gameserver.gamemanager.GamePhase;
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
@@ -42,10 +41,8 @@ public class TitanballWindow extends Application {
     }
 
     public void reset(Stage primaryStage, boolean menu) throws IOException {
-        Client conn = null;
         boolean restarting = false;
         if (client != null) { //reset
-            conn = client.gameserverConn;
             client = null;
             restarting = true;
         } else { //initial
@@ -58,12 +55,7 @@ public class TitanballWindow extends Application {
         client = new TitanballClient(this, xSize, ySize, scl, loginClient, keymap, !restarting, darkTheme);
 
         client.requestFocus();
-
-        if (client.gameserverConn == null) {
-            client.gameserverConn = conn;
-        }
         if (restarting) {
-            client.openConnection();
             if (menu) {
                 client.phase = GamePhase.SHOW_GAME_MODES;
                 client.initSurface(); //convoluted, but we can only do this once
