@@ -28,10 +28,10 @@ public class AbilityStrategy    {
     public AbilityStrategy() {}
 
     protected Selector sel;
-    protected CollisionMath.CollisionMath.Bounds shape;
+    protected CollisionMath.Bounds shape;
     protected Set<Entity> appliedTo;
     protected Effect eff;
-    protected CollisionMath.CollisionMath.Bounds corners;
+    protected CollisionMath.Bounds corners;
     protected GameEngine context;
     protected Titan caster;
     protected int x, y;
@@ -80,14 +80,14 @@ public class AbilityStrategy    {
         int cd = (int) (caster.cooldownFactor * cdSeconds * 1000);
         dist *= caster.rangeFactor;
         context.effectPool.addUniqueEffect(new CooldownW(cd, caster), context);
-        shape = new CollisionMath.CollisionMath.Bounds(0, 0, 2, 2);
+        shape = new CollisionMath.Bounds(0, 0, 2, 2);
         sel = new Selector(shape, SelectorOffset.MOUSE_CENTER, c.FAR_RANGE);
         new Targeting(sel, champions, nearest, context)
                 .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
-        CollisionMath.Bounds re = sel.latestCollider.getBoundsInLocal();
+        CollisionMath.Bounds re = sel.latestCollider;
         int limitt = 0;
         while (limitt < dist) {
-            double ang = Util.degreesFromCoords(re.getMinX() - caster.X - 35, re.getMinY() - caster.Y - 35);
+            double ang = Util.degreesFromCoords(re.minX() - caster.X - 35, re.minY() - caster.Y - 35);
             double dx = Math.cos(Math.toRadians((ang)));
             double dy = Math.sin(Math.toRadians((ang)));
             if (!caster.collidesSolid(context, context.allSolids, (int) dx, (int) dy)) { //collision
@@ -103,7 +103,7 @@ public class AbilityStrategy    {
         initialD *= caster.damageFactor;
         recurringD *= caster.damageFactor;
         int range = (int) (250 * caster.rangeFactor);
-        shape = new CollisionMath.CollisionMath.Bounds(0, 0, 20, 20);
+        shape = new CollisionMath.Bounds(0, 0, 20, 20);
         sel = new Selector(shape, SelectorOffset.MOUSE_CENTER,
                 range);
         appliedTo = new Targeting(sel, notFriendly, mouseNear, context)
@@ -121,7 +121,7 @@ public class AbilityStrategy    {
         dmg *= caster.damageFactor;
         double range = c.getI("titan.slash.range") * caster.rangeFactor;
         context.effectPool.addUniqueEffect(new CooldownQ((int) (cdMs * caster.cooldownFactor), caster), context);
-        shape = new CollisionMath.CollisionMath.Bounds(0, 0, range, range);
+        shape = new CollisionMath.Bounds(0, 0, range, range);
         sel = new Selector(shape, SelectorOffset.CAST_CENTER, c.FAR_RANGE);
         appliedTo = new Targeting(sel, notFriendly, unlimited, context)
                 .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
@@ -132,7 +132,7 @@ public class AbilityStrategy    {
     }
 
     public void kickSelectedTarget() {
-        shape = new CollisionMath.CollisionMath.Bounds(0, 0, 1, 1);
+        shape = new CollisionMath.Bounds(0, 0, 1, 1);
         sel = new Selector(shape, SelectorOffset.MOUSE_CENTER, (int) (c.getI("titan.kick.range") * caster.rangeFactor));
         appliedTo = new Targeting(sel, champions, nearest, context)
                 .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
@@ -161,52 +161,52 @@ public class AbilityStrategy    {
 
     public void wall() {
         int range = (int) (c.getI("titan.wall.range") * caster.rangeFactor);
-        shape = new CollisionMath.CollisionMath.Bounds(0, 0, 12, 120);
+        shape = new CollisionMath.Bounds(0, 0, 12, 120);
         sel = new Selector(shape, SelectorOffset.MOUSE_CENTER,
                 range);
         //To update the region to caster loc
         sel.select(Collections.EMPTY_SET, x, y, caster);
         corners = sel.getLatestColliderBounds();
-        if (corners.getWidth() > 0 && inBoundsNotRedzone(corners)) {
+        if (corners.width() > 0 && inBoundsNotRedzone(corners)) {
             goOnCooldown(caster, "titan.wall.cdms", 'W');
-            context.entityPool.add(new Wall(context, (int) corners.getX(), (int) corners.getY()));
+            context.entityPool.add(new Wall(context, (int) corners.minX(), (int) corners.minY()));
         }
     }
 
-    private boolean inBoundsNotRedzone(CollisionMath.CollisionMath.Bounds corners) {
-        CollisionMath.CollisionMath.Bounds goalH = new CollisionMath.CollisionMath.Bounds(context.c.GOALIE_XH_MIN + 50,
+    private boolean inBoundsNotRedzone(CollisionMath.Bounds corners) {
+        CollisionMath.Bounds goalH = new CollisionMath.Bounds(context.c.GOALIE_XH_MIN + 50,
                 (context.c.GOALIE_Y_MIN + 24),
                 context.c.GOALIE_XH_MAX - context.c.GOALIE_XH_MIN,
                 context.c.GOALIE_Y_MAX - (context.c.GOALIE_Y_MIN) + 10);
-        CollisionMath.CollisionMath.Bounds goalA = new CollisionMath.CollisionMath.Bounds(context.c.GOALIE_XA_MIN - 4,
+        CollisionMath.Bounds goalA = new CollisionMath.Bounds(context.c.GOALIE_XA_MIN - 4,
                 (context.c.GOALIE_Y_MIN + 24),
                 context.c.GOALIE_XA_MAX - context.c.GOALIE_XA_MIN + 29,
                 context.c.GOALIE_Y_MAX - (context.c.GOALIE_Y_MIN) + 10);
-        if (goalA.getBoundsInLocal().intersects(corners.getBoundsInLocal()) ||
-        goalH.getBoundsInLocal().intersects(corners.getBoundsInLocal()) ||
-        goalA.contains(new CollisionMath.Point2D(corners.getBoundsInLocal().getMinX(), corners.getBoundsInLocal().getMinY())) ||
-        goalA.contains(new CollisionMath.Point2D(corners.getBoundsInLocal().getMaxX(), corners.getBoundsInLocal().getMaxY())) ||
-        goalH.contains(new CollisionMath.Point2D(corners.getBoundsInLocal().getMinX(), corners.getBoundsInLocal().getMinY())) ||
-        goalH.contains(new CollisionMath.Point2D(corners.getBoundsInLocal().getMaxX(), corners.getBoundsInLocal().getMaxY()))) {
+        if (goalA.intersects(corners) ||
+        goalH.intersects(corners) ||
+        goalA.contains(new CollisionMath.Point2D(corners.minX(), corners.minY())) ||
+        goalA.contains(new CollisionMath.Point2D(corners.minX() + corners.width(), corners.minY() + corners.height())) ||
+        goalH.contains(new CollisionMath.Point2D(corners.minX(), corners.minY())) ||
+        goalH.contains(new CollisionMath.Point2D(corners.minX() + corners.width(), corners.minY() + corners.height()))) {
             return false; //redzone
         }
         return inBounds(corners);
     }
 
-    private boolean inBounds(CollisionMath.CollisionMath.Bounds corners) {
-        CollisionMath.CollisionMath.Bounds bounds = new CollisionMath.CollisionMath.Bounds(context.c.MIN_X, context.c.MIN_Y,
+    private boolean inBounds(CollisionMath.Bounds corners) {
+        CollisionMath.Bounds bounds = new CollisionMath.Bounds(context.c.MIN_X, context.c.MIN_Y,
                 context.c.MAX_X - context.c.MIN_X,
                 context.c.MAX_Y - context.c.MIN_Y);
-        return corners.intersects(bounds.getBoundsInLocal()) || 
-                bounds.contains(new CollisionMath.Point2D(corners.getBoundsInLocal().getMinX(), corners.getBoundsInLocal().getMinY())) ||
-                bounds.contains(new CollisionMath.Point2D(corners.getBoundsInLocal().getMinX(), corners.getBoundsInLocal().getMinY()));
+        return corners.intersects(bounds) || 
+                bounds.contains(new CollisionMath.Point2D(corners.minX(), corners.minY())) ||
+                bounds.contains(new CollisionMath.Point2D(corners.minX(), corners.minY()));
     }
 
     public void scatter(int rangeIn, int scatterDist, int cdms) {
         int range = (int) (rangeIn * caster.rangeFactor);
         context.effectPool.addUniqueEffect(
                 new CooldownW((int) (caster.cooldownFactor * cdms), caster), context);
-        shape = new CollisionMath.CollisionMath.Bounds(0, 0, range, range);
+        shape = new CollisionMath.Bounds(0, 0, range, range);
         sel = new Selector(shape, SelectorOffset.CAST_CENTER, c.FAR_RANGE);
         appliedTo = new Targeting(sel, champions, unlimited, context)
                 .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
@@ -232,7 +232,7 @@ public class AbilityStrategy    {
 
     public void spawnBallPortal() {
         int range = (int) (c.getI("titan.bportal.range") * caster.rangeFactor);
-        shape = new CollisionMath.CollisionMath.Bounds(0, 0, 50, 50);
+        shape = new CollisionMath.Bounds(0, 0, 50, 50);
         sel = new Selector(shape, SelectorOffset.MOUSE_CENTER,
                 range);
         sel.select(Collections.EMPTY_SET, x, y, caster);
@@ -248,7 +248,7 @@ public class AbilityStrategy    {
     public void heal() {
         int dur = (int) (c.getI("titan.heal.dur") * caster.durationsFactor);
         int range = (int) (c.getI("titan.heal.range") * caster.rangeFactor);
-        shape = new CollisionMath.CollisionMath.Bounds(0, 0, 1, 1);
+        shape = new CollisionMath.Bounds(0, 0, 1, 1);
         sel = new Selector(shape, SelectorOffset.MOUSE_CENTER,
                 range);
         appliedTo = new Targeting(sel, friendlyIncSelf, mouseNear, context)
@@ -269,7 +269,7 @@ public class AbilityStrategy    {
 
     public void spawnPortal() {
         int range = (int) (c.getI("titan.portal.range") * caster.rangeFactor);
-        shape = new CollisionMath.CollisionMath.Bounds(0, 0, 50, 50);
+        shape = new CollisionMath.Bounds(0, 0, 50, 50);
         sel = new Selector(shape, SelectorOffset.MOUSE_CENTER,
                 range);
         sel.select(Collections.EMPTY_SET, x, y, caster);
@@ -284,7 +284,7 @@ public class AbilityStrategy    {
 
     public void spawnTrap() {
         int range = (int) (c.getI("titan.trap.range") * caster.rangeFactor);
-        shape = new CollisionMath.CollisionMath.Bounds(0, 0, 100, 100);
+        shape = new CollisionMath.Bounds(0, 0, 100, 100);
         sel = new Selector(shape, SelectorOffset.MOUSE_CENTER,
                 range);
         //To update the region to caster loc
@@ -299,7 +299,7 @@ public class AbilityStrategy    {
     public void slow() {
         int dur = (int) (c.getI("titan.slow.dur") * caster.durationsFactor);
         int range = (int) (c.getI("titan.slow.range") * caster.rangeFactor);
-        shape = new CollisionMath.CollisionMath.Bounds(0, 0, 1, 1);
+        shape = new CollisionMath.Bounds(0, 0, 1, 1);
         sel = new Selector(shape, SelectorOffset.MOUSE_CENTER,
                 range);
         appliedTo = new Targeting(sel, champions, mouseNear, context)
@@ -315,7 +315,7 @@ public class AbilityStrategy    {
     public void suckBall() {
         int range = (int) (c.getI("titan.suck.range") * caster.rangeFactor);
         goOnCooldown(caster, "titan.suck.cdms", 'Q');
-        shape = new CollisionMath.CollisionMath.Bounds(0, 0, range, range);
+        shape = new CollisionMath.Bounds(0, 0, range, range);
         sel = new Selector(shape, SelectorOffset.CAST_CENTER, c.FAR_RANGE);
         //To update the region to caster loc
         sel.select(Collections.EMPTY_SET, x, y, caster);
@@ -340,7 +340,7 @@ public class AbilityStrategy    {
 
     public void spawnCage() {
         int range = (int) (c.getI("titan.cage.range") * caster.rangeFactor);
-        shape = new CollisionMath.CollisionMath.Bounds(0, 0, 70, 70);
+        shape = new CollisionMath.Bounds(0, 0, 70, 70);
         sel = new Selector(shape, SelectorOffset.MOUSE_CENTER,
                 range);
         //To update the region to caster loc
@@ -371,7 +371,7 @@ public class AbilityStrategy    {
         int range = (int) (c.getI("titan.flashbang.range") * caster.rangeFactor);
         int dur = (int) (durMillis * caster.durationsFactor);
         goOnCooldown(caster, "titan.flashbang.cdms", 'Q');
-        shape = new CollisionMath.CollisionMath.Bounds(0, 0, range, range);
+        shape = new CollisionMath.Bounds(0, 0, range, range);
         sel = new Selector(shape, SelectorOffset.CAST_CENTER, c.FAR_RANGE);
         appliedTo = new Targeting(sel, champions, nearest, context)
                 .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
@@ -383,7 +383,7 @@ public class AbilityStrategy    {
 
     public void molotov() {
         int range = (int) (c.getI("titan.molotov.range") * caster.rangeFactor);
-        shape = new CollisionMath.CollisionMath.Bounds(0, 0, range, range);
+        shape = new CollisionMath.Bounds(0, 0, range, range);
         sel = new Selector(shape, SelectorOffset.MOUSE_CENTER,
                 range);
         //To update the region to caster loc
@@ -404,7 +404,7 @@ public class AbilityStrategy    {
         int range = (int) (c.getI("titan.stun.range") * caster.rangeFactor);
         int dur = (int) (durMillis * caster.durationsFactor);
         goOnCooldown(caster, "titan.stun.cdms", 'Q');
-        shape = new CollisionMath.CollisionMath.Bounds(0, 0, range, range);
+        shape = new CollisionMath.Bounds(0, 0, range, range);
         sel = new Selector(shape, SelectorOffset.CAST_CENTER, c.FAR_RANGE);
         appliedTo = new Targeting(sel, champions, nearest, context)
                 .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
@@ -417,7 +417,7 @@ public class AbilityStrategy    {
     public void shootArrow(double dmg) {
         int range = (int) (c.getI("titan.arrow.range") * caster.rangeFactor);
         dmg *= caster.damageFactor;
-        shape = new CollisionMath.CollisionMath.Bounds(0, 0, 20, 20);
+        shape = new CollisionMath.Bounds(0, 0, 20, 20);
         sel = new Selector(shape, SelectorOffset.MOUSE_CENTER,
                 range);
         appliedTo = new Targeting(sel, notFriendly, mouseNear, context)

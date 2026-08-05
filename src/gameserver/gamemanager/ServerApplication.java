@@ -45,6 +45,27 @@ public class ServerApplication {
         }
     }
 
+    public static void addNewGame(String id, GameOptions op, Collection<String> gameFor) {
+        System.out.println("adding new game, id " + id);
+        cleanupCorruptStates(gameFor);
+        states.put(id, new ManagedGame(id, op));
+        System.out.println("game map size: " + states.size());
+    }
+
+    private static void cleanupCorruptStates(Collection<String> gameFor) {
+        Set<String> rm = new HashSet<>();
+        for(String id : states.keySet()){
+            ManagedGame gt = states.get(id);
+            boolean userFound = gt.gameContainsEmail(gameFor);
+            if(userFound){
+                rm.add(id);
+            }
+        }
+        for(String id : rm){
+            System.out.println("removed a corrupt state! (somehow)");
+            states.remove(id);//avoid comod
+        }
+    }
 
     public static void delegatePacket(networking.WebSocketPlayerConnection connection, ClientPacket packet) {
         instantiateSpringContext();

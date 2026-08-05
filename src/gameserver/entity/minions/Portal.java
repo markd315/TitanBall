@@ -104,12 +104,12 @@ public class Portal extends gameserver.entity.Entity implements Collidable, Seri
 
     @Override
     public void triggerCollide(GameEngine context, Box entity) {
-        if (!this.isCooldown(context.now)) {
+        if (!this.isCooldown(new Instant(context.nowEpochMs))) {
             Optional<Portal> p = findFriendlyPortal(context, this.createdById);
-            if (p.isPresent() && !p.get().isCooldown(context.now)
+            if (p.isPresent() && !p.get().isCooldown(new Instant(context.nowEpochMs))
                     && entity instanceof Titan && ((Titan) entity).team == p.get().team) {
-                this.triggerCd(context.now);
-                p.get().triggerCd(context.now);
+                this.triggerCd(new Instant(context.nowEpochMs));
+                p.get().triggerCd(new Instant(context.nowEpochMs));
                 int x = (int)p.get().getX() + 25 - 35;
                 int y = (int)p.get().getY() + 25 - 35;
                 entity.setX(x);

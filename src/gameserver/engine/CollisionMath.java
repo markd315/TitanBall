@@ -13,6 +13,13 @@ public class CollisionMath   {
                    minY < b2.minY() + b2.height() &&
                    minY + height > b2.minY();
         }
+        public boolean contains(Point2D p) {
+            return contains(p.x(), p.y());
+        }
+        public boolean contains(double x, double y) {
+            return x >= minX && x <= minX + width &&
+                   y >= minY && y <= minY + height;
+        }
     }
     public record Point2D(double x, double y) {
         public double distance(Point2D other) {

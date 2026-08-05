@@ -104,14 +104,14 @@ public class BallPortal extends Entity implements Collidable, Serializable {
 
     @Override
     public void triggerCollide(GameEngine context, Box entity) {
-        if (!this.isCooldown(context.now) && !context.anyPoss() && !context.contactExemptBall()) {
+        if (!this.isCooldown(new Instant(context.nowEpochMs)) && !context.anyPoss() && !context.contactExemptBall()) {
             Optional<BallPortal> p = findFriendlyBallPortal(context, this.createdById);
             if(!context.ball.id.equals(entity.id)){
                 return;
             }
-            if (p.isPresent() && !p.get().isCooldown(context.now)) {
-                this.triggerCd(context.now);
-                p.get().triggerCd(context.now);
+            if (p.isPresent() && !p.get().isCooldown(new Instant(context.nowEpochMs))) {
+                this.triggerCd(new Instant(context.nowEpochMs));
+                p.get().triggerCd(new Instant(context.nowEpochMs));
                 int x = (int)p.get().getX() + 25 - context.ball.centerDist;
                 int y = (int)p.get().getY() + 25 - context.ball.centerDist;
                 entity.setX(x);

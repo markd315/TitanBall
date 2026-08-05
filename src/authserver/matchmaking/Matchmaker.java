@@ -11,15 +11,6 @@ import java.util.*;
 @Component
 public class Matchmaker {
 
-    static {//Boot server for matchmaker
-        String[] args = new String[0];
-        try {
-            ServerApplication.main(args);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
     private void spawnGame(Collection<String> gameFor, GameOptions op) {
         UUID gameId = UUID.randomUUID();
         ServerApplication.addNewGame(gameId.toString(), op, gameFor);
