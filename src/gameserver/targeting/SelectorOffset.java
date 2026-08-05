@@ -1,8 +1,8 @@
 package gameserver.targeting;
 
-import java.io.Serializable;
+import com.fasterxml.jackson.annotation.*;
 
-public enum SelectorOffset  implements Serializable {
+public enum SelectorOffset   {
     MOUSE_CENTER,
     CAST_TO_MOUSE,
     CAST_CENTER,

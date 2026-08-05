@@ -4,9 +4,10 @@ import gameserver.engine.GameEngine;
 import gameserver.effects.EffectId;
 import gameserver.entity.Entity;
 
-import java.io.Serializable;
+import com.fasterxml.jackson.annotation.*;
 
-public class FlareEffect extends Effect implements Serializable {
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class FlareEffect extends Effect  {
 
     private double initialDamage, recurringDamage;
 

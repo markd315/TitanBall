@@ -10,15 +10,14 @@ import gameserver.entity.Titan;
 import gameserver.models.Game;
 import gameserver.targeting.ShapePayload;
 import gameserver.targeting.core.Selector;
-import javafx.geometry.Bounds;
-import javafx.scene.shape.Ellipse;
-import javafx.scene.shape.Polygon;
-import javafx.scene.shape.Rectangle;
-import javafx.scene.shape.Shape;
+import gameserver.engine.CollisionMath;
 
-import java.io.Serializable;
+import com.fasterxml.jackson.annotation.*;
 
-public class Ability implements Serializable {
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class Ability    {
+    public Ability() {}
+
     public boolean castQ(GameEngine context, Titan caster) throws NullPointerException {
         AbilityStrategy strat = new AbilityStrategy(context, caster);
         Const c = strat.c;
@@ -151,25 +150,16 @@ public class Ability implements Serializable {
     private boolean injectColliders(Game context, AbilityStrategy strat, Titan caster) {
         context.cullOldColliders();
         Selector sel = strat.sel;
-        Shape shape = strat.shape;
         if (sel != null && sel.latestCollider != null) {
-            //sel has the bounds, shape has the correct class.
-            //so we inject the sel bounds back into the shape class and eventually use the camera to render it
-            Shape bounds = sel.latestCollider;
-            if (shape instanceof Ellipse) {
-                Ellipse e = (Ellipse) shape;
-                context.colliders.add(
-                        new ShapePayload(new Ellipse(e.getCenterX(), e.getCenterY(),
-                                e.getRadiusX(), e.getRadiusY())));
-            } else if (shape instanceof Polygon) {
-                //this won't work probably
-                context.colliders.add(
-                        new ShapePayload(sel.latestCollider));
-            } else if (shape instanceof Rectangle) {
-                Bounds b = bounds.getBoundsInLocal();
-                context.colliders.add(
-                        new ShapePayload(new Rectangle(b.getMinX(), b.getMinY(), b.getWidth(), b.getHeight())));
-            }
+            CollisionMath.Bounds b = sel.latestCollider;
+            ShapePayload sp = new ShapePayload();
+            sp.type = ShapePayload.ShapeSelector.RECT;
+            sp.x = (int) b.minX();
+            sp.y = (int) b.minY();
+            sp.w = (int) b.width();
+            sp.h = (int) b.height();
+            sp.trigger();
+            context.colliders.add(sp);
             context.colliders.get(context.colliders.size() - 1).setColor(caster);
         }
         return true;

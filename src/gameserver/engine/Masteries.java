@@ -5,11 +5,12 @@ import gameserver.Const;
 import gameserver.entity.Titan;
 import util.ConstOperations;
 
-import java.io.Serializable;
+import com.fasterxml.jackson.annotation.*;
 import java.util.HashMap;
 import java.util.Map;
 
-public class Masteries  implements Serializable {
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class Masteries   {
 
     public Masteries(Masteries other) { //copy constructor
         this.health = other.health;

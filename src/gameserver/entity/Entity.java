@@ -6,9 +6,10 @@ import gameserver.effects.effects.DeadEffect;
 import gameserver.engine.GameEngine;
 import gameserver.engine.TeamAffiliation;
 
-import java.io.Serializable;
+import com.fasterxml.jackson.annotation.*;
 
-public class Entity extends Box  implements Serializable {
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class Entity extends Box   {
     public double health, maxHealth;
     public TeamAffiliation team;
     public double speed = 5;

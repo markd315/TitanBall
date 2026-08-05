@@ -1,63 +1,20 @@
 package gameserver.effects.effects;
-
-import client.graphical.ScreenConst;
 import gameserver.engine.GameEngine;
 import gameserver.effects.EffectId;
 import gameserver.entity.Entity;
-import javafx.scene.canvas.GraphicsContext;
-import javafx.scene.effect.ColorAdjust;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
 
-import java.io.Serializable;
+import com.fasterxml.jackson.annotation.*;
 
-public abstract class Effect implements Serializable {
+@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonTypeInfo(use = JsonTypeInfo.Id.CLASS)
+public abstract class Effect  {
     public Entity on;
 
     public abstract void onActivate(GameEngine context);
     public abstract void onCease(GameEngine context);
     public abstract void onTick(GameEngine context); //Writes data, call once per game tick
-    ScreenConst sconst = new ScreenConst(1920, 1080);
-
-
-    public Image getIcon(GraphicsContext gc) {
-        String imagePath = "res/Effects/" + this.getEffect().toString() + ".png";
-        Image im = sconst.loadImage(imagePath);
-        return sconst.getScaledImage(im, 32, 32);
-    }
-
-
-    public ImageView getIconTrans(GraphicsContext gc) {
-        String imagePath = "res/Effects/" + this.getEffect().toString() + ".png";
-        Image im = sconst.loadImage(imagePath);
-        Image scaledImage = sconst.getScaledImage(im, 32, 32);
-
-        ImageView imageView = new ImageView(scaledImage);
-        ColorAdjust colorAdjust = new ColorAdjust();
-        colorAdjust.setBrightness(-0.9); // Adjust brightness to simulate transparency
-        imageView.setEffect(colorAdjust);
-        imageView.setOpacity(0.1); // Set the opacity to make it transparent
-
-        return imageView;
-    }
-
-
-    public javafx.scene.image.Image getIconBig(GraphicsContext gc) {
-        String imagePath = "res/Effects/" + this.getEffect().toString() + ".png";
-        // Load and scale the image to 64x64
-        Image iconBig = sconst.loadImage(imagePath);
-        return sconst.getScaledImage(iconBig, 64, 64);
-    }
-
-    public javafx.scene.image.Image getIconSmall(GraphicsContext gc) {
-        String imagePath = "res/Effects/" + this.getEffect().toString() + ".png";
-        // Load and scale the image to 16x16
-        Image iconSmall = sconst.loadImage(imagePath);
-        return sconst.getScaledImage(iconSmall, 16, 16);
-    }
-
 
     public boolean tick(GameEngine context){//Removes from effect pool when expired
         if(Instant.now().isBefore(getBegin())){

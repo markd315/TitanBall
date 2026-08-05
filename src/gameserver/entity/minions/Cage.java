@@ -6,10 +6,11 @@ import gameserver.engine.TeamAffiliation;
 import gameserver.entity.Entity;
 import gameserver.entity.Titan;
 
-import java.io.Serializable;
+import com.fasterxml.jackson.annotation.*;
 import java.util.UUID;
 
-public class Cage extends Entity  implements Serializable {
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class Cage extends Entity   {
     private UUID createdById;
     public Const c;
 

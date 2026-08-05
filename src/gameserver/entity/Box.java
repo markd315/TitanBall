@@ -1,16 +1,14 @@
 package gameserver.entity;
 
 import gameserver.engine.GameEngine;
-import javafx.geometry.Bounds;
-import javafx.scene.shape.Ellipse;
-import javafx.scene.shape.Rectangle;
-import javafx.scene.shape.Shape;
 
-import java.io.Serializable;
+
+import com.fasterxml.jackson.annotation.*;
 import java.util.Optional;
 import java.util.UUID;
 
-public class Box extends Coordinates  implements Serializable {
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class Box extends Coordinates   {
     public int width, height;
     public boolean solid;
     public UUID id;
@@ -46,34 +44,35 @@ public class Box extends Coordinates  implements Serializable {
     }
 
     public Optional<Box> collidesSolidWhich(GameEngine context, Box[] solids, double yd, double xd) {
-        Shape cmp = new Rectangle(this.X + xd, this.Y + yd, this.width, this.height);
+        gameserver.engine.CollisionMath.Bounds cmpBounds;
         if (this instanceof Titan) {
-            cmp = new Ellipse(this.X + xd + this.width/2,
-                    this.Y + yd + this.height/2,
-                    (this.width - context.SPRITE_X_EMPTY) / 2,
-                    (this.height - context.SPRITE_Y_EMPTY) / 2
+            cmpBounds = new gameserver.engine.CollisionMath.Bounds(
+                    this.X + xd + context.SPRITE_X_EMPTY/2.0,
+                    this.Y + yd + context.SPRITE_Y_EMPTY/2.0,
+                    this.width - context.SPRITE_X_EMPTY,
+                    this.height - context.SPRITE_Y_EMPTY
             );
+        } else {
+            cmpBounds = new gameserver.engine.CollisionMath.Bounds(this.X + xd, this.Y + yd, this.width, this.height);
         }
         Optional<Box> ret = Optional.empty();
         for (Box collCheck : solids) {
             if (collCheck != null && collCheck.id != this.id &&
                     (!(collCheck instanceof Entity) || (((Entity) collCheck).health > 0))) {
+                
+                gameserver.engine.CollisionMath.Bounds checkBounds;
                 if (collCheck instanceof Titan) {
-                    //Titans don't take up their full sprite boxes. Mostly.
-                    //It's twice as much because we only adjust the "collCheck" collider
-
-                    Rectangle inter = new Rectangle(
-                            (int)collCheck.X + context.SPRITE_X_EMPTY/2,
-                            (int)collCheck.Y + context.SPRITE_Y_EMPTY/2,
+                    checkBounds = new gameserver.engine.CollisionMath.Bounds(
+                            (int)collCheck.X + context.SPRITE_X_EMPTY/2.0,
+                            (int)collCheck.Y + context.SPRITE_Y_EMPTY/2.0,
                             collCheck.width - context.SPRITE_X_EMPTY,
                             collCheck.height - context.SPRITE_Y_EMPTY);
-                    if (exists(Shape.intersect(inter, cmp))) {
-                        if (performIntersection(context, collCheck)){
-                            return Optional.of(collCheck);
-                        }
-                    }
-                } else if (cmp.intersects(new Rectangle((int)collCheck.X, (int)collCheck.Y, collCheck.width, collCheck.height).getBoundsInLocal())) {
-                    if(performIntersection(context, collCheck)){
+                } else {
+                    checkBounds = new gameserver.engine.CollisionMath.Bounds((int)collCheck.X, (int)collCheck.Y, collCheck.width, collCheck.height);
+                }
+
+                if (cmpBounds.intersects(checkBounds)) {
+                    if (performIntersection(context, collCheck)){
                         return Optional.of(collCheck);
                     }
                 }
@@ -94,15 +93,16 @@ public class Box extends Coordinates  implements Serializable {
     }
 
     public boolean intersectCircle(double x2, double y2, double r2) {
-        Ellipse e = new Ellipse(this.X + this.width/2, this.Y + this.height/2, this.width, this.height);
-        double distSq = (e.getCenterX() - x2) * (e.getCenterX()- x2) +
-                (e.getCenterY() - y2) * (e.getCenterY()- y2);
-        //return True if the center of the circle is within the ellipse
+        double centerX = this.X + this.width/2.0;
+        double centerY = this.Y + this.height/2.0;
+        double distSq = (centerX - x2) * (centerX - x2) +
+                (centerY - y2) * (centerY - y2);
+        //return True if the center of the circle is within the ellipse (wait, the code just checks center distance)
         return distSq <= (r2 * r2);
     }
 
-    public Bounds asBounds() {
-        return new Rectangle((int)this.X, (int)this.Y, this.width, this.height).getBoundsInLocal();
+    public gameserver.engine.CollisionMath.Bounds asBounds() {
+        return new gameserver.engine.CollisionMath.Bounds((int)this.X, (int)this.Y, this.width, this.height);
     }
 
     public boolean ballNearestEdgeisX(Box ball) {
@@ -113,7 +113,7 @@ public class Box extends Coordinates  implements Serializable {
         return (x1 < y1 && x1 < y2) || (x2 < y1 && x2 < y2);
     }
 
-    public Ellipse ellipseCentered() {
-        return new Ellipse(this.X + (double) this.width /2, this.Y + (double) this.height /2, (double) this.width / 2, (double) this.height / 2);
+    public gameserver.engine.CollisionMath.EllipseData ellipseData() {
+        return new gameserver.engine.CollisionMath.EllipseData(this.X + (double) this.width /2, this.Y + (double) this.height /2, (double) this.width / 2, (double) this.height / 2);
     }
 }

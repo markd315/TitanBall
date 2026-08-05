@@ -1,7 +1,7 @@
 package gameserver.engine;
 
-import java.io.Serializable;
+import com.fasterxml.jackson.annotation.*;
 
-public enum TeamAffiliation  implements Serializable {
+public enum TeamAffiliation   {
     HOME, AWAY, UNAFFILIATED, ANY, SAME, ENEMIES, OPPONENT, IMMUNE
 }

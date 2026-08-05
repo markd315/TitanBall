@@ -1,8 +1,8 @@
 package gameserver.targeting;
 
-import java.io.Serializable;
+import com.fasterxml.jackson.annotation.*;
 
-public enum SortBy  implements Serializable {
+public enum SortBy   {
     NEAREST,
     NEAREST_MOUSE,
     FURTHEST,

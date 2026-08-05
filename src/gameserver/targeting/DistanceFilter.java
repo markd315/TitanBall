@@ -1,8 +1,9 @@
 package gameserver.targeting;
 
-import java.io.Serializable;
+import com.fasterxml.jackson.annotation.*;
 
-public class DistanceFilter  implements Serializable {
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class DistanceFilter   {
     private boolean lessThanNotGreaterThan;
     private boolean strict;
     private int dist;

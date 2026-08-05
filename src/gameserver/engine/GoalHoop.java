@@ -1,11 +1,11 @@
 package gameserver.engine;
 
 
-import javafx.scene.shape.Ellipse;
 import org.joda.time.Instant;
-import java.io.Serializable;
+import com.fasterxml.jackson.annotation.*;
 
-public class GoalHoop implements Serializable {
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class GoalHoop  {
     public Instant nextAvailable;
     public boolean onCooldown, frozen;
     public TeamAffiliation team;
@@ -51,8 +51,8 @@ public class GoalHoop implements Serializable {
     public GoalHoop(){
     }
 
-    public Ellipse ellipseCentered() {
-        return new Ellipse(this.x + (double) this.w /2, this.y + (double) this.h /2,
+    public CollisionMath.EllipseData ellipseData() {
+        return new CollisionMath.EllipseData(this.x + (double) this.w /2, this.y + (double) this.h /2,
                 (double) this.w / 2, (double) this.h / 2);
     }
 }

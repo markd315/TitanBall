@@ -3,9 +3,10 @@ package gameserver.effects.effects;
 import gameserver.effects.EffectId;
 import gameserver.entity.Entity;
 
-import java.io.Serializable;
+import com.fasterxml.jackson.annotation.*;
 
-public class RatioEffect extends EmptyEffect implements Serializable {
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class RatioEffect extends EmptyEffect  {
     private double ratio;
 
     public RatioEffect(int durationMillis, Entity e, EffectId id, double ratio){

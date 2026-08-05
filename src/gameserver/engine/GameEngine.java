@@ -17,9 +17,7 @@ import gameserver.entity.minions.Tickable;
 import gameserver.gamemanager.GamePhase;
 import gameserver.gamemanager.ManagedGame;
 import gameserver.models.Game;
-import javafx.geometry.Bounds;
-import javafx.scene.shape.Ellipse;
-import javafx.scene.shape.Rectangle;
+
 import networking.ClientPacket;
 import networking.KeyDifferences;
 import networking.PlayerDivider;
@@ -173,9 +171,9 @@ public class GameEngine extends Game {
     }
 
     public boolean ballIntersectsEllipse(GoalHoop goal) {
-        Ellipse g = goal.ellipseCentered();
-        Ellipse b = ball.ellipseCentered();
-        return b.getBoundsInLocal().intersects(g.getBoundsInLocal());
+        gameserver.engine.CollisionMath.EllipseData g = goal.ellipseData();
+        gameserver.engine.CollisionMath.EllipseData b = ball.ellipseData();
+        return gameserver.engine.CollisionMath.ellipseBoundsIntersect(b, g);
     }
 
     public void detectGoals() {
@@ -238,14 +236,15 @@ public class GameEngine extends Game {
     }
 
     protected void minorHoopBounce() {
-        Bounds ballBounds = ball.asBounds();
+        gameserver.engine.CollisionMath.Bounds ballBounds = ball.asBounds();
         for (GoalHoop goal : this.lowGoals) {
-            Ellipse ell = goal.ellipseCentered();
-            while (ell.intersects(ballBounds)) {
+            gameserver.engine.CollisionMath.EllipseData ell = goal.ellipseData();
+            gameserver.engine.CollisionMath.Bounds ellBounds = new gameserver.engine.CollisionMath.Bounds(ell.centerX() - ell.radiusX(), ell.centerY() - ell.radiusY(), ell.radiusX() * 2, ell.radiusY() * 2);
+            while (ellBounds.intersects(ballBounds)) {
                 ballBounds = ball.asBounds();
                 double ang = Util.degreesFromCoords(
-                        ell.getCenterX() - ball.X - ball.centerDist,
-                        ell.getCenterY() - ball.Y - ball.centerDist
+                        ell.centerX() - ball.X - ball.centerDist,
+                        ell.centerY() - ball.Y - ball.centerDist
                 );
                 ang += 180; //Kick it away, not towards
                 double dx = Math.cos(Math.toRadians((ang)));

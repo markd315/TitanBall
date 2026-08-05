@@ -8,10 +8,11 @@ import gameserver.targeting.core.Filter;
 import gameserver.targeting.core.Limiter;
 import gameserver.targeting.core.Selector;
 
-import java.io.Serializable;
+import com.fasterxml.jackson.annotation.*;
 import java.util.*;
 
-public class Targeting  implements Serializable {
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class Targeting   {
 
     public Set<Entity> entities;
     private Selector selector;

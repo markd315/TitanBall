@@ -7,9 +7,10 @@ import gameserver.entity.Entity;
 import gameserver.entity.Titan;
 import gameserver.models.Game;
 
-import java.io.Serializable;
+import com.fasterxml.jackson.annotation.*;
 
-public class DeadEffect extends Effect implements Serializable {
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class DeadEffect extends Effect  {
 
     public DeadEffect(int durationMillis, Entity e, Game context){
         super(EffectId.DEAD, e, durationMillis);

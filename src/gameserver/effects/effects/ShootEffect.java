@@ -5,9 +5,10 @@ import gameserver.effects.EffectId;
 import gameserver.entity.Entity;
 import gameserver.entity.Titan;
 
-import java.io.Serializable;
+import com.fasterxml.jackson.annotation.*;
 
-public class ShootEffect extends Effect implements Serializable {
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class ShootEffect extends Effect  {
     double shotRatio;
 
     public ShootEffect(int durationMillis, Entity e){

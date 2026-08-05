@@ -1,8 +1,8 @@
 package gameserver.entity;
 
-import java.io.Serializable;
+import com.fasterxml.jackson.annotation.*;
 
-public enum TitanType  implements Serializable {
+public enum TitanType   {
     GOALIE, WARRIOR, RANGER, DASHER, MARKSMAN, STEALTH, /*RECON,*/
     SUPPORT, ARTISAN, GOLEM, MAGE, BUILDER,
     GRENADIER, HOUNDMASTER,

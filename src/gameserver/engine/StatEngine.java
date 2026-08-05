@@ -8,13 +8,14 @@ import gameserver.effects.effects.Effect;
 import gameserver.entity.Titan;
 import networking.PlayerDivider;
 
-import java.io.Serializable;
+import com.fasterxml.jackson.annotation.*;
 import java.util.*;
 
 import static java.util.Arrays.stream;
 import static java.util.stream.Collectors.toMap;
 
-public class StatEngine implements Serializable {
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class StatEngine  {
     private List<Map<String, Double>> gamestats;
     private static final ObjectMapper mapper = new ObjectMapper();
 

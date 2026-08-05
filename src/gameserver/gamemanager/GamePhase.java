@@ -1,11 +1,11 @@
 package gameserver.gamemanager;
 
-import java.io.Serializable;
+import com.fasterxml.jackson.annotation.*;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Map;
 
-public enum GamePhase  implements Serializable {
+public enum GamePhase   {
     CREDITS(0),
     CONTROLS(1),
     SHOW_GAME_MODES(2),

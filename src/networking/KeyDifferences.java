@@ -1,9 +1,10 @@
 package networking;
 
 
-import java.io.Serializable;
+import com.fasterxml.jackson.annotation.*;
 
-public class KeyDifferences  implements Serializable {
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class KeyDifferences   {
     public int UP = 0, LEFT = 0, DOWN = 0, RIGHT = 0, E = 0, R = 0, CAM = 0,
             STEAL = 0, TAB = 0, SWITCH = 0, BOOST =0, BOOST_LOCK =0, MV_CLICK=0, MV_BALL=0;
 

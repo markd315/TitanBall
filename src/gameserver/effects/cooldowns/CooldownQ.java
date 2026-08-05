@@ -5,9 +5,10 @@ import gameserver.effects.EffectId;
 import gameserver.effects.effects.Effect;
 import gameserver.entity.Entity;
 
-import java.io.Serializable;
+import com.fasterxml.jackson.annotation.*;
 
-public class CooldownQ extends Effect implements Serializable {
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class CooldownQ extends Effect  {
 
     public CooldownQ(int durationMillis, Entity e){
         super(EffectId.COOLDOWN_Q, e, durationMillis);

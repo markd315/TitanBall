@@ -2,9 +2,10 @@ package gameserver;
 
 import util.ConstOperations;
 
-import java.io.Serializable;
+import com.fasterxml.jackson.annotation.*;
 
-public class Const extends ConstOperations  implements Serializable {
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class Const extends ConstOperations   {
     public static final long serialVersionUID = 1L;
     public final double PAIN_FACTOR = getD("globals.ent.painfactor");
     public final double FLAT_PAIN = getD("globals.ent.flatdamage");

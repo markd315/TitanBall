@@ -5,10 +5,11 @@ import gameserver.entity.Entity;
 import gameserver.targeting.SortBy;
 
 import java.awt.geom.Point2D;
-import java.io.Serializable;
+import com.fasterxml.jackson.annotation.*;
 import java.util.*;
 
-public class Limiter  implements Serializable {
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class Limiter   {
     private final SortBy method;
     private final int limit;
 

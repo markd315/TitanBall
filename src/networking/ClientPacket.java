@@ -4,9 +4,10 @@ package networking;
 import gameserver.engine.Masteries;
 import gameserver.entity.TitanType;
 
-import java.io.Serializable;
+import com.fasterxml.jackson.annotation.*;
 
-public class ClientPacket implements Serializable {
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class ClientPacket  {
     public ClientPacket(){
     }
     public boolean UP = false, LEFT = false, DOWN = false, RIGHT= false;

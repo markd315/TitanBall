@@ -33,8 +33,14 @@ import java.util.List;
 import java.util.Optional;
 
 @RestController
-@CrossOrigin(exposedHeaders = "errors, content-type")
+@RequestMapping("/api")
+@CrossOrigin(origins = {"http://localhost:5173", "https://blockforger.net", "http://localhost:3030"})
 public class LoginController {
+
+    @GetMapping("/health")
+    public ResponseEntity<String> health() {
+        return ResponseEntity.ok("OK");
+    }
     private static final String M2M_AUTH = "VERY SECRET PAYPAL PRIVATE KEY";
 
     @Autowired

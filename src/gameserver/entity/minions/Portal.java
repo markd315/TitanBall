@@ -3,7 +3,7 @@ package gameserver.entity.minions;
 import gameserver.engine.GameEngine;
 import gameserver.engine.TeamAffiliation;
 import gameserver.entity.*;
-import javafx.scene.paint.Color;
+
 import org.joda.time.Instant;
 import util.Util;
 
@@ -45,7 +45,7 @@ public class Portal extends gameserver.entity.Entity implements Collidable, Seri
                 secondCanStayIfRange.bp.rangeCircle = null;
             }
         }
-        this.rangeCircle = new RangeCircle(Color.RED, MAX_RANGE);
+        this.rangeCircle = new RangeCircle(1.0, 0.0, 0.0, 1.0, MAX_RANGE);
     }
 
     public boolean isCooldown(Instant now) {

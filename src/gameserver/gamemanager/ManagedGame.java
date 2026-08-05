@@ -2,7 +2,6 @@ package gameserver.gamemanager;
 
 import authserver.SpringContextBridge;
 import authserver.users.identities.UserService;
-import com.esotericsoftware.kryonet.Connection;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import gameserver.Const;
@@ -15,7 +14,7 @@ import gameserver.entity.Titan;
 import gameserver.models.Game;
 import networking.CandidateGame;
 import networking.ClientPacket;
-import networking.PlayerConnection;
+import networking.WebSocketPlayerConnection;
 import networking.PlayerDivider;
 import org.joda.time.Instant;
 import util.Util;
@@ -39,7 +38,7 @@ public class ManagedGame {
 
     public GameEngine state;
     public String gameId;
-    List<PlayerConnection> clients = new ArrayList<>();
+    List<WebSocketPlayerConnection> clients = new ArrayList<>();
     public List<List<Integer>> availableSlots;
     int claimIndex = 0;
     final AtomicReference<Game> stateRef = new AtomicReference<>(state);
@@ -49,7 +48,7 @@ public class ManagedGame {
     }
 
 
-    public void delegatePacket(Connection connection, ClientPacket request) {
+    public void delegatePacket(WebSocketPlayerConnection connection, ClientPacket request) {
         if (state == null || state.phase != GamePhase.INGAME) {
             addOrReplaceNewClient(connection, clients, request.token);
         }
@@ -70,7 +69,7 @@ public class ManagedGame {
                         pd.setEmail(email);
                     }
                 }
-                for(PlayerConnection pc : clients){
+                for(WebSocketPlayerConnection pc : clients){
                     if(pc.getEmail().equals(email)){
                         pc.setClient(connection);
                     }
@@ -80,19 +79,19 @@ public class ManagedGame {
         }
     }
 
-    private PlayerDivider dividerFromConn(Connection connection) {
+    private PlayerDivider dividerFromConn(WebSocketPlayerConnection connection) {
         for(PlayerDivider pc : state.clients){
             //System.out.println(pc.id);
-            if(connection.getID() == pc.id){
+            if(connection.id == pc.id){
                 return pc;
             }
         }
         return null;
     }
 
-    boolean lobbyFull(List<PlayerConnection> queue){
+    boolean lobbyFull(List<WebSocketPlayerConnection> queue){
         List<String> uniqueEmails = new ArrayList<>();
-        for(PlayerConnection p : queue){
+        for(WebSocketPlayerConnection p : queue){
             if(!uniqueEmails.contains(p.getEmail())){
                 uniqueEmails.add(p.getEmail());
             }
@@ -100,25 +99,24 @@ public class ManagedGame {
         return (uniqueEmails.size() == availableSlots.size()); // Check if all players are connected
     }
 
-    void addOrReplaceNewClient(Connection c, List<PlayerConnection> queue, String token){
+    void addOrReplaceNewClient(WebSocketPlayerConnection c, List<WebSocketPlayerConnection> queue, String token){
         boolean connFound = connectionQueued(queue, c);
         String email = Util.jwtExtractEmail(token);
         boolean emailFound = accountQueued(queue, email);
         if(!connFound){
             if(emailFound){ //rejoin unstarted game
-                for(PlayerConnection p : queue){
+                for(WebSocketPlayerConnection p : queue){
                     if(p.getEmail().equals(email)){
                         p.setClient(c);
                     }
                 }
             }else{
-                for(PlayerConnection p : queue){
+                for(WebSocketPlayerConnection p : queue){
                     System.out.println(p.toString());
                 }
                 System.out.println("adding NEW client");
-                System.out.println(c.getRemoteAddressTCP());
                 //We should be sorting the connections when the game actually starts, so doesn't matter
-                queue.add(new PlayerConnection(nextUnclaimedSlot(), c, email));
+                queue.add(new WebSocketPlayerConnection(nextUnclaimedSlot(), c, email));
             }
         }
         if(lobbyFull(queue)){
@@ -126,7 +124,7 @@ public class ManagedGame {
         }
     }
 
-    private void startGame(List<PlayerConnection> gameIncludedClients){
+    private void startGame(List<WebSocketPlayerConnection> gameIncludedClients){
         if(state != null && state.away.score + state.home.score > 0){
             return; //Don't reset the game in this case lol
         }
@@ -164,19 +162,19 @@ public class ManagedGame {
                 return; //need undercontrol to decide winner clientside so we can't send this one
             }
             //remove if not connected
-            clients.removeIf(client -> !client.getClient().isConnected());
+            clients.removeIf(client -> !client.isConnected());
             clients.parallelStream().forEach(client -> {
                 try{
-                    PlayerDivider pd = dividerFromConn(client.getClient());
+                    PlayerDivider pd = dividerFromConn(client);
                     //Optimizing clone away by only hacking in the needed var fails because of occasional concurrency issue
                     Game update = (Game) deepClone(snapshot);
                     if (update == null) {
                         return;
                     }
                     update.underControl = state.titanSelected(pd);
-                    update.now = Instant.now();
-                    if (client.getClient().isConnected()) {
-                        client.getClient().sendTCP(anticheat(update));
+                    update.nowEpochMs = System.currentTimeMillis();
+                    if (client.isConnected()) {
+                        client.sendJson(mapper.writeValueAsString(anticheat(update)));
                     }
                 }
                 catch (ConcurrentModificationException ex1){
@@ -234,9 +232,9 @@ public class ManagedGame {
     }
 
 
-    private static List<PlayerDivider> playersFromConnections(List<PlayerConnection> clients) {
+    private static List<PlayerDivider> playersFromConnections(List<WebSocketPlayerConnection> clients) {
         List<PlayerDivider> ret = new ArrayList<>();
-        for(PlayerConnection pc : clients){
+        for(WebSocketPlayerConnection pc : clients){
             ret.add(new PlayerDivider(pc)); //GameEngine class doesn't know the connections, just IDs
         }
         return ret;
@@ -249,10 +247,10 @@ public class ManagedGame {
         return availableSlots.get(claimIndex -1);
     }
 
-    private boolean connectionQueued(List<PlayerConnection> queue, Connection query){
+    private boolean connectionQueued(List<WebSocketPlayerConnection> queue, WebSocketPlayerConnection query){
         boolean connFound = false;
-        for(PlayerConnection p : queue){
-            if (p.getClient().getID() == query.getID()){
+        for(WebSocketPlayerConnection p : queue){
+            if (p.id == query.id){
                 connFound = true;
             }
         }
@@ -261,7 +259,7 @@ public class ManagedGame {
 
     public boolean gameContainsEmail(Collection<String> gameFor) {
         for(String searchFor : gameFor){
-            for(PlayerConnection matches : this.clients){
+            for(WebSocketPlayerConnection matches : this.clients){
                 if(matches.email.equals(searchFor)){
                     return true;
                 }
@@ -270,8 +268,8 @@ public class ManagedGame {
         return false;
     }
 
-    public PlayerConnection replaceConnectionForSameUser(Connection connection, String token) {
-        for (PlayerConnection pc : clients) {
+    public WebSocketPlayerConnection replaceConnectionForSameUser(WebSocketPlayerConnection connection, String token) {
+        for (WebSocketPlayerConnection pc : clients) {
             if (pc.getEmail().equals(Util.jwtExtractEmail(token))) {
                 pc.setClient(connection);
                 return pc;
@@ -292,15 +290,18 @@ public class ManagedGame {
         CompletableFuture.runAsync(() -> {
             clients.parallelStream().forEach(client -> {
                 try{
-                    PlayerDivider pd = dividerFromConn(client.getClient());
+                    PlayerDivider pd = dividerFromConn(client);
                     Game update = (Game) deepClone(snapshot);
+                    if (update == null) {
+                        return;
+                    }
                     update.underControl = state.titanSelected(pd);
-                    update.now = Instant.now();
-                    if (client.getClient().isConnected()) {
-                        client.getClient().sendTCP(state);
+                    update.nowEpochMs = System.currentTimeMillis();
+                    if (client.isConnected()) {
+                        client.sendJson(mapper.writeValueAsString(update));
                         //Wait for the client to receive the final update before closing
                         Thread.sleep(1200);
-                        client.getClient().close();
+                        client.close();
                     }
                 }
                 catch (Exception ex1) {
@@ -310,9 +311,9 @@ public class ManagedGame {
         });
     }
 
-    private boolean accountQueued(List<PlayerConnection> queue, String email) {
+    private boolean accountQueued(List<WebSocketPlayerConnection> queue, String email) {
         boolean emailFound = false;
-        for(PlayerConnection p : queue){
+        for(WebSocketPlayerConnection p : queue){
             if (p.getEmail().equals(email)){
                 emailFound = true;
             }
@@ -320,9 +321,9 @@ public class ManagedGame {
         return emailFound;
     }
 
-    private List<PlayerConnection> monteCarloBalance(List<PlayerConnection> players) {
+    private List<WebSocketPlayerConnection> monteCarloBalance(List<WebSocketPlayerConnection> players) {
         Map<String, Double> tempRating= new HashMap<>();
-        for(PlayerConnection pl : players){
+        for(WebSocketPlayerConnection pl : players){
             //System.out.println(pl.email +  " " + userService.findUserByEmail(pl.email).getRating());
             tempRating.put(pl.email, userService.findUserByEmail(pl.email).getRating());
         }
@@ -330,10 +331,10 @@ public class ManagedGame {
         CandidateGame candidateGame= new CandidateGame();
         for(int i=0; i<MAX_MM; i++){
             //The final possibleSelection is still wrong, maybe trash this last list constructor
-            List<PlayerConnection> testOrder = new ArrayList<>(players);
+            List<WebSocketPlayerConnection> testOrder = new ArrayList<>(players);
             Collections.shuffle(testOrder);
-            List<PlayerConnection> home = testOrder.subList(0, testOrder.size() / 2);
-            List<PlayerConnection> away = testOrder.subList(testOrder.size() / 2, testOrder.size());
+            List<WebSocketPlayerConnection> home = testOrder.subList(0, testOrder.size() / 2);
+            List<WebSocketPlayerConnection> away = testOrder.subList(testOrder.size() / 2, testOrder.size());
             candidateGame.suggestTeams(home, away, tempRating);
         }
         return candidateGame.bestMonteCarloBalance(availableSlots);
@@ -572,18 +573,17 @@ public class ManagedGame {
         }*/
     }
 
+    private static final ObjectMapper mapper = new ObjectMapper();
+
     public static Object deepClone(Object object) {
         try {
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            ObjectOutputStream oos = new ObjectOutputStream(baos);
-            oos.writeObject(object);
-            ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
-            ObjectInputStream ois = new ObjectInputStream(bais);
-            return ois.readObject();
-        }
-        catch (ConcurrentModificationException e) {
-            System.out.println("ConcurrentModificationException in update thread, skipping");
-            return null;
+            String json = mapper.writeValueAsString(object);
+            if (object instanceof GameEngine) {
+                return mapper.readValue(json, GameEngine.class);
+            } else if (object instanceof Game) {
+                return mapper.readValue(json, Game.class);
+            }
+            return mapper.readValue(json, object.getClass());
         }
         catch (Exception e) {
             e.printStackTrace();

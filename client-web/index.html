@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TitanBall V2</title>
+    <!-- Modern Premium Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+      body, html {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background-color: #0b0c10;
+        color: #c5c6c7;
+        font-family: 'Outfit', sans-serif;
+      }
+      #app {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      canvas {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        display: block;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+      }
+      /* UI Overlay Container */
+      #ui-container {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none; /* Let clicks pass through to canvas unless overridden */
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      /* Glassmorphic Cards */
+      .glass-card {
+        pointer-events: auto; /* Allow interaction */
+        background: rgba(15, 22, 36, 0.7);
+        backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 20px;
+        padding: 40px;
+        width: 420px;
+        box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8), 0 0 100px rgba(102, 252, 241, 0.05);
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        animation: fadeIn 0.4s ease-out;
+      }
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      h2 {
+        margin: 0;
+        font-size: 28px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        color: #66fcf1;
+        text-align: center;
+      }
+      .input-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      label {
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #45f3ff;
+      }
+      input {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+        padding: 12px 16px;
+        color: white;
+        font-family: inherit;
+        font-size: 16px;
+        outline: none;
+        transition: all 0.3s;
+      }
+      input:focus {
+        border-color: #66fcf1;
+        background: rgba(255, 255, 255, 0.08);
+        box-shadow: 0 0 15px rgba(102, 252, 241, 0.2);
+      }
+      .btn {
+        background: linear-gradient(135deg, #45f3ff, #1f4068);
+        border: none;
+        border-radius: 10px;
+        padding: 14px;
+        color: white;
+        font-weight: 600;
+        font-size: 16px;
+        font-family: inherit;
+        cursor: pointer;
+        transition: all 0.3s;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        box-shadow: 0 10px 20px rgba(69, 243, 255, 0.2);
+      }
+      .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 15px 30px rgba(69, 243, 255, 0.4);
+      }
+      .btn:active {
+        transform: translateY(0);
+      }
+      .btn-secondary {
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        box-shadow: none;
+      }
+      .btn-secondary:hover {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: white;
+        box-shadow: none;
+      }
+      .error-msg {
+        color: #ff4a4a;
+        font-size: 14px;
+        text-align: center;
+      }
+      /* Menu list */
+      .menu-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .stat-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 16px;
+        padding: 10px;
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+      }
+      .stat-label {
+        font-weight: 600;
+      }
+      .stat-value {
+        color: #66fcf1;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="gameCanvas" width="1920" height="1080"></canvas>
+      
+      <!-- HTML UI Overlays -->
+      <div id="ui-container">
+        
+        <!-- Login Overlay -->
+        <div id="login-overlay" class="glass-card" style="display: none;">
+          <h2>Access System</h2>
+          <div class="input-group">
+            <label for="login-email">Username or Email</label>
+            <input type="text" id="login-email" placeholder="markd315@gmail.com" />
+          </div>
+          <div class="input-group">
+            <label for="login-pass">Password</label>
+            <input type="password" id="login-pass" placeholder="••••••••" value="pass" />
+          </div>
+          <div id="login-error" class="error-msg" style="display: none;"></div>
+          <button id="login-btn" class="btn">Connect</button>
+        </div>
+
+        <!-- Mode Select Overlay -->
+        <div id="mode-overlay" class="glass-card" style="display: none;">
+          <h2>Select Game Mode</h2>
+          <div class="stat-row">
+            <span class="stat-label">Welcome</span>
+            <span id="player-username" class="stat-value">...</span>
+          </div>
+          <div class="menu-list">
+            <button id="queue-3v3-btn" class="btn">Queue 3v3 Match</button>
+            <button id="queue-1v1-btn" class="btn btn-secondary">Queue 1v1 Match</button>
+            <button id="tutorial-btn" class="btn btn-secondary">Play Tutorial</button>
+          </div>
+        </div>
+
+        <!-- Lobby Overlay -->
+        <div id="lobby-overlay" class="glass-card" style="display: none;">
+          <h2>Searching Match</h2>
+          <div class="stat-row">
+            <span class="stat-label">Queue Mode</span>
+            <span id="queue-mode-label" class="stat-value">3v3</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Status</span>
+            <span class="stat-value" style="animation: pulse 1.5s infinite;">FINDING PLAYERS...</span>
+          </div>
+          <button id="leave-queue-btn" class="btn btn-secondary">Cancel</button>
+        </div>
+
+      </div>
+    </div>
+    
+    <script type="module" src="/src/main.js"></script>
+    <style>
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+      }
+    </style>
+  </body>
+</html>

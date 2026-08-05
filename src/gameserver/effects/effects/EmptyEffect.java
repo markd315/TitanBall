@@ -5,9 +5,10 @@ import gameserver.engine.GameEngine;
 import gameserver.effects.EffectId;
 import gameserver.entity.Entity;
 
-import java.io.Serializable;
+import com.fasterxml.jackson.annotation.*;
 
-public class EmptyEffect extends Effect implements Serializable {
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class EmptyEffect extends Effect  {
 
     public EmptyEffect(int durationMillis, Entity e, EffectId id){
         super(id, e, durationMillis);

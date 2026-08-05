@@ -1,8 +1,9 @@
 package gameserver.entity;
 
-import java.io.Serializable;
+import com.fasterxml.jackson.annotation.*;
 
-public class Coordinates  implements Serializable {
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class Coordinates   {
     public double X, Y;
 
     public Coordinates(double x, double y) {

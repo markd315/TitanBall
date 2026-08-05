@@ -1,16 +1,17 @@
 package networking;
 
-import java.io.Serializable;
+import com.fasterxml.jackson.annotation.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class CandidateGame  implements Serializable {
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class CandidateGame   {
 
-    private List<PlayerConnection> home, away;
+    private List<WebSocketPlayerConnection> home, away;
     private double elogap = Double.MAX_VALUE;
 
-    public void suggestTeams(List<PlayerConnection> home, List<PlayerConnection> away, Map<String, Double>  ratingMap) {
+    public void suggestTeams(List<WebSocketPlayerConnection> home, List<WebSocketPlayerConnection> away, Map<String, Double>  ratingMap) {
         double elogap = Math.abs(avg(home, ratingMap) - avg(away, ratingMap));
         System.out.println("HOME");
         print(home);
@@ -28,16 +29,16 @@ public class CandidateGame  implements Serializable {
         }
     }
 
-    private double avg(List<PlayerConnection> team, Map<String, Double> ratingMap) {
+    private double avg(List<WebSocketPlayerConnection> team, Map<String, Double> ratingMap) {
         double avg = 0.0;
-        for(PlayerConnection pl : team){
+        for(WebSocketPlayerConnection pl : team){
             avg+=ratingMap.get(pl.email);
         }
         return avg/team.size();
     }
 
-    public List<PlayerConnection> bestMonteCarloBalance(List<List<Integer>> availableSlots) {
-        ArrayList<PlayerConnection> combined = new ArrayList<>();
+    public List<WebSocketPlayerConnection> bestMonteCarloBalance(List<List<Integer>> availableSlots) {
+        ArrayList<WebSocketPlayerConnection> combined = new ArrayList<>();
         if(this.home != null){
             combined.addAll(this.home);
         }
@@ -52,8 +53,8 @@ public class CandidateGame  implements Serializable {
         return combined;
     }
 
-    public void print(List<PlayerConnection> pairing) {
-        for(PlayerConnection pl : pairing){
+    public void print(List<WebSocketPlayerConnection> pairing) {
+        for(WebSocketPlayerConnection pl : pairing){
             System.out.println(pl.email);
         }
     }

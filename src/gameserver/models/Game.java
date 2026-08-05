@@ -13,13 +13,15 @@ import networking.ClientPacket;
 import networking.PlayerDivider;
 import org.joda.time.Instant;
 
-import java.io.Serializable;
+import com.fasterxml.jackson.annotation.*;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class Game  implements Serializable {
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class Game   {
     public String gameId;
     public UUID lastPossessed;
+    @JsonIgnore
     public Const c = new Const("res/game.cfg");
     public final int GAMETICK_MS = c.GAMETICK_MS;
     public List<PlayerDivider> clients;
@@ -27,7 +29,8 @@ public class Game  implements Serializable {
     public final int SPRITE_X_EMPTY = c.getI("titan.hitbox.empty.x");
     public final int SPRITE_Y_EMPTY = c.getI("titan.hitbox.empty.y");
     public double secondsToStart = c.getD("server.startDelay");
-    public Instant now;
+    public long nowEpochMs;
+    @JsonIgnore
     protected AtomicBoolean locked = new AtomicBoolean(false);
     public List<ShapePayload> colliders;
     public Entity[] allSolids;

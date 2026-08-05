@@ -7,16 +7,17 @@ import gameserver.effects.effects.Effect;
 import gameserver.effects.effects.RatioEffect;
 import gameserver.engine.GameEngine;
 import gameserver.engine.TeamAffiliation;
-import javafx.scene.paint.Color;
+
 import util.ConstOperations;
 
-import java.io.Serializable;
+import com.fasterxml.jackson.annotation.*;
 import java.util.*;
 
 import static util.Util.typesafeNumeric;
 
 
-public class Titan extends Entity  implements Serializable {
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class Titan extends Entity   {
     public int sel, possession = 0;
 
     public double throwPower = 1.0;
@@ -407,10 +408,13 @@ public class Titan extends Entity  implements Serializable {
 
     }
     private static RangeCircle e(int x){
-        return new RangeCircle(Color.GREEN, x);
+        return new RangeCircle(0.0, 1.0, 0.0, 1.0, x);
+    }
+    public RangeCircle getEnemyRadius(int x){
+        return new RangeCircle(0.5, 0.0, 0.5, 1.0, x);
     }
     private static RangeCircle r(int x){
-        return new RangeCircle(Color.PURPLE, x);
+        return new RangeCircle(0.5, 0.0, 0.5, 1.0, x);
     }
 
     public void pushMove() {

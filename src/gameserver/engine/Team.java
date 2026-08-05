@@ -3,11 +3,12 @@ package gameserver.engine;
 
 import gameserver.entity.Titan;
 
-import java.io.Serializable;
+import com.fasterxml.jackson.annotation.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Team  implements Serializable {
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class Team   {
     public double score;
     public boolean hasBall;
     public TeamAffiliation which;

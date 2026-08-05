@@ -1,7 +1,7 @@
 package gameserver.gamemanager;
 
-import java.io.Serializable;
+import com.fasterxml.jackson.annotation.*;
 
-public enum ServerMode implements Serializable {
+public enum ServerMode  {
     TEAMS, SOLOS, SOLONOGOL, ALL, TWOS, TRUETWO, TRUETHREE, THREES, ONEVTWO;
 }

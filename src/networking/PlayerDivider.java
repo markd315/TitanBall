@@ -1,13 +1,13 @@
 package networking;
 
-import com.esotericsoftware.kryonet.Connection;
 import gameserver.engine.GameEngine;
 
-import java.io.Serializable;
+import com.fasterxml.jackson.annotation.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class PlayerDivider  implements Serializable {
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class PlayerDivider   {
     public String email = "";
     public boolean ready = false;
     public double newRating;
@@ -18,7 +18,7 @@ public class PlayerDivider  implements Serializable {
     }
     public PlayerDivider(){}
 
-    public PlayerDivider(PlayerConnection pc){
+    public PlayerDivider(WebSocketPlayerConnection pc){
         this.possibleSelection = pc.possibleSelection;
         selection = possibleSelection.get(0);
         this.id = pc.id;
@@ -70,7 +70,7 @@ public class PlayerDivider  implements Serializable {
         return this.email;
     }
 
-    public void setId(Connection connection) {
-        this.id = connection.getID();
+    public void setId(WebSocketPlayerConnection connection) {
+        this.id = connection.id;
     }
 }
