@@ -35,6 +35,13 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+/**
+ * KryoRegistry registers and configures all serializable game classes for Kryo.
+ * It provides utility methods to serialize and deserialize objects to/from Base64 encoded strings
+ * that are compressed/decompressed with Zstandard (Zstd).
+ *
+ * A ThreadLocal instance of Kryo is maintained to ensure thread-safety during concurrent state serialization.
+ */
 public class KryoRegistry {
     private static final ThreadLocal<Kryo> kryoThreadLocal = ThreadLocal.withInitial(() -> {
         Kryo kryo = new Kryo();

@@ -31,6 +31,13 @@ import java.io.IOException;
 import java.util.*;
 
 
+/**
+ * ServerApplication initializes and runs the Netty-based Game Server on port 54555.
+ *
+ * It bootstraps a SocketChannel pipeline adding HTTP codecs, Aggregators, and a WebSocketServerProtocolHandler.
+ * Received WebSocket frames (TextWebSocketFrame) carrying serialized client control packets
+ * are deserialized via KryoRegistry and routed to the corresponding ManagedGame session.
+ */
 public class ServerApplication {
     public static final boolean PAYWALL = false;
     private static final int PORT = 54555;

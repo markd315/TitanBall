@@ -10,6 +10,16 @@ import java.util.*;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectOutputStream;
 
+/**
+ * GameDiff is a utility that compares two objects recursively using reflection
+ * and extracts all fields that have changed. The differences are stored in a map where
+ * key paths (e.g. "players[0].X") represent the fields that changed, and values represent
+ * the new values of those fields.
+ *
+ * This delta compression mechanism ensures that instead of sending the full game state on every
+ * frame, the server can send only the changes (diffs), saving bandwidth. Diffs are then applied
+ * client-side.
+ */
 public class GameDiff implements Serializable {
     private static final long serialVersionUID = 1L;
 

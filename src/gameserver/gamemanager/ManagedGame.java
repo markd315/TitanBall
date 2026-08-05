@@ -31,6 +31,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.CountDownLatch;
 
+/**
+ * ManagedGame acts as the container and lifecycle manager for a single game session.
+ * It manages connected clients via Netty Channels, schedules and executes the client state broadcast loop,
+ * applies delta-diffing (using GameDiff) to send only the changes to players, and executes basic
+ * server-side anti-cheat logic (censoring hidden/stealthed player locations).
+ */
 public class ManagedGame {
     public static final ServerMode SERVER_MODE = ServerMode.TRUETHREE;
     public ServerMode serverMode = SERVER_MODE;
@@ -201,6 +207,18 @@ public class ManagedGame {
                                     // Update possession to match the actual game state
                                     t.possession = underControl.possession;
                                     break;
+                                }
+                            }
+                        }
+                        
+                        // Ensure ball possession state is synchronized
+                        Optional<Titan> possessor = state.titanInPossession();
+                        if (possessor.isPresent()) {
+                            for (Titan t : currentState.players) {
+                                if (t.id.equals(possessor.get().id)) {
+                                    t.possession = 1;
+                                } else {
+                                    t.possession = 0;
                                 }
                             }
                         }
