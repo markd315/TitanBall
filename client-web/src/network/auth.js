@@ -31,3 +31,13 @@ export async function checkGame() {
   if (!res.ok) throw new Error('Check game failed');
   return res.text(); // returns gameId or "WAITING"
 }
+
+export async function register(email, username, password) {
+  const res = await fetch('/api/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, username, password, role: 'USER' })
+  });
+  if (!res.ok) throw new Error('Registration failed');
+  return res.json();
+}

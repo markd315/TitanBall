@@ -1,8 +1,6 @@
 package gameserver.engine;
 
 
-import client.graphical.GoalSprite;
-import client.graphical.ScreenConst;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import gameserver.TutorialOverrides;
@@ -851,7 +849,7 @@ public class GameEngine extends Game {
     public void gameTick() throws Exception {
         //System.out.println("tock " + began + ended);
         lock();
-        this.now = Instant.now();
+        this.nowEpochMs = System.currentTimeMillis();
         if (began && !ended) {
             try {
                 framesSinceStart++;
@@ -1057,16 +1055,13 @@ public class GameEngine extends Game {
     }
 
     private boolean ownGoal() {
-        Bounds ballBounds = new Rectangle((int) this.ball.X, (int) this.ball.Y, 30, 30).getBoundsInLocal();
         for(GoalHoop lowgoal : lowGoals){
-            GoalSprite tempGoal = new GoalSprite(lowgoal, 0, 0, new ScreenConst(1920, 1080)); //Just for using the g2d intersect method
-            if(tempGoal.intersects(ballBounds)){
+            if(ballIntersectsEllipse(lowgoal)){
                 return true;
             }
         }
         for(GoalHoop higoal : hiGoals){
-            GoalSprite tempGoal = new GoalSprite(higoal, 0, 0, new ScreenConst(1920, 1080)); //Just for using the g2d intersect method
-            if(tempGoal.intersects(ballBounds)){
+            if(ballIntersectsEllipse(higoal)){
                 return true;
             }
         }
@@ -1093,9 +1088,9 @@ public class GameEngine extends Game {
     }
 
     public void intersectBall(int numSel, int valuePlayerX, int valuePlayerY) {
-        Rectangle r1 = new Rectangle(valuePlayerX + SPRITE_X_EMPTY / 2, valuePlayerY + SPRITE_Y_EMPTY / 2, 70 - SPRITE_X_EMPTY, 70 - SPRITE_Y_EMPTY);
+        CollisionMath.Bounds r1 = new CollisionMath.Bounds(valuePlayerX + SPRITE_X_EMPTY / 2.0, valuePlayerY + SPRITE_Y_EMPTY / 2.0, 70 - SPRITE_X_EMPTY, 70 - SPRITE_Y_EMPTY);
         r1 = goalieHitboxOverride(numSel, r1);
-        Bounds r2 = new Rectangle((int) ball.X, (int) ball.Y, 30, 30).getBoundsInLocal();
+        CollisionMath.Bounds r2 = new CollisionMath.Bounds((int) ball.X, (int) ball.Y, 30, 30);
         if ((r1.intersects(r2))) {
             Titan t = players[numSel - 1];
             if (t.id.equals(players[numSel - 1].id) && !t.id.equals(lastPossessed)) {
@@ -1131,19 +1126,19 @@ public class GameEngine extends Game {
         }
     }
 
-    protected Rectangle goalieHitboxOverride(int numSel, Rectangle rect) {
+    protected CollisionMath.Bounds goalieHitboxOverride(int numSel, CollisionMath.Bounds rect) {
         if (numSel > 2 || c.GOALIE_DISABLED) {
             return rect;
         }
         if (numSel == 1) {
-            return new Rectangle((int) players[numSel - 1].X - 10,
+            return new CollisionMath.Bounds((int) players[numSel - 1].X - 10,
                     (int) players[numSel - 1].Y,
                     90,
                     70 - SPRITE_Y_EMPTY);
 
         }
         if (numSel == 2) {
-            return new Rectangle((int) players[numSel - 1].X - 10,
+            return new CollisionMath.Bounds((int) players[numSel - 1].X - 10,
                     (int) players[numSel - 1].Y,
                     90,
                     70 - SPRITE_Y_EMPTY);
@@ -1215,9 +1210,9 @@ public class GameEngine extends Game {
                     }
                 }// Bot intersection control with ball and passing ball in case of automatic control
                 if (!tip.isPresent()) {
-                    Rectangle ballTangle = new Rectangle((int) ball.X, (int) ball.Y, ball.width, ball.height);
-                    Bounds playertangle = new Rectangle((int) players[pIndex].X + SPRITE_X_EMPTY / 2, (int) players[pIndex].Y + SPRITE_Y_EMPTY / 2,
-                            players[pIndex].width - SPRITE_X_EMPTY, players[pIndex].height - SPRITE_Y_EMPTY).getBoundsInLocal();
+                    CollisionMath.Bounds ballTangle = new CollisionMath.Bounds((int) ball.X, (int) ball.Y, ball.width, ball.height);
+                    CollisionMath.Bounds playertangle = new CollisionMath.Bounds((int) players[pIndex].X + SPRITE_X_EMPTY / 2.0, (int) players[pIndex].Y + SPRITE_Y_EMPTY / 2.0,
+                            players[pIndex].width - SPRITE_X_EMPTY, players[pIndex].height - SPRITE_Y_EMPTY);
                     if (ballTangle.intersects(playertangle)) {
                         //clientFromIndex(pIndex + 1).selection = pIndex + 1;
                         players[pIndex].possession = 1;
@@ -1287,18 +1282,16 @@ public class GameEngine extends Game {
             XMAX = c.GOALIE_XA_MAX;
             XMIN = c.GOALIE_XA_MIN;
         }
-        Bounds ballBounds = new Rectangle((int) this.ball.X, (int) this.ball.Y, 30, 30).getBoundsInLocal();
         for (GoalHoop goal : this.lowGoals) {
-            GoalSprite tempGoal = new GoalSprite(goal, 0, 0, new ScreenConst(1920, 1080)); //Just for using the g2d intersect method
             if (goalie.possession == 1 &&
-                    tempGoal.intersects(ballBounds) && goal.team.equals(TeamAffiliation.HOME)) {
+                    ballIntersectsEllipse(goal) && goal.team.equals(TeamAffiliation.HOME)) {
                 if (!goalie.collidesSolid(this, allSolids, 0, (int) +goalie.speed)) {
                     goalie.setX((int) (goalie.getX() + goalie.speed));
                     if (goalie.getX() > XMAX) goalie.setX(XMAX);
                 }
             }
             if (goalie.possession == 1 &&
-                    tempGoal.intersects(ballBounds) && goal.team.equals(TeamAffiliation.AWAY)) {
+                    ballIntersectsEllipse(goal) && goal.team.equals(TeamAffiliation.AWAY)) {
                 if (!goalie.collidesSolid(this, allSolids, 0, (int) -goalie.speed)) {
                     goalie.setX((int) (goalie.getX() - goalie.speed));
                     if (goalie.getX() < XMIN) goalie.setX(XMIN);

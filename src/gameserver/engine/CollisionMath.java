@@ -20,6 +20,14 @@ public class CollisionMath   {
             return x >= minX && x <= minX + width &&
                    y >= minY && y <= minY + height;
         }
+        public double getWidth() { return width; }
+        public double getHeight() { return height; }
+        public double getX() { return minX; }
+        public double getY() { return minY; }
+        public double getMinX() { return minX; }
+        public double getMinY() { return minY; }
+        public double getMaxX() { return minX + width; }
+        public double getMaxY() { return minY + height; }
     }
     public record Point2D(double x, double y) {
         public double distance(Point2D other) {

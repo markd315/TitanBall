@@ -25,7 +25,7 @@ services:
       DB_URL: jdbc:mysql://db:3306/titanball?allowPublicKeyRetrieval=true&useSSL=false
       DB_USER: root
       DB_PASSWORD: devpassword
-      JWT_SECRET: DevJWTSecretKey12345
+      JWT_SECRET: DevJWTSecretKey12345_DevJWTSecretKey12345
     depends_on:
       db:
         condition: service_healthy

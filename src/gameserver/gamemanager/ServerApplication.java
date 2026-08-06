@@ -7,7 +7,6 @@ import authserver.matchmaking.Matchmaker;
 import authserver.matchmaking.Rating;
 import authserver.models.User;
 import authserver.users.PersistenceManager;
-import com.esotericsoftware.kryo.Kryo;
 import gameserver.engine.GameEngine;
 import gameserver.engine.GameOptions;
 import gameserver.engine.TeamAffiliation;

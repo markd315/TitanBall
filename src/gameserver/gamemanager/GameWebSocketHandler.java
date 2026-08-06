@@ -8,8 +8,7 @@ import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
-import authserver.ServerApplication;
-import authserver.users.identities.JwtTokenProvider;
+import authserver.jwt.JwtTokenProvider;
 
 @Component
 public class GameWebSocketHandler extends TextWebSocketHandler {

@@ -21,10 +21,18 @@ public class JwtTokenProvider {
     private String jwtSecret;
 
     @Value("${app.jwtExpirationInMs}")
-    private int jwtExpirationInMs;
+    private long jwtExpirationInMs;
 
     @Value("${app.refreshExpirationInMs}")
-    private int refreshExpirationInMs;
+    private long refreshExpirationInMs;
+
+    private java.security.Key getSigningKey() {
+        return io.jsonwebtoken.security.Keys.hmacShaKeyFor(jwtSecret.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
+
+    private java.security.Key getSigningKey(String secret) {
+        return io.jsonwebtoken.security.Keys.hmacShaKeyFor(secret.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
 
     public String[] bothRefreshed(String header){
         String token = null;
@@ -57,7 +65,7 @@ public class JwtTokenProvider {
                 .setSubject(email)
                 .setIssuedAt(new Date())
                 .setExpiration(expiryDate)
-                .signWith(SignatureAlgorithm.HS256, jwtSecret)
+                .signWith(getSigningKey())
                 .compact();
     }
 
@@ -74,13 +82,13 @@ public class JwtTokenProvider {
                 .setSubject(email)
                 .setIssuedAt(new Date())
                 .setExpiration(expiryDate)
-                .signWith(SignatureAlgorithm.HS256, jwtSecret)
+                .signWith(getSigningKey())
                 .compact();
     }
 
     public String getEmailFromJwt(String token) {
         Claims claims = Jwts.parser()
-                .setSigningKey(jwtSecret)
+                .setSigningKey(getSigningKey())
                 .build().parseSignedClaims(token)
                 .getBody();
 
@@ -89,7 +97,7 @@ public class JwtTokenProvider {
 
     public boolean validateToken(String authToken) {
         try {
-            Jws<Claims> claims = Jwts.parser().require("type","access").setSigningKey(jwtSecret).build().parseSignedClaims(authToken);
+            Jws<Claims> claims = Jwts.parser().require("type","access").setSigningKey(getSigningKey()).build().parseSignedClaims(authToken);
             return claims.getBody().getExpiration().toInstant().isAfter(Instant.now());
         } catch (MalformedJwtException ex) {
             logger.error("Invalid JWT token");
@@ -103,7 +111,7 @@ public class JwtTokenProvider {
 
     public boolean validateIgnoreExpiration(String authToken, String secret) {
         try {
-            Jwts.parser().require("type","access").setSigningKey(secret).build().parseSignedClaims(authToken);
+            Jwts.parser().require("type","access").setSigningKey(getSigningKey(secret)).build().parseSignedClaims(authToken);
             return true;
         } catch (MalformedJwtException ex) {
             logger.error("Invalid JWT token");
@@ -117,7 +125,7 @@ public class JwtTokenProvider {
 
     public boolean validateRefreshToken(String authToken) {
         try {
-            Jws<Claims> claims = Jwts.parser().require("type","refresh").setSigningKey(jwtSecret).build().parseSignedClaims(authToken);
+            Jws<Claims> claims = Jwts.parser().require("type","refresh").setSigningKey(getSigningKey()).build().parseSignedClaims(authToken);
             return claims.getBody().getExpiration().toInstant().isAfter(Instant.now());
         } catch (MalformedJwtException ex) {
             logger.error("Invalid JWT token");

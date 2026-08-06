@@ -15,8 +15,9 @@
         width: 100%;
         height: 100%;
         overflow: hidden;
-        background-color: #0b0c10;
-        color: #c5c6c7;
+        /* Green field court themed background */
+        background-color: #0b1a13;
+        color: #e2e8f0;
         font-family: 'Outfit', sans-serif;
       }
       #app {
@@ -26,13 +27,43 @@
         display: flex;
         justify-content: center;
         align-items: center;
+        /* Subtle basketball court lines in background */
+        background-image: 
+          radial-gradient(circle at center, transparent 30%, rgba(255, 127, 17, 0.03) 100%),
+          linear-gradient(rgba(27, 77, 62, 0.2) 2px, transparent 2px),
+          linear-gradient(90deg, rgba(27, 77, 62, 0.2) 2px, transparent 2px);
+        background-size: 100% 100%, 80px 80px, 80px 80px;
+      }
+      /* Court Center Circle Decoration overlay */
+      .court-decor {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 600px;
+        height: 600px;
+        border: 2px solid rgba(27, 77, 62, 0.3);
+        border-radius: 50%;
+        pointer-events: none;
+        z-index: 0;
+      }
+      .court-decor::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: -100px;
+        right: -100px;
+        height: 2px;
+        background: rgba(27, 77, 62, 0.2);
       }
       canvas {
+        position: relative;
         max-width: 100%;
         max-height: 100%;
         object-fit: contain;
         display: block;
-        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+        box-shadow: 0 30px 70px rgba(0, 0, 0, 0.6);
+        z-index: 1;
       }
       /* UI Overlay Container */
       #ui-container {
@@ -45,34 +76,39 @@
         display: flex;
         justify-content: center;
         align-items: center;
+        z-index: 2;
       }
-      /* Glassmorphic Cards */
+      /* Glassmorphic Cards themed with field green borders and glowing basketball orange */
       .glass-card {
         pointer-events: auto; /* Allow interaction */
-        background: rgba(15, 22, 36, 0.7);
-        backdrop-filter: blur(16px);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 20px;
+        background: rgba(10, 26, 20, 0.75);
+        backdrop-filter: blur(20px);
+        border: 2px solid rgba(45, 140, 100, 0.2);
+        border-radius: 24px;
         padding: 40px;
-        width: 420px;
-        box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8), 0 0 100px rgba(102, 252, 241, 0.05);
+        width: 440px;
+        box-shadow: 0 40px 80px rgba(0, 0, 0, 0.8), 0 0 120px rgba(255, 127, 17, 0.08);
         display: flex;
         flex-direction: column;
         gap: 20px;
-        animation: fadeIn 0.4s ease-out;
+        animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
       }
       @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
+        from { opacity: 0; transform: scale(0.95) translateY(15px); }
+        to { opacity: 1; transform: scale(1) translateY(0); }
       }
       h2 {
         margin: 0;
-        font-size: 28px;
+        font-size: 32px;
         font-weight: 800;
         text-transform: uppercase;
-        letter-spacing: 2px;
-        color: #66fcf1;
+        letter-spacing: 3px;
+        /* Orange/gold basketball gradient */
+        background: linear-gradient(135deg, #ff9f1c, #ff5e00);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
         text-align: center;
+        filter: drop-shadow(0 2px 8px rgba(255, 94, 0, 0.2));
       }
       .input-group {
         display: flex;
@@ -80,17 +116,17 @@
         gap: 8px;
       }
       label {
-        font-size: 12px;
-        font-weight: 600;
+        font-size: 11px;
+        font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 1px;
-        color: #45f3ff;
+        letter-spacing: 1.5px;
+        color: #2ed573;
       }
       input {
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 10px;
-        padding: 12px 16px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(45, 140, 100, 0.3);
+        border-radius: 12px;
+        padding: 14px 18px;
         color: white;
         font-family: inherit;
         font-size: 16px;
@@ -98,48 +134,70 @@
         transition: all 0.3s;
       }
       input:focus {
-        border-color: #66fcf1;
-        background: rgba(255, 255, 255, 0.08);
-        box-shadow: 0 0 15px rgba(102, 252, 241, 0.2);
+        border-color: #ff7f11;
+        background: rgba(255, 255, 255, 0.07);
+        box-shadow: 0 0 15px rgba(255, 127, 17, 0.25);
+      }
+      .actions-container {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-top: 10px;
       }
       .btn {
-        background: linear-gradient(135deg, #45f3ff, #1f4068);
+        background: linear-gradient(135deg, #ff9f1c, #e65c00);
         border: none;
-        border-radius: 10px;
-        padding: 14px;
+        border-radius: 12px;
+        padding: 16px;
         color: white;
-        font-weight: 600;
+        font-weight: 700;
         font-size: 16px;
         font-family: inherit;
         cursor: pointer;
         transition: all 0.3s;
         text-transform: uppercase;
-        letter-spacing: 1px;
-        box-shadow: 0 10px 20px rgba(69, 243, 255, 0.2);
+        letter-spacing: 1.5px;
+        box-shadow: 0 8px 24px rgba(230, 92, 0, 0.3);
       }
       .btn:hover {
         transform: translateY(-2px);
-        box-shadow: 0 15px 30px rgba(69, 243, 255, 0.4);
+        box-shadow: 0 12px 30px rgba(230, 92, 0, 0.5);
       }
       .btn:active {
         transform: translateY(0);
       }
       .btn-secondary {
         background: transparent;
-        border: 1px solid rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        color: #cbd5e1;
         box-shadow: none;
       }
       .btn-secondary:hover {
-        background: rgba(255, 255, 255, 0.05);
-        border-color: white;
+        background: rgba(255, 255, 255, 0.04);
+        border-color: #cbd5e1;
         box-shadow: none;
+        transform: translateY(-1px);
       }
       .error-msg {
-        color: #ff4a4a;
+        color: #ff4757;
         font-size: 14px;
+        font-weight: 500;
         text-align: center;
+        background: rgba(255, 71, 87, 0.1);
+        border: 1px solid rgba(255, 71, 87, 0.2);
+        padding: 10px;
+        border-radius: 10px;
       }
-      /* Menu list */
+      .success-msg {
+        color: #2ed573;
+        font-size: 14px;
+        font-weight: 500;
+        text-align: center;
+        background: rgba(46, 213, 115, 0.1);
+        border: 1px solid rgba(46, 213, 115, 0.2);
+        padding: 10px;
+        border-radius: 10px;
+      }
       .menu-list {
         display: flex;
         flex-direction: column;
@@ -149,21 +207,24 @@
         display: flex;
         justify-content: space-between;
         font-size: 16px;
-        padding: 10px;
-        background: rgba(255, 255, 255, 0.03);
-        border-radius: 8px;
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        padding: 12px 16px;
+        background: rgba(45, 140, 100, 0.1);
+        border-radius: 10px;
+        border: 1px solid rgba(45, 140, 100, 0.2);
       }
       .stat-label {
         font-weight: 600;
+        color: #a7f3d0;
       }
       .stat-value {
-        color: #66fcf1;
+        color: #ff9f1c;
+        font-weight: 700;
       }
     </style>
   </head>
   <body>
     <div id="app">
+      <div class="court-decor"></div>
       <canvas id="gameCanvas" width="1920" height="1080"></canvas>
       
       <!-- HTML UI Overlays -->
@@ -171,7 +232,7 @@
         
         <!-- Login Overlay -->
         <div id="login-overlay" class="glass-card" style="display: none;">
-          <h2>Access System</h2>
+          <h2>TitanBall Access</h2>
           <div class="input-group">
             <label for="login-email">Username or Email</label>
             <input type="text" id="login-email" placeholder="markd315@gmail.com" />
@@ -181,7 +242,33 @@
             <input type="password" id="login-pass" placeholder="••••••••" value="pass" />
           </div>
           <div id="login-error" class="error-msg" style="display: none;"></div>
-          <button id="login-btn" class="btn">Connect</button>
+          <div class="actions-container">
+            <button id="login-btn" class="btn">Connect</button>
+            <button id="signup-toggle-btn" class="btn btn-secondary">Sign Up</button>
+          </div>
+        </div>
+
+        <!-- Signup Overlay -->
+        <div id="signup-overlay" class="glass-card" style="display: none;">
+          <h2>Create Account</h2>
+          <div class="input-group">
+            <label for="signup-username">Username</label>
+            <input type="text" id="signup-username" placeholder="SlamDunker" />
+          </div>
+          <div class="input-group">
+            <label for="signup-email">Email Address</label>
+            <input type="email" id="signup-email" placeholder="player@field.net" />
+          </div>
+          <div class="input-group">
+            <label for="signup-pass">Password</label>
+            <input type="password" id="signup-pass" placeholder="••••••••" />
+          </div>
+          <div id="signup-error" class="error-msg" style="display: none;"></div>
+          <div id="signup-success" class="success-msg" style="display: none;"></div>
+          <div class="actions-container">
+            <button id="signup-btn" class="btn">Register</button>
+            <button id="signup-back-btn" class="btn btn-secondary">Back to Login</button>
+          </div>
         </div>
 
         <!-- Mode Select Overlay -->

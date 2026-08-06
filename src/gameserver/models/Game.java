@@ -173,7 +173,7 @@ public class Game   {
                 ", clients=" + clients +
                 ", xKickPow=" + xKickPow +
                 ", yKickPow=" + yKickPow +
-                ", now=" + now +
+                ", nowEpochMs=" + nowEpochMs +
                 ", colliders=" + colliders +
                 ", allSolids=" + allSolids +
                 ", players=" + players +

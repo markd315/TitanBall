@@ -11,31 +11,40 @@ import { drawMinions } from './render/minions.js';
 import { drawBall, displayBallArrow } from './render/ball.js';
 import { drawGoals } from './render/goals.js';
 import { drawHud } from './render/hud.js';
-import { login, joinQueue, checkGame } from './network/auth.js';
+import { login, joinQueue, checkGame, register } from './network/auth.js';
 import { connectGame, disconnectGame } from './network/socket.js';
 
 let ctx;
 let lastTime = 0;
 let pollingInterval = null;
-let currentPhase = null;
+let currentScreen = 'login';
+let lastPhase = null;
+let lastScreen = null;
 
 function updateOverlays() {
-  if (gameState.phase === currentPhase) return;
-  currentPhase = gameState.phase;
+  if (gameState.phase === lastPhase && currentScreen === lastScreen) return;
+  lastPhase = gameState.phase;
+  lastScreen = currentScreen;
 
   const loginOverlay = document.getElementById('login-overlay');
+  const signupOverlay = document.getElementById('signup-overlay');
   const modeOverlay = document.getElementById('mode-overlay');
   const lobbyOverlay = document.getElementById('lobby-overlay');
   
-  if (!loginOverlay || !modeOverlay || !lobbyOverlay) return;
+  if (!loginOverlay || !signupOverlay || !modeOverlay || !lobbyOverlay) return;
 
   loginOverlay.style.display = 'none';
+  signupOverlay.style.display = 'none';
   modeOverlay.style.display = 'none';
   lobbyOverlay.style.display = 'none';
 
   if (gameState.phase === GamePhase.CREDITS) {
     if (!localStorage.getItem('accessToken')) {
-      loginOverlay.style.display = 'flex';
+      if (currentScreen === 'login') {
+        loginOverlay.style.display = 'flex';
+      } else {
+        signupOverlay.style.display = 'flex';
+      }
     }
   } else if (gameState.phase === GamePhase.SHOW_GAME_MODES) {
     modeOverlay.style.display = 'flex';
@@ -95,6 +104,82 @@ function initUIListeners() {
         console.error(err);
         if (errorDiv) {
           errorDiv.textContent = 'Invalid credentials or server offline.';
+          errorDiv.style.display = 'block';
+        }
+      }
+    });
+  }
+
+  // Toggle Sign Up overlay
+  const signupToggleBtn = document.getElementById('signup-toggle-btn');
+  if (signupToggleBtn) {
+    signupToggleBtn.addEventListener('click', () => {
+      currentScreen = 'signup';
+      const errorDiv = document.getElementById('signup-error');
+      const successDiv = document.getElementById('signup-success');
+      if (errorDiv) errorDiv.style.display = 'none';
+      if (successDiv) successDiv.style.display = 'none';
+      updateOverlays();
+    });
+  }
+
+  // Toggle back to Login overlay
+  const signupBackBtn = document.getElementById('signup-back-btn');
+  if (signupBackBtn) {
+    signupBackBtn.addEventListener('click', () => {
+      currentScreen = 'login';
+      const errorDiv = document.getElementById('login-error');
+      if (errorDiv) errorDiv.style.display = 'none';
+      updateOverlays();
+    });
+  }
+
+  // Sign Up click
+  const signupBtn = document.getElementById('signup-btn');
+  if (signupBtn) {
+    signupBtn.addEventListener('click', async () => {
+      const username = document.getElementById('signup-username').value;
+      const email = document.getElementById('signup-email').value;
+      const pass = document.getElementById('signup-pass').value;
+      const errorDiv = document.getElementById('signup-error');
+      const successDiv = document.getElementById('signup-success');
+
+      if (!username || !email || !pass) {
+        if (errorDiv) {
+          errorDiv.textContent = 'Please fill out all fields.';
+          errorDiv.style.display = 'block';
+        }
+        return;
+      }
+
+      try {
+        if (errorDiv) errorDiv.style.display = 'none';
+        if (successDiv) successDiv.style.display = 'none';
+        console.log("Registering:", username);
+        await register(email, username, pass);
+        
+        if (successDiv) {
+          successDiv.textContent = 'Account created! Logging in...';
+          successDiv.style.display = 'block';
+        }
+
+        // Auto login on success
+        setTimeout(async () => {
+          try {
+            const data = await login(email, pass);
+            localStorage.setItem('username', username);
+            gameState.phase = GamePhase.SHOW_GAME_MODES;
+          } catch (loginErr) {
+            console.error(loginErr);
+            currentScreen = 'login';
+            updateOverlays();
+          }
+        }, 1200);
+
+      } catch (err) {
+        console.error(err);
+        if (errorDiv) {
+          errorDiv.textContent = 'Registration failed. Email/username might be taken.';
           errorDiv.style.display = 'block';
         }
       }

@@ -33,9 +33,9 @@ public class Box extends Coordinates   {
         return collidesSolidWhich(context, solids, 0, 0);
     }
 
-    public boolean exists(Shape intersection){
-        return intersection.getBoundsInLocal().getWidth() > 0&&
-            intersection.getBoundsInLocal().getHeight() > 0;
+    public boolean exists(gameserver.engine.CollisionMath.Bounds intersection){
+        return intersection.width() > 0 &&
+            intersection.height() > 0;
     }
 
     public boolean collidesSolid(GameEngine context, Box[] solids, double yd, double xd) {

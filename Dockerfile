@@ -11,7 +11,7 @@ RUN mvn package -DskipTests -q
 # Stage 2: Runtime
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
-COPY --from=build /app/target/titanball-server.jar app.jar
+COPY --from=build /app/target/loginloadbal.jar app.jar
 COPY res/ res/
 COPY application.properties .
 EXPOSE 8080

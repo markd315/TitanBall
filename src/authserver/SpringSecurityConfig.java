@@ -65,6 +65,7 @@ public class SpringSecurityConfig extends WebSecurityConfigurerAdapter {
                         "/**/*.js")
                 .permitAll()
                 .antMatchers("/api/login",
+                        "/api/register",
                         "/api/refresh",
                         "/api/activate",
                         "/api/renew",
