@@ -130,7 +130,11 @@ public class ManagedGame {
         }
         System.out.println("starting full");
         List<PlayerDivider> players = playersFromConnections(gameIncludedClients);
-        state = new GameEngine(gameId, players, options, this); //Start the game
+        if (gameId != null && gameId.startsWith("tutorial-")) {
+            state = new gameserver.TutorialOverrides(gameId, players, options, this);
+        } else {
+            state = new GameEngine(gameId, players, options, this); //Start the game
+        }
         try {
             state.initializeServer();
             instantiateSpringContext();

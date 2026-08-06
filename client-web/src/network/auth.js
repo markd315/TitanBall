@@ -41,3 +41,13 @@ export async function register(email, username, password) {
   if (!res.ok) throw new Error('Registration failed');
   return res.json();
 }
+
+export async function startTutorial() {
+  const token = localStorage.getItem('accessToken');
+  const res = await fetch('/api/tutorial', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!res.ok) throw new Error('Start tutorial failed');
+  return res.text();
+}

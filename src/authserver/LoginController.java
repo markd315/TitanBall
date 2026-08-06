@@ -28,6 +28,7 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
 import java.io.IOException;
+import java.util.UUID;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -153,6 +154,16 @@ public class LoginController {
         }
         userPool.registerIntent(auth, tournamentCode, teamname);
         return new ResponseEntity<>(userPool.findGame(auth), HttpStatus.OK);
+    }
+
+    @PostMapping("/tutorial")
+    public ResponseEntity<String> startTutorial(Authentication auth) {
+        if (shutDownMode) {
+            return new ResponseEntity<>("Shutting down", HttpStatus.SERVICE_UNAVAILABLE);
+        }
+        String gameId = "tutorial-" + UUID.randomUUID().toString();
+        gameserver.gamemanager.ServerApplication.addNewTutorial(gameId, auth.getName());
+        return new ResponseEntity<>(gameId, HttpStatus.OK);
     }
 
     @RequestMapping("/leave")

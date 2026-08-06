@@ -98,4 +98,9 @@ export function initAssets() {
     });
 
     AssetManager.loadAudio('shot', '/res/Sound/shotsound.wav');
+    AssetManager.loadAudio('tut0', '/res/Sound/tut0.wav');
+    AssetManager.loadAudio('tut1', '/res/Sound/tut1.wav');
+    AssetManager.loadAudio('tut2', '/res/Sound/tut2.wav');
+    AssetManager.loadAudio('tut3', '/res/Sound/tut3.wav');
+    AssetManager.loadAudio('tut4', '/res/Sound/tut4.wav');
 }

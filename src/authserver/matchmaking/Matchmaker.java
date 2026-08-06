@@ -133,7 +133,18 @@ public class Matchmaker {
         }
     }
 
+    private String normalizeTournamentCode(String code) {
+        if (code == null || code.isEmpty() || code.equals("3v3") || code.equals("/3v3")) {
+            return "/3/1/1/5/2/9999/10/12";
+        }
+        if (code.equals("1v1") || code.equals("/1v1")) {
+            return "/1/1/1/5/2/9999/10/12";
+        }
+        return code;
+    }
+
     public void registerIntent(Authentication login, String tournamentCode, String teamname) {
+        tournamentCode = normalizeTournamentCode(tournamentCode);
         if (teamname != null) {
             registerIntentTeam(login, tournamentCode, teamname);
         }
@@ -151,6 +162,7 @@ public class Matchmaker {
     }
 
     public void registerIntentTeam(Authentication login, String tournamentCode, String teamname) {
+        tournamentCode = normalizeTournamentCode(tournamentCode);
         System.out.println("rit 1");
         String email = login.getName();
         boolean contains = false;
@@ -215,5 +227,9 @@ public class Matchmaker {
             System.out.println("ENDING AND FREEING " + email);
             gameMap.remove(email);
         }
+    }
+
+    public void registerTutorialGame(String email, String gameId) {
+        gameMap.put(email, gameId);
     }
 }

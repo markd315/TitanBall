@@ -70,6 +70,11 @@ public class PlayerDivider   {
         return this.email;
     }
 
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    @JsonIgnore
     public void setId(WebSocketPlayerConnection connection) {
         this.id = connection.id;
     }

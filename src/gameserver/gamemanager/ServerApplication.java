@@ -51,6 +51,20 @@ public class ServerApplication {
         System.out.println("game map size: " + states.size());
     }
 
+    public static void addNewTutorial(String id, String email) {
+        System.out.println("adding new tutorial, id " + id + " for " + email);
+        cleanupCorruptStates(Collections.singletonList(email));
+        GameOptions op = new GameOptions("/1/1/1/5/2/9999/10/12");
+        ManagedGame mg = new ManagedGame(id, op);
+        mg.availableSlots = new ArrayList<>();
+        ArrayList<Integer> c1 = new ArrayList<>();
+        c1.add(3);
+        c1.add(1);
+        mg.availableSlots.add(c1);
+        states.put(id, mg);
+        matchmaker.registerTutorialGame(email, id);
+    }
+
     private static void cleanupCorruptStates(Collection<String> gameFor) {
         Set<String> rm = new HashSet<>();
         for(String id : states.keySet()){

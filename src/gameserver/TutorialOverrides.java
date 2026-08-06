@@ -9,6 +9,7 @@ import gameserver.entity.Entity;
 import gameserver.entity.Titan;
 import gameserver.entity.TitanType;
 import gameserver.gamemanager.GamePhase;
+import gameserver.gamemanager.ManagedGame;
 import networking.ClientPacket;
 import networking.PlayerDivider;
 
@@ -83,6 +84,24 @@ public class TutorialOverrides extends GameEngine   {
         //tutReset();
     }
 
+    public TutorialOverrides(String gameId, List<PlayerDivider> clients, GameOptions options, ManagedGame manager) {
+        super(gameId, clients, options, manager);
+        tutMap.put("rebound", playersRebound);
+        tutMap.put("steal", playersSteal);
+        tutMap.put("abilities", playersKick);
+        tutMap.put("kill", playersKill);
+        tutMap.put("score", playersComboGoal);
+        ballMap.put("rebound", ballDefault);
+        ballMap.put("steal", ballSteal);
+        ballMap.put("score", ballScore);
+        players = tutMap.get("rebound");
+        if (clients != null && !clients.isEmpty()) {
+            client = clients.get(0);
+        } else {
+            client = clientFromTitan(players[2]);
+        }
+    }
+
     public void tutReset() {
         tutorialPhase++;
         this.underControl = players[2];
@@ -108,8 +127,10 @@ public class TutorialOverrides extends GameEngine   {
 
     public void detectAndUpdateState() {
         this.began = true;
-        client = new PlayerDivider(Collections.singletonList(3));
-        client.setEmail("localhost");
+        if (client == null) {
+            client = new PlayerDivider(Collections.singletonList(3));
+            client.setEmail("localhost");
+        }
         switch(tutorialPhase){
             case 1:
                 if(stats.statConditionalMet(client, StatEngine.StatEnum.REBOUND, 1)){

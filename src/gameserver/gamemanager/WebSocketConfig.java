@@ -15,6 +15,6 @@ public class WebSocketConfig implements WebSocketConfigurer {
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
         registry.addHandler(gameWebSocketHandler, "/game")
-                .setAllowedOrigins("http://localhost:5173", "https://blockforger.net", "http://localhost:3030", "http://localhost:8080");
+                .setAllowedOrigins("*");
     }
 }

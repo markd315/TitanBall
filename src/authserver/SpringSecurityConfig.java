@@ -70,13 +70,19 @@ public class SpringSecurityConfig extends WebSecurityConfigurerAdapter {
                         "/api/activate",
                         "/api/renew",
                         "/api/health",
-                        "/game")
+                        "/game",
+                        "/error")
                 .permitAll()
                 .anyRequest()
                 .authenticated();
         // Add our custom JWT security filter
         http.addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
 
+    }
+
+    @Override
+    public void configure(org.springframework.security.config.annotation.web.builders.WebSecurity web) throws Exception {
+        web.ignoring().antMatchers("/game", "/game/**");
     }
 
     @Autowired

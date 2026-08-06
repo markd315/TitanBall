@@ -11,7 +11,7 @@ import { drawMinions } from './render/minions.js';
 import { drawBall, displayBallArrow } from './render/ball.js';
 import { drawGoals } from './render/goals.js';
 import { drawHud } from './render/hud.js';
-import { login, joinQueue, checkGame, register } from './network/auth.js';
+import { login, joinQueue, checkGame, register, startTutorial } from './network/auth.js';
 import { connectGame, disconnectGame } from './network/socket.js';
 
 let ctx;
@@ -240,12 +240,54 @@ function initUIListeners() {
       }
     });
   }
+
+  // Play Tutorial click
+  const tutorialBtn = document.getElementById('tutorial-btn');
+  if (tutorialBtn) {
+    tutorialBtn.addEventListener('click', async () => {
+      try {
+        console.log("Starting Tutorial");
+        const gameId = await startTutorial();
+        gameState.phase = GamePhase.WAIT_FOR_GAME;
+        startQueuePolling();
+      } catch (err) {
+        console.error(err);
+      }
+    });
+  }
+}
+
+let lastNarrationPhase = -1;
+
+function handleTutorialNarration(game) {
+  if (!game || !game.gameId || !game.gameId.startsWith('tutorial-')) return;
+  const nPhase = game.narrationPhase || 0;
+  if (nPhase !== lastNarrationPhase) {
+    console.log("Tutorial Narration Phase changed to:", nPhase);
+    // Stop all narration audios
+    for (let i = 0; i <= 4; i++) {
+      const aud = AssetManager.audio['tut' + i];
+      if (aud) {
+        aud.pause();
+        aud.currentTime = 0;
+      }
+    }
+    // Play new narration audio if valid
+    if (nPhase > 0 && nPhase <= 5) {
+      const newAud = AssetManager.audio['tut' + (nPhase - 1)];
+      if (newAud) {
+        newAud.play().catch(e => console.warn("Audio play blocked by browser autoplay policy:", e));
+      }
+    }
+    lastNarrationPhase = nPhase;
+  }
 }
 
 function drawIngame(ctx, dt) {
   const game = gameState.game;
   if (!game) return;
   
+  handleTutorialNarration(game);
   updateCamera(game, gameState);
   const { camX, camY } = gameState;
   
@@ -263,6 +305,40 @@ function drawIngame(ctx, dt) {
   drawBall(ctx, game, camX, camY);
   displayBallArrow(ctx, game, camX, camY);
   drawHud(ctx, game, gameState);
+
+  // Draw Tutorial Objective Banner Overlay
+  if (game.gameId && game.gameId.startsWith('tutorial-')) {
+    ctx.save();
+    ctx.fillStyle = 'rgba(10, 26, 20, 0.85)';
+    ctx.strokeStyle = '#ff7f11';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    // roundRect fallback
+    if (ctx.roundRect) {
+      ctx.roundRect(1920/2 - 250, 40, 500, 80, 12);
+    } else {
+      ctx.rect(1920/2 - 250, 40, 500, 80);
+    }
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#ff9f1c';
+    ctx.font = 'bold 22px Outfit, Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('TUTORIAL OBJECTIVE', 1920/2, 70);
+
+    ctx.fillStyle = 'white';
+    ctx.font = '16px Outfit, Arial, sans-serif';
+    let objText = '';
+    const tPhase = game.tutorialPhase || 1;
+    if (tPhase === 1) objText = 'Catch the bouncing ball to perform a Rebound!';
+    else if (tPhase === 2) objText = 'Steal the ball from the enemy Golem!';
+    else if (tPhase === 3) objText = 'Use abilities (Q/W/E) to defeat the Golem!';
+    else if (tPhase === 4) objText = 'Shoot the ball into the Side Goal!';
+    else if (tPhase === 5) objText = 'Score a Goal in the Main Hoop!';
+    ctx.fillText(objText, 1920/2, 103);
+    ctx.restore();
+  }
 }
 
 function gameLoop(timestamp) {

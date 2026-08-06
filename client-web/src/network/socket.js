@@ -12,6 +12,7 @@ export function connectGame(gameID) {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const url = `${protocol}//${window.location.host}/game`;
   
+  console.log("Connecting to WebSocket:", url);
   socket = new WebSocket(url);
   
   socket.onopen = () => {
