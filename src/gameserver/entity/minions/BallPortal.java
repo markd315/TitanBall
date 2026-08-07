@@ -132,6 +132,10 @@ public class BallPortal extends Entity implements Collidable, Serializable {
         }
     }
 
+    public long getCdUntilEpochMs() {
+        return cdUntil != null ? cdUntil.getMillis() : 0;
+    }
+
     public BallPortal() {
         super(TeamAffiliation.UNAFFILIATED);
     }

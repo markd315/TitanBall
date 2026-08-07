@@ -49,7 +49,7 @@ public class ManagedGame {
 
 
     public void delegatePacket(WebSocketPlayerConnection connection, ClientPacket request) {
-        if (state == null || state.phase != GamePhase.INGAME) {
+        if (state == null || (state.phase != GamePhase.INGAME && state.phase != GamePhase.SCORE_FREEZE && state.phase != GamePhase.TUTORIAL)) {
             addOrReplaceNewClient(connection, clients, request.token);
         }
         if (state != null) {
@@ -65,14 +65,20 @@ public class ManagedGame {
                 for(PlayerDivider p : state.clients){
                     if(p.getEmail().equals(email)){
                         pd = p;
-                        pd.setId(connection);
+                        pd.id = connection.id;
                         pd.setEmail(email);
                     }
                 }
+                boolean foundInClients = false;
                 for(WebSocketPlayerConnection pc : clients){
                     if(pc.getEmail().equals(email)){
                         pc.setClient(connection);
+                        foundInClients = true;
                     }
+                }
+                if (!foundInClients && pd != null) {
+                    WebSocketPlayerConnection newConn = new WebSocketPlayerConnection(pd.possibleSelection, connection, email);
+                    clients.add(newConn);
                 }
             }
             state.processClientPacket(pd, request);
@@ -156,14 +162,9 @@ public class ManagedGame {
             stateRef.set(state); // everyone gets the latest state once and no one gets a stale one or a fresher one
             //System.out.println("updating clients now");
             Game snapshot = stateRef.get();
-            if (snapshot == null || (snapshot.ended && snapshot.underControl == null)) {
-                if (snapshot != null) {
-                    System.out.println("GameManager: skipping extra packets after game ended");
-                }
-                else{
-                    System.err.println("Warning: state is null, skipping update");
-                }
-                return; //need undercontrol to decide winner clientside so we can't send this one
+            if (snapshot == null) {
+                System.err.println("Warning: state is null, skipping update");
+                return;
             }
             //remove if not connected
             clients.removeIf(client -> !client.isConnected());
@@ -174,6 +175,13 @@ public class ManagedGame {
                     Game update = (Game) deepClone(snapshot);
                     if (update == null) {
                         return;
+                    }
+                    if (diagUpdateCount < 5) {
+                        diagUpdateCount++;
+                        System.out.println("[DIAG] update #" + diagUpdateCount + " pre-send types (live): "
+                                + describePlayerTypes(snapshot.players));
+                        System.out.println("[DIAG] update #" + diagUpdateCount + " post-clone types: "
+                                + describePlayerTypes(update.players));
                     }
                     update.underControl = state.titanSelected(pd);
                     update.nowEpochMs = System.currentTimeMillis();
@@ -196,6 +204,9 @@ public class ManagedGame {
 
     private Game anticheat(Game update) {
         Titan underControl = update.underControl;
+        if (underControl == null) {
+            return update;
+        }
         EffectPool fx = update.effectPool;
         if(fx.hasEffect(underControl, EffectId.BLIND)){
             for(Titan player : update.players){
@@ -290,6 +301,7 @@ public class ManagedGame {
             System.err.println("Warning: state is null, skipping update");
             return;
         }
+        snapshot.phase = GamePhase.ENDED;
         //Don't block the main thread since we sleep in the final update
         CompletableFuture.runAsync(() -> {
             clients.parallelStream().forEach(client -> {
@@ -577,9 +589,51 @@ public class ManagedGame {
         }*/
     }
 
+    private static int diagUpdateCount = 0;
+
     private static final ObjectMapper mapper = new ObjectMapper();
+    static {
+        com.fasterxml.jackson.databind.module.SimpleModule module = new com.fasterxml.jackson.databind.module.SimpleModule();
+        module.addSerializer(org.joda.time.Instant.class, new com.fasterxml.jackson.databind.JsonSerializer<org.joda.time.Instant>() {
+            @Override
+            public void serialize(org.joda.time.Instant value, com.fasterxml.jackson.core.JsonGenerator gen, com.fasterxml.jackson.databind.SerializerProvider serializers) throws java.io.IOException {
+                gen.writeNumber(value.getMillis());
+            }
+        });
+        module.addDeserializer(org.joda.time.Instant.class, new com.fasterxml.jackson.databind.JsonDeserializer<org.joda.time.Instant>() {
+            @Override
+            public org.joda.time.Instant deserialize(com.fasterxml.jackson.core.JsonParser p, com.fasterxml.jackson.databind.DeserializationContext ctxt) throws java.io.IOException {
+                return new org.joda.time.Instant(p.getValueAsLong());
+            }
+        });
+        mapper.registerModule(module);
+    }
+
+    private static String describePlayerTypes(Titan[] players) {
+        if (players == null) {
+            return "null";
+        }
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < players.length; i++) {
+            Titan t = players[i];
+            if (i > 0) {
+                sb.append(", ");
+            }
+            if (t == null) {
+                sb.append(i).append(":null");
+            } else {
+                sb.append(i).append(":").append(t.getType())
+                        .append("(locked=").append(t.typeAndMasteriesLocked).append(")");
+            }
+        }
+        return sb.append("]").toString();
+    }
 
     public static Object deepClone(Object object) {
+        boolean isGameEngine = object instanceof GameEngine;
+        if (isGameEngine) {
+            ((GameEngine) object).lock();
+        }
         try {
             String json = mapper.writeValueAsString(object);
             if (object instanceof GameEngine) {
@@ -592,6 +646,11 @@ public class ManagedGame {
         catch (Exception e) {
             e.printStackTrace();
             return null;
+        }
+        finally {
+            if (isGameEngine) {
+                ((GameEngine) object).unlock();
+            }
         }
     }
 }

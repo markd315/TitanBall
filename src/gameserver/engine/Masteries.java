@@ -131,7 +131,22 @@ public class Masteries   {
     }
 
     public void applyMasteries(Titan t) {
-        if (!t.typeAndMasteriesLocked && this.validate() != -1) {
+        if (t.getType() == null || t.getType() == gameserver.entity.TitanType.GOALIE) {
+            System.out.println("[DIAG] applyMasteries SKIP: titan id=" + t.id
+                    + " type=" + t.getType() + " locked=" + t.typeAndMasteriesLocked);
+            return;
+        }
+        if (t.typeAndMasteriesLocked) {
+            System.out.println("[DIAG] applyMasteries SKIP (already locked): titan id=" + t.id
+                    + " type=" + t.getType());
+            return;
+        }
+        if (this.validate() == -1) {
+            System.out.println("[DIAG] applyMasteries SKIP (invalid mastery allocation): titan id="
+                    + t.id + " type=" + t.getType() + " masteries=" + this.asMap());
+            return;
+        }
+        if (!t.typeAndMasteriesLocked) {
             System.out.println("Mastery adjusted stats for " + t.getType().toString());
             ConstOperations c = new Const("res/game.cfg");
             t.speed *= Math.pow(c.getD("masteries.speed.mult"), this.speed-1);

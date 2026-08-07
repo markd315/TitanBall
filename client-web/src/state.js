@@ -28,6 +28,11 @@ export const gameState = {
     },
     camX: 500,
     camY: 300,
+    camFollow: true,
     token: null,
-    gameID: null
+    gameID: null,
+    prevHomeScore: 0,
+    prevAwayScore: 0,
+    prevGoalVisible: false,
+    goalComboType: null
 };

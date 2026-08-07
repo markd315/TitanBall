@@ -20,9 +20,9 @@ const classNames = [
 ];
 
 function getDirectoryName(cName) {
-    if (cName === 'GOALIE') return 'SpritePost';
+    if (cName === 'GOALIE') return 'SpriteGuardian';
     if (cName === 'DASHER') return 'SpriteSlasher';
-    if (cName === 'GOLEM') return 'SpriteGuardian';
+    if (cName === 'GOLEM') return 'SpritePost';
     // Title-case formatting
     return 'Sprite' + cName.charAt(0) + cName.slice(1).toLowerCase();
 }
@@ -42,6 +42,7 @@ export function initAssets() {
     AssetManager.loadSprite('defeat', '/res/Court/defeat.png');
     AssetManager.loadSprite('tie', '/res/Court/tie.png');
     AssetManager.loadSprite('lobby', '/res/Court/lobby.png');
+    AssetManager.loadSprite('goal', '/res/Court/goal.png');
 
     // Minions
     AssetManager.loadSprite('wall', '/res/Court/wall.png');
@@ -95,6 +96,16 @@ export function initAssets() {
             AssetManager.loadSprite(`${cName}_dieL`, base + 'dieL.png');
             AssetManager.loadSprite(`${cName}_dieR`, base + 'dieR.png');
         }
+    });
+
+    // Load effect icons
+    const effectIds = [
+      'BLEED', 'BLIND', 'COOLDOWN_CURVE', 'COOLDOWN_Q', 'COOLDOWN_STEAL', 'COOLDOWN_W',
+      'CURSED', 'DEAD', 'DEFENSE', 'FAST', 'FLARE', 'HEAL',
+      'HIDE_BALL', 'PASS', 'ROOT', 'SHOOT', 'SLOW', 'STEAL', 'STEALTHED', 'STUN'
+    ];
+    effectIds.forEach(effectId => {
+      AssetManager.loadSprite(`EFFECT_${effectId}`, `/res/Effects/${effectId}.png`);
     });
 
     AssetManager.loadAudio('shot', '/res/Sound/shotsound.wav');

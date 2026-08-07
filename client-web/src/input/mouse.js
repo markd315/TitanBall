@@ -1,4 +1,5 @@
 import { gameState } from '../state.js';
+import { currentConfig, actionMap } from './keyboard.js';
 
 export function initMouse() {
   const canvas = document.getElementById('gameCanvas');
@@ -14,24 +15,28 @@ export function initMouse() {
     gameState.mouseY = gameState.controlsHeld.posY;
   };
 
+  const getMouseAction = (button) => {
+    if (button === 0) return currentConfig['LMB'] || 'SHOT'; // fallback to SHOT
+    if (button === 2) return currentConfig['RMB'] || 'LOB';  // fallback to LOB
+    return null;
+  };
+
   canvas.addEventListener('mousemove', updateCoordinates);
 
   canvas.addEventListener('mousedown', (e) => {
     updateCoordinates(e);
-    if (e.button === 0) { // Left Click -> SHOT
-      gameState.controlsHeld.shotBtn = true;
-    } else if (e.button === 2) { // Right Click -> LOB / MOVE
-      gameState.controlsHeld.lobBtn = true;
+    const action = getMouseAction(e.button);
+    if (action && actionMap[action]) {
+      gameState.controlsHeld[actionMap[action]] = true;
     }
     e.preventDefault();
   });
 
   canvas.addEventListener('mouseup', (e) => {
     updateCoordinates(e);
-    if (e.button === 0) {
-      gameState.controlsHeld.shotBtn = false;
-    } else if (e.button === 2) {
-      gameState.controlsHeld.lobBtn = false;
+    const action = getMouseAction(e.button);
+    if (action && actionMap[action]) {
+      gameState.controlsHeld[actionMap[action]] = false;
     }
     e.preventDefault();
   });

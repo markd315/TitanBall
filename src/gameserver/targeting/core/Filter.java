@@ -66,9 +66,6 @@ public class Filter   {
     }
 
     private boolean satisfiesTeam(TeamAffiliation in, Entity caster){
-        System.out.println(in);
-        System.out.println(caster.team);
-        System.out.println(this.team);
         if(this.team == TeamAffiliation.ANY){
             return true;
         }

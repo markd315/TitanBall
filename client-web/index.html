@@ -138,6 +138,26 @@
         background: rgba(255, 255, 255, 0.07);
         box-shadow: 0 0 15px rgba(255, 127, 17, 0.25);
       }
+      select {
+        background: rgba(10, 26, 20, 0.9);
+        border: 1px solid rgba(45, 140, 100, 0.3);
+        border-radius: 12px;
+        padding: 14px 18px;
+        color: white;
+        font-family: inherit;
+        font-size: 16px;
+        outline: none;
+        cursor: pointer;
+        transition: all 0.3s;
+      }
+      select:focus {
+        border-color: #ff7f11;
+        box-shadow: 0 0 15px rgba(255, 127, 17, 0.25);
+      }
+      select option {
+        background: #0b1a13;
+        color: white;
+      }
       .actions-container {
         display: flex;
         flex-direction: column;
@@ -220,6 +240,71 @@
         color: #ff9f1c;
         font-weight: 700;
       }
+      .mastery-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(45, 140, 100, 0.15);
+        border-radius: 12px;
+        padding: 10px 14px;
+        transition: all 0.3s;
+      }
+      .mastery-row:hover {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: rgba(45, 140, 100, 0.3);
+      }
+      .mastery-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        flex: 1;
+      }
+      .mastery-name {
+        font-weight: 600;
+        font-size: 15px;
+        color: #e2e8f0;
+      }
+      .mastery-desc {
+        font-size: 11px;
+        color: #94a3b8;
+      }
+      .mastery-controls {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .mastery-btn {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        border: 1px solid rgba(255, 127, 17, 0.4);
+        background: rgba(255, 127, 17, 0.1);
+        color: #ff9f1c;
+        font-size: 14px;
+        font-weight: 800;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+      }
+      .mastery-btn:hover:not(:disabled) {
+        background: #ff9f1c;
+        color: white;
+        transform: scale(1.1);
+      }
+      .mastery-btn:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+      }
+      .mastery-val {
+        font-size: 16px;
+        font-weight: 800;
+        color: #2ed573;
+        width: 14px;
+        text-align: center;
+      }
     </style>
   </head>
   <body>
@@ -278,10 +363,55 @@
             <span class="stat-label">Welcome</span>
             <span id="player-username" class="stat-value">...</span>
           </div>
+          <div class="input-group">
+            <label for="class-select">Select Titan Class</label>
+            <select id="class-select">
+              <option value="WARRIOR">Warrior (Melee, Slash & Dash)</option>
+              <option value="RANGER">Ranger (Ranged Archer & Knockback)</option>
+              <option value="MAGE">Mage (Portals & Fire Damage)</option>
+              <option value="HOUNDMASTER">Houndmaster (Summoner, Wolf Cages)</option>
+              <option value="MARKSMAN">Marksman (Precise Shooting & Passing)</option>
+              <option value="DASHER">Dasher (Speed Boost & Ball Protection)</option>
+              <option value="GOLEM">Golem (Slow Shield Tank & AoE Knockback)</option>
+              <option value="STEALTH">Stealth (Invisibility & Teleport Blink)</option>
+              <option value="SUPPORT">Support (Healer & Stunner)</option>
+              <option value="BUILDER">Builder (Traps & Wall Creator)</option>
+              <option value="ARTISAN">Artisan (Ball Portals & Gravity Magnet)</option>
+              <option value="GRENADIER">Grenadier (Flashbang Stun & AoE Fire)</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label for="controls-select">Controls Layout</label>
+            <select id="controls-select">
+              <option value="default">Default Style (WASD + Mouse Aim/Shoot)</option>
+              <option value="rts">RTS Style (Click to Move + Ability Hotkeys)</option>
+            </select>
+          </div>
+          <!-- Masteries Button -->
+          <div class="input-group">
+            <button id="masteries-modal-btn" class="btn btn-secondary">Configure Masteries</button>
+          </div>
           <div class="menu-list">
             <button id="queue-3v3-btn" class="btn">Queue 3v3 Match</button>
             <button id="queue-1v1-btn" class="btn btn-secondary">Queue 1v1 Match</button>
             <button id="tutorial-btn" class="btn btn-secondary">Play Tutorial</button>
+          </div>
+        </div>
+
+        <!-- Masteries Modal Overlay -->
+        <div id="masteries-modal" class="glass-card" style="display: none; position: absolute; z-index: 100; width: 480px; max-height: 90vh; overflow-y: auto;">
+          <h2>Titan Masteries</h2>
+          <div class="stat-row">
+            <span class="stat-label">Points Remaining</span>
+            <span id="masteries-points-left" class="stat-value">0</span>
+          </div>
+          <div id="masteries-list" style="display: flex; flex-direction: column; gap: 12px; margin: 15px 0;">
+            <!-- Dynamic Mastery Rows will be injected here -->
+          </div>
+          <div id="masteries-error" class="error-msg" style="display: none; margin-bottom: 10px;"></div>
+          <div class="actions-container">
+            <button id="masteries-save-btn" class="btn">Save & Close</button>
+            <button id="masteries-cancel-btn" class="btn btn-secondary">Cancel</button>
           </div>
         </div>
 

@@ -25,9 +25,16 @@ public class Selector  {
 
     public Set<Entity> select(Set<Entity> input, int mX, int mY, Entity casting) {
         Set<Entity> ret = new HashSet<>();
-        // Removed transformation/rotation logic for simplicity to get rid of JavaFX.
-        
-        latestCollider = new CollisionMath.Bounds(mX, mY, sizeDef.width(), sizeDef.height());
+        // Center the bounds around (mX, mY) if MOUSE_CENTER is used
+        if (offset == SelectorOffset.MOUSE_CENTER) {
+            latestCollider = new CollisionMath.Bounds(mX - sizeDef.width() / 2.0, mY - sizeDef.height() / 2.0, sizeDef.width(), sizeDef.height());
+        } else if (offset == SelectorOffset.CAST_CENTER) {
+            double cx = casting.X + casting.width / 2.0;
+            double cy = casting.Y + casting.height / 2.0;
+            latestCollider = new CollisionMath.Bounds(cx - sizeDef.width() / 2.0, cy - sizeDef.height() / 2.0, sizeDef.width(), sizeDef.height());
+        } else {
+            latestCollider = new CollisionMath.Bounds(mX, mY, sizeDef.width(), sizeDef.height());
+        }
         for (Entity e : input) {
             if (collide(e, latestCollider)) {
                 ret.add(e);

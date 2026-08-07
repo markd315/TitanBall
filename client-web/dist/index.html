@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TitanBall V2</title>
+    <!-- Modern Premium Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+      body, html {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        /* Green field court themed background */
+        background-color: #0b1a13;
+        color: #e2e8f0;
+        font-family: 'Outfit', sans-serif;
+      }
+      #app {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        /* Subtle basketball court lines in background */
+        background-image: 
+          radial-gradient(circle at center, transparent 30%, rgba(255, 127, 17, 0.03) 100%),
+          linear-gradient(rgba(27, 77, 62, 0.2) 2px, transparent 2px),
+          linear-gradient(90deg, rgba(27, 77, 62, 0.2) 2px, transparent 2px);
+        background-size: 100% 100%, 80px 80px, 80px 80px;
+      }
+      /* Court Center Circle Decoration overlay */
+      .court-decor {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 600px;
+        height: 600px;
+        border: 2px solid rgba(27, 77, 62, 0.3);
+        border-radius: 50%;
+        pointer-events: none;
+        z-index: 0;
+      }
+      .court-decor::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: -100px;
+        right: -100px;
+        height: 2px;
+        background: rgba(27, 77, 62, 0.2);
+      }
+      canvas {
+        position: relative;
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        display: block;
+        box-shadow: 0 30px 70px rgba(0, 0, 0, 0.6);
+        z-index: 1;
+      }
+      /* UI Overlay Container */
+      #ui-container {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none; /* Let clicks pass through to canvas unless overridden */
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 2;
+      }
+      /* Glassmorphic Cards themed with field green borders and glowing basketball orange */
+      .glass-card {
+        pointer-events: auto; /* Allow interaction */
+        background: rgba(10, 26, 20, 0.75);
+        backdrop-filter: blur(20px);
+        border: 2px solid rgba(45, 140, 100, 0.2);
+        border-radius: 24px;
+        padding: 40px;
+        width: 440px;
+        box-shadow: 0 40px 80px rgba(0, 0, 0, 0.8), 0 0 120px rgba(255, 127, 17, 0.08);
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      @keyframes fadeIn {
+        from { opacity: 0; transform: scale(0.95) translateY(15px); }
+        to { opacity: 1; transform: scale(1) translateY(0); }
+      }
+      h2 {
+        margin: 0;
+        font-size: 32px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 3px;
+        /* Orange/gold basketball gradient */
+        background: linear-gradient(135deg, #ff9f1c, #ff5e00);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        text-align: center;
+        filter: drop-shadow(0 2px 8px rgba(255, 94, 0, 0.2));
+      }
+      .input-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      label {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: #2ed573;
+      }
+      input {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(45, 140, 100, 0.3);
+        border-radius: 12px;
+        padding: 14px 18px;
+        color: white;
+        font-family: inherit;
+        font-size: 16px;
+        outline: none;
+        transition: all 0.3s;
+      }
+      input:focus {
+        border-color: #ff7f11;
+        background: rgba(255, 255, 255, 0.07);
+        box-shadow: 0 0 15px rgba(255, 127, 17, 0.25);
+      }
+      select {
+        background: rgba(10, 26, 20, 0.9);
+        border: 1px solid rgba(45, 140, 100, 0.3);
+        border-radius: 12px;
+        padding: 14px 18px;
+        color: white;
+        font-family: inherit;
+        font-size: 16px;
+        outline: none;
+        cursor: pointer;
+        transition: all 0.3s;
+      }
+      select:focus {
+        border-color: #ff7f11;
+        box-shadow: 0 0 15px rgba(255, 127, 17, 0.25);
+      }
+      select option {
+        background: #0b1a13;
+        color: white;
+      }
+      .actions-container {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-top: 10px;
+      }
+      .btn {
+        background: linear-gradient(135deg, #ff9f1c, #e65c00);
+        border: none;
+        border-radius: 12px;
+        padding: 16px;
+        color: white;
+        font-weight: 700;
+        font-size: 16px;
+        font-family: inherit;
+        cursor: pointer;
+        transition: all 0.3s;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        box-shadow: 0 8px 24px rgba(230, 92, 0, 0.3);
+      }
+      .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 30px rgba(230, 92, 0, 0.5);
+      }
+      .btn:active {
+        transform: translateY(0);
+      }
+      .btn-secondary {
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        color: #cbd5e1;
+        box-shadow: none;
+      }
+      .btn-secondary:hover {
+        background: rgba(255, 255, 255, 0.04);
+        border-color: #cbd5e1;
+        box-shadow: none;
+        transform: translateY(-1px);
+      }
+      .error-msg {
+        color: #ff4757;
+        font-size: 14px;
+        font-weight: 500;
+        text-align: center;
+        background: rgba(255, 71, 87, 0.1);
+        border: 1px solid rgba(255, 71, 87, 0.2);
+        padding: 10px;
+        border-radius: 10px;
+      }
+      .success-msg {
+        color: #2ed573;
+        font-size: 14px;
+        font-weight: 500;
+        text-align: center;
+        background: rgba(46, 213, 115, 0.1);
+        border: 1px solid rgba(46, 213, 115, 0.2);
+        padding: 10px;
+        border-radius: 10px;
+      }
+      .menu-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .stat-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 16px;
+        padding: 12px 16px;
+        background: rgba(45, 140, 100, 0.1);
+        border-radius: 10px;
+        border: 1px solid rgba(45, 140, 100, 0.2);
+      }
+      .stat-label {
+        font-weight: 600;
+        color: #a7f3d0;
+      }
+      .stat-value {
+        color: #ff9f1c;
+        font-weight: 700;
+      }
+      .mastery-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(45, 140, 100, 0.15);
+        border-radius: 12px;
+        padding: 10px 14px;
+        transition: all 0.3s;
+      }
+      .mastery-row:hover {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: rgba(45, 140, 100, 0.3);
+      }
+      .mastery-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        flex: 1;
+      }
+      .mastery-name {
+        font-weight: 600;
+        font-size: 15px;
+        color: #e2e8f0;
+      }
+      .mastery-desc {
+        font-size: 11px;
+        color: #94a3b8;
+      }
+      .mastery-controls {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .mastery-btn {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        border: 1px solid rgba(255, 127, 17, 0.4);
+        background: rgba(255, 127, 17, 0.1);
+        color: #ff9f1c;
+        font-size: 14px;
+        font-weight: 800;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+      }
+      .mastery-btn:hover:not(:disabled) {
+        background: #ff9f1c;
+        color: white;
+        transform: scale(1.1);
+      }
+      .mastery-btn:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+      }
+      .mastery-val {
+        font-size: 16px;
+        font-weight: 800;
+        color: #2ed573;
+        width: 14px;
+        text-align: center;
+      }
+    </style>
+    <script type="module" crossorigin src="/assets/index-0887ca07.js"></script>
+  </head>
+  <body>
+    <div id="app">
+      <div class="court-decor"></div>
+      <canvas id="gameCanvas" width="1920" height="1080"></canvas>
+      
+      <!-- HTML UI Overlays -->
+      <div id="ui-container">
+        
+        <!-- Login Overlay -->
+        <div id="login-overlay" class="glass-card" style="display: none;">
+          <h2>TitanBall Access</h2>
+          <div class="input-group">
+            <label for="login-email">Username or Email</label>
+            <input type="text" id="login-email" placeholder="markd315@gmail.com" />
+          </div>
+          <div class="input-group">
+            <label for="login-pass">Password</label>
+            <input type="password" id="login-pass" placeholder="••••••••" value="pass" />
+          </div>
+          <div id="login-error" class="error-msg" style="display: none;"></div>
+          <div class="actions-container">
+            <button id="login-btn" class="btn">Connect</button>
+            <button id="signup-toggle-btn" class="btn btn-secondary">Sign Up</button>
+          </div>
+        </div>
+
+        <!-- Signup Overlay -->
+        <div id="signup-overlay" class="glass-card" style="display: none;">
+          <h2>Create Account</h2>
+          <div class="input-group">
+            <label for="signup-username">Username</label>
+            <input type="text" id="signup-username" placeholder="SlamDunker" />
+          </div>
+          <div class="input-group">
+            <label for="signup-email">Email Address</label>
+            <input type="email" id="signup-email" placeholder="player@field.net" />
+          </div>
+          <div class="input-group">
+            <label for="signup-pass">Password</label>
+            <input type="password" id="signup-pass" placeholder="••••••••" />
+          </div>
+          <div id="signup-error" class="error-msg" style="display: none;"></div>
+          <div id="signup-success" class="success-msg" style="display: none;"></div>
+          <div class="actions-container">
+            <button id="signup-btn" class="btn">Register</button>
+            <button id="signup-back-btn" class="btn btn-secondary">Back to Login</button>
+          </div>
+        </div>
+
+        <!-- Mode Select Overlay -->
+        <div id="mode-overlay" class="glass-card" style="display: none;">
+          <h2>Select Game Mode</h2>
+          <div class="stat-row">
+            <span class="stat-label">Welcome</span>
+            <span id="player-username" class="stat-value">...</span>
+          </div>
+          <div class="input-group">
+            <label for="class-select">Select Titan Class</label>
+            <select id="class-select">
+              <option value="WARRIOR">Warrior (Melee, Slash & Dash)</option>
+              <option value="RANGER">Ranger (Ranged Archer & Knockback)</option>
+              <option value="MAGE">Mage (Portals & Fire Damage)</option>
+              <option value="HOUNDMASTER">Houndmaster (Summoner, Wolf Cages)</option>
+              <option value="MARKSMAN">Marksman (Precise Shooting & Passing)</option>
+              <option value="DASHER">Dasher (Speed Boost & Ball Protection)</option>
+              <option value="GOLEM">Golem (Slow Shield Tank & AoE Knockback)</option>
+              <option value="STEALTH">Stealth (Invisibility & Teleport Blink)</option>
+              <option value="SUPPORT">Support (Healer & Stunner)</option>
+              <option value="BUILDER">Builder (Traps & Wall Creator)</option>
+              <option value="ARTISAN">Artisan (Ball Portals & Gravity Magnet)</option>
+              <option value="GRENADIER">Grenadier (Flashbang Stun & AoE Fire)</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label for="controls-select">Controls Layout</label>
+            <select id="controls-select">
+              <option value="default">Default Style (WASD + Mouse Aim/Shoot)</option>
+              <option value="rts">RTS Style (Click to Move + Ability Hotkeys)</option>
+            </select>
+          </div>
+          <!-- Masteries Button -->
+          <div class="input-group">
+            <button id="masteries-modal-btn" class="btn btn-secondary">Configure Masteries</button>
+          </div>
+          <div class="menu-list">
+            <button id="queue-3v3-btn" class="btn">Queue 3v3 Match</button>
+            <button id="queue-1v1-btn" class="btn btn-secondary">Queue 1v1 Match</button>
+            <button id="tutorial-btn" class="btn btn-secondary">Play Tutorial</button>
+          </div>
+        </div>
+
+        <!-- Masteries Modal Overlay -->
+        <div id="masteries-modal" class="glass-card" style="display: none; position: absolute; z-index: 100; width: 480px; max-height: 90vh; overflow-y: auto;">
+          <h2>Titan Masteries</h2>
+          <div class="stat-row">
+            <span class="stat-label">Points Remaining</span>
+            <span id="masteries-points-left" class="stat-value">0</span>
+          </div>
+          <div id="masteries-list" style="display: flex; flex-direction: column; gap: 12px; margin: 15px 0;">
+            <!-- Dynamic Mastery Rows will be injected here -->
+          </div>
+          <div id="masteries-error" class="error-msg" style="display: none; margin-bottom: 10px;"></div>
+          <div class="actions-container">
+            <button id="masteries-save-btn" class="btn">Save & Close</button>
+            <button id="masteries-cancel-btn" class="btn btn-secondary">Cancel</button>
+          </div>
+        </div>
+
+        <!-- Lobby Overlay -->
+        <div id="lobby-overlay" class="glass-card" style="display: none;">
+          <h2>Searching Match</h2>
+          <div class="stat-row">
+            <span class="stat-label">Queue Mode</span>
+            <span id="queue-mode-label" class="stat-value">3v3</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Status</span>
+            <span class="stat-value" style="animation: pulse 1.5s infinite;">FINDING PLAYERS...</span>
+          </div>
+          <button id="leave-queue-btn" class="btn btn-secondary">Cancel</button>
+        </div>
+
+      </div>
+    </div>
+    
+    
+    <style>
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+      }
+    </style>
+  </body>
+</html>

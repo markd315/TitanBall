@@ -20,32 +20,42 @@ public class WebSocketPlayerConnection extends PlayerDivider {
         this.email = email;
     }
 
+    private final Object sendLock = new Object();
+
     public void setClient(WebSocketPlayerConnection other) {
-        this.session = other.session;
-        this.id = other.id;
+        synchronized (sendLock) {
+            this.session = other.session;
+            this.id = other.id;
+        }
     }
 
     public boolean isConnected() {
-        return session != null && session.isOpen();
+        synchronized (sendLock) {
+            return session != null && session.isOpen();
+        }
     }
 
     public void sendJson(String json) {
-        try {
-            if (session != null && session.isOpen()) {
-                session.sendMessage(new TextMessage(json));
+        synchronized (sendLock) {
+            try {
+                if (session != null && session.isOpen()) {
+                    session.sendMessage(new TextMessage(json));
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-        } catch (IOException e) {
-            e.printStackTrace();
         }
     }
 
     public void close() {
-        try {
-            if (session != null && session.isOpen()) {
-                session.close();
+        synchronized (sendLock) {
+            try {
+                if (session != null && session.isOpen()) {
+                    session.close();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-        } catch (IOException e) {
-            e.printStackTrace();
         }
     }
 }

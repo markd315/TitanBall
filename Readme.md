@@ -56,3 +56,22 @@ DEBUGGING:
 It is POSSIBLE that on Mac, your keylisteners will still get stuck down occasionally. Symptoms of this include working mouse keybinds, but no working keyboard keybinds.
 Run `defaults write -g ApplePressAndHoldEnabled -bool false` in a command-line to fix it permanently.
 
+## Web client (browser) development
+
+From the repo root, start the backend stack:
+
+```bash
+docker-compose up --build -d
+```
+
+In a separate terminal, start the Vite dev server:
+
+```bash
+cd client-web
+npm run dev
+```
+
+Open http://localhost:5173. The dev server proxies `/api` and `/game` (WebSocket) to the Docker server on port 3030.
+
+Server logs (`docker-compose logs -f server`) and browser console (`[DIAG]` prefix) include titan type / class-selection diagnostics.
+

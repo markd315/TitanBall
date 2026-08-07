@@ -96,20 +96,31 @@ public class Titan extends Entity   {
             }
         }
     }
+    @JsonProperty("type")
     public TitanType getType() {
         return type;
     }
 
+    @JsonProperty("type")
     public void setType(TitanType type) {
-        if(!typeAndMasteriesLocked){
-            this.type = type;
-            this.setVarsBasedOnType();
+        if (typeAndMasteriesLocked && this.type != null && this.type != type) {
+            System.out.println("[DIAG] Titan.setType BLOCKED (typeAndMasteriesLocked=true): requested="
+                    + type + " current=" + this.type + " id=" + id);
+            return;
         }
-
+        TitanType prev = this.type;
+        double prevHealth = this.health;
+        this.type = type;
+        this.setVarsBasedOnType();
+        if (prevHealth != -999.0) {
+            this.health = prevHealth;
+        }
+        System.out.println("[DIAG] Titan.setType OK: " + prev + " -> " + this.type + " id=" + id);
     }
 
     public Titan(){
         super();
+        this.health = -999.0;
     }
 
     public int getSel() {

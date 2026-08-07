@@ -12,10 +12,14 @@ export function distance(x1, y1, x2, y2) {
 
 export function updateCamera(game, state) {
     if (state.camFollow && game && game.underControl) {
-        // scl is 1.5, scaling factor from legacy code. 1920/3/1.5*1.5 = 640
-        state.camX = game.underControl.X + 35 - 640;
+        // Center player on the screen. Screen resolution is 1920x1080.
+        // Center of screen is 960 (half of 1920), and 540 (half of 1080).
+        state.camX = Math.floor(game.underControl.X + 35 - 960);
         if (state.camX < 0) state.camX = 0;
-        state.camY = game.underControl.Y + 35 - 360;
+        if (state.camX > 128) state.camX = 128; // Clamp to avoid showing black space on right
+        
+        state.camY = Math.floor(game.underControl.Y + 35 - 540);
         if (state.camY < 0) state.camY = 0;
+        if (state.camY > 0) state.camY = 0; // Since screen height matches field height
     }
 }

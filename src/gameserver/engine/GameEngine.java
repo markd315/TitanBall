@@ -24,6 +24,7 @@ import util.Util;
 
 import java.util.List;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -175,6 +176,9 @@ public class GameEngine extends Game {
     }
 
     public void detectGoals() {
+        if (this.phase == GamePhase.SCORE_FREEZE || !ballVisible) {
+            return;
+        }
         //If ball is in the air
         if(contactExemptBall()){
             return;
@@ -409,6 +413,14 @@ public class GameEngine extends Game {
     public void serverDelayReset() {
         this.phase = GamePhase.SCORE_FREEZE;
         this.lastPossessed = null;
+        for (GoalHoop goal : lowGoals) {
+            goal.onCooldown = false;
+            goal.frozen = false;
+        }
+        for (GoalHoop goal : hiGoals) {
+            goal.onCooldown = false;
+            goal.frozen = false;
+        }
         for (Titan p : players) {
             p.actionState = Titan.TitanState.IDLE;
             p.actionFrame = 0;
@@ -422,11 +434,22 @@ public class GameEngine extends Game {
             p.marchingOrderY = (int) p.Y;
             p.programmed = false;
         }
-        try {
-            Thread.sleep(c.getI("server.goalDelay"));
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+        CompletableFuture.runAsync(() -> {
+            try {
+                Thread.sleep(c.getI("server.goalDelay"));
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            lock();
+            try {
+                finishGoalReset();
+            } finally {
+                unlock();
+            }
+        });
+    }
+
+    private void finishGoalReset() {
         this.phase = GamePhase.INGAME;
         goalVisible = false;
         ballVisible = true;
@@ -487,8 +510,7 @@ public class GameEngine extends Game {
                 return true;
             }
             if (players[n].actionState == Titan.TitanState.LOB
-                    && players[n].actionFrame >= 9
-                    && players[n].actionFrame <= 30) {
+                    && (players[n].actionFrame < 2 || (players[n].actionFrame >= 3 && players[n].actionFrame <= 8))) {
                 return true;
             }
         }
@@ -534,10 +556,22 @@ public class GameEngine extends Game {
                 if (client.id == from.id) {
                     from.ready = true;
                     int classSelIndex = client.possibleSelection.get(0) - 1;
-                    players[classSelIndex].setType(request.classSelection);
-                    if (request.masteries != null) {
-                        request.masteries.applyMasteries(players[classSelIndex]);
+                    Titan classTitan = players[classSelIndex];
+                    System.out.println("[DIAG] class/mastery packet from client id=" + client.id
+                            + " classSelIndex=" + classSelIndex
+                            + " classSelection=" + request.classSelection
+                            + " masteries=" + (request.masteries != null ? request.masteries.asMap() : "null")
+                            + " titanBefore type=" + classTitan.getType()
+                            + " locked=" + classTitan.typeAndMasteriesLocked);
+                    if (request.classSelection != null) {
+                        classTitan.setType(request.classSelection);
                     }
+                    if (request.masteries != null) {
+                        request.masteries.applyMasteries(classTitan);
+                    }
+                    System.out.println("[DIAG] class/mastery result: titan id=" + classTitan.id
+                            + " type=" + classTitan.getType()
+                            + " locked=" + classTitan.typeAndMasteriesLocked);
                 }
             }
             kickoff();
@@ -632,7 +666,7 @@ public class GameEngine extends Game {
                 t.diagonalRunDir = 0;
             }
             if ((controlsHeld.STEAL == 1 && this.phase == GamePhase.INGAME && t.actionState == Titan.TitanState.IDLE)) {
-                if (!effectPool.isStunned(t) && !effectPool.hasEffect(t, EffectId.COOLDOWN_Q)) {
+                if (!effectPool.isStunned(t) && !effectPool.hasEffect(t, EffectId.COOLDOWN_STEAL)) {
                     try {
                         boolean stolen = ability.castSteal(this, t);
                         if (t.actionState == Titan.TitanState.IDLE && !stolen) {//Curve may be set by ability
@@ -850,6 +884,10 @@ public class GameEngine extends Game {
         //System.out.println("tock " + began + ended);
         lock();
         this.nowEpochMs = System.currentTimeMillis();
+        if (this.phase == GamePhase.SCORE_FREEZE) {
+            unlock();
+            return;
+        }
         if (began && !ended) {
             try {
                 framesSinceStart++;
@@ -862,6 +900,12 @@ public class GameEngine extends Game {
                 updateBallIfPossessed();
                 effectPool.tickAll(this);
                 doHealthModification();
+                for (GoalHoop goal : lowGoals) {
+                    goal.checkReady();
+                }
+                for (GoalHoop goal : hiGoals) {
+                    goal.checkReady();
+                }
                 updateSelectedDirection();
                 cullOldColliders();
             } catch (Exception e) {
@@ -1525,16 +1569,22 @@ public class GameEngine extends Game {
             centerBall(t);
         }
         t.actionFrame += 1;
-        t.kickingFrames = 28;
+        t.kickingFrames = 20;
         if(t.actionFrame == (int) (t.kickingFrames*c.SHOT_FREEZE_RATIO)){
             t.popMove();
         }
         if (t.actionFrame < t.kickingFrames) {
             t.possession = 0;
             setBallFromTip();
+            double D = 316.0 * t.throwPower;
+            double v_tick = (D * (20 - t.actionFrame)) / 190.0;
+            double stepFactor = (v_tick * 4.0) / 800.0;
             for (int i = 0; i < 800; i++) {
-                ball.X += 0.0589 * xKickPow * t.throwPower;
-                ball.Y -= 0.0589 * yKickPow * t.throwPower;
+                if (this.phase == GamePhase.SCORE_FREEZE || !ballVisible) {
+                    break;
+                }
+                ball.X += stepFactor * xKickPow;
+                ball.Y -= stepFactor * yKickPow;
                 intersectAll();
                 detectGoals();
                 bounceWalls();
@@ -1559,28 +1609,27 @@ public class GameEngine extends Game {
         }
         t.actionFrame += 1;
         //System.out.println(t.actionState.toString() + t.actionFrame);
-        t.kickingFrames = 40;
+        t.kickingFrames = 20;
         if(t.actionFrame == (int) (t.kickingFrames*c.SHOT_FREEZE_RATIO)){
             t.popMove();
         }
         if (t.actionFrame < t.kickingFrames) {
             t.possession = 0;
             setBallFromTip();
-            //Only check for lob intersections while near start or end
-            if (t.actionFrame < 9 || t.actionFrame > 30) {
-                for (int i = 0; i < 800; i++) {
-                    ball.X += 0.0271 * xKickPow * t.throwPower;
-                    ball.Y -= 0.0271 * yKickPow * t.throwPower;
-                    intersectAll();
-                    detectGoals();
-                    bounceWalls();
+            
+            double D = 230.0 * t.throwPower;
+            double v_tick = (D * (20 - t.actionFrame)) / 190.0;
+            double stepFactor = (v_tick * 4.0) / 800.0;
+            
+            for (int i = 0; i < 800; i++) {
+                if (this.phase == GamePhase.SCORE_FREEZE || !ballVisible) {
+                    break;
                 }
-            } else {
-                for (int i = 0; i < 8; i++) {
-                    ball.X += 2.71 * xKickPow * t.throwPower;
-                    ball.Y -= 2.71 * yKickPow * t.throwPower;
-                    bounceWalls();
-                }
+                ball.X += stepFactor * xKickPow;
+                ball.Y -= stepFactor * yKickPow;
+                intersectAll();
+                detectGoals();
+                bounceWalls();
             }
         }
         if (t.actionFrame == t.kickingFrames) {

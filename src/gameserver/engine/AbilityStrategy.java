@@ -120,11 +120,14 @@ public class AbilityStrategy    {
     public void circleSlash(double dmg, double cdMs) {
         dmg *= caster.damageFactor;
         double range = c.getI("titan.slash.range") * caster.rangeFactor;
-        context.effectPool.addUniqueEffect(new CooldownQ((int) (cdMs * caster.cooldownFactor), caster), context);
         shape = new CollisionMath.Bounds(0, 0, range, range);
         sel = new Selector(shape, SelectorOffset.CAST_CENTER, c.FAR_RANGE);
         appliedTo = new Targeting(sel, notFriendly, unlimited, context)
                 .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
+        if (appliedTo.isEmpty()) {
+            return;
+        }
+        context.effectPool.addUniqueEffect(new CooldownQ((int) (cdMs * caster.cooldownFactor), caster), context);
         for (Entity e : appliedTo) {
             context.effectPool.addStackingEffect(caster, new EmptyEffect(5000, e, EffectId.ATTACKED));
             e.damage(context, dmg);
@@ -137,7 +140,7 @@ public class AbilityStrategy    {
         appliedTo = new Targeting(sel, champions, nearest, context)
                 .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
         if (!appliedTo.isEmpty()) {
-            context.effectPool.addUniqueEffect(new CooldownW((int) (c.getI("titan.kick.range") * caster.cooldownFactor), caster), context);
+            context.effectPool.addUniqueEffect(new CooldownW((int) (c.getI("titan.kick.cdms") * caster.cooldownFactor), caster), context);
         }
         for (Entity e : appliedTo) {
             double tx = caster.X;
@@ -169,7 +172,9 @@ public class AbilityStrategy    {
         corners = sel.getLatestColliderBounds();
         if (corners.width() > 0 && inBoundsNotRedzone(corners)) {
             goOnCooldown(caster, "titan.wall.cdms", 'W');
-            context.entityPool.add(new Wall(context, (int) corners.minX(), (int) corners.minY()));
+            Wall w = new Wall(context, (int) corners.minX(), (int) corners.minY());
+            w.team = caster.team;
+            context.entityPool.add(w);
         }
     }
 
@@ -204,12 +209,15 @@ public class AbilityStrategy    {
 
     public void scatter(int rangeIn, int scatterDist, int cdms) {
         int range = (int) (rangeIn * caster.rangeFactor);
-        context.effectPool.addUniqueEffect(
-                new CooldownW((int) (caster.cooldownFactor * cdms), caster), context);
         shape = new CollisionMath.Bounds(0, 0, range, range);
         sel = new Selector(shape, SelectorOffset.CAST_CENTER, c.FAR_RANGE);
         appliedTo = new Targeting(sel, champions, unlimited, context)
                 .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
+        if (appliedTo.isEmpty()) {
+            return;
+        }
+        context.effectPool.addUniqueEffect(
+                new CooldownW((int) (caster.cooldownFactor * cdms), caster), context);
         int limit = 0;
         while (limit < scatterDist) {
             for (Entity e : appliedTo) {
@@ -239,7 +247,7 @@ public class AbilityStrategy    {
         corners = sel.getLatestColliderBounds();
         if (corners.getWidth() > 0 && inBoundsNotRedzone(corners)) {
             goOnCooldown(caster, "titan.bportal.cdms", 'W');
-            context.entityPool.add(new BallPortal(TeamAffiliation.UNAFFILIATED, caster, context.entityPool,
+            context.entityPool.add(new BallPortal(caster.team, caster, context.entityPool,
                     (int) corners.getX(),
                     (int) corners.getY(), context));
         }
@@ -314,17 +322,18 @@ public class AbilityStrategy    {
 
     public void suckBall() {
         int range = (int) (c.getI("titan.suck.range") * caster.rangeFactor);
-        goOnCooldown(caster, "titan.suck.cdms", 'Q');
         shape = new CollisionMath.Bounds(0, 0, range, range);
         sel = new Selector(shape, SelectorOffset.CAST_CENTER, c.FAR_RANGE);
         //To update the region to caster loc
         sel.select(Collections.EMPTY_SET, x, y, caster);
         if (sel.latestCollider.intersects(context.ball.asBounds()) && !context.anyPoss()) {
+            goOnCooldown(caster, "titan.suck.cdms", 'Q');
             double tx = caster.X + caster.centerDist - context.ball.centerDist;
             double ty = caster.Y + caster.centerDist - context.ball.centerDist;
             double ang = Util.degreesFromCoords(tx - context.ball.X, ty - context.ball.Y);
             int limit = 0;
-            while (!context.anyPoss() && limit < c.getI("titan.suck.dist")) {
+            int maxDist = (int)(range * 1.5); // Enough to pull from max range
+            while (!context.anyPoss() && limit < maxDist) {
                 context.ball.X += 3.0 * Math.cos(Math.toRadians((ang)));
                 context.ball.Y += 3.0 * Math.sin(Math.toRadians((ang)));
                 context.intersectAll();
@@ -370,11 +379,14 @@ public class AbilityStrategy    {
     public void flashbang(double durMillis) {
         int range = (int) (c.getI("titan.flashbang.range") * caster.rangeFactor);
         int dur = (int) (durMillis * caster.durationsFactor);
-        goOnCooldown(caster, "titan.flashbang.cdms", 'Q');
         shape = new CollisionMath.Bounds(0, 0, range, range);
         sel = new Selector(shape, SelectorOffset.CAST_CENTER, c.FAR_RANGE);
         appliedTo = new Targeting(sel, champions, nearest, context)
                 .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
+        if (appliedTo.isEmpty()) {
+            return;
+        }
+        goOnCooldown(caster, "titan.flashbang.cdms", 'Q');
         for (Entity e : appliedTo) {
             eff = new EmptyEffect(dur, e, EffectId.BLIND);
             context.effectPool.addCasterUniqueEffect(eff, caster);
@@ -403,11 +415,14 @@ public class AbilityStrategy    {
     public void stunByRadius(double durMillis) {
         int range = (int) (c.getI("titan.stun.range") * caster.rangeFactor);
         int dur = (int) (durMillis * caster.durationsFactor);
-        goOnCooldown(caster, "titan.stun.cdms", 'Q');
         shape = new CollisionMath.Bounds(0, 0, range, range);
         sel = new Selector(shape, SelectorOffset.CAST_CENTER, c.FAR_RANGE);
         appliedTo = new Targeting(sel, champions, nearest, context)
                 .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
+        if (appliedTo.isEmpty()) {
+            return;
+        }
+        goOnCooldown(caster, "titan.stun.cdms", 'Q');
         for (Entity e : appliedTo) {
             eff = new EmptyEffect(dur, e, EffectId.STUN);
             context.effectPool.addCasterUniqueEffect(eff, caster);

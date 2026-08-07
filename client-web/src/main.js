@@ -1,13 +1,16 @@
 import { gameState } from './state.js';
 import { initCanvas, clearScreen, drawImageCam } from './render/canvas.js';
+import { initMasteries } from './screens/masteries.js';
 import { drawCredits } from './screens/credits.js';
-import { initKeyboard } from './input/keyboard.js';
+import { initKeyboard, setControlPreset } from './input/keyboard.js';
 import { initMouse } from './input/mouse.js';
 import { GamePhase } from './constants.js';
 import { updateCamera } from './util/math.js';
 import { initAssets, AssetManager } from './assets/sprites.js';
 import { drawPlayers } from './render/players.js';
 import { drawMinions } from './render/minions.js';
+import { drawAimAndRangeIndicators } from './render/aim.js';
+import { drawEffectIcons } from './render/effects.js';
 import { drawBall, displayBallArrow } from './render/ball.js';
 import { drawGoals } from './render/goals.js';
 import { drawHud } from './render/hud.js';
@@ -193,9 +196,14 @@ function initUIListeners() {
       try {
         const modeLabel = document.getElementById('queue-mode-label');
         if (modeLabel) modeLabel.textContent = '3v3';
+        const lobbyTitle = document.querySelector('#lobby-overlay h2');
+        if (lobbyTitle) lobbyTitle.textContent = 'Searching Match';
+        const lobbyStatus = document.querySelector('#lobby-overlay .stat-value[style*="pulse"]');
+        if (lobbyStatus) lobbyStatus.textContent = 'FINDING PLAYERS...';
         
         console.log("Joining 3v3 Queue");
         await joinQueue('');
+        gameState.is3v3 = true;
         gameState.phase = GamePhase.WAIT_FOR_GAME;
         startQueuePolling();
       } catch (err) {
@@ -211,9 +219,14 @@ function initUIListeners() {
       try {
         const modeLabel = document.getElementById('queue-mode-label');
         if (modeLabel) modeLabel.textContent = '1v1';
+        const lobbyTitle = document.querySelector('#lobby-overlay h2');
+        if (lobbyTitle) lobbyTitle.textContent = 'Searching Match';
+        const lobbyStatus = document.querySelector('#lobby-overlay .stat-value[style*="pulse"]');
+        if (lobbyStatus) lobbyStatus.textContent = 'FINDING PLAYERS...';
         
         console.log("Joining 1v1 Queue");
         await joinQueue('1v1');
+        gameState.is3v3 = false;
         gameState.phase = GamePhase.WAIT_FOR_GAME;
         startQueuePolling();
       } catch (err) {
@@ -247,12 +260,58 @@ function initUIListeners() {
     tutorialBtn.addEventListener('click', async () => {
       try {
         console.log("Starting Tutorial");
+        gameState.is3v3 = false;
+
+        // Pre-unlock narration audios to avoid browser autoplay policy blocks
+        for (let i = 0; i <= 4; i++) {
+          const aud = AssetManager.audio['tut' + i];
+          if (aud) {
+            const oldVol = aud.volume;
+            aud.volume = 0;
+            aud.play().then(() => {
+              aud.pause();
+              aud.currentTime = 0;
+              aud.volume = oldVol;
+            }).catch(e => console.warn("Audio pre-unlock skipped:", e));
+          }
+        }
+
+        // Set search overlay indicators for Tutorial
+        const modeLabel = document.getElementById('queue-mode-label');
+        if (modeLabel) modeLabel.textContent = 'Tutorial';
+        const lobbyTitle = document.querySelector('#lobby-overlay h2');
+        if (lobbyTitle) lobbyTitle.textContent = 'Preparing Tutorial';
+        const lobbyStatus = document.querySelector('#lobby-overlay .stat-value[style*="pulse"]');
+        if (lobbyStatus) lobbyStatus.textContent = 'LOADING RESOURCE...';
+
         const gameId = await startTutorial();
         gameState.phase = GamePhase.WAIT_FOR_GAME;
         startQueuePolling();
       } catch (err) {
         console.error(err);
       }
+    });
+  }
+
+  // Class Select dropdown change
+  const classSelect = document.getElementById('class-select');
+  if (classSelect) {
+    const savedClass = localStorage.getItem('classSelection') || 'WARRIOR';
+    classSelect.value = savedClass;
+    gameState.controlsHeld.classSelection = savedClass;
+
+    classSelect.addEventListener('change', (e) => {
+      gameState.controlsHeld.classSelection = e.target.value;
+      localStorage.setItem('classSelection', e.target.value);
+      console.log("Selected Titan Class:", e.target.value);
+    });
+  }
+
+  // Controls Layout dropdown change
+  const controlsSelect = document.getElementById('controls-select');
+  if (controlsSelect) {
+    controlsSelect.addEventListener('change', async (e) => {
+      await setControlPreset(e.target.value);
     });
   }
 }
@@ -300,11 +359,58 @@ function drawIngame(ctx, dt) {
   }
   
   drawGoals(ctx, game, camX, camY);
+  drawAimAndRangeIndicators(ctx, game, gameState.controlsHeld, camX, camY);
   drawPlayers(ctx, game, camX, camY);
   drawMinions(ctx, game, camX, camY);
+  drawEffectIcons(ctx, game, camX, camY);
   drawBall(ctx, game, camX, camY);
   displayBallArrow(ctx, game, camX, camY);
   drawHud(ctx, game, gameState);
+
+  // Draw Goal Scored Asset Overlay (local detection via score changes)
+  if (gameState.localGoalVisible) {
+    if (Date.now() - gameState.localGoalTime > 3000) {
+      gameState.localGoalVisible = false;
+    } else {
+      const img = AssetManager.images['goal'];
+      let gy = 1080 / 2 - 100;
+      if (img && img.width > 0) {
+        const gx = 1920 / 2 - img.width / 2;
+        gy = 1080 / 2 - img.height / 2 - 100;
+        ctx.drawImage(img, gx, gy);
+      }
+      
+      // Draw Text Banner (glowing text)
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = 'italic bold 70px Impact, Arial, sans-serif';
+      
+      let txt = "GOAL!";
+      let fillStyle = '#3b82f6'; // Vibrant Blue for normal goal
+      
+      if (gameState.goalComboType === 'DOUBLE') {
+        txt = "DOUBLE GOAL!";
+        fillStyle = '#ff7f11'; // Bright Orange
+      } else if (gameState.goalComboType === 'TRIPLE') {
+        txt = "TRIPLE GOAL!";
+        fillStyle = '#9d4edd'; // Bright Purple
+      } else if (gameState.goalComboType === 'QUAD') {
+        txt = "QUAD GOAL!";
+        fillStyle = '#ffd700'; // Gold for Quad
+      }
+      
+      const textY = gy + (img && img.height > 0 ? img.height : 100) + 60;
+      
+      ctx.strokeStyle = 'black';
+      ctx.lineWidth = 8;
+      ctx.strokeText(txt, 1920 / 2, textY);
+      
+      ctx.fillStyle = fillStyle;
+      ctx.fillText(txt, 1920 / 2, textY);
+      ctx.restore();
+    }
+  }
 
   // Draw Tutorial Objective Banner Overlay
   if (game.gameId && game.gameId.startsWith('tutorial-')) {
@@ -369,18 +475,21 @@ function gameLoop(timestamp) {
       // Rendered via HTML overlay
       break;
     case GamePhase.COUNTDOWN:
-      ctx.fillStyle = 'white';
-      ctx.font = '80px Arial';
-      ctx.fillText('PREPARING MATCH...', 600, 540);
+      if (gameState.is3v3) {
+        drawDraftShowcase(ctx);
+      } else {
+        ctx.fillStyle = 'white';
+        ctx.font = '80px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('PREPARING MATCH...', 1920 / 2, 1080 / 2);
+      }
       break;
     case GamePhase.INGAME:
     case GamePhase.SCORE_FREEZE:
       drawIngame(ctx, dt);
       break;
     case GamePhase.ENDED:
-      ctx.fillStyle = 'white';
-      ctx.font = '50px Arial';
-      ctx.fillText('Game Over', 200, 200);
+      drawGameEnded(ctx);
       break;
     default:
       ctx.fillStyle = 'white';
@@ -392,9 +501,227 @@ function gameLoop(timestamp) {
   requestAnimationFrame(gameLoop);
 }
 
+function jwtDecodeEmail(token) {
+  if (!token) return '';
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+    }).join(''));
+    const parsed = JSON.parse(jsonPayload);
+    return parsed.sub || '';
+  } catch (e) {
+    return '';
+  }
+}
+
+function drawGameEnded(ctx) {
+  const game = gameState.game;
+  if (!game) {
+    ctx.fillStyle = 'white';
+    ctx.font = '50px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('Game Over', 1920 / 2, 540);
+    return;
+  }
+
+  // Determine which team this player was on
+  let myTeam = 'HOME';
+  if (game.underControl) {
+    myTeam = game.underControl.team;
+  } else if (game.clients && gameState.token) {
+    const email = jwtDecodeEmail(gameState.token);
+    const clientDivider = game.clients.find(c => c.email === email);
+    if (clientDivider) {
+      const selIndex = clientDivider.selection - 1;
+      if (game.players && game.players[selIndex]) {
+        myTeam = game.players[selIndex].team;
+      }
+    }
+  }
+
+  const team = myTeam === 'HOME' ? game.home : game.away;
+  const enemy = myTeam === 'HOME' ? game.away : game.home;
+  
+  let resultKey = 'tie';
+  if (team && enemy) {
+    if (team.score > enemy.score) resultKey = 'victory';
+    else if (team.score < enemy.score) resultKey = 'defeat';
+  }
+
+  // Draw Result Image (victory/defeat/tie)
+  const img = AssetManager.images[resultKey];
+  if (img) {
+    const rx = 1920 / 2 - img.width / 2;
+    const ry = 120;
+    ctx.drawImage(img, rx, ry);
+  } else {
+    ctx.fillStyle = 'white';
+    ctx.font = 'bold 70px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(resultKey.toUpperCase(), 1920 / 2, 220);
+  }
+
+  // Draw Subtitle / Final Score
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 36px Arial';
+  ctx.fillStyle = '#ff9f1c';
+  const homeScore = game.home ? game.home.score : 0;
+  const awayScore = game.away ? game.away.score : 0;
+  const scoreStr = `Final Score: HOME ${homeScore} - AWAY ${awayScore}`;
+  ctx.fillText(scoreStr, 1920 / 2, 380);
+  ctx.restore();
+
+  // Draw Stats Table
+  const email = jwtDecodeEmail(gameState.token || localStorage.getItem('accessToken'));
+  if (email && game.stats && game.stats.gamestats) {
+    ctx.save();
+    ctx.fillStyle = 'rgba(10, 26, 20, 0.85)';
+    ctx.fillRect(1920 / 2 - 300, 420, 600, 460);
+    ctx.strokeStyle = '#ff7f11';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(1920 / 2 - 300, 420, 600, 460);
+
+    ctx.font = 'bold 28px Arial';
+    ctx.fillStyle = '#00ff00';
+    ctx.textAlign = 'center';
+    ctx.fillText('MATCH STATISTICS', 1920 / 2, 460);
+
+    const STAT_NAMES = [
+      'GOALS', 'SIDEGOALS', 'POINTS',
+      'STEALS', 'BLOCKS', 'PASSES',
+      'KILLS', 'DEATHS', 'TURNOVERS',
+      'KILLASSISTS', 'GOALASSISTS', 'REBOUND'
+    ];
+
+    ctx.font = '22px Courier New';
+    let sy = 510;
+    
+    STAT_NAMES.forEach((name, idx) => {
+      const statMap = game.stats.gamestats[idx];
+      let val = 0;
+      if (statMap && statMap[email] !== undefined) {
+        val = statMap[email];
+      }
+      
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'left';
+      ctx.fillText(name.padEnd(20, '.'), 1920 / 2 - 200, sy);
+      
+      ctx.fillStyle = '#ff9f1c';
+      ctx.textAlign = 'right';
+      ctx.fillText(idx === 2 ? val.toFixed(2) : Math.floor(val).toString(), 1920 / 2 + 200, sy);
+      
+      sy += 30;
+    });
+
+    ctx.restore();
+  }
+
+  // Draw return info
+  ctx.save();
+  ctx.font = 'bold 24px Arial';
+  ctx.fillStyle = '#888888';
+  ctx.textAlign = 'center';
+  ctx.fillText('Press SPACE to return to lobby menu', 1920 / 2, 940);
+  ctx.restore();
+}
+
+function drawDraftShowcase(ctx) {
+  const game = gameState.game;
+  if (!game || !game.players) {
+    ctx.fillStyle = 'white';
+    ctx.font = '80px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText("PREPARING MATCH...", 1920 / 2, 1080 / 2);
+    return;
+  }
+
+  const homePlayers = game.players.filter(p => p.team === 'HOME');
+  const awayPlayers = game.players.filter(p => p.team === 'AWAY');
+
+  // Background panel
+  ctx.fillStyle = 'rgba(10, 26, 20, 0.9)';
+  ctx.fillRect(0, 0, 1920, 1080);
+  
+  // Draw Center VS
+  ctx.save();
+  ctx.fillStyle = '#ff7f11';
+  ctx.font = 'italic bold 90px Impact, Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText('VS', 1920 / 2, 1080 / 2 - 50);
+  ctx.restore();
+
+  // Roster Columns
+  const drawColumn = (players, isHome, startX) => {
+    ctx.save();
+    ctx.fillStyle = isHome ? 'rgba(59, 130, 246, 0.15)' : 'rgba(239, 68, 68, 0.15)';
+    ctx.fillRect(startX, 150, 700, 700);
+    ctx.strokeStyle = isHome ? '#3b82f6' : '#ef4444';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(startX, 150, 700, 700);
+
+    ctx.fillStyle = isHome ? '#3b82f6' : '#ef4444';
+    ctx.font = 'bold 40px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(isHome ? 'HOME TEAM DRAFT' : 'AWAY TEAM DRAFT', startX + 350, 210);
+
+    let py = 280;
+    players.forEach((p, idx) => {
+      // Draw card background
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+      ctx.fillRect(startX + 50, py, 600, 110);
+      ctx.strokeStyle = isHome ? 'rgba(59, 130, 246, 0.3)' : 'rgba(239, 68, 68, 0.3)';
+      ctx.strokeRect(startX + 50, py, 600, 110);
+
+      // Text details
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 24px Arial';
+      ctx.textAlign = 'left';
+      ctx.fillText(`Slot ${idx + 1}: Player`, startX + 80, py + 45);
+
+      ctx.fillStyle = '#ff9f1c';
+      ctx.font = 'bold 20px Courier New';
+      ctx.fillText(`Class: ${p.type}`, startX + 80, py + 80);
+
+      // Small stand sprite preview
+      const standImg = AssetManager.images[`${p.type}_standR`] || AssetManager.images[`${p.type}_standL`];
+      if (standImg) {
+        ctx.drawImage(standImg, startX + 490, py + 5, 100, 100);
+      }
+
+      py += 140;
+    });
+    ctx.restore();
+  };
+
+  drawColumn(homePlayers, true, 150);
+  drawColumn(awayPlayers, false, 1070);
+
+  // Banned Overlay
+  ctx.save();
+  ctx.fillStyle = '#ef4444';
+  ctx.font = 'bold 24px Courier New';
+  ctx.textAlign = 'center';
+  ctx.fillText('TACTICAL BANS: [STEALTH] banned by HOME | [GOLEM] banned by AWAY', 1920 / 2, 920);
+  ctx.restore();
+
+  // Match Start timer
+  ctx.save();
+  ctx.fillStyle = '#00ff00';
+  ctx.font = 'bold 36px Arial';
+  ctx.textAlign = 'center';
+  const sec = game.secondsToStart !== undefined ? Math.max(0, Math.ceil(game.secondsToStart)) : 5;
+  ctx.fillText(`MATCH STARTING IN: ${sec}s`, 1920 / 2, 990);
+  ctx.restore();
+}
+
 export function start() {
   ctx = initCanvas();
   initAssets();
+  initMasteries();
   initKeyboard();
   initMouse();
   initUIListeners();

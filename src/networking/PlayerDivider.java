@@ -67,15 +67,10 @@ public class PlayerDivider   {
     }
 
     public String getEmail(){
-        return this.email;
+        return this.email == null ? "" : this.email;
     }
 
     public void setId(int id) {
         this.id = id;
-    }
-
-    @JsonIgnore
-    public void setId(WebSocketPlayerConnection connection) {
-        this.id = connection.id;
     }
 }

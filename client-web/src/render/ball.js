@@ -4,6 +4,16 @@ import { CONSTANTS } from '../constants.js';
 
 let ballFrameCounter = 0;
 
+function ballLobMode(game) {
+    if (!game || !game.players) return false;
+    for (const p of game.players) {
+        if (p.actionState === 'LOB' && p.actionFrame >= 3 && p.actionFrame <= 8) {
+            return true;
+        }
+    }
+    return false;
+}
+
 export function drawBall(ctx, game, camX, camY) {
     if (!game || !game.ballVisible) return;
 
@@ -11,17 +21,20 @@ export function drawBall(ctx, game, camX, camY) {
     const isFrameB = ballFrameCounter > 10;
 
     const anyPoss = game.players && game.players.some(p => p.possession === 1);
+    const isLob = ballLobMode(game);
     
     let imgKey = 'ballA';
     if (anyPoss) {
         imgKey = isFrameB ? 'ballB' : 'ballA';
     } else {
-        // Lob mode omitted for brevity
         imgKey = isFrameB ? 'ballFB' : 'ballFA';
     }
 
     if (AssetManager.images[imgKey]) {
-        drawImageCam(ctx, AssetManager.images[imgKey], game.ball.X, game.ball.Y, camX, camY);
+        const img = AssetManager.images[imgKey];
+        const size = isLob ? 45 : 30;
+        const offset = isLob ? -7.5 : 0;
+        ctx.drawImage(img, Math.floor(game.ball.X + offset - camX), Math.floor(game.ball.Y + offset - camY), size, size);
     }
 }
 

@@ -161,7 +161,8 @@ public class Ability    {
             sp.trigger();
             context.colliders.add(sp);
             context.colliders.get(context.colliders.size() - 1).setColor(caster);
+            return true;
         }
-        return true;
+        return sel != null; // Ability fired but no visual collider
     }
 }

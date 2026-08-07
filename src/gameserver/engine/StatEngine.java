@@ -201,6 +201,10 @@ public class StatEngine  {
         gamestats.add(rebounds);
     }
 
+    public List<Map<String, Double>> getGamestats() {
+        return gamestats;
+    }
+
     public StatEngine() {
         reset();
     }

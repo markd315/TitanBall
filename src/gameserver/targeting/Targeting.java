@@ -49,22 +49,9 @@ public class Targeting   {
     }
 
     public Set<Entity> process(int mX, int mY, Entity casting, int ballX, int ballY){
-        //System.out.println("processing");
-        for(Entity e : entities){
-            System.out.println("pool " + e.team + e.health);
-        }
         Set<Entity> ret = selector.select(entities, mX, mY, casting);
-        for(Entity e : ret){
-            System.out.println("sel " + e.team + e.health);
-        }
         ret = filter.process(ret, casting);
-        for(Entity e : ret){
-            //System.out.println("fil " + e.team + e.health);
-        }
         ret = limiter.process(ret, casting, mX, mY, ballX, ballY);
-        for(Entity e : ret){
-            //System.out.println("lim " + e.team + e.health);
-        }
         return ret;
     }
 

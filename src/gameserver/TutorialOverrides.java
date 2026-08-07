@@ -127,9 +127,15 @@ public class TutorialOverrides extends GameEngine   {
 
     public void detectAndUpdateState() {
         this.began = true;
+        if (this.clients != null && !this.clients.isEmpty()) {
+            this.client = this.clients.get(0);
+        }
         if (client == null) {
             client = new PlayerDivider(Collections.singletonList(3));
             client.setEmail("localhost");
+        }
+        if (this.narrationPhase < this.tutorialPhase) {
+            this.narrationPhase = this.tutorialPhase;
         }
         switch(tutorialPhase){
             case 1:
@@ -214,6 +220,10 @@ public class TutorialOverrides extends GameEngine   {
     public void gameTick() throws Exception {
         //System.out.println("tock " + began + ended);
         lock();
+        if (this.phase == GamePhase.SCORE_FREEZE) {
+            unlock();
+            return;
+        }
         if (began && !ended) {
             try {
                 detectAndUpdateState();

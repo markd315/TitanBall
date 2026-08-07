@@ -133,6 +133,10 @@ public class Portal extends gameserver.entity.Entity implements Collidable, Seri
         }
     }
 
+    public long getCdUntilEpochMs() {
+        return cdUntil != null ? cdUntil.getMillis() : 0;
+    }
+
     public Portal() {
         super(TeamAffiliation.UNAFFILIATED);
     }

@@ -9,6 +9,22 @@ import gameserver.engine.TeamAffiliation;
 import com.fasterxml.jackson.annotation.*;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
+@JsonTypeInfo(
+    use = JsonTypeInfo.Id.NAME,
+    include = JsonTypeInfo.As.PROPERTY,
+    property = "entityClass",
+    defaultImpl = Entity.class
+)
+@JsonSubTypes({
+    @JsonSubTypes.Type(value = Titan.class, name = "Titan"),
+    @JsonSubTypes.Type(value = gameserver.entity.minions.Portal.class, name = "Portal"),
+    @JsonSubTypes.Type(value = gameserver.entity.minions.BallPortal.class, name = "BallPortal"),
+    @JsonSubTypes.Type(value = gameserver.entity.minions.Wolf.class, name = "Wolf"),
+    @JsonSubTypes.Type(value = gameserver.entity.minions.Cage.class, name = "Cage"),
+    @JsonSubTypes.Type(value = gameserver.entity.minions.Fire.class, name = "Fire"),
+    @JsonSubTypes.Type(value = gameserver.entity.minions.Wall.class, name = "Wall"),
+    @JsonSubTypes.Type(value = gameserver.entity.minions.Trap.class, name = "Trap")
+})
 public class Entity extends Box   {
     public double health, maxHealth;
     public TeamAffiliation team;

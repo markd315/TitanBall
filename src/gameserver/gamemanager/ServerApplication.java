@@ -52,6 +52,7 @@ public class ServerApplication {
     }
 
     public static void addNewTutorial(String id, String email) {
+        instantiateSpringContext();
         System.out.println("adding new tutorial, id " + id + " for " + email);
         cleanupCorruptStates(Collections.singletonList(email));
         GameOptions op = new GameOptions("/1/1/1/5/2/9999/10/12");
