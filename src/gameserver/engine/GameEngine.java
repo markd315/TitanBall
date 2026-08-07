@@ -109,13 +109,23 @@ public class GameEngine extends Game {
     }
 
     public void lock() {
-        while (!locked.compareAndSet(false, true)) {
-            //some other thread won, starting.
+        synchronized (locked) {
+            while (locked.get()) {
+                try {
+                    locked.wait();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+            locked.set(true);
         }
     }
 
     public void unlock() {
-        locked.set(false);
+        synchronized (locked) {
+            locked.set(false);
+            locked.notifyAll();
+        }
     }
 
     protected void doHealthModification() {
@@ -564,7 +574,19 @@ public class GameEngine extends Game {
                             + " titanBefore type=" + classTitan.getType()
                             + " locked=" + classTitan.typeAndMasteriesLocked);
                     if (request.classSelection != null) {
-                        classTitan.setType(request.classSelection);
+                        if (request.classSelection == TitanType.GOALIE) {
+                            if (classSelIndex == 0 || classSelIndex == 1) {
+                                classTitan.setType(TitanType.GOALIE);
+                            } else {
+                                System.out.println("[DIAG] Blocking non-goalie slot from setting type to GOALIE");
+                            }
+                        } else {
+                            if (classSelIndex == 0 || classSelIndex == 1) {
+                                System.out.println("[DIAG] Blocking goalie slot from changing class");
+                            } else {
+                                classTitan.setType(request.classSelection);
+                            }
+                        }
                     }
                     if (request.masteries != null) {
                         request.masteries.applyMasteries(classTitan);

@@ -1,0 +1,32 @@
+[
+  {
+    "Id": "cpu",
+    "MetricStat": {
+      "Metric": {
+        "Namespace": "AWS/ECS",
+        "MetricName": "CPUUtilization",
+        "Dimensions": [
+          { "Name": "ClusterName", "Value": "TitanballCluster" },
+          { "Name": "ServiceName", "Value": "TitanballService" }
+        ]
+      },
+      "Period": 60,
+      "Stat": "Maximum"
+    }
+  },
+  {
+    "Id": "mem",
+    "MetricStat": {
+      "Metric": {
+        "Namespace": "AWS/ECS",
+        "MetricName": "MemoryUtilization",
+        "Dimensions": [
+          { "Name": "ClusterName", "Value": "TitanballCluster" },
+          { "Name": "ServiceName", "Value": "TitanballService" }
+        ]
+      },
+      "Period": 60,
+      "Stat": "Maximum"
+    }
+  }
+]

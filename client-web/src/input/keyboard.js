@@ -22,7 +22,7 @@ export const actionMap = {
 
 export async function setControlPreset(preset) {
   try {
-    const url = preset === 'rts' ? '/res/ctrls_example_rts.json' : '/res/config.json';
+    const url = preset === 'rts' ? 'res/ctrls_example_rts.json' : 'res/config.json';
     const response = await fetch(url);
     const data = await response.json();
     currentConfig = data;

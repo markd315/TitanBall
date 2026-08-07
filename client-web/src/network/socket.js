@@ -2,6 +2,7 @@ import { gameState } from '../state.js';
 
 let socket = null;
 let updateInterval = null;
+let pingInterval = null;
 let _diagMsgCount = 0;
 let _diagSendCount = 0;
 let _diagLastPhase = null;
@@ -13,7 +14,7 @@ export function connectGame(gameID) {
 
   const token = localStorage.getItem('accessToken');
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const url = `${protocol}//${window.location.host}/game`;
+  const url = `${protocol}//${window.location.host}/pages/titanball/game`;
   
   console.log("Connecting to WebSocket:", url);
   socket = new WebSocket(url);
@@ -39,10 +40,22 @@ export function connectGame(gameID) {
         socket.send(JSON.stringify(controls));
       }
     }, 15);
+
+    // Start periodic ping loop for latency tracking
+    pingInterval = setInterval(() => {
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type: 'ping', sent: Date.now() }));
+      }
+    }, 2000);
   };
   
   socket.onmessage = (event) => {
     const update = JSON.parse(event.data);
+    if (update.type === 'pong') {
+      const latency = Date.now() - update.sent;
+      console.log(`[PING LOG] Round-Trip Latency: ${latency}ms`);
+      return;
+    }
     _diagMsgCount++;
     
     // Log the first 3 messages in detail and any phase transition
@@ -105,6 +118,10 @@ export function connectGame(gameID) {
       clearInterval(updateInterval);
       updateInterval = null;
     }
+    if (pingInterval) {
+      clearInterval(pingInterval);
+      pingInterval = null;
+    }
     if (gameState.phase === 'INGAME' || gameState.phase === 'SCORE_FREEZE') {
       gameState.phase = 'ENDED';
     }
@@ -123,5 +140,9 @@ export function disconnectGame() {
   if (updateInterval) {
     clearInterval(updateInterval);
     updateInterval = null;
+  }
+  if (pingInterval) {
+    clearInterval(pingInterval);
+    pingInterval = null;
   }
 }

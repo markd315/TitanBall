@@ -390,6 +390,7 @@ public class Titan extends Entity   {
         titanText.put(TitanType.STEALTH, "SCORER vanish briefly and escape to a better strategic position");
         titanText.put(TitanType.GRENADIER, "UTILITY manipulate the battlefield with grenades");
         titanText.put(TitanType.HOUNDMASTER, "DAMAGE/DEFENSE swarm enemies with fragile, biting dogs");
+        titanText.put(TitanType.GOALIE, "DEFENSE protect goals and direct RTS lanes");
 
         titanEText.put(TitanType.MAGE, "Spawn a portal to carry friendly players long distances");
         titanEText.put(TitanType.RANGER, "Shoot a damaging arrow at enemies");
@@ -403,6 +404,7 @@ public class Titan extends Entity   {
         titanEText.put(TitanType.STEALTH, "Go invisible for a short time. Avoid fire!");
         titanEText.put(TitanType.GRENADIER, "Activate a flashbang blinding nearby enemies");
         titanEText.put(TitanType.HOUNDMASTER, "Spawn a cage with a hound");
+        titanEText.put(TitanType.GOALIE, "Goalie Ability E");
 
         titanRText.put(TitanType.MAGE, "Scald an enemy with powerful fire magic");
         titanRText.put(TitanType.RANGER, "Knock all nearby enemies back a short distance");
@@ -416,6 +418,7 @@ public class Titan extends Entity   {
         titanRText.put(TitanType.STEALTH, "Blink a very short distance");
         titanRText.put(TitanType.GRENADIER, "Deal damage and deny a large region with vicious fire");
         titanRText.put(TitanType.HOUNDMASTER, "Open all cages. More dogs means more damage");
+        titanRText.put(TitanType.GOALIE, "Goalie Ability R");
 
     }
     private static RangeCircle e(int x){

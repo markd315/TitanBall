@@ -47,7 +47,7 @@ public class ServerApplication {
     public static void addNewGame(String id, GameOptions op, Collection<String> gameFor) {
         System.out.println("adding new game, id " + id);
         cleanupCorruptStates(gameFor);
-        states.put(id, new ManagedGame(id, op));
+        states.put(id, new ManagedGame(id, op, gameFor));
         System.out.println("game map size: " + states.size());
     }
 

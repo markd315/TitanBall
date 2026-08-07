@@ -1,6 +1,7 @@
 package gameserver.gamemanager;
 
 import authserver.SpringContextBridge;
+import authserver.matchmaking.Matchmaker;
 import authserver.users.identities.UserService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -40,6 +41,7 @@ public class ManagedGame {
     public String gameId;
     List<WebSocketPlayerConnection> clients = new ArrayList<>();
     public List<List<Integer>> availableSlots;
+    public Map<String, List<Integer>> preAssignedSlots = new HashMap<>();
     int claimIndex = 0;
     final AtomicReference<Game> stateRef = new AtomicReference<>(state);
     ScheduledExecutorService exec;
@@ -122,7 +124,8 @@ public class ManagedGame {
                 }
                 System.out.println("adding NEW client");
                 //We should be sorting the connections when the game actually starts, so doesn't matter
-                queue.add(new WebSocketPlayerConnection(nextUnclaimedSlot(), c, email));
+                List<Integer> slot = preAssignedSlots.containsKey(email) ? preAssignedSlots.get(email) : nextUnclaimedSlot();
+                queue.add(new WebSocketPlayerConnection(slot, c, email));
             }
         }
         if(lobbyFull(queue)){
@@ -160,19 +163,42 @@ public class ManagedGame {
         clients = gameIncludedClients;
         Runnable updateClients = () -> {
             stateRef.set(state); // everyone gets the latest state once and no one gets a stale one or a fresher one
-            //System.out.println("updating clients now");
             Game snapshot = stateRef.get();
             if (snapshot == null) {
                 System.err.println("Warning: state is null, skipping update");
                 return;
             }
-            //remove if not connected
+            
+            // Clone the snapshot once under a single lock to decouple clients from the gameTick thread
+            Game baseClone = null;
+            boolean isGameEngine = snapshot instanceof GameEngine;
+            if (isGameEngine) {
+                ((GameEngine) snapshot).lock();
+            }
+            try {
+                baseClone = mapper.convertValue(snapshot, Game.class);
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                if (isGameEngine) {
+                    ((GameEngine) snapshot).unlock();
+                }
+            }
+            
+            if (baseClone == null) {
+                return;
+            }
+            
+            final Game finalBaseClone = baseClone;
+            
+            // remove if not connected
             clients.removeIf(client -> !client.isConnected());
             clients.parallelStream().forEach(client -> {
-                try{
+                try {
                     PlayerDivider pd = dividerFromConn(client);
-                    //Optimizing clone away by only hacking in the needed var fails because of occasional concurrency issue
-                    Game update = (Game) deepClone(snapshot);
+                    
+                    // Clone the static baseClone (no lock required since it's not live state!)
+                    Game update = mapper.convertValue(finalBaseClone, Game.class);
                     if (update == null) {
                         return;
                     }
@@ -189,10 +215,10 @@ public class ManagedGame {
                         client.sendJson(mapper.writeValueAsString(anticheat(update)));
                     }
                 }
-                catch (ConcurrentModificationException ex1){
+                catch (ConcurrentModificationException ex1) {
                     System.out.println("ConcurrentModificationException in update thread, skipping");
                 }
-                catch (Exception ex1){
+                catch (Exception ex1) {
                     ex1.printStackTrace();
                 }
             });
@@ -361,7 +387,11 @@ public class ManagedGame {
     }
 
 
-    public ManagedGame(String id, GameOptions op){
+    public ManagedGame(String id, GameOptions op) {
+        this(id, op, new ArrayList<>());
+    }
+
+    public ManagedGame(String id, GameOptions op, Collection<String> gameFor) {
         this.gameId = id;
         this.options = op;
         ObjectMapper mapper = new ObjectMapper();
@@ -371,24 +401,24 @@ public class ManagedGame {
         } catch (JsonProcessingException e) {
             e.printStackTrace();
         }
-        if(op.playerIndex == 1 && false) { //player switching working, but disabled for now
+
+        if (op.playerIndex == 0) {
             this.availableSlots = new ArrayList<>();
-            ArrayList<Integer> c1 = new ArrayList<>();
-            c1.add(4);
-            c1.add(1);
+            List<Integer> c1 = new ArrayList<>();
             c1.add(3);
+            c1.add(4);
             c1.add(5);
             c1.add(6);
-            ArrayList<Integer> c2 = new ArrayList<>();
-            c2.add(8);
-            c2.add(2);
-            c2.add(7);
-            c2.add(9);
-            c2.add(10);
+            c1.add(7);
+            c1.add(1);
+            c1.add(8);
+            c1.add(9);
+            c1.add(10);
+            c1.add(11);
+            c1.add(12);
+            c1.add(2);
             this.availableSlots.add(c1);
-            this.availableSlots.add(c2);
-        }
-        if(op.playerIndex == 1) {
+        } else if (op.playerIndex == 1) {
             this.availableSlots = new ArrayList<>();
             ArrayList<Integer> c1 = new ArrayList<>();
             c1.add(3);
@@ -398,195 +428,103 @@ public class ManagedGame {
             c2.add(2);
             this.availableSlots.add(c1);
             this.availableSlots.add(c2);
-        }
-        else if(op.playerIndex == 0) {
+        } else if (op.playerIndex >= 2 && op.playerIndex <= 8) {
             this.availableSlots = new ArrayList<>();
-            List<Integer> c1 = new ArrayList<>();
-            c1.add(3);
-            c1.add(4);
-            c1.add(5);
-            c1.add(6);
-            c1.add(7);
-            c1.add(1);
+            int numPlayers = op.playerIndex;
+            for (int k = 0; k < numPlayers; k++) {
+                List<Integer> slot = new ArrayList<>();
+                slot.add(3 + k);
+                if (k == 0) {
+                    slot.add(1);
+                }
+                this.availableSlots.add(slot);
+            }
+            for (int k = 0; k < numPlayers; k++) {
+                List<Integer> slot = new ArrayList<>();
+                slot.add(3 + numPlayers + k);
+                if (k == 0) {
+                    slot.add(2);
+                }
+                this.availableSlots.add(slot);
+            }
+        }
 
-            c1.add(8);
-            c1.add(9);
-            c1.add(10);
-            c1.add(11);
-            c1.add(12);
-            c1.add(2);
-            this.availableSlots.add(c1);
+        if (gameFor != null && !gameFor.isEmpty()) {
+            List<String> emails = new ArrayList<>(gameFor);
+            List<String> homeTeam = new ArrayList<>();
+            List<String> awayTeam = new ArrayList<>();
+            
+            Matchmaker matchmaker = SpringContextBridge.services() != null ? SpringContextBridge.services().getMatchmaker() : null;
+            
+            List<String> homeCoaches = new ArrayList<>();
+            List<String> awayCoaches = new ArrayList<>();
+            List<String> regularPlayers = new ArrayList<>();
+            
+            for (String email : emails) {
+                String cls = "WARRIOR";
+                if (matchmaker != null && matchmaker.playerClasses != null) {
+                    cls = matchmaker.playerClasses.getOrDefault(email, "WARRIOR");
+                }
+                if ("GOALIE".equalsIgnoreCase(cls)) {
+                    if (homeCoaches.isEmpty()) {
+                        homeCoaches.add(email);
+                    } else {
+                        awayCoaches.add(email);
+                    }
+                } else {
+                    regularPlayers.add(email);
+                }
+            }
+            
+            int half = regularPlayers.size() / 2;
+            for (int i = 0; i < regularPlayers.size(); i++) {
+                if (i < half) {
+                    homeTeam.add(regularPlayers.get(i));
+                } else {
+                    awayTeam.add(regularPlayers.get(i));
+                }
+            }
+            
+            if (!homeCoaches.isEmpty()) {
+                homeTeam.add(0, homeCoaches.get(0));
+            }
+            if (!awayCoaches.isEmpty()) {
+                awayTeam.add(0, awayCoaches.get(0));
+            }
+            
+            int numPlayers = op.playerIndex;
+            boolean homeHasGoalie = !homeCoaches.isEmpty();
+            for (int k = 0; k < homeTeam.size(); k++) {
+                String email = homeTeam.get(k);
+                List<Integer> slot = new ArrayList<>();
+                if (k == 0 && homeHasGoalie) {
+                    slot.add(1);
+                } else {
+                    int regularIndex = homeHasGoalie ? k - 1 : k;
+                    slot.add(3 + regularIndex);
+                    if (k == 0 && !homeHasGoalie) {
+                        slot.add(1);
+                    }
+                }
+                preAssignedSlots.put(email, slot);
+            }
+            
+            boolean awayHasGoalie = !awayCoaches.isEmpty();
+            for (int k = 0; k < awayTeam.size(); k++) {
+                String email = awayTeam.get(k);
+                List<Integer> slot = new ArrayList<>();
+                if (k == 0 && awayHasGoalie) {
+                    slot.add(2);
+                } else {
+                    int regularIndex = awayHasGoalie ? k - 1 : k;
+                    slot.add(3 + numPlayers + regularIndex);
+                    if (k == 0 && !awayHasGoalie) {
+                        slot.add(2);
+                    }
+                }
+                preAssignedSlots.put(email, slot);
+            }
         }
-        else if(op.playerIndex == 5) {
-            this.availableSlots = new ArrayList<>();
-            List<Integer> c1 = new ArrayList<>();
-            List<Integer> c2 = new ArrayList<>();
-            List<Integer> c3 = new ArrayList<>();
-            List<Integer> c4 = new ArrayList<>();
-            List<Integer> c5 = new ArrayList<>();
-            List<Integer> c6 = new ArrayList<>();
-            List<Integer> c7 = new ArrayList<>();
-            List<Integer> c8 = new ArrayList<>();
-            List<Integer> c9 = new ArrayList<>();
-            List<Integer> c10 = new ArrayList<>();
-            c1.add(1);
-            c2.add(2);
-            c3.add(3);
-            c4.add(4);
-            c5.add(5);
-            c6.add(6);
-            c7.add(7);
-            c8.add(8);
-            c9.add(9);
-            c10.add(10);
-            this.availableSlots.add(c1);
-            this.availableSlots.add(c2);
-            this.availableSlots.add(c3);
-            this.availableSlots.add(c4);
-            this.availableSlots.add(c5);
-            this.availableSlots.add(c6);
-            this.availableSlots.add(c7);
-            this.availableSlots.add(c8);
-            this.availableSlots.add(c9);
-            this.availableSlots.add(c10);
-        }
-        else if(op.playerIndex == 4){
-            this.availableSlots = new ArrayList<>();
-            List<Integer> c3 = new ArrayList<>();
-            List<Integer> c4 = new ArrayList<>();
-            List<Integer> c5 = new ArrayList<>();
-            List<Integer> c6 = new ArrayList<>();
-            List<Integer> c7 = new ArrayList<>();
-            List<Integer> c8 = new ArrayList<>();
-            List<Integer> c9 = new ArrayList<>();
-            List<Integer> c10 = new ArrayList<>();
-            c3.add(3);
-            c3.add(1);
-            c4.add(4);
-            c5.add(5);
-            c6.add(6);
-
-            c7.add(7);
-            c7.add(2);//def covers goalie
-            c8.add(8);
-            c9.add(9);
-            c10.add(10);
-            this.availableSlots.add(c3);
-            this.availableSlots.add(c4);
-            this.availableSlots.add(c5);
-            this.availableSlots.add(c6);
-            this.availableSlots.add(c7);
-            this.availableSlots.add(c8);
-            this.availableSlots.add(c9);
-            this.availableSlots.add(c10);
-        }
-        else if(op.playerIndex == 3 && false){ //pswitch disabled for now
-            this.availableSlots = new ArrayList<>();
-            List<Integer> c3 = new ArrayList<>();
-            List<Integer> c4 = new ArrayList<>();
-            List<Integer> c5 = new ArrayList<>();
-            List<Integer> c6 = new ArrayList<>();
-            List<Integer> c7 = new ArrayList<>();
-            List<Integer> c8 = new ArrayList<>();
-            c3.add(3);
-            c3.add(1);
-            c4.add(4);
-            c5.add(5);
-            c5.add(6);
-
-            c6.add(7);
-            c6.add(2);//def covers goalie
-            c7.add(8);
-            c8.add(9);
-            c8.add(10);
-            this.availableSlots.add(c3);
-            this.availableSlots.add(c4);
-            this.availableSlots.add(c5);
-            this.availableSlots.add(c6);
-            this.availableSlots.add(c7);
-            this.availableSlots.add(c8);
-        }
-        else if(op.playerIndex == 2 && false){ //disabled for now
-            this.availableSlots = new ArrayList<>();
-            List<Integer> c3 = new ArrayList<>();
-            List<Integer> c4 = new ArrayList<>();
-            List<Integer> c5 = new ArrayList<>();
-            List<Integer> c6 = new ArrayList<>();
-            c3.add(3);
-            c3.add(1);
-            c4.add(4);
-            c4.add(5);
-            c4.add(6);
-
-            c5.add(7);
-            c5.add(2);//def covers goalie
-            c6.add(8);
-            c6.add(9);
-            c6.add(10);
-            this.availableSlots.add(c3);
-            this.availableSlots.add(c4);
-            this.availableSlots.add(c5);
-            this.availableSlots.add(c6);
-        }
-        else if(op.playerIndex == 2){
-            this.availableSlots = new ArrayList<>();
-            List<Integer> c3 = new ArrayList<>();
-            List<Integer> c4 = new ArrayList<>();
-            List<Integer> c5 = new ArrayList<>();
-            List<Integer> c6 = new ArrayList<>();
-            c3.add(3);
-            c3.add(1);
-            c4.add(4);
-
-            c5.add(5);
-            c5.add(2);
-            c6.add(6);
-            this.availableSlots.add(c3);
-            this.availableSlots.add(c4);
-            this.availableSlots.add(c5);
-            this.availableSlots.add(c6);
-        }
-        else if(op.playerIndex == 3){
-            this.availableSlots = new ArrayList<>();
-            List<Integer> c3 = new ArrayList<>();
-            List<Integer> c4 = new ArrayList<>();
-            List<Integer> c5 = new ArrayList<>();
-            List<Integer> c6 = new ArrayList<>();
-            List<Integer> c7 = new ArrayList<>();
-            List<Integer> c8 = new ArrayList<>();
-            c3.add(3);//goalies are removed anyway if disabled for "true" 3v3
-            c3.add(1);
-            c4.add(4);
-            c5.add(5);
-
-            c6.add(6);
-            c6.add(2);
-            c7.add(7);
-            c8.add(8);
-            this.availableSlots.add(c3);
-            this.availableSlots.add(c4);
-            this.availableSlots.add(c5);
-            this.availableSlots.add(c6);
-            this.availableSlots.add(c7);
-            this.availableSlots.add(c8);
-        }
-        /*
-        else if(GameTenant.serverMode == ServerMode.ONEVTWO){ //disabled for now
-            this.availableSlots = new ArrayList<>();
-            List<Integer> c3 = new ArrayList<>();
-            List<Integer> c4 = new ArrayList<>();
-            List<Integer> c5 = new ArrayList<>();
-            c3.add(3); //goalies are removed anyway if disabled for "true" 2v1
-            c3.add(1);
-            c4.add(4);
-
-            c5.add(5);
-            c5.add(2);
-            c5.add(6);
-            this.availableSlots.add(c3);
-            this.availableSlots.add(c4);
-            this.availableSlots.add(c5);
-        }*/
     }
 
     private static int diagUpdateCount = 0;
@@ -635,13 +573,12 @@ public class ManagedGame {
             ((GameEngine) object).lock();
         }
         try {
-            String json = mapper.writeValueAsString(object);
             if (object instanceof GameEngine) {
-                return mapper.readValue(json, GameEngine.class);
+                return mapper.convertValue(object, GameEngine.class);
             } else if (object instanceof Game) {
-                return mapper.readValue(json, Game.class);
+                return mapper.convertValue(object, Game.class);
             }
-            return mapper.readValue(json, object.getClass());
+            return mapper.convertValue(object, object.getClass());
         }
         catch (Exception e) {
             e.printStackTrace();

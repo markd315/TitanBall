@@ -16,6 +16,7 @@ import { drawGoals } from './render/goals.js';
 import { drawHud } from './render/hud.js';
 import { login, joinQueue, checkGame, register, startTutorial } from './network/auth.js';
 import { connectGame, disconnectGame } from './network/socket.js';
+import { warmServer } from './network/warm.js';
 
 let ctx;
 let lastTime = 0;
@@ -189,20 +190,46 @@ function initUIListeners() {
     });
   }
 
-  // Join 3v3 click
-  const queue3v3Btn = document.getElementById('queue-3v3-btn');
-  if (queue3v3Btn) {
-    queue3v3Btn.addEventListener('click', async () => {
+  // Selected Match Size state
+  let selectedMatchSize = 4;
+  
+  const sizeDisplay = document.getElementById('match-size-display');
+  const sizeDownBtn = document.getElementById('size-down-btn');
+  const sizeUpBtn = document.getElementById('size-up-btn');
+  
+  if (sizeDownBtn && sizeUpBtn && sizeDisplay) {
+    sizeDownBtn.addEventListener('click', () => {
+      if (selectedMatchSize > 2) {
+        selectedMatchSize--;
+        sizeDisplay.textContent = `${selectedMatchSize}v${selectedMatchSize}`;
+      }
+    });
+    sizeUpBtn.addEventListener('click', () => {
+      if (selectedMatchSize < 8) {
+        selectedMatchSize++;
+        sizeDisplay.textContent = `${selectedMatchSize}v${selectedMatchSize}`;
+      }
+    });
+  }
+
+  // Join Team Match click
+  const queueTeamBtn = document.getElementById('queue-team-btn');
+  if (queueTeamBtn) {
+    queueTeamBtn.addEventListener('click', async () => {
       try {
+        const classSelect = document.getElementById('class-select');
+        const classSel = classSelect ? classSelect.value : 'WARRIOR';
+        
         const modeLabel = document.getElementById('queue-mode-label');
-        if (modeLabel) modeLabel.textContent = '3v3';
+        if (modeLabel) modeLabel.textContent = `${selectedMatchSize}v${selectedMatchSize}`;
         const lobbyTitle = document.querySelector('#lobby-overlay h2');
         if (lobbyTitle) lobbyTitle.textContent = 'Searching Match';
         const lobbyStatus = document.querySelector('#lobby-overlay .stat-value[style*="pulse"]');
         if (lobbyStatus) lobbyStatus.textContent = 'FINDING PLAYERS...';
         
-        console.log("Joining 3v3 Queue");
-        await joinQueue('');
+        const code = `/${selectedMatchSize}/1/1/5/2/9999/10/12`;
+        console.log(`Joining Team Match Queue with size ${selectedMatchSize}v${selectedMatchSize} and class ${classSel}`);
+        await joinQueue(code, classSel);
         gameState.is3v3 = true;
         gameState.phase = GamePhase.WAIT_FOR_GAME;
         startQueuePolling();
@@ -217,15 +244,26 @@ function initUIListeners() {
   if (queue1v1Btn) {
     queue1v1Btn.addEventListener('click', async () => {
       try {
+        const classSelect = document.getElementById('class-select');
+        const classError = document.getElementById('class-select-error');
+        if (classSelect && classSelect.value === 'GOALIE') {
+          if (classError) {
+            classError.textContent = "Error: Cannot queue for 1v1 Scrimmage as a Goalie. Please select a Titan class.";
+            classError.style.display = 'block';
+          }
+          return;
+        }
+        
         const modeLabel = document.getElementById('queue-mode-label');
-        if (modeLabel) modeLabel.textContent = '1v1';
+        if (modeLabel) modeLabel.textContent = 'Scrimmage';
         const lobbyTitle = document.querySelector('#lobby-overlay h2');
         if (lobbyTitle) lobbyTitle.textContent = 'Searching Match';
         const lobbyStatus = document.querySelector('#lobby-overlay .stat-value[style*="pulse"]');
         if (lobbyStatus) lobbyStatus.textContent = 'FINDING PLAYERS...';
         
-        console.log("Joining 1v1 Queue");
-        await joinQueue('1v1');
+        const classSel = classSelect ? classSelect.value : 'WARRIOR';
+        console.log("Joining Scrimmage (1v1) Queue as class:", classSel);
+        await joinQueue('1v1', classSel);
         gameState.is3v3 = false;
         gameState.phase = GamePhase.WAIT_FOR_GAME;
         startQueuePolling();
@@ -299,8 +337,24 @@ function initUIListeners() {
     const savedClass = localStorage.getItem('classSelection') || 'WARRIOR';
     classSelect.value = savedClass;
     gameState.controlsHeld.classSelection = savedClass;
+    
+    const classError = document.getElementById('class-select-error');
+    if (savedClass === 'GOALIE' && classError) {
+      classError.textContent = "Warning: Goalie class is only allowed in Team Matches (2v2 - 8v8), not 1v1 Scrimmages.";
+      classError.style.display = 'block';
+    }
 
     classSelect.addEventListener('change', (e) => {
+      if (e.target.value === 'GOALIE') {
+        if (classError) {
+          classError.textContent = "Warning: Goalie class is only allowed in Team Matches (2v2 - 8v8), not 1v1 Scrimmages.";
+          classError.style.display = 'block';
+        }
+      } else {
+        if (classError) {
+          classError.style.display = 'none';
+        }
+      }
       gameState.controlsHeld.classSelection = e.target.value;
       localStorage.setItem('classSelection', e.target.value);
       console.log("Selected Titan Class:", e.target.value);
@@ -668,31 +722,54 @@ function drawDraftShowcase(ctx) {
     ctx.textAlign = 'center';
     ctx.fillText(isHome ? 'HOME TEAM DRAFT' : 'AWAY TEAM DRAFT', startX + 350, 210);
 
-    let py = 280;
+    let py = 250;
+    
+    // Calculate dynamic sizes for cards when player counts are high to prevent overflow
+    let cardHeight = 110;
+    let spacing = 140;
+    let fontSizeText = 24;
+    let fontSizeClass = 20;
+    let spriteSize = 100;
+    let spriteOffset = 5;
+    let textOffsetY1 = 45;
+    let textOffsetY2 = 80;
+
+    if (players.length > 4) {
+      const maxContainerHeight = 550;
+      spacing = Math.floor(maxContainerHeight / players.length);
+      cardHeight = Math.max(50, Math.floor((maxContainerHeight - 40) / players.length));
+      fontSizeText = Math.max(12, Math.floor(cardHeight * 0.22));
+      fontSizeClass = Math.max(10, Math.floor(cardHeight * 0.18));
+      spriteSize = Math.max(40, cardHeight - 8);
+      spriteOffset = Math.floor((cardHeight - spriteSize) / 2);
+      textOffsetY1 = Math.floor(cardHeight * 0.4);
+      textOffsetY2 = Math.floor(cardHeight * 0.78);
+    }
+
     players.forEach((p, idx) => {
       // Draw card background
       ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
-      ctx.fillRect(startX + 50, py, 600, 110);
+      ctx.fillRect(startX + 50, py, 600, cardHeight);
       ctx.strokeStyle = isHome ? 'rgba(59, 130, 246, 0.3)' : 'rgba(239, 68, 68, 0.3)';
-      ctx.strokeRect(startX + 50, py, 600, 110);
+      ctx.strokeRect(startX + 50, py, 600, cardHeight);
 
       // Text details
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 24px Arial';
+      ctx.font = `bold ${fontSizeText}px Arial`;
       ctx.textAlign = 'left';
-      ctx.fillText(`Slot ${idx + 1}: Player`, startX + 80, py + 45);
+      ctx.fillText(`Slot ${idx + 1}: Player`, startX + 80, py + textOffsetY1);
 
       ctx.fillStyle = '#ff9f1c';
-      ctx.font = 'bold 20px Courier New';
-      ctx.fillText(`Class: ${p.type}`, startX + 80, py + 80);
+      ctx.font = `bold ${fontSizeClass}px Courier New`;
+      ctx.fillText(`Class: ${p.type}`, startX + 80, py + textOffsetY2);
 
       // Small stand sprite preview
       const standImg = AssetManager.images[`${p.type}_standR`] || AssetManager.images[`${p.type}_standL`];
       if (standImg) {
-        ctx.drawImage(standImg, startX + 490, py + 5, 100, 100);
+        ctx.drawImage(standImg, startX + 490, py + spriteOffset, spriteSize, spriteSize);
       }
 
-      py += 140;
+      py += spacing;
     });
     ctx.restore();
   };
@@ -725,6 +802,11 @@ export function start() {
   initKeyboard();
   initMouse();
   initUIListeners();
+  
+  // Warm the pilot-light server immediately on startup and keep warm every 10 minutes
+  warmServer();
+  setInterval(warmServer, 600000);
+
   requestAnimationFrame(gameLoop);
 }
 

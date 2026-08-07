@@ -1,0 +1,714 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Pilot Light Server Stack for Titanball - Autostarts server on hit, stops after 2 hours'
+
+Parameters:
+  DeploymentType:
+    Type: String
+    Default: ECS
+    AllowedValues: [ECS, EC2]
+    Description: Host the game server on ECS Fargate or a standalone EC2 Instance.
+  
+  CloudFrontDistributionId:
+    Type: String
+    Default: E250EEB1SQKL1Z
+    Description: The ID of your existing CloudFront distribution (e.g., E250EEB1SQKL1Z) for blockforger.net.
+
+  ECRImageUri:
+    Type: String
+    Default: '720291373173.dkr.ecr.us-east-1.amazonaws.com/titanball:latest'
+    Description: The ECR Docker Image URI for the Titanball game server.
+
+  DatabaseRootPassword:
+    Type: String
+    NoEcho: true
+    Default: 'devpassword'
+    Description: Root password for the MySQL Database container.
+
+  EC2InstanceType:
+    Type: String
+    Default: t3.micro
+    Description: The EC2 Instance type (used only if DeploymentType is EC2).
+
+  EC2KeyName:
+    Type: String
+    Default: ''
+    Description: Optional EC2 KeyPair name for SSH access (used only if DeploymentType is EC2).
+
+  LatestAMIPointer:
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: '/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64'
+    Description: The SSM parameter path to resolve the latest AL2023 AMI.
+
+Conditions:
+  DeployECS: !Equals [!Ref DeploymentType, 'ECS']
+  DeployEC2: !Equals [!Ref DeploymentType, 'EC2']
+  HasKeyName: !Not [!Equals [!Ref EC2KeyName, '']]
+
+Resources:
+  # ==========================================
+  # SELF-CONTAINED NETWORKING RESOURCES
+  # ==========================================
+  GameVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: TitanballVPC
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref GameVPC
+      CidrBlock: 10.0.1.0/24
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Select [0, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: TitanballPublicSubnet
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref GameVPC
+      InternetGatewayId: !Ref InternetGateway
+
+  RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref GameVPC
+      Tags:
+        - Key: Name
+          Value: TitanballRouteTable
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      RouteTableId: !Ref RouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  SubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref RouteTable
+
+  ServerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable HTTP/WS access on ports 80, 8080, and 22, and database access
+      VpcId: !Ref GameVPC
+      SecurityGroupIngress:
+        # HTTP Server Port
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        # Game Server Port
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          CidrIp: 0.0.0.0/0
+        # SSH Access (Conditional/Optional)
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        # DB Port (Internal subnet only)
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          CidrIp: 0.0.0.0/0
+
+  # ==========================================
+  # ECS FARGATE CONFIGURATION (Conditional)
+  # ==========================================
+  GameCluster:
+    Type: AWS::ECS::Cluster
+    Condition: DeployECS
+    Properties:
+      ClusterName: TitanballCluster
+
+  EcsExecutionRole:
+    Type: AWS::IAM::Role
+    Condition: DeployECS
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: [ecs-tasks.amazonaws.com]
+            Action: ['sts:AssumeRole']
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+  EcsTaskRole:
+    Type: AWS::IAM::Role
+    Condition: DeployECS
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: [ecs-tasks.amazonaws.com]
+            Action: ['sts:AssumeRole']
+
+  GameLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /ecs/titanball-logs
+      RetentionInDays: 7
+
+  GameTask:
+    Type: AWS::ECS::TaskDefinition
+    Condition: DeployECS
+    Properties:
+      Family: TitanballTask
+      Cpu: '4096'
+      Memory: '8192'
+      NetworkMode: awsvpc
+      RequiresCompatibilities: [FARGATE]
+      ExecutionRoleArn: !Ref EcsExecutionRole
+      TaskRoleArn: !Ref EcsTaskRole
+      ContainerDefinitions:
+        - Name: game-server
+          Image: !Ref ECRImageUri
+          Cpu: 3584
+          Memory: 6144
+          PortMappings:
+            - ContainerPort: 8080
+              HostPort: 8080
+          Environment:
+            - Name: DB_HOST
+              Value: '127.0.0.1'
+            - Name: DB_USER
+              Value: root
+            - Name: DB_PASSWORD
+              Value: !Ref DatabaseRootPassword
+            - Name: DB_URL
+              Value: !Sub "jdbc:mysql://127.0.0.1:3306/titanball?allowPublicKeyRetrieval=true&useSSL=false"
+            - Name: JWT_SECRET
+              Value: DevJWTSecretKey12345_DevJWTSecretKey12345
+          Essential: true
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref GameLogGroup
+              awslogs-region: !Ref 'AWS::Region'
+              awslogs-stream-prefix: server
+          DependsOn:
+            - ContainerName: db
+              Condition: HEALTHY
+        
+        - Name: db
+          Image: mysql:8.0
+          Cpu: 512
+          Memory: 2048
+          PortMappings:
+            - ContainerPort: 3306
+              HostPort: 3306
+          Environment:
+            - Name: MYSQL_ROOT_PASSWORD
+              Value: !Ref DatabaseRootPassword
+            - Name: MYSQL_DATABASE
+              Value: titanball
+          Essential: true
+          HealthCheck:
+            Command: ["CMD-SHELL", "mysqladmin ping -h localhost -p$MYSQL_ROOT_PASSWORD"]
+            Interval: 10
+            Timeout: 5
+            Retries: 5
+            StartPeriod: 30
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref GameLogGroup
+              awslogs-region: !Ref 'AWS::Region'
+              awslogs-stream-prefix: db
+
+  GameService:
+    Type: AWS::ECS::Service
+    Condition: DeployECS
+    DependsOn: PublicRoute
+    Properties:
+      ServiceName: TitanballService
+      Cluster: !Ref GameCluster
+      TaskDefinition: !Ref GameTask
+      LaunchType: FARGATE
+      DesiredCount: 0
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          Subnets:
+            - !Ref PublicSubnet
+          SecurityGroups:
+            - !Ref ServerSecurityGroup
+          AssignPublicIp: ENABLED
+
+  # ==========================================
+  # EC2 INSTANCE CONFIGURATION (Conditional)
+  # ==========================================
+  GameInstanceRole:
+    Type: AWS::IAM::Role
+    Condition: DeployEC2
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: [ec2.amazonaws.com]
+            Action: ['sts:AssumeRole']
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+
+  GameInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Condition: DeployEC2
+    Properties:
+      Roles:
+        - !Ref GameInstanceRole
+
+  GameInstance:
+    Type: AWS::EC2::Instance
+    Condition: DeployEC2
+    DependsOn: PublicRoute
+    Properties:
+      InstanceType: !Ref EC2InstanceType
+      ImageId: !Ref LatestAMIPointer
+      KeyName: !If [HasKeyName, !Ref EC2KeyName, !Ref 'AWS::NoValue']
+      SubnetId: !Ref PublicSubnet
+      SecurityGroupIds:
+        - !Ref ServerSecurityGroup
+      IamInstanceProfile: !Ref GameInstanceProfile
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          yum update -y
+          yum install -y docker
+          service docker start
+          systemctl enable docker
+          usermod -a -G docker ec2-user
+          
+          # Install Docker Compose
+          curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          chmod +x /usr/local/bin/docker-compose
+          ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
+          
+          # Create deployment structure
+          mkdir -p /app
+          cd /app
+          
+          # Create docker-compose.yml
+          cat << 'EOF' > docker-compose.yml
+          version: '3.8'
+          services:
+            db:
+              image: mysql:8.0
+              environment:
+                MYSQL_ROOT_PASSWORD: ${DatabaseRootPassword}
+                MYSQL_DATABASE: titanball
+              ports:
+                - "3306:3306"
+              healthcheck:
+                test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${DatabaseRootPassword}"]
+                interval: 10s
+                timeout: 5s
+                retries: 5
+            server:
+              image: ${ECRImageUri}
+              ports:
+                - "8080:8080"
+              environment:
+                DB_URL: jdbc:mysql://db:3306/titanball?allowPublicKeyRetrieval=true&useSSL=false
+                DB_USER: root
+                DB_PASSWORD: ${DatabaseRootPassword}
+                JWT_SECRET: DevJWTSecretKey12345_DevJWTSecretKey12345
+              depends_on:
+                db:
+                  condition: service_healthy
+          EOF
+          
+          # Start containers
+          docker-compose up -d
+      Tags:
+        - Key: Name
+          Value: TitanballGameServer
+        - Key: ExpirationTime
+          Value: '1970-01-01T00:00:00Z'
+
+  # ==========================================
+  # WARMING / REAPING LAMBDA & PERMISSIONS
+  # ==========================================
+  PilotLightLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: [lambda.amazonaws.com]
+            Action: ['sts:AssumeRole']
+      Policies:
+        - PolicyName: PilotLightServerAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # ECS Operations
+              - Effect: Allow
+                Action:
+                  - ecs:UpdateService
+                  - ecs:DescribeServices
+                  - ecs:TagResource
+                  - ecs:ListTagsForResource
+                  - ecs:ListTasks
+                  - ecs:DescribeTasks
+                Resource: '*'
+              # EC2 Operations
+              - Effect: Allow
+                Action:
+                  - ec2:StartInstances
+                  - ec2:StopInstances
+                  - ec2:DescribeInstances
+                  - ec2:CreateTags
+                  - ec2:DescribeNetworkInterfaces
+                Resource: '*'
+              # Route 53 Operations (Automated subdomain records)
+              - Effect: Allow
+                Action:
+                  - route53:ChangeResourceRecordSets
+                  - route53:ListHostedZones
+                  - route53:ListHostedZonesByName
+                  - route53:ListResourceRecordSets
+                Resource: '*'
+              # CloudFront Configuration Custom Resource permissions
+              - Effect: Allow
+                Action:
+                  - cloudfront:GetDistributionConfig
+                  - cloudfront:UpdateDistribution
+                Resource: '*'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  PilotLightLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: TitanballPilotLightHandler
+      Runtime: python3.11
+      Handler: index.handler
+      Role: !GetAtt PilotLightLambdaRole.Arn
+      Timeout: 60
+      MemorySize: 256
+      Environment:
+        Variables:
+          DEPLOYMENT_TYPE: !Ref DeploymentType
+          EXPIRATION_HOURS: '2'
+          ECS_CLUSTER: !If [DeployECS, !Ref GameCluster, '']
+          ECS_SERVICE: !If [DeployECS, !Ref GameService, '']
+          EC2_INSTANCE_ID: !If [DeployEC2, !Ref GameInstance, '']
+      Code:
+        ZipFile: |
+          import os,json,datetime,urllib.request,boto3,time
+          ecs,ec2,cloudfront,route53=boto3.client('ecs'),boto3.client('ec2'),boto3.client('cloudfront'),boto3.client('route53')
+          def handler(event,context):
+           if "RequestType" in event:return handle_cfn_router(event,context)
+           elif event.get("source")=="aws.events":return handle_reap(event,context)
+           return handle_warm(event,context)
+          def handle_warm(event,context):
+           dtype=os.environ.get("DEPLOYMENT_TYPE","ECS")
+           exp=(datetime.datetime.now(datetime.timezone.utc)+datetime.timedelta(hours=int(os.environ.get("EXPIRATION_HOURS","2")))).isoformat()
+           status,msg="unknown",""
+           public_ip=None
+           try:
+            if dtype=="ECS":
+             cluster,service=os.environ.get("ECS_CLUSTER"),os.environ.get("ECS_SERVICE")
+             desc=ecs.describe_services(cluster=cluster,services=[service])
+             if not desc['services']:raise Exception("Service not found")
+             svc=desc['services'][0]
+             if svc['desiredCount']!=1:
+              ecs.update_service(cluster=cluster,service=service,desiredCount=1)
+              status,msg="starting","ECS service starting"
+             else:status,msg="running","ECS service running"
+             ecs.tag_resource(resourceArn=svc['serviceArn'],tags=[{'key':'ExpirationTime','value':exp}])
+             # Wait for Public IP assignment
+             for _ in range(12):
+              tasks=ecs.list_tasks(cluster=cluster,serviceName=service)['taskArns']
+              if not tasks:
+               tasks=ecs.list_tasks(cluster=cluster,serviceName=service,desiredStatus='PENDING')['taskArns']
+              if tasks:
+               task_desc=ecs.describe_tasks(cluster=cluster,tasks=[tasks[0]])['tasks'][0]
+               attachments=task_desc.get('attachments',[])
+               eni_id=None
+               for att in attachments:
+                if att['type']=='ElasticNetworkInterface':
+                 for detail in att['details']:
+                  if detail['name']=='networkInterfaceId':eni_id=detail['value']
+               if eni_id:
+                eni_desc=ec2.describe_network_interfaces(NetworkInterfaceIds=[eni_id])
+                assoc=eni_desc['NetworkInterfaces'][0].get('Association',{})
+                public_ip=assoc.get('PublicIp')
+                if public_ip:break
+              time.sleep(1.5)
+            elif dtype=="EC2":
+             iid=os.environ.get("EC2_INSTANCE_ID")
+             desc=ec2.describe_instances(InstanceIds=[iid])
+             inst=desc['Reservations'][0]['Instances'][0]
+             state=inst['State']['Name']
+             if state in ["stopped","stopping"]:
+              ec2.start_instances(InstanceIds=[iid])
+              status,msg="starting","EC2 starting"
+             elif state=="running":status,msg="running","EC2 running"
+             else:status,msg=state,f"EC2 in {state}"
+             ec2.create_tags(Resources=[iid],Tags=[{'Key':'ExpirationTime','Value':exp}])
+             # Wait for Public IP assignment
+             for _ in range(10):
+              desc=ec2.describe_instances(InstanceIds=[iid])
+              inst=desc['Reservations'][0]['Instances'][0]
+              public_ip=inst.get('PublicIpAddress')
+              if public_ip:break
+              time.sleep(1.5)
+            
+            # Upsert Route 53 A record if Public IP is resolved
+            if public_ip:
+             zones=route53.list_hosted_zones_by_name(DNSName='blockforger.net.')['HostedZones']
+             if not zones:raise Exception("Hosted zone for blockforger.net not found")
+             zone_id=zones[0]['Id'].split('/')[-1]
+             route53.change_resource_record_sets(
+              HostedZoneId=zone_id,
+              ChangeBatch={
+               'Changes': [{
+                'Action': 'UPSERT',
+                'ResourceRecordSet': {
+                 'Name': 'titanball-server.blockforger.net.',
+                 'Type': 'A',
+                 'TTL': 10,
+                 'ResourceRecords': [{'Value': public_ip}]
+                }
+               }]
+              }
+             )
+           except Exception as e:
+            return {"statusCode":500,"headers":{"Access-Control-Allow-Origin":"*"},"body":json.dumps({"status":"error","error":str(e)})}
+           
+           res_data={"status":status,"message":msg,"expirationTime":exp}
+           if public_ip:
+            res_data["serverUrl"]=f"https://blockforger.net"
+            res_data["wsUrl"]=f"wss://blockforger.net"
+           return {"statusCode":200,"headers":{"Access-Control-Allow-Origin":"*"},"body":json.dumps(res_data)}
+          def handle_reap(event,context):
+           dtype=os.environ.get("DEPLOYMENT_TYPE","ECS")
+           now=datetime.datetime.now(datetime.timezone.utc)
+           try:
+            if dtype=="ECS":
+             cluster,service=os.environ.get("ECS_CLUSTER"),os.environ.get("ECS_SERVICE")
+             desc=ecs.describe_services(cluster=cluster,services=[service],include=['TAGS'])
+             if desc['services'] and desc['services'][0]['desiredCount']>0:
+              tag=next((t for t in desc['services'][0].get('tags',[]) if t['key']=='ExpirationTime'),None)
+              if tag and now>datetime.datetime.fromisoformat(tag['value']):ecs.update_service(cluster=cluster,service=service,desiredCount=0)
+            elif dtype=="EC2":
+             iid=os.environ.get("EC2_INSTANCE_ID")
+             desc=ec2.describe_instances(InstanceIds=[iid])
+             inst=desc['Reservations'][0]['Instances'][0]
+             if inst['State']['Name'] in ["running","pending"]:
+              tag=next((t for t in inst.get('Tags',[]) if t['Key']=='ExpirationTime'),None)
+              if tag and now>datetime.datetime.fromisoformat(tag['Value']):ec2.stop_instances(InstanceIds=[iid])
+           except Exception as e:print("Reap err:",e)
+          def handle_cfn_router(event,context):
+           req_type,props=event["RequestType"],event["ResourceProperties"]
+           dist_id,warm_url=props.get("CloudFrontDistributionId"),props.get("WarmLambdaUrl")
+           if not dist_id or not warm_url:return send_cfn(event,context,"FAILED",{"Message":"Missing params"},"Missing params")
+           domain=warm_url.replace("https://","").replace("/","")
+           orig_id="PilotLightLambdaUrlOrigin"
+           try:
+            res=cloudfront.get_distribution_config(Id=dist_id)
+            config,etag=res['DistributionConfig'],res['ETag']
+            updated=False
+            if req_type in ["Create","Update"]:
+             origins=config.get('Origins',{})
+             items=origins.get('Items',[])
+             orig_lambda={
+              'Id':orig_id,'DomainName':domain,'OriginPath':'',
+              'CustomHeaders':{'Quantity':0,'Items':[]},
+              'CustomOriginConfig':{
+               'HTTPPort':80,'HTTPSPort':443,'OriginProtocolPolicy':'https-only',
+               'OriginSslProtocols':{'Quantity':1,'Items':['TLSv1.2']},
+               'OriginReadTimeout':30,'OriginKeepaliveTimeout':5
+              },
+              'ConnectionAttempts':3,'ConnectionTimeout':10,'OriginShield':{'Enabled':False}
+             }
+             orig_server={
+              'Id':'TitanballGameServerOrigin','DomainName':'titanball-server.blockforger.net','OriginPath':'',
+              'CustomHeaders':{'Quantity':0,'Items':[]},
+              'CustomOriginConfig':{
+               'HTTPPort':8080,'HTTPSPort':443,'OriginProtocolPolicy':'http-only',
+               'OriginSslProtocols':{'Quantity':1,'Items':['TLSv1.2']},
+               'OriginReadTimeout':30,'OriginKeepaliveTimeout':5
+              },
+              'ConnectionAttempts':3,'ConnectionTimeout':10,'OriginShield':{'Enabled':False}
+             }
+             # Upsert origins
+             for new_o in [orig_lambda, orig_server]:
+              idx=next((i for i,o in enumerate(items) if o['Id']==new_o['Id']),-1)
+              if idx>=0:
+               if items[idx]['DomainName']!=new_o['DomainName']:items[idx],updated=new_o,True
+              else:items.append(new_o);updated=True
+             origins['Items'],origins['Quantity']=items,len(items)
+             config['Origins']=origins
+             
+             # Configure Behaviors
+             behaviors=config.get('CacheBehaviors',{})
+             b_items=behaviors.get('Items',[])
+             base_b=dict(config['DefaultCacheBehavior'])
+             base_b['ViewerProtocolPolicy']='redirect-to-https'
+             base_b.pop('CachePolicyId',None)
+             base_b.pop('OriginRequestPolicyId',None)
+             base_b['AllowedMethods']={
+              'Quantity':7,'Items':['GET','HEAD','POST','PUT','PATCH','OPTIONS','DELETE'],
+              'CachedMethods':{'Quantity':2,'Items':['GET','HEAD']}
+             }
+             base_b['ForwardedValues']={
+              'QueryString':True,
+              'Cookies':{'Forward':'all'},
+              'Headers':{
+               'Quantity':8,
+               'Items':['Authorization','Origin','Access-Control-Request-Headers','Access-Control-Request-Method','Content-Type','Accept','Referer','User-Agent']
+              },
+              'QueryStringCacheKeys':{'Quantity':0}
+             }
+             base_b['MinTTL']=0
+             base_b['DefaultTTL']=0
+             base_b['MaxTTL']=0
+             
+             b_warm=dict(base_b)
+             b_warm['PathPattern']='/pages/titanball/api/warm'
+             b_warm['TargetOriginId']='PilotLightLambdaUrlOrigin'
+             
+             b_api=dict(base_b)
+             b_api['PathPattern']='/pages/titanball/api/*'
+             b_api['TargetOriginId']='TitanballGameServerOrigin'
+             
+             b_game=dict(base_b)
+             b_game['PathPattern']='/pages/titanball/game'
+             b_game['TargetOriginId']='TitanballGameServerOrigin'
+             
+             # Rebuild Behaviors list to ensure index 0 priority
+             b_items=[b for b in b_items if b['PathPattern'] not in ['/pages/titanball/api/warm','/pages/titanball/api/*','/pages/titanball/game']]
+             b_items.insert(0, b_game)
+             b_items.insert(0, b_api)
+             b_items.insert(0, b_warm)
+             updated=True
+             
+             behaviors['Items'],behaviors['Quantity']=b_items,len(b_items)
+             config['CacheBehaviors']=behaviors
+            elif req_type=="Delete":
+             behaviors=config.get('CacheBehaviors',{})
+             b_items=behaviors.get('Items',[])
+             original_len=len(b_items)
+             b_items=[b for b in b_items if b['PathPattern'] not in ['/pages/titanball/api/warm','/pages/titanball/api/*','/pages/titanball/game']]
+             if len(b_items)!=original_len:updated=True
+             behaviors['Items'],behaviors['Quantity']=b_items,len(b_items)
+             config['CacheBehaviors']=behaviors
+             
+             origins=config.get('Origins',{})
+             items=origins.get('Items',[])
+             orig_len_o=len(items)
+             items=[o for o in items if o['Id'] not in ['PilotLightLambdaUrlOrigin','TitanballGameServerOrigin']]
+             if len(items)!=orig_len_o:updated=True
+             origins['Items'],origins['Quantity']=items,len(items)
+             config['Origins']=origins
+             
+             # Route 53 Cleanup on deletion
+             try:
+              zones=route53.list_hosted_zones_by_name(DNSName='blockforger.net.')['HostedZones']
+              if zones:
+               zone_id=zones[0]['Id'].split('/')[-1]
+               res_dns=route53.list_resource_record_sets(HostedZoneId=zone_id, StartRecordName='titanball-server.blockforger.net.', StartRecordType='A', MaxItems=1)
+               for rset in res_dns.get('ResourceRecordSets', []):
+                if rset['Name']=='titanball-server.blockforger.net.':
+                 route53.change_resource_record_sets(
+                  HostedZoneId=zone_id,
+                  ChangeBatch={'Changes': [{'Action': 'DELETE', 'ResourceRecordSet': rset}]}
+                 )
+             except Exception as dns_err:print("Route53 delete clean err:",dns_err)
+            
+            if updated:cloudfront.update_distribution(Id=dist_id,DistributionConfig=config,IfMatch=etag)
+            send_cfn(event,context,"SUCCESS",{"Message":"Done"})
+           except Exception as e:
+            print("Router exception:",e)
+            send_cfn(event,context,"FAILED",{"Message":str(e)},f"Exception: {str(e)[:180]} (Logs: {context.log_stream_name})")
+          def send_cfn(event,context,status,data,reason=None):
+           body=json.dumps({
+            "Status":status,"Reason":reason or f"Logs: {context.log_stream_name}",
+            "PhysicalResourceId":context.log_stream_name or "cfn_router",
+            "StackId":event["StackId"],"RequestId":event["RequestId"],
+            "LogicalResourceId":event["LogicalResourceId"],"Data":data
+           }).encode('utf-8')
+           req=urllib.request.Request(event["ResponseURL"],data=body,headers={"content-type":""},method="PUT")
+           try:
+            with urllib.request.urlopen(req) as f:pass
+           except Exception as e:print("CFN send fail:",e)
+
+  PilotLightLambdaUrl:
+    Type: AWS::Lambda::Url
+    Properties:
+      TargetFunctionArn: !Ref PilotLightLambda
+      AuthType: NONE
+      Cors:
+        AllowOrigins: ['*']
+        AllowMethods: ['*']
+        AllowHeaders: ['*']
+        MaxAge: 86400
+
+  PilotLightLambdaUrlPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref PilotLightLambda
+      Action: lambda:InvokeFunctionUrl
+      Principal: '*'
+      FunctionUrlAuthType: NONE
+
+  # ==========================================
+  # REAPER SCHEDULER (EVENTBRIDGE)
+  # ==========================================
+  ReaperScheduleRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Triggers the Reaper Lambda scan every 10 minutes
+      ScheduleExpression: rate(10 minutes)
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt PilotLightLambda.Arn
+          Id: ReaperTrigger
+
+  ReaperPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref PilotLightLambda
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt ReaperScheduleRule.Arn
+
+  # ==========================================
+  # CLOUDFRONT ROUTING CUSTOM RESOURCE
+  # ==========================================
+  CloudFrontRouter:
+    Type: Custom::CloudFrontRouter
+    DependsOn: PilotLightLambdaUrlPermission
+    Properties:
+      ServiceToken: !GetAtt PilotLightLambda.Arn
+      CloudFrontDistributionId: !Ref CloudFrontDistributionId
+      WarmLambdaUrl: !GetAtt PilotLightLambdaUrl.FunctionUrl
+
+Outputs:
+  LambdaFunctionUrl:
+    Description: URL to manually test server warming
+    Value: !GetAtt PilotLightLambdaUrl.FunctionUrl

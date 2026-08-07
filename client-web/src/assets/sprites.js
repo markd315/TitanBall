@@ -29,47 +29,47 @@ function getDirectoryName(cName) {
 
 export function initAssets() {
     // Basic UI and Court
-    AssetManager.loadSprite('field', '/res/Court/field.png');
-    AssetManager.loadSprite('logo', '/res/Court/logo2.png');
-    AssetManager.loadSprite('selector', '/res/Court/select.png');
-    AssetManager.loadSprite('ballA', '/res/Court/ballA.png');
-    AssetManager.loadSprite('ballB', '/res/Court/ballB.png');
-    AssetManager.loadSprite('ballFA', '/res/Court/ballFA.png');
-    AssetManager.loadSprite('ballFB', '/res/Court/ballFB.png');
-    AssetManager.loadSprite('ballPtr', '/res/Court/ballptr.png');
-    AssetManager.loadSprite('ballFPtr', '/res/Court/ballfptr.png');
-    AssetManager.loadSprite('victory', '/res/Court/victory.png');
-    AssetManager.loadSprite('defeat', '/res/Court/defeat.png');
-    AssetManager.loadSprite('tie', '/res/Court/tie.png');
-    AssetManager.loadSprite('lobby', '/res/Court/lobby.png');
-    AssetManager.loadSprite('goal', '/res/Court/goal.png');
+    AssetManager.loadSprite('field', 'res/Court/field.png');
+    AssetManager.loadSprite('logo', 'res/Court/logo2.png');
+    AssetManager.loadSprite('selector', 'res/Court/select.png');
+    AssetManager.loadSprite('ballA', 'res/Court/ballA.png');
+    AssetManager.loadSprite('ballB', 'res/Court/ballB.png');
+    AssetManager.loadSprite('ballFA', 'res/Court/ballFA.png');
+    AssetManager.loadSprite('ballFB', 'res/Court/ballFB.png');
+    AssetManager.loadSprite('ballPtr', 'res/Court/ballptr.png');
+    AssetManager.loadSprite('ballFPtr', 'res/Court/ballfptr.png');
+    AssetManager.loadSprite('victory', 'res/Court/victory.png');
+    AssetManager.loadSprite('defeat', 'res/Court/defeat.png');
+    AssetManager.loadSprite('tie', 'res/Court/tie.png');
+    AssetManager.loadSprite('lobby', 'res/Court/lobby.png');
+    AssetManager.loadSprite('goal', 'res/Court/goal.png');
 
     // Minions
-    AssetManager.loadSprite('wall', '/res/Court/wall.png');
-    AssetManager.loadSprite('trap1', '/res/Court/trap.png');
-    AssetManager.loadSprite('trap2', '/res/Court/trap2.png');
-    AssetManager.loadSprite('portal1', '/res/Court/portal.png');
-    AssetManager.loadSprite('portal2', '/res/Court/portal2.png');
-    AssetManager.loadSprite('portalcd', '/res/Court/portalcd.png');
-    AssetManager.loadSprite('bportal1', '/res/Court/ballp.png');
-    AssetManager.loadSprite('bportal2', '/res/Court/ballp2.png');
-    AssetManager.loadSprite('bportalcd', '/res/Court/ballpcd.png');
-    AssetManager.loadSprite('fire1', '/res/Court/fireA.png');
-    AssetManager.loadSprite('fire2', '/res/Court/fireB.png');
-    AssetManager.loadSprite('cage', '/res/Court/caged.png');
-    AssetManager.loadSprite('wolf1L', '/res/Wolf/wolfL.png');
-    AssetManager.loadSprite('wolf2L', '/res/Wolf/wolf2L.png');
-    AssetManager.loadSprite('wolf3L', '/res/Wolf/wolf3L.png');
-    AssetManager.loadSprite('wolf5L', '/res/Wolf/wolf5L.png');
-    AssetManager.loadSprite('wolf1R', '/res/Wolf/wolfR.png');
-    AssetManager.loadSprite('wolf2R', '/res/Wolf/wolf2R.png');
-    AssetManager.loadSprite('wolf3R', '/res/Wolf/wolf3R.png');
-    AssetManager.loadSprite('wolf5R', '/res/Wolf/wolf5R.png');
+    AssetManager.loadSprite('wall', 'res/Court/wall.png');
+    AssetManager.loadSprite('trap1', 'res/Court/trap.png');
+    AssetManager.loadSprite('trap2', 'res/Court/trap2.png');
+    AssetManager.loadSprite('portal1', 'res/Court/portal.png');
+    AssetManager.loadSprite('portal2', 'res/Court/portal2.png');
+    AssetManager.loadSprite('portalcd', 'res/Court/portalcd.png');
+    AssetManager.loadSprite('bportal1', 'res/Court/ballp.png');
+    AssetManager.loadSprite('bportal2', 'res/Court/ballp2.png');
+    AssetManager.loadSprite('bportalcd', 'res/Court/ballpcd.png');
+    AssetManager.loadSprite('fire1', 'res/Court/fireA.png');
+    AssetManager.loadSprite('fire2', 'res/Court/fireB.png');
+    AssetManager.loadSprite('cage', 'res/Court/caged.png');
+    AssetManager.loadSprite('wolf1L', 'res/Wolf/wolfL.png');
+    AssetManager.loadSprite('wolf2L', 'res/Wolf/wolf2L.png');
+    AssetManager.loadSprite('wolf3L', 'res/Wolf/wolf3L.png');
+    AssetManager.loadSprite('wolf5L', 'res/Wolf/wolf5L.png');
+    AssetManager.loadSprite('wolf1R', 'res/Wolf/wolfR.png');
+    AssetManager.loadSprite('wolf2R', 'res/Wolf/wolf2R.png');
+    AssetManager.loadSprite('wolf3R', 'res/Wolf/wolf3R.png');
+    AssetManager.loadSprite('wolf5R', 'res/Wolf/wolf5R.png');
 
     // Load classes
     classNames.forEach(cName => {
         const dir = getDirectoryName(cName);
-        const base = `/res/${dir}/`;
+        const base = `res/${dir}/`;
         
         // All classes have stand animations
         AssetManager.loadSprite(`${cName}_standL`, base + 'standL.png');
@@ -105,13 +105,13 @@ export function initAssets() {
       'HIDE_BALL', 'PASS', 'ROOT', 'SHOOT', 'SLOW', 'STEAL', 'STEALTHED', 'STUN'
     ];
     effectIds.forEach(effectId => {
-      AssetManager.loadSprite(`EFFECT_${effectId}`, `/res/Effects/${effectId}.png`);
+      AssetManager.loadSprite(`EFFECT_${effectId}`, `res/Effects/${effectId}.png`);
     });
 
-    AssetManager.loadAudio('shot', '/res/Sound/shotsound.wav');
-    AssetManager.loadAudio('tut0', '/res/Sound/tut0.wav');
-    AssetManager.loadAudio('tut1', '/res/Sound/tut1.wav');
-    AssetManager.loadAudio('tut2', '/res/Sound/tut2.wav');
-    AssetManager.loadAudio('tut3', '/res/Sound/tut3.wav');
-    AssetManager.loadAudio('tut4', '/res/Sound/tut4.wav');
+    AssetManager.loadAudio('shot', 'res/Sound/shotsound.wav');
+    AssetManager.loadAudio('tut0', 'res/Sound/tut0.wav');
+    AssetManager.loadAudio('tut1', 'res/Sound/tut1.wav');
+    AssetManager.loadAudio('tut2', 'res/Sound/tut2.wav');
+    AssetManager.loadAudio('tut3', 'res/Sound/tut3.wav');
+    AssetManager.loadAudio('tut4', 'res/Sound/tut4.wav');
 }

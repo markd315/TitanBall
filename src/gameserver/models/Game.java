@@ -76,12 +76,18 @@ public class Game   {
             new Titan(0, 0, TeamAffiliation.HOME, TitanType.MAGE),
             new Titan(0, 0, TeamAffiliation.HOME, TitanType.SUPPORT),
             new Titan(0, 0, TeamAffiliation.HOME, TitanType.DASHER),
+            new Titan(0, 0, TeamAffiliation.HOME, TitanType.RANGER),
+            new Titan(0, 0, TeamAffiliation.HOME, TitanType.MARKSMAN),
+            new Titan(0, 0, TeamAffiliation.HOME, TitanType.GOLEM),
 
             new Titan(0, 0, TeamAffiliation.AWAY, TitanType.ARTISAN),
             new Titan(0, 0, TeamAffiliation.AWAY, TitanType.RANGER),
             new Titan(0, 0, TeamAffiliation.AWAY, TitanType.HOUNDMASTER),
             new Titan(0, 0, TeamAffiliation.AWAY, TitanType.STEALTH),
             new Titan(0, 0, TeamAffiliation.AWAY, TitanType.MARKSMAN),
+            new Titan(0, 0, TeamAffiliation.AWAY, TitanType.GOLEM),
+            new Titan(0, 0, TeamAffiliation.AWAY, TitanType.WARRIOR),
+            new Titan(0, 0, TeamAffiliation.AWAY, TitanType.BUILDER),
     };
     public GoalHoop homeHiGoal = new GoalHoop(HOME_HI_X, HOME_HI_Y, c.getI("goal.hi.width"), c.getI("goal.hi.height"), TeamAffiliation.HOME);
     public GoalHoop awayHiGoal = new GoalHoop(AWAY_HI_X, AWAY_HI_Y, c.getI("goal.hi.width"), c.getI("goal.hi.height"), TeamAffiliation.AWAY);

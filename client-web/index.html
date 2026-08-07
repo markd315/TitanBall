@@ -378,7 +378,9 @@
               <option value="BUILDER">Builder (Traps & Wall Creator)</option>
               <option value="ARTISAN">Artisan (Ball Portals & Gravity Magnet)</option>
               <option value="GRENADIER">Grenadier (Flashbang Stun & AoE Fire)</option>
+              <option value="GOALIE">Goalie (RTS Lane Commander)</option>
             </select>
+            <div id="class-select-error" class="error-msg" style="display: none; color: #ef4444; font-size: 14px; margin-top: 8px; font-weight: bold; text-align: center;"></div>
           </div>
           <div class="input-group">
             <label for="controls-select">Controls Layout</label>
@@ -392,8 +394,15 @@
             <button id="masteries-modal-btn" class="btn btn-secondary">Configure Masteries</button>
           </div>
           <div class="menu-list">
-            <button id="queue-3v3-btn" class="btn">Queue 3v3 Match</button>
-            <button id="queue-1v1-btn" class="btn btn-secondary">Queue 1v1 Match</button>
+            <div class="team-match-container">
+              <button id="queue-team-btn" class="btn">Queue Team Match</button>
+              <div class="size-selector">
+                <button id="size-down-btn" class="btn-arrow" title="Decrease match size">▼</button>
+                <span id="match-size-display">4v4</span>
+                <button id="size-up-btn" class="btn-arrow" title="Increase match size">▲</button>
+              </div>
+            </div>
+            <button id="queue-1v1-btn" class="btn btn-secondary">Queue Scrimmage</button>
             <button id="tutorial-btn" class="btn btn-secondary">Play Tutorial</button>
           </div>
         </div>
@@ -420,7 +429,7 @@
           <h2>Searching Match</h2>
           <div class="stat-row">
             <span class="stat-label">Queue Mode</span>
-            <span id="queue-mode-label" class="stat-value">3v3</span>
+            <span id="queue-mode-label" class="stat-value">4v4</span>
           </div>
           <div class="stat-row">
             <span class="stat-label">Status</span>
@@ -437,6 +446,62 @@
       @keyframes pulse {
         0%, 100% { opacity: 1; }
         50% { opacity: 0.5; }
+      }
+      .team-match-container {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        margin-bottom: 12px;
+      }
+      #queue-team-btn {
+        flex: 1;
+        margin: 0;
+      }
+      .size-selector {
+        display: flex;
+        align-items: center;
+        background: rgba(255, 255, 255, 0.07);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 8px;
+        padding: 4px 8px;
+        gap: 8px;
+        height: 48px;
+        box-sizing: border-box;
+      }
+      #match-size-display {
+        font-family: 'Outfit', sans-serif;
+        font-size: 16px;
+        font-weight: bold;
+        color: #ff9f1c;
+        min-width: 32px;
+        text-align: center;
+        user-select: none;
+      }
+      .btn-arrow {
+        background: none;
+        border: none;
+        color: #ffffff;
+        font-size: 14px;
+        cursor: pointer;
+        padding: 4px 6px;
+        transition: all 0.2s ease;
+        border-radius: 4px;
+      }
+      .btn-arrow:hover {
+        background: rgba(255, 255, 255, 0.15);
+        color: #ff9f1c;
+        transform: scale(1.1);
+      }
+      .btn-arrow:active {
+        transform: scale(0.95);
+      }
+      .error-msg {
+        animation: fadeIn 0.3s ease;
+      }
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-5px); }
+        to { opacity: 1; transform: translateY(0); }
       }
     </style>
   </body>

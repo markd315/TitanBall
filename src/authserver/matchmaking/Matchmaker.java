@@ -22,6 +22,7 @@ public class Matchmaker {
 
     private Map<String, String> waitingPool = new HashMap<>();//user emails -> tournament code
     private Map<String, String> gameMap = new HashMap<>();//user emails -> game id
+    public Map<String, String> playerClasses = new java.util.concurrent.ConcurrentHashMap<>();
 
     private Map<String, String> teamMemberWaitingPool = new HashMap<>();//user emails -> teamN
     private Map<String, String> teamWaitingPool = new HashMap<>();//teamN -> tournament code
@@ -49,7 +50,6 @@ public class Matchmaker {
             for (String user : waitingPool.keySet()) {
                 String cmpVal = waitingPool.get(user);
                 if (val.equals(cmpVal) && !gameFor.contains(user)) {
-                    //need to prevent double counting and making too many games in outer loop
                     count++;
                 }
             }
@@ -64,22 +64,38 @@ public class Matchmaker {
                 System.out.println("catch");
             }
             if(count >= players){
-                int gameMembers = 0;
+                int goalieCount = 0;
+                int addedCount = 0;
+                List<String> selectedPlayers = new ArrayList<>();
                 for(String email : waitingPool.keySet()){
-                    if(waitingPool.get(email).equals(val)) {
-                        gameFor.add(email);
-                        gameMembers++;
-                        if(gameMembers == players){
+                    if(waitingPool.get(email).equals(val) && !gameFor.contains(email)) {
+                        String userClass = playerClasses.getOrDefault(email, "WARRIOR");
+                        boolean isGoalie = "GOALIE".equalsIgnoreCase(userClass);
+                        if (isGoalie) {
+                            if (goalieCount < 2) {
+                                selectedPlayers.add(email);
+                                goalieCount++;
+                                addedCount++;
+                            }
+                        } else {
+                            selectedPlayers.add(email);
+                            addedCount++;
+                        }
+                        if (addedCount == players) {
                             break;
                         }
                     }
                 }
-                spawnGame(gameFor, op);
+                if (addedCount == players) {
+                    gameFor.addAll(selectedPlayers);
+                    spawnGame(selectedPlayers, op);
+                }
             }
         }
         //only to avoid comod exception
         for (String s : gameFor) {
             waitingPool.remove(s);
+            playerClasses.remove(s);
             System.out.println("WAITING POOL SIZE: " + waitingPool.size());
         }
     }
@@ -143,12 +159,19 @@ public class Matchmaker {
         return code;
     }
 
-    public void registerIntent(Authentication login, String tournamentCode, String teamname) {
+    public void registerIntent(Authentication login, String tournamentCode, String teamname, String classSelection) {
         tournamentCode = normalizeTournamentCode(tournamentCode);
         if (teamname != null) {
             registerIntentTeam(login, tournamentCode, teamname);
         }
         String email = login.getName();
+        
+        if (classSelection != null && !classSelection.isEmpty()) {
+            playerClasses.put(email, classSelection);
+        } else {
+            playerClasses.put(email, "WARRIOR");
+        }
+
         boolean contains = false;
         for (String e : waitingPool.keySet()) {
             if (e.equals(email)) { //check by email in case some other attr changed
@@ -159,6 +182,10 @@ public class Matchmaker {
             waitingPool.put(email, tournamentCode);
             makeMatches();
         }
+    }
+
+    public void registerIntent(Authentication login, String tournamentCode, String teamname) {
+        registerIntent(login, tournamentCode, teamname, "WARRIOR");
     }
 
     public void registerIntentTeam(Authentication login, String tournamentCode, String teamname) {
@@ -207,6 +234,7 @@ public class Matchmaker {
         if (rm != null) {
             waitingPool.remove(rm);
         }
+        playerClasses.remove(email);
     }
 
     public void clearWaitingPools() { //for graceful shutdown

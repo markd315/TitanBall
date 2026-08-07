@@ -1,5 +1,5 @@
 export async function login(usernameOrEmail, password) {
-  const res = await fetch('/api/login', {
+  const res = await fetch('/pages/titanball/api/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ usernameOrEmail, password })
@@ -11,9 +11,9 @@ export async function login(usernameOrEmail, password) {
   return data;
 }
 
-export async function joinQueue(tournamentCode = '') {
+export async function joinQueue(tournamentCode = '', classSelection = '') {
   const token = localStorage.getItem('accessToken');
-  const url = `/api/join?tournamentCode=${encodeURIComponent(tournamentCode)}`;
+  const url = `/pages/titanball/api/join?tournamentCode=${encodeURIComponent(tournamentCode)}&classSelection=${encodeURIComponent(classSelection)}`;
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${token}` }
@@ -24,7 +24,7 @@ export async function joinQueue(tournamentCode = '') {
 
 export async function checkGame() {
   const token = localStorage.getItem('accessToken');
-  const res = await fetch('/api/gamecheck', {
+  const res = await fetch('/pages/titanball/api/gamecheck', {
     method: 'GET',
     headers: { 'Authorization': `Bearer ${token}` }
   });
@@ -33,7 +33,7 @@ export async function checkGame() {
 }
 
 export async function register(email, username, password) {
-  const res = await fetch('/api/register', {
+  const res = await fetch('/pages/titanball/api/register', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, username, password, role: 'USER' })
@@ -44,7 +44,7 @@ export async function register(email, username, password) {
 
 export async function startTutorial() {
   const token = localStorage.getItem('accessToken');
-  const res = await fetch('/api/tutorial', {
+  const res = await fetch('/pages/titanball/api/tutorial', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${token}` }
   });
