@@ -38,7 +38,20 @@ export function drawPlayers(ctx, game, camX, camY) {
             action = 'atk2';
         }
 
-        const spriteKey = `${t.type}_${action}${facing}`;
+        let spriteKey = `${t.type}_${action}${facing}`;
+        
+        if (t.type === 'GOALIE') {
+            const goalieCdEffect = game.effectPool && game.effectPool.effects.find(ef => ef.effect === 'COOLDOWN_GOALIE' && ef.on && ef.on.id === t.id);
+            if (goalieCdEffect) {
+                if (goalieCdEffect.percentLeft > 90) {
+                    spriteKey = `GOALIE_atk1${facing}`;   // was GOALIE_shoot
+                } else {
+                    spriteKey = `GOALIE_atk2${facing}`;   // was GOALIE_reload
+                }
+            } else {
+                spriteKey = `GOALIE_stand${facing}`;
+            }
+        }
         const img = AssetManager.images[spriteKey] || AssetManager.images[`${t.type}_stand${facing}`];
 
         // Apply team color tint via globalCompositeOperation if desired, or just draw

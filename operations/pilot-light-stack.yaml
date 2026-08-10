@@ -497,7 +497,7 @@ Resources:
               }
              )
            except Exception as e:
-            return {"statusCode":500,"headers":{"Access-Control-Allow-Origin":"*"},"body":json.dumps({"status":"error","error":str(e)})}
+            return {"statusCode":200,"headers":{"Access-Control-Allow-Origin":"*"},"body": json.dumps({"status":"error","error":str(e)})}
            
            res_data={"status":status,"message":msg,"expirationTime":exp}
            if public_ip:

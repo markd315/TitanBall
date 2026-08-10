@@ -55,6 +55,10 @@ public class Game   {
     public GameOptions options;
     public EffectPool effectPool = new EffectPool();
     public List<Entity> entityPool = new ArrayList<>();
+    public long[] homeLaneBonusEndTime = new long[3];
+    public long[] awayLaneBonusEndTime = new long[3];
+    public double homeGoalieCurrency = 0.0;
+    public double awayGoalieCurrency = 0.0;
     public boolean ballVisible, inGame, goalVisible;
 
     public GamePhase phase;

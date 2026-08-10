@@ -70,6 +70,7 @@ public class SpringSecurityConfig extends WebSecurityConfigurerAdapter {
                         "/api/activate",
                         "/api/renew",
                         "/api/health",
+                        "/api/warm",
                         "/game",
                         "/error")
                 .permitAll()

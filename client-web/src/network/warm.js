@@ -1,4 +1,8 @@
 export async function warmServer() {
+  if (window.warmExpired) {
+    console.log("[PilotLight] Warm server ping skipped: Session Expired.");
+    return;
+  }
   try {
     console.log("[PilotLight] Sending server warming ping...");
     const res = await fetch('/pages/titanball/api/warm', {

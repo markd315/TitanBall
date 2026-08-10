@@ -42,6 +42,14 @@ public class LoginController {
     public ResponseEntity<String> health() {
         return ResponseEntity.ok("OK");
     }
+
+    @PostMapping(value = "/warm", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<java.util.Map<String, String>> warm() {
+        java.util.Map<String, String> response = new java.util.HashMap<>();
+        response.put("status", "ready");
+        response.put("serverUrl", "/pages/titanball");
+        return ResponseEntity.ok(response);
+    }
     private static final String M2M_AUTH = "VERY SECRET PAYPAL PRIVATE KEY";
 
     @Autowired

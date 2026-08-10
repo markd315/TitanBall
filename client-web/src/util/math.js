@@ -12,6 +12,11 @@ export function distance(x1, y1, x2, y2) {
 
 export function updateCamera(game, state) {
     if (state.camFollow && game && game.underControl) {
+        if (game.underControl.type === 'GOALIE') {
+            state.camX = 0;
+            state.camY = 0;
+            return;
+        }
         // Center player on the screen. Screen resolution is 1920x1080.
         // Center of screen is 960 (half of 1920), and 540 (half of 1080).
         state.camX = Math.floor(game.underControl.X + 35 - 960);

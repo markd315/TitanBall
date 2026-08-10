@@ -7,6 +7,7 @@ import java.io.IOException;
 
 public class WebSocketPlayerConnection extends PlayerDivider {
     private WebSocketSession session;
+    private final Object sendLock = new Object();
 
     public WebSocketPlayerConnection(WebSocketSession session) {
         this.session = session;
@@ -19,8 +20,6 @@ public class WebSocketPlayerConnection extends PlayerDivider {
         this.id = other.id;
         this.email = email;
     }
-
-    private final Object sendLock = new Object();
 
     public void setClient(WebSocketPlayerConnection other) {
         synchronized (sendLock) {

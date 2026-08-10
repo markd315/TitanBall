@@ -9,7 +9,7 @@ export function drawHud(ctx, game, state) {
     const entities = [...(game.players || []), ...(game.entityPool || [])];
     
     for (const e of entities) {
-        if (e.health > 0) {
+        if (e.health > 0 && e.entityClass !== 'LaneMinion') {
             const invisible = game.underControl && game.underControl.team !== e.team && 
                               game.effectPool && game.effectPool.effects.some(ef => ef.effect === 'STEALTHED' && ef.on && ef.on.id === e.id);
             if (invisible) continue;
@@ -224,6 +224,43 @@ export function drawHud(ctx, game, state) {
             
             ctx.fillStyle = bannerColor;
             ctx.fillText(bannerText, CONSTANTS.X_RES / 2, CONSTANTS.Y_RES / 2 - 100);
+            ctx.restore();
+        }
+
+        // Draw Goalie Currency (Gold) in bottom left
+        if (game.underControl && game.underControl.type === 'GOALIE') {
+            ctx.save();
+            ctx.fillStyle = 'rgba(10, 26, 20, 0.8)';
+            ctx.strokeStyle = '#ff9f1c';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            if (ctx.roundRect) {
+                ctx.roundRect(50, CONSTANTS.Y_RES - 160, 220, 50, 8);
+            } else {
+                ctx.rect(50, CONSTANTS.Y_RES - 160, 220, 50);
+            }
+            ctx.fill();
+            ctx.stroke();
+
+            // Gold Coin Circle
+            ctx.fillStyle = '#ff9f1c';
+            ctx.beginPath();
+            ctx.arc(75, CONSTANTS.Y_RES - 135, 12, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            ctx.fillStyle = '#000000';
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('$', 75, CONSTANTS.Y_RES - 135);
+
+            // Currency Text
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 20px Arial';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            const amt = Math.floor(game.underControl.team === 'HOME' ? (game.homeGoalieCurrency || 0) : (game.awayGoalieCurrency || 0));
+            ctx.fillText(`Gold: ${amt}`, 100, CONSTANTS.Y_RES - 135);
             ctx.restore();
         }
     }

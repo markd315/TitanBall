@@ -5,6 +5,10 @@ export const AssetManager = {
     audio: {},
     loadSprite(key, src) {
         const img = new Image();
+        img.onerror = () => {
+            console.warn(`AssetManager: "${key}" not found at ${src} (ok if this class doesn't have this animation)`);
+            delete this.images[key];
+        };
         img.src = src;
         this.images[key] = img;
     },
@@ -67,37 +71,26 @@ export function initAssets() {
     AssetManager.loadSprite('wolf5R', 'res/Wolf/wolf5R.png');
 
     // Load classes
-    classNames.forEach(cName => {
+    const ANIM_SETS = {
+        stand: ['standL', 'standR'],
+        run:   ['runAL', 'runAR', 'runBL', 'runBR'],
+        atk:   ['atk1L', 'atk1R', 'atk2L', 'atk2R'],
+        shot:  ['shotL', 'shotR'],
+        pass:  ['passL', 'passR'],
+        die:   ['dieL', 'dieR'],
+    };
+
+    function loadClassSprites(cName) {
         const dir = getDirectoryName(cName);
         const base = `res/${dir}/`;
-        
-        // All classes have stand animations
-        AssetManager.loadSprite(`${cName}_standL`, base + 'standL.png');
-        AssetManager.loadSprite(`${cName}_standR`, base + 'standR.png');
 
-        // GOLEM (SpriteGuardian) has no movement/combat animations
-        if (cName !== 'GOLEM') {
-            AssetManager.loadSprite(`${cName}_runAL`, base + 'runAL.png');
-            AssetManager.loadSprite(`${cName}_runAR`, base + 'runAR.png');
-            AssetManager.loadSprite(`${cName}_runBL`, base + 'runBL.png');
-            AssetManager.loadSprite(`${cName}_runBR`, base + 'runBR.png');
-            AssetManager.loadSprite(`${cName}_atk1L`, base + 'atk1L.png');
-            AssetManager.loadSprite(`${cName}_atk1R`, base + 'atk1R.png');
-            AssetManager.loadSprite(`${cName}_atk2L`, base + 'atk2L.png');
-            AssetManager.loadSprite(`${cName}_atk2R`, base + 'atk2R.png');
-            AssetManager.loadSprite(`${cName}_shotL`, base + 'shotL.png');
-            AssetManager.loadSprite(`${cName}_shotR`, base + 'shotR.png');
-            AssetManager.loadSprite(`${cName}_passL`, base + 'passL.png');
-            AssetManager.loadSprite(`${cName}_passR`, base + 'passR.png');
+        for (const suffix of Object.values(ANIM_SETS).flat()) {
+            AssetManager.loadSprite(`${cName}_${suffix}`, base + `${suffix}.png`);
         }
+    }
 
-        // Only Warrior has death animations
-        if (cName === 'WARRIOR') {
-            AssetManager.loadSprite(`${cName}_dieL`, base + 'dieL.png');
-            AssetManager.loadSprite(`${cName}_dieR`, base + 'dieR.png');
-        }
-    });
-
+    // in initAssets():
+    classNames.forEach(loadClassSprites);
     // Load effect icons
     const effectIds = [
       'BLEED', 'BLIND', 'COOLDOWN_CURVE', 'COOLDOWN_Q', 'COOLDOWN_STEAL', 'COOLDOWN_W',
@@ -107,6 +100,7 @@ export function initAssets() {
     effectIds.forEach(effectId => {
       AssetManager.loadSprite(`EFFECT_${effectId}`, `res/Effects/${effectId}.png`);
     });
+    AssetManager.loadSprite('EFFECT_COOLDOWN_GOALIE', 'res/Effects/COOLDOWN_Q.png');
 
     AssetManager.loadAudio('shot', 'res/Sound/shotsound.wav');
     AssetManager.loadAudio('tut0', 'res/Sound/tut0.wav');

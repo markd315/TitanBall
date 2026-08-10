@@ -33,6 +33,15 @@ public class GameOptions   {
     public GameOptions() {
     }
 
+    /** 1v1 scrimmage is the only mode where guardians may be omitted. */
+    public boolean allowsNoGoalie() {
+        return playerIndex == 1;
+    }
+
+    public boolean goaliesDisabled() {
+        return goalieIndex == 1 && allowsNoGoalie();
+    }
+
     public GameOptions(String tournamentCode) {
         String[] split = tournamentCode.split("/");
         if(split.length != 9){

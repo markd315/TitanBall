@@ -58,10 +58,9 @@ public class ServerApplication {
         GameOptions op = new GameOptions("/1/1/1/5/2/9999/10/12");
         ManagedGame mg = new ManagedGame(id, op);
         mg.availableSlots = new ArrayList<>();
-        ArrayList<Integer> c1 = new ArrayList<>();
-        c1.add(3);
-        c1.add(1);
-        mg.availableSlots.add(c1);
+        // Enforce bijective mapping: availableSlots is now a flat List<Integer>
+        mg.availableSlots.add(3);
+        mg.availableSlots.add(1);
         states.put(id, mg);
         matchmaker.registerTutorialGame(email, id);
     }
@@ -84,17 +83,12 @@ public class ServerApplication {
     public static void delegatePacket(networking.WebSocketPlayerConnection connection, ClientPacket packet) {
         instantiateSpringContext();
         checkGameExpiry();
-        //System.out.println("delegating from game " + packet.gameID);
-        //System.out.println("game map size: " + states.size());
         try {
             if (states.containsKey(packet.gameID)) {
                 ManagedGame state = states.get(packet.gameID);
-                //System.out.println("passing connection " + connection.id + " to game " + state.gameId);
                 state.delegatePacket(connection, packet);
             }
             else {
-                //Rejoin logic for when the token has the right email but the connection is new.
-                //This is a hack to fix the issue of rejoining a game with a new connection
                 System.out.println("found a packet for a new connection but an existing game+user");
                 String email = Util.jwtExtractEmail(packet.token);
                 for (ManagedGame mg : states.values()) {
@@ -136,7 +130,7 @@ public class ServerApplication {
                 System.out.println("options: " + val.options.toStringSrv());
                 System.out.println(val.stateRef.get().toString());
                 val.terminateConnections(val.stateRef);
-                if(val.options.toStringSrv().equals("/3/1/1/5/2/9999/10/12")) {//default public mode only for ratings
+                if(val.options.toStringSrv().equals("/3/1/1/5/2/9999/10/12")) {
                     injectRatingsToPlayers(val.state);
                     for (PlayerDivider player : val.state.clients) {
                         try {
@@ -150,14 +144,13 @@ public class ServerApplication {
                         }
                     }
                 }
-                if(val.options.toStringSrv().equals("/1/1/1/5/2/9999/10/12")) {//1v1 ratings mode
-                    inject1v1RatingsToPlayers(val.state);//This method is new
+                if(val.options.toStringSrv().equals("/1/1/1/5/2/9999/10/12")) {
+                    inject1v1RatingsToPlayers(val.state);
                     for (PlayerDivider player : val.state.clients) {
                         try {
                             Titan t = val.state.titanSelected(player);
                             if (t != null) {
                                 String className = t.getType().toString();
-                                //This method is new
                                 persistenceManager.postgameStats1v1(player.email, val.state.stats, className, player.wasVictorious, player.newRating);
                             }
                         } catch (Exception e) {
@@ -178,7 +171,6 @@ public class ServerApplication {
         List<Rating> home = new ArrayList<>(), away = new ArrayList<>();
         for (PlayerDivider pl : state.clients) {
             User persistence = persistenceManager.userService.findUserByEmail(pl.email);
-            //System.out.println("got user " + persistence.getEmail() + persistence.getRating());
             Rating<User> oldRating = new Rating<>(persistence, persistence.getLosses() + persistence.getWins());
             if (state.players[pl.getSelection() - 1].team == TeamAffiliation.HOME) {
                 oldRating.setRating(persistence.getRating());
@@ -191,7 +183,6 @@ public class ServerApplication {
         Rating<String> homeRating = new Rating<>(home, "home", 0);
         Rating<String> awayRating = new Rating<>(away, "away", 0);
         Match<User> match = new Match(homeRating, awayRating, state.home.score - state.away.score);
-        //System.out.println(match.winMargin + "");
         match.injectAverage(home, away);
         for (PlayerDivider pl : state.clients) {
             updatePlayerRating(pl, home);
@@ -203,7 +194,6 @@ public class ServerApplication {
         List<Rating> home = new ArrayList<>(), away = new ArrayList<>();
         for (PlayerDivider pl : state.clients) {
             User persistence = persistenceManager.userService.findUserByEmail(pl.email);
-            //System.out.println("got user " + persistence.getEmail() + persistence.getRating());
             Rating<User> oldRating = new Rating<>(persistence, persistence.getLosses_1v1() + persistence.getWins_1v1());
             if (state.players[pl.getSelection() - 1].team == TeamAffiliation.HOME) {
                 oldRating.setRating(persistence.getRating_1v1());
@@ -216,7 +206,6 @@ public class ServerApplication {
         Rating<String> homeRating = new Rating<>(home, "home", 0);
         Rating<String> awayRating = new Rating<>(away, "away", 0);
         Match<User> match = new Match(homeRating, awayRating, state.home.score - state.away.score);
-        //System.out.println(match.winMargin + "");
         match.injectAverage(home, away);
         for (PlayerDivider pl : state.clients) {
             updatePlayerRating(pl, home);
@@ -227,7 +216,6 @@ public class ServerApplication {
     private static void updatePlayerRating(PlayerDivider pl, List<Rating> team) {
         for (Rating<User> r : team) {
             if (r.getID().getEmail().equals(pl.email)) {
-                //System.out.println(r.rating + " new");
                 pl.newRating = r.rating;
             }
         }

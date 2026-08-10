@@ -12,6 +12,8 @@ import gameserver.entity.Entity;
 import gameserver.entity.Titan;
 import gameserver.entity.TitanType;
 import gameserver.entity.minions.Tickable;
+import gameserver.entity.minions.LaneMinion;
+import gameserver.effects.effects.EmptyEffect;
 import gameserver.gamemanager.GamePhase;
 import gameserver.gamemanager.ManagedGame;
 import gameserver.models.Game;
@@ -43,8 +45,21 @@ public class GameEngine extends Game {
             e.printStackTrace();
         }
         cullUnmappedTitans();
+        for (PlayerDivider p : clients) {
+            // Remove any titan indices that no longer exist
+            p.possibleSelection.removeIf(sel -> sel > players.length || sel < 1);
+
+            // Ensure selection is valid
+            if (p.possibleSelection.isEmpty()) {
+                // fallback: always at least select titan #1
+                p.possibleSelection.add(1);
+            }
+
+            // Reset selection to a valid value
+            p.selection = p.possibleSelection.get(0);
+        }
         System.out.println("goalieoptions " + options.goalieIndex);
-        if (options.goalieIndex == 0) {
+        if (options.goaliesDisabled()) {
             cullGoalies();
         } else {
             if (!(this instanceof TutorialOverrides)) {
@@ -83,25 +98,41 @@ public class GameEngine extends Game {
 
     }
 
-    protected void cullUnmappedTitans() {
-        List<Titan> rm = new ArrayList<>();
+protected void cullUnmappedTitans() {
+        List<Titan> keepTitans = new ArrayList<>();
+        Map<Integer, Integer> oldToNewIndex = new HashMap<>();
+        int newIndex = 1;
+        
         for (int i = 0; i < players.length; i++) {
             boolean found = false;
             for (PlayerDivider p : clients) {
                 if (p.possibleSelection.contains(i + 1)) {
                     found = true;
+                    break;
                 }
             }
-            if (!found) {
+            if (found) {
+                keepTitans.add(players[i]);
+                oldToNewIndex.put(i + 1, newIndex);
+                newIndex++;
+            } else {
                 Titan t = players[i];
-                rm.add(t);
                 //System.out.println("unmapped titan " + t.team + t.getType() + t.id);
             }
         }
-        List<Titan> temp = new LinkedList<>(Arrays.asList(players));
-        temp.removeAll(rm);
-        players = new Titan[temp.size()];
-        players = temp.toArray(players);
+        
+        players = keepTitans.toArray(new Titan[0]);
+        
+        // Remap the clients' possible selections to align with the new contiguous array indices
+        for (PlayerDivider p : clients) {
+            List<Integer> remapped = new ArrayList<>();
+            for (Integer sel : p.possibleSelection) {
+                if (oldToNewIndex.containsKey(sel)) {
+                    remapped.add(oldToNewIndex.get(sel));
+                }
+            }
+            p.possibleSelection = remapped;
+        }
     }
 
     public GameEngine() {
@@ -470,7 +501,7 @@ public class GameEngine extends Game {
             p.marchingOrderX = (int) p.X;
             p.marchingOrderY = (int) p.Y;
             effectPool.cullAllOn(this, p);
-            entityPool.removeIf(e ->  (!(e instanceof Titan)));
+            entityPool.removeIf(e ->  (!(e instanceof Titan || e instanceof LaneMinion)));
             p.facing = 0;
             p.possession = 0;
             p.runningFrame = 0;
@@ -539,6 +570,17 @@ public class GameEngine extends Game {
     public void processClientPacket(PlayerDivider from, ClientPacket request) {
         if(this.phase != GamePhase.INGAME){
             return; //dontcare
+        }
+        boolean known = false;
+        for (PlayerDivider p : clients) {
+            if (p.id == from.id) {
+                known = true;
+                break;
+            }
+        }
+        if (!known) {
+            System.out.println("Packet from unknown client id=" + from.id);
+            return;
         }
         lock();
         if (from != null) {
@@ -678,6 +720,11 @@ public class GameEngine extends Game {
             }
             KeyDifferences controlsHeld = new KeyDifferences(controls, lastControlPacket[clientIndex]);
             boost(controlsHeld, t);
+            if (t.getType() == TitanType.GOALIE && controls.shotBtn && t.possession == 0 && this.phase == GamePhase.INGAME) {
+                double clickX = controls.posX + controls.camX;
+                double clickY = controls.posY + controls.camY;
+                handleGoalieAttackClick(from.getEmail(), clickX, clickY, t.team, t);
+            }
             if (controlsHeld.SWITCH == 1 && this.phase == GamePhase.INGAME && t.actionState == Titan.TitanState.IDLE) {
                 from.incSel(this);
                 t.runLeft = 0;
@@ -914,6 +961,14 @@ public class GameEngine extends Game {
             try {
                 framesSinceStart++;
                 boolean over = gameDurationRuleChanges();
+                
+                double ticksPerSec = 1000.0 / Math.max(1, GAMETICK_MS);
+                int waveInterval = (int) (3.0 * ticksPerSec);
+                if (framesSinceStart % waveInterval == 1) {
+                    spawnMinionWave();
+                }
+                tickLaneMinions();
+
                 List<Entity> tempSolids = new ArrayList<>();
                 tempSolids.addAll(Arrays.asList(players));
                 tickEntities(entityPool);
@@ -1050,7 +1105,7 @@ public class GameEngine extends Game {
 
     private boolean gameDurationRuleChanges() {
         final long FPS = 1000 / GAMETICK_MS;
-        if ((options.goalieIndex == 1) && framesSinceStart / FPS > GOALIE_DISABLE_TIME) {
+        if (options.goaliesDisabled() && framesSinceStart / FPS > GOALIE_DISABLE_TIME) {
             cullGoalies();
         }
         if (framesSinceStart / FPS > PAIN_DISABLE_TIME) {
@@ -1067,16 +1122,11 @@ public class GameEngine extends Game {
         return false;
     }
 
-    protected void tickEntities(List<Entity> entityPool) {
-        List<Entity> temp = entityPool;
-        entityPool = new ArrayList<>();
-        for (int i = 0; i < temp.size(); i++) {
-            if (temp.get(i).getHealth() > 0.0) {
-                entityPool.add(temp.get(i));
-                if(temp.get(i) instanceof Tickable){
-                    Tickable t = (Tickable) temp.get(i);
-                    t.tick(this);
-                }
+    protected void tickEntities(List<Entity> entityList) {
+        entityList.removeIf(e -> e.getHealth() <= 0.0);
+        for (Entity e : entityList) {
+            if (e instanceof Tickable) {
+                ((Tickable) e).tick(this);
             }
         }
     }
@@ -1866,6 +1916,350 @@ public class GameEngine extends Game {
         }
         this.ended = true;
     }
+
+    private java.util.Map<String, Long> goalieLastAttackTime = new java.util.HashMap<>();
+
+    private double[] laneCenterYs() {
+        int goalLowH = c.getI("goal.low.height");
+        int goalHiH  = c.getI("goal.hi.height");
+        double topCenter = c.getI("goal.low.y")  + goalLowH / 2.0;
+        double midCenter = c.getI("goal.hi.y")   + goalHiH  / 2.0;
+        double botCenter = c.getI("goal.low2.y") + goalLowH / 2.0;
+        return new double[]{ topCenter, midCenter, botCenter };
+    }
+
+    public void spawnMinionWave() {
+        int goalLowW = c.getI("goal.low.width");
+        int goalLowH = c.getI("goal.low.height");
+        int goalHiW  = c.getI("goal.hi.width");
+        int goalHiH  = c.getI("goal.hi.height");
+
+        // Centers = top-left corner + half width/height. Lanes 0 and 2 use the low goal, lane 1 uses hi.
+        int[] laneW = { goalLowW, goalHiW, goalLowW };
+        int[] laneH = { goalLowH, goalHiH, goalLowH };
+
+        int[] goalYs = { c.getI("goal.low.y"), c.getI("goal.hi.y"), c.getI("goal.low2.y") };
+
+        int[] HOME_X = { c.getI("goal.home.low.x"), c.getI("goal.home.hi.x"), c.getI("goal.home.low.x") };
+        int[] AWAY_X = { c.getI("goal.away.low.x"), c.getI("goal.away.hi.x"), c.getI("goal.away.low.x") };
+
+        int[] HOME_SPAWN_X = new int[3];
+        int[] AWAY_SPAWN_X = new int[3];
+        int[] SPAWN_Y = new int[3];
+        for (int L = 0; L < 3; L++) {
+            HOME_SPAWN_X[L] = HOME_X[L] + laneW[L] / 2;
+            AWAY_SPAWN_X[L] = AWAY_X[L] + laneW[L] / 2;
+            SPAWN_Y[L] = goalYs[L] + laneH[L] / 2;
+        }
+
+        final int HOME_CAP = 200;
+        final int AWAY_CAP = 200;
+
+        int homeCount = 0;
+        int awayCount = 0;
+
+        for (Entity e : entityPool) {
+            if (e instanceof LaneMinion m) {
+                if (m.team == TeamAffiliation.HOME) homeCount++;
+                else awayCount++;
+            }
+        }
+
+        for (int L = 0; L < 3; L++) {
+            if (homeCount < HOME_CAP) {
+                entityPool.add(new LaneMinion(HOME_SPAWN_X[L], SPAWN_Y[L], TeamAffiliation.HOME, L));
+                homeCount++;
+            }
+            if (awayCount < AWAY_CAP) {
+                entityPool.add(new LaneMinion(AWAY_SPAWN_X[L], SPAWN_Y[L], TeamAffiliation.AWAY, L));
+                awayCount++;
+            }
+        }
+    }
+
+protected void tickLaneMinions() {
+
+    // Lane centers, corrected for top-left-justified goal coords (corner + half dimension)
+    double[] centers = laneCenterYs();
+    final double TOP_CENTER = centers[0];
+    final double MID_CENTER = centers[1];
+    final double BOT_CENTER = centers[2];
+
+    // Lane boundaries (midpoints)
+    final double TOP_MID_DIV = (TOP_CENTER + MID_CENTER) / 2.0;
+    final double MID_BOT_DIV = (MID_CENTER + BOT_CENTER) / 2.0;
+
+    // Minion speed & damage
+    double minionSpeed = 1.25;
+    double minionDmg   = 0.05;
+    double titanDmg    = 0.05;
+    double fightRange  = 45.0;
+
+    // Collect minions by lane
+    List<List<LaneMinion>> homeMinions = new ArrayList<>();
+    List<List<LaneMinion>> awayMinions = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+        homeMinions.add(new ArrayList<>());
+        awayMinions.add(new ArrayList<>());
+    }
+
+    for (Entity e : entityPool) {
+        if (e instanceof LaneMinion && e.getHealth() > 0.0) {
+            LaneMinion m = (LaneMinion) e;
+            if (m.team == TeamAffiliation.HOME) {
+                homeMinions.get(m.laneIndex).add(m);
+            } else {
+                awayMinions.get(m.laneIndex).add(m);
+            }
+        }
+    }
+
+    // Process each lane independently
+    for (int L = 0; L < 3; L++) {
+
+        List<LaneMinion> homeInLane = homeMinions.get(L);
+        List<LaneMinion> awayInLane = awayMinions.get(L);
+
+        // Sort so front minions are at the front
+        homeInLane.sort((a, b) -> Double.compare(b.X, a.X)); // home moves +X, front = largest X
+        awayInLane.sort((a, b) -> Double.compare(a.X, b.X)); // away moves -X, front = smallest X
+
+        double laneCenterY =
+            (L == 0 ? TOP_CENTER :
+             L == 1 ? MID_CENTER :
+                      BOT_CENTER);
+
+        // HOME MINIONS
+        // Every minion independently targets its nearest live enemy - multiple attackers can
+        // pile onto the same target (3v1 etc. is intended), but any minion without a target in
+        // range is physically blocked from crossing past the frontmost living enemy in the lane.
+        for (LaneMinion h : homeInLane) {
+            LaneMinion target = findNearestEnemyMinion(h.X, awayInLane, fightRange);
+            if (target != null) {
+                target.health -= minionDmg;
+                continue; // engaged: hold position, never push through the enemy line
+            }
+            if (!awayInLane.isEmpty()) {
+                // Enemy wave still exists in this lane (just outside fightRange) - advance,
+                // but clamp so we can never cross past the frontmost living enemy.
+                double frontEnemyX = awayInLane.get(0).X;
+                h.X = Math.min(h.X + minionSpeed, frontEnemyX - fightRange);
+            } else {
+                // Lane is fully clear of enemy minions - free to push toward the goal/titans.
+                h.X += minionSpeed;
+                Titan t = findNearestTitanInLane(h.X, h.Y, TeamAffiliation.AWAY,
+                                                 TOP_CENTER, MID_CENTER, BOT_CENTER,
+                                                 TOP_MID_DIV, MID_BOT_DIV);
+                if (t != null) t.damage(this, titanDmg);
+            }
+            if (h.X >= 1780) {
+                h.health = 0;
+                homeLaneBonusEndTime[L] = nowEpochMs + 15000;
+            }
+        }
+
+        // AWAY MINIONS - mirror of home logic
+        for (LaneMinion a : awayInLane) {
+            LaneMinion target = findNearestEnemyMinion(a.X, homeInLane, fightRange);
+            if (target != null) {
+                target.health -= minionDmg;
+                continue;
+            }
+            if (!homeInLane.isEmpty()) {
+                double frontEnemyX = homeInLane.get(0).X;
+                a.X = Math.max(a.X - minionSpeed, frontEnemyX + fightRange);
+            } else {
+                a.X -= minionSpeed;
+                Titan t = findNearestTitanInLane(a.X, a.Y, TeamAffiliation.HOME,
+                                                 TOP_CENTER, MID_CENTER, BOT_CENTER,
+                                                 TOP_MID_DIV, MID_BOT_DIV);
+                if (t != null) t.damage(this, titanDmg);
+            }
+            if (a.X <= 300) {
+                a.health = 0;
+                awayLaneBonusEndTime[L] = nowEpochMs + 15000;
+            }
+        }
+
+        // Apply vertical spacing — only if X values are within range
+        separateMinionsVertically(homeInLane, 30.0, laneCenterY);
+        separateMinionsVertically(awayInLane, 30.0, laneCenterY);
+    }
+}
+    private LaneMinion findNearestEnemyMinion(double x, List<LaneMinion> enemies, double maxRange) {
+        LaneMinion nearest = null;
+        double minDist = maxRange;
+
+        for (LaneMinion e : enemies) {
+            if (e.health <= 0.0) continue;
+            double dist = Math.abs(e.X - x);
+            if (dist <= minDist) {
+                minDist = dist;
+                nearest = e;
+            }
+        }
+        return nearest;
+    }
+
+    private void separateMinionsVertically(List<LaneMinion> list, double minSpacing, double laneCenterY) {
+        if (list.size() <= 1) return;
+
+        // Only separate minions that are close in X
+        // Build groups of minions whose X positions are within 20 units
+        List<List<LaneMinion>> groups = new ArrayList<>();
+        List<LaneMinion> current = new ArrayList<>();
+
+        for (LaneMinion m : list) {
+            if (current.isEmpty()) {
+                current.add(m);
+            } else {
+                LaneMinion last = current.get(current.size() - 1);
+                if (Math.abs(m.X - last.X) <= 20.0) {
+                    current.add(m);
+                } else {
+                    groups.add(current);
+                    current = new ArrayList<>();
+                    current.add(m);
+                }
+            }
+        }
+        groups.add(current);
+
+        // Now apply vertical spacing to each group independently
+        for (List<LaneMinion> g : groups) {
+            if (g.size() <= 1) continue;
+
+            double startOffset = -((g.size() - 1) * minSpacing) / 2.0;
+
+            for (int i = 0; i < g.size(); i++) {
+                LaneMinion m = g.get(i);
+                m.Y = laneCenterY + startOffset + i * minSpacing;
+            }
+        }
+    }
+
+
+        
+    private Titan findNearestTitanInLane(
+            double x, double y, TeamAffiliation team,
+            double TOP_CENTER, double MID_CENTER, double BOT_CENTER,
+            double TOP_MID_DIV, double MID_BOT_DIV) {
+
+        // Determine lane from Y
+        int laneIndex;
+        if (y <= TOP_MID_DIV) laneIndex = 0;
+        else if (y <= MID_BOT_DIV) laneIndex = 1;
+        else laneIndex = 2;
+
+        double laneMinY, laneMaxY;
+
+        if (laneIndex == 0) {
+            laneMinY = 0;
+            laneMaxY = TOP_MID_DIV;
+        } else if (laneIndex == 1) {
+            laneMinY = TOP_MID_DIV;
+            laneMaxY = MID_BOT_DIV;
+        } else {
+            laneMinY = MID_BOT_DIV;
+            laneMaxY = 2000;
+        }
+
+        Titan nearest = null;
+        double minDist = 150.0;
+
+        for (Titan t : players) {
+            if (t.team != team || t.health <= 0.0) continue;
+
+            double ty = t.Y + 35;
+
+            if (ty < laneMinY || ty > laneMaxY) continue;
+
+            double dist = Math.abs((t.X + 35) - x);
+            if (dist < minDist) {
+                minDist = dist;
+                nearest = t;
+            }
+        }
+
+        return nearest;
+    }
+
+        
+    private void handleGoalieAttackClick(String email, double clickX, double clickY,
+                                         TeamAffiliation goalieTeam, Titan goalie) {
+
+        // Cooldown check
+        if (effectPool.hasEffect(goalie, EffectId.COOLDOWN_GOALIE)) {
+            return;
+        }
+
+        // Determine goalie lane using Y boundaries
+        int goalieLane;
+        double y = goalie.Y;
+
+        if (y < 468.5) {
+            goalieLane = 0; // TOP
+        } else if (y < 686.5) {
+            goalieLane = 1; // MID
+        } else {
+            goalieLane = 2; // BOT
+        }
+
+        LaneMinion target = null;
+        double minDist = 45.0;
+
+        // Find closest minion in same lane
+        for (Entity e : entityPool) {
+            if (!(e instanceof LaneMinion)) continue;
+
+            LaneMinion m = (LaneMinion) e;
+            if (m.getHealth() <= 0.0) continue;
+
+            // ❗ Must be same lane as goalie
+            if (m.laneIndex != goalieLane) continue;
+
+            double dist = util.Util.dist(m.X, m.Y, clickX, clickY);
+            if (dist < minDist) {
+                minDist = dist;
+                target = m;   // single-target: closest only
+            }
+        }
+
+        if (target != null) {
+
+            // Apply goalie click cooldown
+            effectPool.addUniqueEffect(
+                new EmptyEffect(500, goalie, EffectId.COOLDOWN_GOALIE),
+                this
+            );
+
+            // Base damage
+            double dmg = 5.0;
+
+            // Friendly minion = gold denial → 50% damage
+            if (target.team == goalieTeam) {
+                dmg *= 0.5;
+            }
+
+            // Apply damage
+            target.health -= dmg;
+
+            // Death handling
+            if (target.health <= 0.0) {
+                target.health = 0.0;
+
+                // Award currency only for killing enemy minions
+                if (target.team != goalieTeam) {
+                    if (goalieTeam == TeamAffiliation.HOME) {
+                        homeGoalieCurrency += 10.0;
+                    } else {
+                        awayGoalieCurrency += 10.0;
+                    }
+                }
+            }
+        }
+    }
+
 
     public double homeWinBy() {
         return home.score - away.score;

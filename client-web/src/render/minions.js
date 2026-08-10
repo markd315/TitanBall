@@ -29,6 +29,32 @@ export function drawMinions(ctx, game, camX, camY) {
             imgKey = `wolf${pwr}${face}`;
         }
 
+        else if (e.entityClass === 'LaneMinion') {
+            ctx.save();
+            const isGoalie = game.underControl && game.underControl.type === 'GOALIE';
+            ctx.globalAlpha = isGoalie ? 0.7 : 0.2;
+
+            const radius = isGoalie ? 20 : 10;
+            const mx = Math.floor(e.X - camX);
+            const my = Math.floor(e.Y - camY);
+
+            // Fill color: blue for HOME, white for AWAY
+            ctx.beginPath();
+            ctx.arc(mx, my, radius, 0, 2 * Math.PI);
+            ctx.fillStyle = e.team === 'HOME' ? '#3b82f6' : '#ffffff';
+            ctx.fill();
+
+            // Border arc representing health
+            ctx.beginPath();
+            const ratio = Math.max(0, Math.min(1, e.health / e.maxHealth));
+            ctx.arc(mx, my, radius, -Math.PI / 2, -Math.PI / 2 + 2 * Math.PI * ratio);
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
         if (imgKey && AssetManager.images[imgKey]) {
             ctx.drawImage(AssetManager.images[imgKey], Math.floor(e.X - camX), Math.floor(e.Y - camY), e.width || 70, e.height || 70);
 
@@ -51,5 +77,81 @@ export function drawMinions(ctx, game, camX, camY) {
                 ctx.fillRect(bx, by, Math.floor(barWidth * (percent / 100)), barHeight);
             }
         }
+    }
+
+    // Draw lane advantage indicators
+    const LANE_YS = [354, 583, 790];
+    const INDICATOR_X = 40; // fixed at far left of screen, behind the goals — not camera-relative
+
+    function nearestLane(y) {
+        let best = 0;
+        let bestDist = Infinity;
+        for (let L = 0; L < LANE_YS.length; L++) {
+            const d = Math.abs(y - LANE_YS[L]);
+            if (d < bestDist) {
+                bestDist = d;
+                best = L;
+            }
+        }
+        return best;
+    }
+
+    const playerTeam = game.underControl ? game.underControl.team : 'HOME';
+    const playerLane = game.underControl ? nearestLane(game.underControl.Y) : -1;
+
+    let opposingGoalieLane = -1;
+    for (let i = 0; i < game.players.length; i++) {
+        const p = game.players[i];
+        if (p && p.team !== playerTeam && p.type === 'GOALIE' && p.health > 0) {
+            opposingGoalieLane = nearestLane(p.Y);
+            break;
+        }
+    }
+
+    for (let L = 0; L < 3; L++) {
+        let homeCount = 0;
+        let awayCount = 0;
+        for (let i = 0; i < game.entityPool.length; i++) {
+            const e = game.entityPool[i];
+            if (e.entityClass === 'LaneMinion' && e.laneIndex === L && e.health > 0) {
+                if (e.team === 'HOME') homeCount++;
+                else if (e.team === 'AWAY') awayCount++;
+            }
+        }
+        const homeBonus = (game.homeLaneBonusEndTime && game.nowEpochMs < game.homeLaneBonusEndTime[L]) ? 3 : 0;
+        const awayBonus = (game.awayLaneBonusEndTime && game.nowEpochMs < game.awayLaneBonusEndTime[L]) ? 3 : 0;
+        let net = 0;
+        if (playerTeam === 'AWAY') {
+            net = (awayCount + awayBonus) - (homeCount + homeBonus);
+        } else {
+            net = (homeCount + homeBonus) - (awayCount + awayBonus);
+        }
+        const text = net >= 0 ? `+${net}` : `${net}`;
+
+        ctx.save();
+        ctx.fillStyle = 'rgba(10, 26, 20, 0.7)';
+        const displayX = INDICATOR_X;
+        const displayY = LANE_YS[L] - camY;
+        ctx.beginPath();
+        ctx.arc(displayX, displayY, 22, 0, 2 * Math.PI);
+        ctx.fill();
+
+        // Outline: gold for the player's own lane, red for the opposing goalie's lane (if different)
+        if (L === playerLane) {
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#ffd700';
+            ctx.stroke();
+        } else if (L === opposingGoalieLane) {
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#ef4444';
+            ctx.stroke();
+        }
+
+        ctx.fillStyle = net > 0 ? '#10b981' : (net < 0 ? '#ef4444' : '#ffffff');
+        ctx.font = 'bold 18px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, displayX, displayY);
+        ctx.restore();
     }
 }

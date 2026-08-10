@@ -6,13 +6,15 @@ let pingInterval = null;
 let _diagMsgCount = 0;
 let _diagSendCount = 0;
 let _diagLastPhase = null;
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 3;
 
 export function connectGame(gameID) {
   if (socket) {
     socket.close();
   }
 
-  const token = localStorage.getItem('accessToken');
+  const token = sessionStorage.getItem('accessToken');
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const url = `${protocol}//${window.location.host}/pages/titanball/game`;
   
@@ -21,17 +23,22 @@ export function connectGame(gameID) {
   
   socket.onopen = () => {
     console.log("WebSocket connected");
+    reconnectAttempts = 0;
     // Start sending control inputs
     updateInterval = setInterval(() => {
       if (socket && socket.readyState === WebSocket.OPEN) {
+        const isGoalie = gameState.game && gameState.game.underControl && gameState.game.underControl.type === 'GOALIE';
+        const posX = isGoalie ? Math.floor((gameState.mouseX || 0) / 0.9375) : (gameState.mouseX || 0);
+        const posY = gameState.mouseY || 0;
+        
         const controls = {
           ...gameState.controlsHeld,
           token: token,
           gameID: gameID,
           camX: gameState.camX || 0,
           camY: gameState.camY || 0,
-          posX: gameState.mouseX || 0,
-          posY: gameState.mouseY || 0
+          posX: posX,
+          posY: posY
         };
         _diagSendCount++;
         if (_diagSendCount <= 3) {
@@ -122,8 +129,19 @@ export function connectGame(gameID) {
       clearInterval(pingInterval);
       pingInterval = null;
     }
-    if (gameState.phase === 'INGAME' || gameState.phase === 'SCORE_FREEZE') {
-      gameState.phase = 'ENDED';
+    
+    const wasIngame = (gameState.phase === 'INGAME' || gameState.phase === 'SCORE_FREEZE');
+    if (wasIngame && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+      reconnectAttempts++;
+      console.log(`WebSocket disconnected mid-game. Attempting reconnect ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS} in 500ms...`);
+      setTimeout(() => {
+        connectGame(gameID);
+      }, 500);
+    } else {
+      if (wasIngame) {
+        gameState.phase = 'ENDED';
+      }
+      reconnectAttempts = 0;
     }
   };
   
@@ -133,6 +151,7 @@ export function connectGame(gameID) {
 }
 
 export function disconnectGame() {
+  reconnectAttempts = MAX_RECONNECT_ATTEMPTS; // Prevent reconnect on manual disconnect
   if (socket) {
     socket.close();
     socket = null;

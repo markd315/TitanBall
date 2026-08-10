@@ -24,6 +24,8 @@ let pollingInterval = null;
 let currentScreen = 'login';
 let lastPhase = null;
 let lastScreen = null;
+let idleStart = null;
+window.warmExpired = false;
 
 function updateOverlays() {
   if (gameState.phase === lastPhase && currentScreen === lastScreen) return;
@@ -43,7 +45,7 @@ function updateOverlays() {
   lobbyOverlay.style.display = 'none';
 
   if (gameState.phase === GamePhase.CREDITS) {
-    if (!localStorage.getItem('accessToken')) {
+    if (!sessionStorage.getItem('accessToken')) {
       if (currentScreen === 'login') {
         loginOverlay.style.display = 'flex';
       } else {
@@ -54,7 +56,7 @@ function updateOverlays() {
     modeOverlay.style.display = 'flex';
     const usernameSpan = document.getElementById('player-username');
     if (usernameSpan) {
-      usernameSpan.textContent = localStorage.getItem('username') || 'Player';
+      usernameSpan.textContent = sessionStorage.getItem('username') || 'Player';
     }
   } else if (gameState.phase === GamePhase.WAIT_FOR_GAME) {
     lobbyOverlay.style.display = 'flex';
@@ -101,7 +103,7 @@ function initUIListeners() {
         if (errorDiv) errorDiv.style.display = 'none';
         console.log("Logging in as:", email);
         const data = await login(email, pass);
-        localStorage.setItem('username', email.split('@')[0]);
+        sessionStorage.setItem('username', email.split('@')[0]);
         console.log("Login successful");
         gameState.phase = GamePhase.SHOW_GAME_MODES;
       } catch (err) {
@@ -171,7 +173,7 @@ function initUIListeners() {
         setTimeout(async () => {
           try {
             const data = await login(email, pass);
-            localStorage.setItem('username', username);
+            sessionStorage.setItem('username', username);
             gameState.phase = GamePhase.SHOW_GAME_MODES;
           } catch (loginErr) {
             console.error(loginErr);
@@ -227,7 +229,7 @@ function initUIListeners() {
         const lobbyStatus = document.querySelector('#lobby-overlay .stat-value[style*="pulse"]');
         if (lobbyStatus) lobbyStatus.textContent = 'FINDING PLAYERS...';
         
-        const code = `/${selectedMatchSize}/1/1/5/2/9999/10/12`;
+        const code = `/${selectedMatchSize}/0/1/5/2/9999/10/12`;
         console.log(`Joining Team Match Queue with size ${selectedMatchSize}v${selectedMatchSize} and class ${classSel}`);
         await joinQueue(code, classSel);
         gameState.is3v3 = true;
@@ -280,7 +282,7 @@ function initUIListeners() {
       try {
         console.log("Leaving queue");
         stopQueuePolling();
-        const token = localStorage.getItem('accessToken');
+        const token = sessionStorage.getItem('accessToken');
         await fetch('/api/leave', {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${token}` }
@@ -331,32 +333,37 @@ function initUIListeners() {
     });
   }
 
+  // Logout click
+  const logoutBtn = document.getElementById('logout-btn');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', () => {
+      console.log("Logging out...");
+      sessionStorage.removeItem('accessToken');
+      sessionStorage.removeItem('refreshToken');
+      sessionStorage.removeItem('username');
+      sessionStorage.removeItem('classSelection');
+      sessionStorage.removeItem('titanMasteries');
+      gameState.phase = GamePhase.CREDITS;
+      currentScreen = 'login';
+      updateOverlays();
+    });
+  }
+
   // Class Select dropdown change
   const classSelect = document.getElementById('class-select');
   if (classSelect) {
-    const savedClass = localStorage.getItem('classSelection') || 'WARRIOR';
+    const savedClass = sessionStorage.getItem('classSelection') || 'WARRIOR';
     classSelect.value = savedClass;
     gameState.controlsHeld.classSelection = savedClass;
     
     const classError = document.getElementById('class-select-error');
-    if (savedClass === 'GOALIE' && classError) {
-      classError.textContent = "Warning: Goalie class is only allowed in Team Matches (2v2 - 8v8), not 1v1 Scrimmages.";
-      classError.style.display = 'block';
-    }
 
     classSelect.addEventListener('change', (e) => {
-      if (e.target.value === 'GOALIE') {
-        if (classError) {
-          classError.textContent = "Warning: Goalie class is only allowed in Team Matches (2v2 - 8v8), not 1v1 Scrimmages.";
-          classError.style.display = 'block';
-        }
-      } else {
-        if (classError) {
-          classError.style.display = 'none';
-        }
+      if (classError) {
+        classError.style.display = 'none';
       }
       gameState.controlsHeld.classSelection = e.target.value;
-      localStorage.setItem('classSelection', e.target.value);
+      sessionStorage.setItem('classSelection', e.target.value);
       console.log("Selected Titan Class:", e.target.value);
     });
   }
@@ -404,6 +411,12 @@ function drawIngame(ctx, dt) {
   updateCamera(game, gameState);
   const { camX, camY } = gameState;
   
+  const isGoalie = game.underControl && game.underControl.type === 'GOALIE';
+  if (isGoalie) {
+    ctx.save();
+    ctx.scale(0.9375, 1.0);
+  }
+
   // Draw Field
   if (AssetManager.images['field']) {
     drawImageCam(ctx, AssetManager.images['field'], 1, 1, camX, camY);
@@ -419,6 +432,11 @@ function drawIngame(ctx, dt) {
   drawEffectIcons(ctx, game, camX, camY);
   drawBall(ctx, game, camX, camY);
   displayBallArrow(ctx, game, camX, camY);
+
+  if (isGoalie) {
+    ctx.restore();
+  }
+
   drawHud(ctx, game, gameState);
 
   // Draw Goal Scored Asset Overlay (local detection via score changes)
@@ -505,11 +523,34 @@ function gameLoop(timestamp) {
   const dt = timestamp - lastTime;
   lastTime = timestamp;
 
+  // Track idle time (4 hours = 14400000 ms)
+  const isIdle = gameState.phase === GamePhase.SHOW_GAME_MODES || gameState.phase === GamePhase.ENDED;
+  if (isIdle) {
+    if (idleStart === null) {
+      idleStart = Date.now();
+    } else if (Date.now() - idleStart > 14400000) {
+      window.warmExpired = true;
+    }
+  } else {
+    if (gameState.phase === GamePhase.INGAME || gameState.phase === GamePhase.COUNTDOWN || gameState.phase === GamePhase.SCORE_FREEZE) {
+      idleStart = null;
+    }
+  }
+
+  if (window.warmExpired) {
+    const expiredOverlay = document.getElementById('session-expired-overlay');
+    if (expiredOverlay && expiredOverlay.style.display !== 'flex') {
+      expiredOverlay.style.display = 'flex';
+    }
+    requestAnimationFrame(gameLoop);
+    return;
+  }
+
   clearScreen(ctx);
   updateOverlays();
 
   // If already logged in, skip login screen
-  if (gameState.phase === GamePhase.CREDITS && localStorage.getItem('accessToken')) {
+  if (gameState.phase === GamePhase.CREDITS && sessionStorage.getItem('accessToken')) {
     gameState.phase = GamePhase.SHOW_GAME_MODES;
   }
 
@@ -598,23 +639,36 @@ function drawGameEnded(ctx) {
   const team = myTeam === 'HOME' ? game.home : game.away;
   const enemy = myTeam === 'HOME' ? game.away : game.home;
   
+  const isDisconnect = game.phase !== 'ENDED';
+  
   let resultKey = 'tie';
-  if (team && enemy) {
+  if (!isDisconnect && team && enemy) {
     if (team.score > enemy.score) resultKey = 'victory';
     else if (team.score < enemy.score) resultKey = 'defeat';
   }
 
-  // Draw Result Image (victory/defeat/tie)
-  const img = AssetManager.images[resultKey];
-  if (img) {
-    const rx = 1920 / 2 - img.width / 2;
-    const ry = 120;
-    ctx.drawImage(img, rx, ry);
-  } else {
-    ctx.fillStyle = 'white';
+  if (isDisconnect) {
+    ctx.fillStyle = '#ef4444';
     ctx.font = 'bold 70px Arial';
     ctx.textAlign = 'center';
-    ctx.fillText(resultKey.toUpperCase(), 1920 / 2, 220);
+    ctx.fillText('CONNECTION LOST', 1920 / 2, 220);
+    
+    ctx.fillStyle = '#e2e8f0';
+    ctx.font = '24px Arial';
+    ctx.fillText('Unexpectedly disconnected from the game server.', 1920 / 2, 300);
+  } else {
+    // Draw Result Image (victory/defeat/tie)
+    const img = AssetManager.images[resultKey];
+    if (img) {
+      const rx = 1920 / 2 - img.width / 2;
+      const ry = 120;
+      ctx.drawImage(img, rx, ry);
+    } else {
+      ctx.fillStyle = 'white';
+      ctx.font = 'bold 70px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText(resultKey.toUpperCase(), 1920 / 2, 220);
+    }
   }
 
   // Draw Subtitle / Final Score
@@ -629,7 +683,7 @@ function drawGameEnded(ctx) {
   ctx.restore();
 
   // Draw Stats Table
-  const email = jwtDecodeEmail(gameState.token || localStorage.getItem('accessToken'));
+  const email = jwtDecodeEmail(gameState.token || sessionStorage.getItem('accessToken'));
   if (email && game.stats && game.stats.gamestats) {
     ctx.save();
     ctx.fillStyle = 'rgba(10, 26, 20, 0.85)';

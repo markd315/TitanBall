@@ -6,13 +6,13 @@ export async function login(usernameOrEmail, password) {
   });
   if (!res.ok) throw new Error('Login failed');
   const data = await res.json();
-  localStorage.setItem('accessToken', data.accessToken);
-  localStorage.setItem('refreshToken', data.refreshToken);
+  sessionStorage.setItem('accessToken', data.accessToken);
+  sessionStorage.setItem('refreshToken', data.refreshToken);
   return data;
 }
 
 export async function joinQueue(tournamentCode = '', classSelection = '') {
-  const token = localStorage.getItem('accessToken');
+  const token = sessionStorage.getItem('accessToken');
   const url = `/pages/titanball/api/join?tournamentCode=${encodeURIComponent(tournamentCode)}&classSelection=${encodeURIComponent(classSelection)}`;
   const res = await fetch(url, {
     method: 'POST',
@@ -23,7 +23,7 @@ export async function joinQueue(tournamentCode = '', classSelection = '') {
 }
 
 export async function checkGame() {
-  const token = localStorage.getItem('accessToken');
+  const token = sessionStorage.getItem('accessToken');
   const res = await fetch('/pages/titanball/api/gamecheck', {
     method: 'GET',
     headers: { 'Authorization': `Bearer ${token}` }
@@ -43,7 +43,7 @@ export async function register(email, username, password) {
 }
 
 export async function startTutorial() {
-  const token = localStorage.getItem('accessToken');
+  const token = sessionStorage.getItem('accessToken');
   const res = await fetch('/pages/titanball/api/tutorial', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${token}` }

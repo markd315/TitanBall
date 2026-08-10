@@ -17,7 +17,7 @@ let localMasteries = {};
 
 export function initMasteries() {
   // Load saved masteries or set defaults (all 1 by default, sum to 10 points)
-  const saved = localStorage.getItem('titanMasteries');
+  const saved = sessionStorage.getItem('titanMasteries');
   if (saved) {
     try {
       localMasteries = JSON.parse(saved);
@@ -94,7 +94,7 @@ export function initMasteries() {
 
       // Save to game state and localStorage
       gameState.controlsHeld.masteries = { ...localMasteries };
-      localStorage.setItem('titanMasteries', JSON.stringify(localMasteries));
+      sessionStorage.setItem('titanMasteries', JSON.stringify(localMasteries));
       
       modal.style.display = 'none';
       if (modeOverlay) modeOverlay.style.pointerEvents = 'auto';

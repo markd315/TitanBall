@@ -8,7 +8,7 @@ import java.util.Map;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class CandidateGame   {
 
-    private List<WebSocketPlayerConnection> home, away;
+    public List<WebSocketPlayerConnection> home, away;
     private double elogap = Double.MAX_VALUE;
 
     public void suggestTeams(List<WebSocketPlayerConnection> home, List<WebSocketPlayerConnection> away, Map<String, Double>  ratingMap) {

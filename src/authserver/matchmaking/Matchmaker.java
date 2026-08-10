@@ -151,7 +151,7 @@ public class Matchmaker {
 
     private String normalizeTournamentCode(String code) {
         if (code == null || code.isEmpty() || code.equals("3v3") || code.equals("/3v3")) {
-            return "/3/1/1/5/2/9999/10/12";
+            return "/3/0/1/5/2/9999/10/12";
         }
         if (code.equals("1v1") || code.equals("/1v1")) {
             return "/1/1/1/5/2/9999/10/12";

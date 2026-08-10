@@ -306,7 +306,7 @@
         text-align: center;
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-81c99a74.js"></script>
+    <script type="module" crossorigin src="./assets/index-6aa8d291.js"></script>
   </head>
   <body>
     <div id="app">
@@ -386,8 +386,8 @@
           <div class="input-group">
             <label for="controls-select">Controls Layout</label>
             <select id="controls-select">
-              <option value="default">Default Style (WASD + Mouse Aim/Shoot)</option>
               <option value="rts">RTS Style (Click to Move + Ability Hotkeys)</option>
+              <option value="default">Legacy Style (WASD + Mouse Aim/Shoot)</option>
             </select>
           </div>
           <!-- Masteries Button -->
@@ -405,6 +405,7 @@
             </div>
             <button id="queue-1v1-btn" class="btn btn-secondary">Queue Scrimmage</button>
             <button id="tutorial-btn" class="btn btn-secondary">Play Tutorial</button>
+            <button id="logout-btn" class="btn btn-secondary" style="margin-top: 16px; background: rgba(220, 38, 38, 0.15); border-color: rgba(220, 38, 38, 0.5); color: #f87171;">Log Out</button>
           </div>
         </div>
 
@@ -437,6 +438,15 @@
             <span class="stat-value" style="animation: pulse 1.5s infinite;">FINDING PLAYERS...</span>
           </div>
           <button id="leave-queue-btn" class="btn btn-secondary">Cancel</button>
+        </div>
+
+        <!-- Session Expired Overlay -->
+        <div id="session-expired-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 99999; flex-direction: column; align-items: center; justify-content: center; color: white; background: rgba(10, 10, 18, 0.95); backdrop-filter: blur(12px); font-family: 'Outfit', sans-serif;">
+          <div style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.15); padding: 40px; border-radius: 16px; text-align: center; max-width: 500px; box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+            <h2 style="color: #ff9f1c; margin-bottom: 20px; font-size: 2.2rem; letter-spacing: 1px; font-weight: 800;">SESSION EXPIRED</h2>
+            <p style="color: #e2e8f0; font-size: 1.1rem; margin-bottom: 30px; line-height: 1.6;">You have been idle on this screen for over 4 hours. To conserve server resources, please refresh the page to continue.</p>
+            <button onclick="window.location.reload()" style="background: #ff9f1c; color: #0f172a; border: none; padding: 12px 30px; font-size: 1.1rem; font-weight: bold; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 15px rgba(255,159,28,0.4); transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='scale(1.05)';" onmouseout="this.style.transform='scale(1)';">REFRESH PAGE</button>
+          </div>
         </div>
 
       </div>
