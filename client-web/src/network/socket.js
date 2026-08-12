@@ -25,6 +25,7 @@ export function connectGame(gameID) {
     console.log("WebSocket connected");
     reconnectAttempts = 0;
     // Start sending control inputs
+    // Start sending control inputs
     updateInterval = setInterval(() => {
       if (socket && socket.readyState === WebSocket.OPEN) {
         const isGoalie = gameState.game && gameState.game.underControl && gameState.game.underControl.type === 'GOALIE';
@@ -40,6 +41,16 @@ export function connectGame(gameID) {
           posX: posX,
           posY: posY
         };
+
+        if (gameState.pendingGoalieBuy) {
+          controls.buyGoalieTree = gameState.pendingGoalieBuy.tree;
+          controls.buyGoalieNode = gameState.pendingGoalieBuy.nodeKey;
+          gameState.pendingGoalieBuy = null;
+        } else {
+          controls.buyGoalieTree = null;
+          controls.buyGoalieNode = null;
+        }
+
         _diagSendCount++;
         if (_diagSendCount <= 3) {
           console.log(`[DIAG] WS send #${_diagSendCount}: classSelection='${controls.classSelection}' masteries=`, controls.masteries);
@@ -49,20 +60,20 @@ export function connectGame(gameID) {
     }, 15);
 
     // Start periodic ping loop for latency tracking
-    pingInterval = setInterval(() => {
-      if (socket && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ type: 'ping', sent: Date.now() }));
-      }
-    }, 2000);
+    //pingInterval = setInterval(() => {
+    //  if (socket && socket.readyState === WebSocket.OPEN) {
+     //   socket.send(JSON.stringify({ type: 'ping', sent: Date.now() }));
+     // }
+    //}, 2000);
   };
   
   socket.onmessage = (event) => {
     const update = JSON.parse(event.data);
-    if (update.type === 'pong') {
-      const latency = Date.now() - update.sent;
-      console.log(`[PING LOG] Round-Trip Latency: ${latency}ms`);
-      return;
-    }
+    //if (update.type === 'pong') {
+    //  const latency = Date.now() - update.sent;
+    //  console.log(`[PING LOG] Round-Trip Latency: ${latency}ms`);
+    //  return;
+    //}
     _diagMsgCount++;
     
     // Log the first 3 messages in detail and any phase transition
@@ -125,10 +136,10 @@ export function connectGame(gameID) {
       clearInterval(updateInterval);
       updateInterval = null;
     }
-    if (pingInterval) {
-      clearInterval(pingInterval);
-      pingInterval = null;
-    }
+    //if (pingInterval) {
+    //  clearInterval(pingInterval);
+    //  pingInterval = null;
+    //}
     
     const wasIngame = (gameState.phase === 'INGAME' || gameState.phase === 'SCORE_FREEZE');
     if (wasIngame && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {

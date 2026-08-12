@@ -265,7 +265,7 @@ function initUIListeners() {
         
         const classSel = classSelect ? classSelect.value : 'WARRIOR';
         console.log("Joining Scrimmage (1v1) Queue as class:", classSel);
-        await joinQueue('1v1', classSel);
+        await joinQueue('/1/0/1/5/2/9999/10/12', classSel);
         gameState.is3v3 = false;
         gameState.phase = GamePhase.WAIT_FOR_GAME;
         startQueuePolling();

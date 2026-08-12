@@ -1,5 +1,9 @@
 import { GamePhase } from './constants.js';
 
+export const clientUI = {
+    goalieTabIndex: -1
+};
+
 export const gameState = {
     phase: GamePhase.CREDITS,
     game: null,
@@ -26,6 +30,7 @@ export const gameState = {
         classSelection: null,
         masteries: null
     },
+    pendingGoalieBuy: null,
     camX: 500,
     camY: 300,
     camFollow: true,

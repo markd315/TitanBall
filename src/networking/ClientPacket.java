@@ -28,4 +28,5 @@ public class ClientPacket  {
         LEFT
     }
     public ARTISAN_SHOT artisanShot = ARTISAN_SHOT.SHOT;
+    public String buyGoalieTree, buyGoalieNode;
 }

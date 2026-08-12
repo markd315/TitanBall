@@ -104,8 +104,8 @@ public class Titan extends Entity   {
     @JsonProperty("type")
     public void setType(TitanType type) {
         if (typeAndMasteriesLocked && this.type != null && this.type != type) {
-            System.out.println("[DIAG] Titan.setType BLOCKED (typeAndMasteriesLocked=true): requested="
-                    + type + " current=" + this.type + " id=" + id);
+            //System.out.println("[DIAG] Titan.setType BLOCKED (typeAndMasteriesLocked=true): requested="
+            //        + type + " current=" + this.type + " id=" + id);
             return;
         }
         TitanType prev = this.type;
@@ -115,7 +115,7 @@ public class Titan extends Entity   {
         if (prevHealth != -999.0) {
             this.health = prevHealth;
         }
-        System.out.println("[DIAG] Titan.setType OK: " + prev + " -> " + this.type + " id=" + id);
+        //System.out.println("[DIAG] Titan.setType OK: " + prev + " -> " + this.type + " id=" + id);
     }
 
     public Titan(){

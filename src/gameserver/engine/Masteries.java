@@ -132,18 +132,18 @@ public class Masteries   {
 
     public void applyMasteries(Titan t) {
         if (t.getType() == null || t.getType() == gameserver.entity.TitanType.GOALIE) {
-            System.out.println("[DIAG] applyMasteries SKIP: titan id=" + t.id
-                    + " type=" + t.getType() + " locked=" + t.typeAndMasteriesLocked);
+            //System.out.println("[DIAG] applyMasteries SKIP: titan id=" + t.id
+            //        + " type=" + t.getType() + " locked=" + t.typeAndMasteriesLocked);
             return;
         }
         if (t.typeAndMasteriesLocked) {
-            System.out.println("[DIAG] applyMasteries SKIP (already locked): titan id=" + t.id
-                    + " type=" + t.getType());
+            //System.out.println("[DIAG] applyMasteries SKIP (already locked): titan id=" + t.id
+            //        + " type=" + t.getType());
             return;
         }
         if (this.validate() == -1) {
-            System.out.println("[DIAG] applyMasteries SKIP (invalid mastery allocation): titan id="
-                    + t.id + " type=" + t.getType() + " masteries=" + this.asMap());
+            //System.out.println("[DIAG] applyMasteries SKIP (invalid mastery allocation): titan id="
+            //        + t.id + " type=" + t.getType() + " masteries=" + this.asMap());
             return;
         }
         if (!t.typeAndMasteriesLocked) {

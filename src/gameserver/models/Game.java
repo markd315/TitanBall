@@ -23,6 +23,8 @@ public class Game   {
     public UUID lastPossessed;
     @JsonIgnore
     public Const c = new Const("res/game.cfg");
+    @JsonIgnore
+    public Const costs = new Const("res/costing.cfg");
     public final int GAMETICK_MS = c.GAMETICK_MS;
     public List<PlayerDivider> clients;
     public ClientPacket[] lastControlPacket = null;
@@ -59,6 +61,11 @@ public class Game   {
     public long[] awayLaneBonusEndTime = new long[3];
     public double homeGoalieCurrency = 0.0;
     public double awayGoalieCurrency = 0.0;
+    public double homeGoalieMana = 0.0;
+    public double awayGoalieMana = 0.0;
+    public Set<String> homeGoaliePurchasedUpgrades = new HashSet<String>();
+    public Set<String> awayGoaliePurchasedUpgrades = new HashSet<String>();
+
     public boolean ballVisible, inGame, goalVisible;
 
     public GamePhase phase;

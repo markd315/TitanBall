@@ -47,6 +47,14 @@ export function initAssets() {
     AssetManager.loadSprite('tie', 'res/Court/tie.png');
     AssetManager.loadSprite('lobby', 'res/Court/lobby.png');
     AssetManager.loadSprite('goal', 'res/Court/goal.png');
+    AssetManager.loadSprite('lock', 'res/Court/lock.png');
+    AssetManager.loadSprite('star', 'res/Court/star.png');
+    //upgrades
+    AssetManager.loadSprite('GOALIE_TREE_SIEGE', 'res/CoachUpgradeTrees/siege.png');
+    AssetManager.loadSprite('GOALIE_TREE_FORTRESS', 'res/CoachUpgradeTrees/fortress.png');
+    AssetManager.loadSprite('GOALIE_TREE_EMPOWERMENT', 'res/CoachUpgradeTrees/empowerment.png');
+    AssetManager.loadSprite('GOALIE_TREE_CULTIVATION', 'res/CoachUpgradeTrees/cultivation.png');
+
 
     // Minions
     AssetManager.loadSprite('wall', 'res/Court/wall.png');

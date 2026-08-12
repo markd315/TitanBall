@@ -609,22 +609,16 @@ protected void cullUnmappedTitans() {
                     from.ready = true;
                     int classSelIndex = client.possibleSelection.get(0) - 1;
                     Titan classTitan = players[classSelIndex];
-                    System.out.println("[DIAG] class/mastery packet from client id=" + client.id
-                            + " classSelIndex=" + classSelIndex
-                            + " classSelection=" + request.classSelection
-                            + " masteries=" + (request.masteries != null ? request.masteries.asMap() : "null")
-                            + " titanBefore type=" + classTitan.getType()
-                            + " locked=" + classTitan.typeAndMasteriesLocked);
                     if (request.classSelection != null) {
                         if (request.classSelection == TitanType.GOALIE) {
                             if (classSelIndex == 0 || classSelIndex == 1) {
                                 classTitan.setType(TitanType.GOALIE);
                             } else {
-                                System.out.println("[DIAG] Blocking non-goalie slot from setting type to GOALIE");
+                                //System.out.println("[DIAG] Blocking non-goalie slot from setting type to GOALIE");
                             }
                         } else {
                             if (classSelIndex == 0 || classSelIndex == 1) {
-                                System.out.println("[DIAG] Blocking goalie slot from changing class");
+                                //System.out.println("[DIAG] Blocking goalie slot from changing class");
                             } else {
                                 classTitan.setType(request.classSelection);
                             }
@@ -633,9 +627,6 @@ protected void cullUnmappedTitans() {
                     if (request.masteries != null) {
                         request.masteries.applyMasteries(classTitan);
                     }
-                    System.out.println("[DIAG] class/mastery result: titan id=" + classTitan.id
-                            + " type=" + classTitan.getType()
-                            + " locked=" + classTitan.typeAndMasteriesLocked);
                 }
             }
             kickoff();
@@ -709,6 +700,77 @@ protected void cullUnmappedTitans() {
         }
     }
 
+    private static final Map<String, String> TREE_SHORT_NAME = Map.of(
+        "GOALIE_TREE_SIEGE", "siege",
+        "GOALIE_TREE_FORTRESS", "fortress",
+        "GOALIE_TREE_EMPOWERMENT", "empowerment",
+        "GOALIE_TREE_CULTIVATION", "cultivation"
+    );
+
+    private static final Map<String, int[]> REQUIRED_TECHS = Map.of(
+        "siege",       new int[]{1, 0, 2, 1, 1},
+        "fortress",    new int[]{1, 0, 2, 1, 1},
+        "empowerment", new int[]{1, 0, 2, 1, 1},
+        "cultivation", new int[]{1, 0, 2, 1, 1}
+    );
+
+    private boolean tierPrereqMet(String shortName, String tier, Set<String> purchased) {
+        int n = Integer.parseInt(tier.substring(1)); // "t3" -> 3
+        if (n <= 1) return true; // t1 has no prereq
+
+        String prevTier = "t" + (n - 1);
+        if (!tierPrereqMet(shortName, prevTier, purchased)) return false;
+
+        int required = REQUIRED_TECHS.get(shortName)[n - 2]; // index 0 = t1->t2 gate
+        return countInTier(purchased, shortName, prevTier) >= required;
+    }
+
+    private void handleGoalieTreePurchase(Titan t, String treeKey, String nodeKey) {
+        if (treeKey == null || nodeKey == null) return;
+        String shortName = TREE_SHORT_NAME.get(treeKey);
+        if (shortName == null || !nodeKey.startsWith(shortName + ".")) return;
+        String rest = nodeKey.substring(shortName.length() + 1); // "t3.snaretrap"
+        int dot = rest.indexOf('.');
+        if (dot < 0) return;
+        String tier = rest.substring(0, dot);
+        boolean isHome = (t.team == TeamAffiliation.HOME);
+        Set<String> purchased = isHome ? homeGoaliePurchasedUpgrades : awayGoaliePurchasedUpgrades;
+        boolean hasCost = costs.hasKey(nodeKey + ".cost") || costs.hasKey(nodeKey + ".cost.mana");
+        boolean hasUse  = costs.hasKey(nodeKey + ".use")  || costs.hasKey(nodeKey + ".use.mana");
+        if (!hasCost && !hasUse) return; // unknown node - reject
+        if (hasCost && purchased.contains(nodeKey)) return; // one-time, already owned
+
+        // prereq, derived from purchased set each call - chains back to t1
+        if (!tierPrereqMet(shortName, tier, purchased)) return;
+
+        boolean isMana = costs.hasKey(nodeKey + ".cost.mana") || costs.hasKey(nodeKey + ".use.mana");
+        String costKey = hasCost
+            ? (isMana ? nodeKey + ".cost.mana" : nodeKey + ".cost")
+            : (isMana ? nodeKey + ".use.mana"  : nodeKey + ".use");
+        double cost = costs.getD(costKey);
+        boolean checkBalance = costs.getB("features.CHECK_BALANCE");
+        double balance = isMana
+            ? (isHome ? homeGoalieMana : awayGoalieMana)
+            : (isHome ? homeGoalieCurrency : awayGoalieCurrency);
+        if (checkBalance && balance < cost) return;
+        double newBalance = balance - cost;
+        if (isMana) {
+            if (isHome) homeGoalieMana = newBalance; else awayGoalieMana = newBalance;
+        } else {
+            if (isHome) homeGoalieCurrency = newBalance; else awayGoalieCurrency = newBalance;
+        }
+        if (hasCost) purchased.add(nodeKey); // only one-time nodes get flagged; .use nodes just charge
+        for(String s : purchased)
+            System.out.println(s);
+    }
+
+    private int countInTier(Set<String> purchased, String shortName, String tier) {
+        String prefix = shortName + "." + tier + ".";
+        int count = 0;
+        for (String key : purchased) if (key.startsWith(prefix)) count++;
+        return count;
+    }
+
 
     protected void processKeys(ClientPacket controls, PlayerDivider from) {
         if (from != null) {
@@ -724,6 +786,15 @@ protected void cullUnmappedTitans() {
                 double clickX = controls.posX + controls.camX;
                 double clickY = controls.posY + controls.camY;
                 handleGoalieAttackClick(from.getEmail(), clickX, clickY, t.team, t);
+            }
+            // Goalie skill-tree purchase. buyGoalieNode is one-shot from the
+            // client (set on the packet only for the tick of the click, null
+            // otherwise), so no KeyDifferences edge-detection needed here -
+            // a null check is sufficient and avoids double-buying if this
+            // packet is ever reprocessed.
+            if (t.getType() == TitanType.GOALIE && controls.buyGoalieNode != null && this.phase == GamePhase.INGAME) {
+                System.out.println("Made purchase attempt");
+                handleGoalieTreePurchase(t, controls.buyGoalieTree, controls.buyGoalieNode);
             }
             if (controlsHeld.SWITCH == 1 && this.phase == GamePhase.INGAME && t.actionState == Titan.TitanState.IDLE) {
                 from.incSel(this);
@@ -780,7 +851,7 @@ protected void cullUnmappedTitans() {
             moveKeys(controlsHeld, t);
             lastControlPacket[clientIndex] = controls;
         }
-    }
+    }   
 
     public void moveKeys(KeyDifferences controlsHeld, Titan t) {
         if (!effectPool.hasEffect(t, EffectId.DEAD)) {

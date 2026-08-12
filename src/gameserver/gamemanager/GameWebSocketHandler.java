@@ -27,10 +27,10 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         String payload = message.getPayload();
-        if (payload.contains("\"type\":\"ping\"")) {
-            session.sendMessage(new TextMessage(payload.replace("\"ping\"", "\"pong\"")));
-            return;
-        }
+        //if (payload.contains("\"type\":\"ping\"")) {
+        //    session.sendMessage(new TextMessage(payload.replace("\"ping\"", "\"pong\"")));
+        //    return;
+        //}
         ClientPacket packet = mapper.readValue(payload, ClientPacket.class);
         if (packet.token != null && !packet.token.isEmpty()) {
             if (jwtTokenProvider.validateToken(packet.token)) {
