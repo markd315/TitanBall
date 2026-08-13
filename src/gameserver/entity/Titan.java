@@ -49,6 +49,14 @@ public class Titan extends Entity   {
     public double rangeFactor = 1.0;
     public boolean moveMemU, moveMemD, moveMemL, moveMemR;
     public boolean resurrecting = false;
+    public double baseSpeed = 5;
+    public double baseThrowPower = 1.0;
+    public double baseRangeFactor = 1.0;
+    public double baseCooldownFactor = 1.0;
+    public double baseDurationsFactor = 1.0;
+    public double baseMaxHealth = 100.0;
+    public double basePainReduction = 1.0;
+    public int baseStealRad = 26;
 
     private TitanType type;
 
@@ -169,6 +177,11 @@ public class Titan extends Entity   {
 
     public double actualSpeed(GameEngine context) {
         double inspeed = this.speed;
+        boolean hasDilators = context.homeGoaliePurchasedUpgrades.contains("fortress.t5.dilators") ||
+                              context.awayGoaliePurchasedUpgrades.contains("fortress.t5.dilators");
+        if (hasDilators) {
+            inspeed *= context.c.getD("guardian.dilators.speedmult");
+        }
         for(Effect eff : context.effectPool.getEffects()){
             if(eff.on.id.equals(this.id)
                 && eff.effect.equals(EffectId.SLOW)){
@@ -185,9 +198,18 @@ public class Titan extends Entity   {
         if(this.runRight + this.runLeft + this.runDown + this.runUp > 1){
             inspeed *= .707; //sqrt(2)/2
         }
-        return this.isBoosting
+        double speedVal = this.isBoosting
                 ? inspeed * this.boostFactor
                 : inspeed;
+
+        int L = 0;
+        double d0 = Math.abs(this.Y - 354);
+        double d1 = Math.abs(this.Y - 583);
+        double d2 = Math.abs(this.Y - 790);
+        if (d1 < d0 && d1 < d2) L = 1;
+        else if (d2 < d0 && d2 < d1) L = 2;
+
+        return context.getLaneMinionSpeed(L, this.team, speedVal);
     }
 
     public void resurrect(GameEngine context) {

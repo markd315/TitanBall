@@ -34,6 +34,7 @@ public class Wolf extends gameserver.entity.Entity implements Tickable, Serializ
         this.BITE_DIST = c.getD("wolf.range");
     }
 
+
     @Override
     public void tick(GameEngine context){
         Titan nearest = getNearestEnemy(context);

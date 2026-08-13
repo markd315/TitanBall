@@ -31,6 +31,21 @@ public class ConstOperations  implements Serializable {
         }
     }
 
+    public void loadJsonConfig(String path) {
+        try {
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            java.io.File file = new java.io.File(path);
+            if (file.exists()) {
+                Map<String, Object> jsonMap = mapper.readValue(file, new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
+                for (Map.Entry<String, Object> entry : jsonMap.entrySet()) {
+                    cache.put(entry.getKey(), String.valueOf(entry.getValue()));
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     public String getS(String key){
         return cache.get(key);
     }

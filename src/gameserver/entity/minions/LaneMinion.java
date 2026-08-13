@@ -8,6 +8,7 @@ import java.io.Serializable;
 
 public class LaneMinion extends Entity implements Tickable, Serializable {
     public int laneIndex;
+    public double damageMultiplier = 1.0;
 
     public LaneMinion() {
         super();
@@ -20,8 +21,8 @@ public class LaneMinion extends Entity implements Tickable, Serializable {
         this.width = 20;
         this.height = 20;
         this.laneIndex = laneIndex;
-        this.health = 22.5;
-        this.maxHealth = 22.5;
+        this.health = 45.0;
+        this.maxHealth = 45.0;
         this.solid = false;
     }
 

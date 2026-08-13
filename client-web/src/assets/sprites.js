@@ -69,6 +69,7 @@ export function initAssets() {
     AssetManager.loadSprite('fire1', 'res/Court/fireA.png');
     AssetManager.loadSprite('fire2', 'res/Court/fireB.png');
     AssetManager.loadSprite('cage', 'res/Court/caged.png');
+    AssetManager.loadSprite('dragon', 'res/Court/dragon.png');
     AssetManager.loadSprite('wolf1L', 'res/Wolf/wolfL.png');
     AssetManager.loadSprite('wolf2L', 'res/Wolf/wolf2L.png');
     AssetManager.loadSprite('wolf3L', 'res/Wolf/wolf3L.png');

@@ -151,16 +151,28 @@ Resources:
         - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
 
   EcsTaskRole:
-    Type: AWS::IAM::Role
-    Condition: DeployECS
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: [ecs-tasks.amazonaws.com]
-            Action: ['sts:AssumeRole']
+      Type: AWS::IAM::Role
+      Condition: DeployECS
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service: [ecs-tasks.amazonaws.com]
+              Action: ['sts:AssumeRole']
+        Policies:
+          - PolicyName: ECSExecPolicy
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - 'ssmmessages:CreateControlChannel'
+                    - 'ssmmessages:CreateDataChannel'
+                    - 'ssmmessages:OpenControlChannel'
+                    - 'ssmmessages:OpenDataChannel'
+                  Resource: '*'
 
   GameLogGroup:
     Type: AWS::Logs::LogGroup
@@ -243,6 +255,7 @@ Resources:
       ServiceName: TitanballService
       Cluster: !Ref GameCluster
       TaskDefinition: !Ref GameTask
+      EnableExecuteCommand: true
       LaunchType: FARGATE
       DesiredCount: 0
       NetworkConfiguration:

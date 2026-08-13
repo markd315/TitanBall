@@ -1,0 +1,203 @@
+Architecture Requirement: Modular Ability Engine
+
+To support this tech tree, the game requires a unified, modular engine capable of processing three core operational layers:
+
+    Entity Spawner: A universal factory for instantiating structures (walls, traps, portals), zones (auras, hazards), and units (minions, bosses) with defined coordinate bounds, collision matrices, and lifetimes.
+
+    Mastery Modifier: A centralized system to recalculate and apply permanent stat changes via the stat = 1^n formula, dynamically updating masteries.[stat].mult for the roster.
+
+    Effect Pipeline: A standardized state-machine handler to inject temporary effects (e.g., STUN, BURN, FAST) into the ability system. Effects utilize standardized variables such as range, dur (duration in ms), and ratio (scalar). Effect ratios apply multiplicatively against the calculated masteries.[stat].mult. Zone-based hazards utilize continuous collision checks to refresh the dur timer of applied effects as long as the entity remains inside the bounding volume.
+
+Fortress Tree (Defense/Stabilization)
+
+    Tier 1 (Unlock): Home Ward Charter. Enables base defense mechanics.
+
+    Tier 2 (Spammable):
+
+        Reinforce: Spawns a wall entity near the base.
+
+        Healing Burst: Applies the HEAL effect with a defined ratio to allied entities inside the home zone.
+
+    Tier 3 (Pick 2 of 4):
+
+        Snare Trap: Spawns a defensive trap entity near the base that triggers on enemy proximity.
+
+        Amplified Healing: Applies a permanent multiplier to the ratio of home-zone HEAL effects.
+
+        Fast-break Insurance: Modifies uphill speed penalty parameters for allied units immediately following a turnover.
+
+        Bigger Character Models: Increases the collision and hitbox radius of all allied units.
+
+    Tier 4 (Pick 1 of 3, requires 2 from T3):
+
+        Bastion Protocol: Spawns two permanent wall entities in the top and bottom lanes.
+
+        Dead Walls: Sets the restitution (bounce) physics parameter of back and side walls to 0.
+
+        Barrage: Spawns a telegraphed AoE damage zone covering 20% of the defensive third.
+
+    Tier 5 (Spammable, general row):
+
+        Emergency Barrier: Spawns a temporary wall entity.
+
+        Repair Drone: Heals all friendly minions passively over time.
+
+        Ice Barrage (Requires Barrage): Upgrades Barrage AoE to inject the SLOW effect. The dur timer refreshes while targets remain in the zone.
+
+        Fire Barrage (Requires Barrage): Upgrades Barrage AoE to inject the BURN effect. The dur timer refreshes while targets remain in the zone.
+
+    Tier 5 (Pick 1 Permanent):
+
+        No-Fly Zone: Spawns a permanent aura entity in your own end that restricts aerial movement.
+
+        Dilators: Widens the coordinate bounds of the field to 130%.
+
+    Tier 6 Capstone (Pick 1 Permanent):
+
+        Impenetrable: Clamps the enemy-generated lane gradient modifier at -3 (default is -10).
+
+        Hemmed In: Increases the scale of Bastion Protocol wall entities and spawns a new wall entity behind the center goal.
+
+        Deep Freeze: Base zone aura continuously applies the SLOW effect (0.95x ratio) to enemy entities inside it.
+
+Siege Tree (Offense/Breaching)
+
+    Tier 1 (Unlock): Siege Doctrine. Enables offensive breaching mechanics.
+
+    Tier 2 (Spammable):
+
+        Overcharge Minion: Applies a permanent stat multiplier to the entities in the next spawned minion wave.
+
+        Low Gravity: Globally reduces the gravity parameter applied to ball trajectories.
+
+        Energy Rush: Injects the FAST effect (dur=3000) to a random friendly hero.
+
+    Tier 3 (Pick 2 of 4):
+
+        Forward Mines: Spawns a persistent hazard zone entity in the enemy third. Applies damage and refreshes dur upon tick collision.
+
+        Ball Portal (Rough): Spawns a short-range portal entity that teleports the ball toward the attacking third.
+
+        Rush Lane: Spawns a telegraphed kinetic force entity that shoves units along one lane.
+
+        Vanguards: Modifies minion spawn logic to add 1 extra unit to waves whenever your team crosses the midline.
+
+    Tier 4 (Pick 1 of 2, requires 2 from T3):
+
+        Accumulators: Increases the radius of enemy hoop trigger volumes temporarily when friendly minions overlap them.
+
+        Parapet: Spawns a fixed elevated platform entity in the top lane. Applies the ROOT effect briefly upon entry and disables STEAL interactions while occupied.
+
+    Tier 5 (Spammable):
+
+        Call Siege Minion: Spawns a standard LaneMinion.
+
+        Anchor: Applies an 8000ms tether constraint between two opposing titan entities.
+
+        Shock Grenade: Injects the STUN effect (dur=250) to a random enemy.
+
+        Walls Down: Disables collision and rendering on all enemy wall entities for 1000ms.
+
+    Tier 5 (Pick 1 of 3 Permanent):
+
+        Forward Outpost (Requires Forward Mines): Replaces Forward Mines with a standing structure entity that applies continuous chip damage.
+
+        Phalanx: Applies the DEFENSE effect or permanent stat multiplier to friendly minions.
+
+        Save Progress: Disables the floor() halving function on sidegoal progress variables, making banked points persistent.
+
+    Tier 6 Capstone (Pick 1 Permanent):
+
+        Maximum Pressure: Multiplies lane speed boost variables by 2.0 for both teams when the base boost exceeds +5.
+
+        Forward Medics: Spawns a permanent zone entity in the opponent's third that continuously refreshes the HEAL effect dur on allied units.
+
+        Multiball: Spawns a second ball entity at the midline tracked via a guardianentity, restricted strictly to scoring sidegoals and chip damage.
+
+Empowerment Tree (Hero-Buffing)
+
+    Tier 1 (Unlock): Combine Contract. Enables roster stat enhancements.
+
+    Tier 2 (Spammable):
+
+        Sharpshooter: Injects a modifier of +2 to masteries.throw and +2 to masteries.range (dur=10000) to a targeted hero.
+
+    Tier 3 (Pick 2 of 4 Permanent):
+
+        Grit: Applies +1 to masteries.health OR masteries.painReduction.
+
+        Marksmanship: Applies +1 to masteries.throw OR masteries.range.
+
+        Footwork: Applies +1 to masteries.speed.
+
+        Discipline: Applies +1 to masteries.cooldowns OR masteries.effectDuration.
+
+    Tier 4 (Pick 1 of 3, requires 2 from T3):
+
+        Hero Portals: Spawns repositioning node entities restricted to hero interactions.
+
+        Fuel Reserves: Multiplies maximum boost bar capacity variables by 1.5.
+
+        Forecheck: Applies a flat bonus to masteries.stealRadius when the entity is located in the middle third of the field.
+
+    Tier 5 (Spammable):
+
+        Energy Surge: Spawns an immediate stamina/resource restore effect.
+
+        Second Wind: Injects state resets to active COOLDOWN_Q and COOLDOWN_W timers.
+
+    Tier 5 (Permanent):
+
+        Focused Training: Applies +1 mastery point to any single stat of the coach's choice. Can be purchased twice.
+
+    Tier 6 Capstone (Pick 1 Permanent):
+
+        Apex Form: Applies +2 to all 9 core masteries.
+
+        Dragon's Breath: Spawns a miniboss entity in center-botlane every 90 seconds that tracks damage from both teams until one team deals 500 damage to it, then it dies and they get the buff (FAST effect to the team until death). Rendered with 2 semicircle arcs around a healthbar circle, blue-left, white-right originating from the 6-o-clock position (0% damage) to the 12-o-clock position (100% damage).
+
+        Banner of Command: Adds an additive +10% base damage modifier to minions for each friendly hero present in the corresponding lane at spawn time.
+
+Cultivation Tree (Mana/Long-Term)
+
+    Tier 1 (Unlock): Mana Well. Initializes a passive mana increment per tick.
+
+    Tier 2 (Spammable):
+
+        Mana Infusion: Deducts currency variables to increase current mana or the passive mana tick rate.
+
+    Tier 3 (Pick 2 of 3 Permanent):
+
+        Mana Compounding: Applies a multiplier to the passive mana tick rate based on the current mana bank.
+
+        Higher Mana Cap: Increases the maximum mana integer threshold.
+
+        Toll Collector: Applies an additive bonus to the passive mana tick rate scaled by the number of favored lanes.
+
+    Tier 4 (Pick 1 of 2, requires 2 from T3):
+
+        Mana Vines: Spawns a growing hazard entity at the base entrance. Collisions continuously refresh SLOW and BURN effect dur timers.
+
+        Mana Frenzy: Applies a multiplier to masteries.cooldowns.mult for titans that scales with the current mana bank.
+
+    Tier 5 (Spammable):
+
+        Mana Surge: Deducts mana to trigger an immediate stat or resource burst.
+
+        Mana Summon: Deducts mana to spawn a specific unit entity.
+
+    Tier 5 (Pick 1 of 3 Permanent):
+
+        Mana Pollinate: Modifies upgrade store logic, allowing mana to purchase T5 upgrades from the Fortress, Siege, or Empowerment trees. Unlocks Mana Surge and Mana Summon.
+
+        Risk Adjusted Return: Immediately adds 1 point to the opponent's score variable and initializes a 150000ms timer that awards 1.5 points to the friendly score variable upon completion.
+
+        Triple Down: Immediately adds 3 sidegoal points to the opponent's score variable and adds 1 main goal to the friendly score variable.
+
+    Tier 6 Capstone (Pick 1 Permanent, requires 3 T5 purchases):
+
+        Wall Portals: Replaces opponent back and side wall entities with ball portal entities.
+
+        Uninhibited Portal: Modifies lane physics to apply a permanent directional force vector toward a single goal.
+
+        Ice Portal: Applies the SLOW effect permanently to all enemy unit entities on the field.

@@ -30,10 +30,24 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-
 public class GameEngine extends Game {
     private static boolean logs = false;
     protected Ability ability = new Ability();
+    public GuardianAbilities homeGoalieAbilities = new GuardianAbilities(TeamAffiliation.HOME);
+    public GuardianAbilities awayGoalieAbilities = new GuardianAbilities(TeamAffiliation.AWAY);
+    public TeamAffiliation lastPossessionTeam = TeamAffiliation.UNAFFILIATED;
+
+    public static class LaneBonus implements java.io.Serializable {
+        public long expiryMs;
+        public int amount;
+        public LaneBonus(long expiryMs, int amount) {
+            this.expiryMs = expiryMs;
+            this.amount = amount;
+        }
+    }
+    
+    public transient List<List<LaneBonus>> homeLaneBonusesList = List.of(new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
+    public transient List<List<LaneBonus>> awayLaneBonusesList = List.of(new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
 
     public GameEngine(String id, List<PlayerDivider> clients, GameOptions options) {
         this.clients = clients;
@@ -212,6 +226,36 @@ protected void cullUnmappedTitans() {
 
     public boolean ballIntersectsEllipse(GoalHoop goal) {
         gameserver.engine.CollisionMath.EllipseData g = goal.ellipseData();
+        TeamAffiliation teamOfGoal = goal.team;
+        TeamAffiliation attackingTeam = (teamOfGoal == TeamAffiliation.HOME) ? TeamAffiliation.AWAY : TeamAffiliation.HOME;
+        Set<String> purchased = (attackingTeam == TeamAffiliation.HOME) ? homeGoaliePurchasedUpgrades : awayGoaliePurchasedUpgrades;
+        
+        if (purchased.contains("siege.t4.accumulators")) {
+            boolean overlap = false;
+            for (Entity e : entityPool) {
+                if (e instanceof LaneMinion && e.team == attackingTeam && e.getHealth() > 0.0) {
+                    gameserver.engine.CollisionMath.EllipseData mEll = new gameserver.engine.CollisionMath.EllipseData(
+                        e.X + e.width / 2.0,
+                        e.Y + e.height / 2.0,
+                        e.width / 2.0,
+                        e.height / 2.0
+                    );
+                    if (gameserver.engine.CollisionMath.ellipseBoundsIntersect(mEll, g)) {
+                        overlap = true;
+                        break;
+                    }
+                }
+            }
+            if (overlap) {
+                g = new gameserver.engine.CollisionMath.EllipseData(
+                    g.centerX(),
+                    g.centerY(),
+                    g.radiusX() * 1.30,
+                    g.radiusY() * 1.30
+                );
+            }
+        }
+
         gameserver.engine.CollisionMath.EllipseData b = ball.ellipseData();
         return gameserver.engine.CollisionMath.ellipseBoundsIntersect(b, g);
     }
@@ -242,7 +286,12 @@ protected void cullUnmappedTitans() {
                 }
                 us.score += .25;
                 checkWinCondition(false);//somewhat intentional to check condition before ghost removal
-                enemy.score = Math.floor(enemy.score); //Reset any of the other teams ghostpoints.
+                boolean saveProgress = (enemy == this.home)
+                    ? homeGoaliePurchasedUpgrades.contains("siege.t5.saveprogress")
+                    : awayGoaliePurchasedUpgrades.contains("siege.t5.saveprogress");
+                if (!saveProgress) {
+                    enemy.score = Math.floor(enemy.score); //Reset any of the other teams ghostpoints.
+                }
             }
         }
 
@@ -266,7 +315,12 @@ protected void cullUnmappedTitans() {
                 stats.grant(getPossessorOrThrower(), StatEngine.StatEnum.POINTS, fPart * 4 + 1);
                 checkWinCondition(false);
                 //reset enemy team ghost points
-                enemy.score = Math.floor(enemy.score);
+                boolean saveProgressHi = (enemy == this.home)
+                    ? homeGoaliePurchasedUpgrades.contains("siege.t5.saveprogress")
+                    : awayGoaliePurchasedUpgrades.contains("siege.t5.saveprogress");
+                if (!saveProgressHi) {
+                    enemy.score = Math.floor(enemy.score);
+                }
                 us.hasBall = true;
                 enemy.hasBall = false;
                 ballVisible = false;
@@ -501,7 +555,15 @@ protected void cullUnmappedTitans() {
             p.marchingOrderX = (int) p.X;
             p.marchingOrderY = (int) p.Y;
             effectPool.cullAllOn(this, p);
-            entityPool.removeIf(e ->  (!(e instanceof Titan || e instanceof LaneMinion)));
+            entityPool.removeIf(e -> {
+                if (e instanceof Titan || e instanceof LaneMinion) {
+                    return false;
+                }
+                if (e.maxHealth >= 99999.0) {
+                    return false;
+                }
+                return true;
+            });
             p.facing = 0;
             p.possession = 0;
             p.runningFrame = 0;
@@ -744,9 +806,21 @@ protected void cullUnmappedTitans() {
         if (!tierPrereqMet(shortName, tier, purchased)) return;
 
         boolean isMana = costs.hasKey(nodeKey + ".cost.mana") || costs.hasKey(nodeKey + ".use.mana");
+        boolean pollinated = purchased.contains("cultivation.t5.manapollinate");
+        if (pollinated && tier.equals("t5") && !isMana) {
+            double goldCost = hasCost
+                ? (costs.hasKey(nodeKey + ".cost") ? costs.getD(nodeKey + ".cost") : costs.getD(nodeKey + ".cost.mana"))
+                : (costs.hasKey(nodeKey + ".use") ? costs.getD(nodeKey + ".use") : costs.getD(nodeKey + ".use.mana"));
+            double goldBalance = isHome ? homeGoalieCurrency : awayGoalieCurrency;
+            double manaBalance = isHome ? homeGoalieMana : awayGoalieMana;
+            if (goldBalance < goldCost && manaBalance >= goldCost) {
+                isMana = true;
+            }
+        }
+
         String costKey = hasCost
-            ? (isMana ? nodeKey + ".cost.mana" : nodeKey + ".cost")
-            : (isMana ? nodeKey + ".use.mana"  : nodeKey + ".use");
+            ? (isMana ? (costs.hasKey(nodeKey + ".cost.mana") ? nodeKey + ".cost.mana" : nodeKey + ".cost") : (costs.hasKey(nodeKey + ".cost") ? nodeKey + ".cost" : nodeKey + ".cost.mana"))
+            : (isMana ? (costs.hasKey(nodeKey + ".use.mana") ? nodeKey + ".use.mana" : nodeKey + ".use") : (costs.hasKey(nodeKey + ".use") ? nodeKey + ".use" : nodeKey + ".use.mana"));
         double cost = costs.getD(costKey);
         boolean checkBalance = costs.getB("features.CHECK_BALANCE");
         double balance = isMana
@@ -760,6 +834,12 @@ protected void cullUnmappedTitans() {
             if (isHome) homeGoalieCurrency = newBalance; else awayGoalieCurrency = newBalance;
         }
         if (hasCost) purchased.add(nodeKey); // only one-time nodes get flagged; .use nodes just charge
+        
+        if (isHome) {
+            homeGoalieAbilities.purchaseOrUse(this, t, nodeKey);
+        } else {
+            awayGoalieAbilities.purchaseOrUse(this, t, nodeKey);
+        }
         for(String s : purchased)
             System.out.println(s);
     }
@@ -1031,6 +1111,11 @@ protected void cullUnmappedTitans() {
         if (began && !ended) {
             try {
                 framesSinceStart++;
+                homeGoalieAbilities.tick(this);
+                awayGoalieAbilities.tick(this);
+                tickGoalieMana();
+                checkDragonSpawning();
+                checkTurnovers();
                 boolean over = gameDurationRuleChanges();
                 
                 double ticksPerSec = 1000.0 / Math.max(1, GAMETICK_MS);
@@ -1063,6 +1148,20 @@ protected void cullUnmappedTitans() {
                 if(t.isBoosting && t.possession == 1 && t.getType() != TitanType.DASHER){
                     t.isBoosting = false;
                 }
+                
+                boolean hasForecheck = (t.team == TeamAffiliation.HOME)
+                    ? homeGoaliePurchasedUpgrades.contains("empowerment.t4.forecheck")
+                    : awayGoaliePurchasedUpgrades.contains("empowerment.t4.forecheck");
+                if (hasForecheck && t.X >= 680 && t.X <= 1368) {
+                    t.stealRad = (int) (t.baseStealRad + c.getD("guardian.forecheck.bonus"));
+                } else {
+                    t.stealRad = t.baseStealRad;
+                }
+
+                double maxFuel = (t.team == TeamAffiliation.HOME) 
+                    ? homeGoalieAbilities.getMaxFuel(this) 
+                    : awayGoalieAbilities.getMaxFuel(this);
+
                 if (t.isBoosting) {
                     t.fuel -= .75;
                     if (t.fuel < 0) {
@@ -1074,8 +1173,8 @@ protected void cullUnmappedTitans() {
                     } else {
                         t.fuel += c.getD("globals.boost.regen.slow");
                     }
-                    if (t.fuel > 100.0) {
-                        t.fuel = 100.0;
+                    if (t.fuel > maxFuel) {
+                        t.fuel = maxFuel;
                     }
                 }
                 if (t.runRight == 1) runRightCtrl(t);
@@ -1726,8 +1825,9 @@ protected void cullUnmappedTitans() {
                 if (this.phase == GamePhase.SCORE_FREEZE || !ballVisible) {
                     break;
                 }
-                ball.X += stepFactor * xKickPow;
-                ball.Y -= stepFactor * yKickPow;
+                double speedMult = (homeGoaliePurchasedUpgrades.contains("fortress.t5.dilators") || awayGoaliePurchasedUpgrades.contains("fortress.t5.dilators")) ? c.getD("guardian.dilators.speedmult") : 1.0;
+                ball.X += stepFactor * xKickPow * speedMult;
+                ball.Y -= stepFactor * yKickPow * speedMult;
                 intersectAll();
                 detectGoals();
                 bounceWalls();
@@ -1760,7 +1860,14 @@ protected void cullUnmappedTitans() {
             t.possession = 0;
             setBallFromTip();
             
-            double D = 230.0 * t.throwPower;
+            double gravityMult = 1.0;
+            long lowGrav = (t.team == TeamAffiliation.HOME) 
+                ? homeGoalieAbilities.lowGravityUntilMs 
+                : awayGoalieAbilities.lowGravityUntilMs;
+            if (nowEpochMs < lowGrav) {
+                gravityMult = 1.5;
+            }
+            double D = 230.0 * t.throwPower * gravityMult;
             double v_tick = (D * (20 - t.actionFrame)) / 190.0;
             double stepFactor = (v_tick * 4.0) / 800.0;
             
@@ -1768,8 +1875,9 @@ protected void cullUnmappedTitans() {
                 if (this.phase == GamePhase.SCORE_FREEZE || !ballVisible) {
                     break;
                 }
-                ball.X += stepFactor * xKickPow;
-                ball.Y -= stepFactor * yKickPow;
+                double speedMult = (homeGoaliePurchasedUpgrades.contains("fortress.t5.dilators") || awayGoaliePurchasedUpgrades.contains("fortress.t5.dilators")) ? c.getD("guardian.dilators.speedmult") : 1.0;
+                ball.X += stepFactor * xKickPow * speedMult;
+                ball.Y -= stepFactor * yKickPow * speedMult;
                 intersectAll();
                 detectGoals();
                 bounceWalls();
@@ -1804,11 +1912,73 @@ protected void cullUnmappedTitans() {
                 yKickPow = -yKickPow;
             }
         }
-        //Major wall boundaries are not exempt from contact.
-        if (ball.X > c.MAX_X) xKickPow = -xKickPow;
-        if (ball.X < c.MIN_X) xKickPow = -xKickPow;
-        if (ball.Y < c.MIN_Y) yKickPow = -yKickPow;
-        if (ball.Y > c.MAX_Y) yKickPow = -yKickPow;
+        boolean homeDead = homeGoaliePurchasedUpgrades.contains("fortress.t4.deadwalls");
+        boolean awayDead = awayGoaliePurchasedUpgrades.contains("fortress.t4.deadwalls");
+        boolean homePortals = homeGoaliePurchasedUpgrades.contains("cultivation.t6.wallportals");
+        boolean awayPortals = awayGoaliePurchasedUpgrades.contains("cultivation.t6.wallportals");
+        
+        if (ball.X > c.MAX_X) {
+            if (homePortals) {
+                ball.X = 1040;
+                ball.Y = 609;
+                return;
+            }
+            if (awayDead) {
+                xKickPow = 0;
+                ball.X = c.MAX_X;
+            } else {
+                xKickPow = -xKickPow;
+            }
+        }
+        if (ball.X < c.MIN_X) {
+            if (awayPortals) {
+                ball.X = 1040;
+                ball.Y = 609;
+                return;
+            }
+            if (homeDead) {
+                xKickPow = 0;
+                ball.X = c.MIN_X;
+            } else {
+                xKickPow = -xKickPow;
+            }
+        }
+        if (ball.Y < c.MIN_Y) {
+            if (ball.X <= 1024 && awayPortals) {
+                ball.X = 1040;
+                ball.Y = 609;
+                return;
+            }
+            if (ball.X > 1024 && homePortals) {
+                ball.X = 1040;
+                ball.Y = 609;
+                return;
+            }
+            if ((ball.X <= 1024 && homeDead) || (ball.X > 1024 && awayDead)) {
+                yKickPow = 0;
+                ball.Y = c.MIN_Y;
+            } else {
+                yKickPow = -yKickPow;
+            }
+        }
+        if (ball.Y > c.MAX_Y) {
+            if (ball.X <= 1024 && awayPortals) {
+                ball.X = 1040;
+                ball.Y = 609;
+                return;
+            }
+            if (ball.X > 1024 && homePortals) {
+                ball.X = 1040;
+                ball.Y = 609;
+                return;
+            }
+            if ((ball.X <= 1024 && homeDead) || (ball.X > 1024 && awayDead)) {
+                yKickPow = 0;
+                ball.Y = c.MAX_Y;
+            } else {
+                yKickPow = -yKickPow;
+            }
+        }
     }
 
     protected void curve(Titan t, int sign) throws Exception {
@@ -2036,19 +2206,175 @@ protected void cullUnmappedTitans() {
             }
         }
 
+        double[] centers = laneCenterYs();
+        double TOP_CENTER = centers[0];
+        double MID_CENTER = centers[1];
+        double BOT_CENTER = centers[2];
+        double TOP_MID_DIV = (TOP_CENTER + MID_CENTER) / 2.0;
+        double MID_BOT_DIV = (MID_CENTER + BOT_CENTER) / 2.0;
+
+        boolean homeOvercharged = homeGoalieAbilities.overchargedWavesQueued > 0;
+        boolean awayOvercharged = awayGoalieAbilities.overchargedWavesQueued > 0;
+
         for (int L = 0; L < 3; L++) {
             if (homeCount < HOME_CAP) {
-                entityPool.add(new LaneMinion(HOME_SPAWN_X[L], SPAWN_Y[L], TeamAffiliation.HOME, L));
+                LaneMinion m = new LaneMinion(HOME_SPAWN_X[L], SPAWN_Y[L], TeamAffiliation.HOME, L);
+                m.health = c.getD("minion.base.health");
+                m.maxHealth = m.health;
+                
+                if (homeOvercharged) {
+                    m.health = c.getD("minion.base.health") * 2.0;
+                    m.maxHealth = m.health;
+                    m.damageMultiplier = 1.5;
+                }
+                
+                if (homeGoaliePurchasedUpgrades.contains("empowerment.t6.bannerofcommand")) {
+                    int numHeroes = 0;
+                    for (Titan t : players) {
+                        if (t.health > 0.0 && t.getType() != TitanType.GOALIE && t.team == TeamAffiliation.HOME) {
+                            int tLane = 0;
+                            if (t.Y >= TOP_MID_DIV && t.Y < MID_BOT_DIV) tLane = 1;
+                            else if (t.Y >= MID_BOT_DIV) tLane = 2;
+                            if (tLane == L) numHeroes++;
+                        }
+                    }
+                    m.damageMultiplier *= (1.0 + 0.1 * numHeroes);
+                }
+                
+                if (homeGoaliePurchasedUpgrades.contains("siege.t5.phalanx")) {
+                    m.armorRatio = 1.0;
+                }
+                
+                entityPool.add(m);
                 homeCount++;
+                
+                if (homeGoaliePurchasedUpgrades.contains("siege.t3.vanguards")) {
+                    boolean homeHasBall = false;
+                    for (Titan t : players) {
+                        if (t.team == TeamAffiliation.HOME && t.possession == 1) {
+                            homeHasBall = true;
+                            break;
+                        }
+                    }
+                    boolean pastAttackingThird = false;
+                    for (Entity e : entityPool) {
+                        if (e instanceof LaneMinion && e.team == TeamAffiliation.HOME && e.X >= 1368 && e.getHealth() > 0.0) {
+                            pastAttackingThird = true;
+                            break;
+                        }
+                    }
+                    if (homeHasBall && pastAttackingThird && homeCount < HOME_CAP) {
+                        LaneMinion extra = new LaneMinion(HOME_SPAWN_X[L], SPAWN_Y[L], TeamAffiliation.HOME, L);
+                        extra.damageMultiplier = m.damageMultiplier;
+                        extra.armorRatio = m.armorRatio;
+                        extra.health = m.health;
+                        extra.maxHealth = m.maxHealth;
+                        entityPool.add(extra);
+                        homeCount++;
+                    }
+                }
             }
             if (awayCount < AWAY_CAP) {
-                entityPool.add(new LaneMinion(AWAY_SPAWN_X[L], SPAWN_Y[L], TeamAffiliation.AWAY, L));
+                LaneMinion m = new LaneMinion(AWAY_SPAWN_X[L], SPAWN_Y[L], TeamAffiliation.AWAY, L);
+                m.health = c.getD("minion.base.health");
+                m.maxHealth = m.health;
+                if (awayOvercharged) {
+                    m.health = c.getD("minion.base.health") * 2.0;
+                    m.maxHealth = m.health;
+                    m.damageMultiplier = 1.5;
+                }
+                if (awayGoaliePurchasedUpgrades.contains("empowerment.t6.bannerofcommand")) {
+                    int numHeroes = 0;
+                    for (Titan t : players) {
+                        if (t.health > 0.0 && t.getType() != TitanType.GOALIE && t.team == TeamAffiliation.AWAY) {
+                            int tLane = 0;
+                            if (t.Y >= TOP_MID_DIV && t.Y < MID_BOT_DIV) tLane = 1;
+                            else if (t.Y >= MID_BOT_DIV) tLane = 2;
+                            if (tLane == L) numHeroes++;
+                        }
+                    }
+                    m.damageMultiplier *= (1.0 + 0.1 * numHeroes);
+                }
+                if (awayGoaliePurchasedUpgrades.contains("siege.t5.phalanx")) {
+                    m.armorRatio = 1.0;
+                }
+                entityPool.add(m);
                 awayCount++;
+
+                if (awayGoaliePurchasedUpgrades.contains("siege.t3.vanguards")) {
+                    boolean awayHasBall = false;
+                    for (Titan t : players) {
+                        if (t.team == TeamAffiliation.AWAY && t.possession == 1) {
+                            awayHasBall = true;
+                            break;
+                        }
+                    }
+                    boolean pastAttackingThird = false;
+                    for (Entity e : entityPool) {
+                        if (e instanceof LaneMinion && e.team == TeamAffiliation.AWAY && e.X <= 680 && e.getHealth() > 0.0) {
+                            pastAttackingThird = true;
+                            break;
+                        }
+                    }
+                    if (awayHasBall && pastAttackingThird && awayCount < AWAY_CAP) {
+                        LaneMinion extra = new LaneMinion(AWAY_SPAWN_X[L], SPAWN_Y[L], TeamAffiliation.AWAY, L);
+                        extra.damageMultiplier = m.damageMultiplier;
+                        extra.armorRatio = m.armorRatio;
+                        extra.health = m.health;
+                        extra.maxHealth = m.maxHealth;
+                        entityPool.add(extra);
+                        awayCount++;
+                    }
+                }
+            }
+        }
+
+        if (homeOvercharged) homeGoalieAbilities.overchargedWavesQueued--;
+        if (awayOvercharged) awayGoalieAbilities.overchargedWavesQueued--;
+
+        // uninhibitedportal: constantly spawns 2 extra minions in the middle lane (lane index 1)
+        if (homeGoaliePurchasedUpgrades.contains("cultivation.t6.uninhibitedportal") && homeCount < HOME_CAP - 1) {
+            for (int i = 0; i < 2; i++) {
+                LaneMinion extra = new LaneMinion(HOME_SPAWN_X[1], SPAWN_Y[1], TeamAffiliation.HOME, 1);
+                extra.health = c.getD("minion.base.health");
+                extra.maxHealth = extra.health;
+                entityPool.add(extra);
+            }
+        }
+        if (awayGoaliePurchasedUpgrades.contains("cultivation.t6.uninhibitedportal") && awayCount < AWAY_CAP - 1) {
+            for (int i = 0; i < 2; i++) {
+                LaneMinion extra = new LaneMinion(AWAY_SPAWN_X[1], SPAWN_Y[1], TeamAffiliation.AWAY, 1);
+                extra.health = c.getD("minion.base.health");
+                extra.maxHealth = extra.health;
+                entityPool.add(extra);
             }
         }
     }
 
 protected void tickLaneMinions() {
+    for (int L = 0; L < 3; L++) {
+        long now = nowEpochMs;
+        homeLaneBonusesList.get(L).removeIf(b -> now >= b.expiryMs);
+        awayLaneBonusesList.get(L).removeIf(b -> now >= b.expiryMs);
+        
+        int hSum = 0;
+        long maxHExpiry = 0;
+        for (LaneBonus b : homeLaneBonusesList.get(L)) {
+            hSum += b.amount;
+            if (b.expiryMs > maxHExpiry) maxHExpiry = b.expiryMs;
+        }
+        homeLaneBonusValue[L] = hSum;
+        homeLaneBonusEndTime[L] = maxHExpiry;
+        
+        int aSum = 0;
+        long maxAExpiry = 0;
+        for (LaneBonus b : awayLaneBonusesList.get(L)) {
+            aSum += b.amount;
+            if (b.expiryMs > maxAExpiry) maxAExpiry = b.expiryMs;
+        }
+        awayLaneBonusValue[L] = aSum;
+        awayLaneBonusEndTime[L] = maxAExpiry;
+    }
 
     // Lane centers, corrected for top-left-justified goal coords (corner + half dimension)
     double[] centers = laneCenterYs();
@@ -2061,7 +2387,9 @@ protected void tickLaneMinions() {
     final double MID_BOT_DIV = (MID_CENTER + BOT_CENTER) / 2.0;
 
     // Minion speed & damage
-    double minionSpeed = 1.25;
+    boolean hasDilators = homeGoaliePurchasedUpgrades.contains("fortress.t5.dilators") ||
+                          awayGoaliePurchasedUpgrades.contains("fortress.t5.dilators");
+    double minionSpeed = hasDilators ? 1.25 * c.getD("guardian.dilators.speedmult") : 1.25;
     double minionDmg   = 0.05;
     double titanDmg    = 0.05;
     double fightRange  = 45.0;
@@ -2107,25 +2435,36 @@ protected void tickLaneMinions() {
         for (LaneMinion h : homeInLane) {
             LaneMinion target = findNearestEnemyMinion(h.X, awayInLane, fightRange);
             if (target != null) {
-                target.health -= minionDmg;
+                double dmg = minionDmg * h.damageMultiplier;
+                if (awayGoaliePurchasedUpgrades.contains("siege.t5.phalanx")) {
+                    int adjCount = 0;
+                    for (LaneMinion f : awayInLane) {
+                        if (f != target && Math.abs(f.X - target.X) <= 100.0) {
+                            adjCount++;
+                        }
+                    }
+                    dmg *= Math.max(0.1, 1.0 - 0.1 * adjCount);
+                }
+                target.health -= dmg;
                 continue; // engaged: hold position, never push through the enemy line
             }
+            double curSpeed = getLaneMinionSpeed(L, TeamAffiliation.HOME, minionSpeed);
             if (!awayInLane.isEmpty()) {
                 // Enemy wave still exists in this lane (just outside fightRange) - advance,
                 // but clamp so we can never cross past the frontmost living enemy.
                 double frontEnemyX = awayInLane.get(0).X;
-                h.X = Math.min(h.X + minionSpeed, frontEnemyX - fightRange);
+                h.X = Math.min(h.X + curSpeed, frontEnemyX - fightRange);
             } else {
                 // Lane is fully clear of enemy minions - free to push toward the goal/titans.
-                h.X += minionSpeed;
+                h.X += curSpeed;
                 Titan t = findNearestTitanInLane(h.X, h.Y, TeamAffiliation.AWAY,
                                                  TOP_CENTER, MID_CENTER, BOT_CENTER,
                                                  TOP_MID_DIV, MID_BOT_DIV);
-                if (t != null) t.damage(this, titanDmg);
+                if (t != null) t.damage(this, titanDmg * h.damageMultiplier);
             }
             if (h.X >= 1780) {
                 h.health = 0;
-                homeLaneBonusEndTime[L] = nowEpochMs + 15000;
+                homeLaneBonusesList.get(L).add(new LaneBonus(nowEpochMs + c.getI("guardian.crashbonus.lifetime"), c.getI("guardian.crashbonus.amount")));
             }
         }
 
@@ -2133,22 +2472,33 @@ protected void tickLaneMinions() {
         for (LaneMinion a : awayInLane) {
             LaneMinion target = findNearestEnemyMinion(a.X, homeInLane, fightRange);
             if (target != null) {
-                target.health -= minionDmg;
+                double dmg = minionDmg * a.damageMultiplier;
+                if (homeGoaliePurchasedUpgrades.contains("siege.t5.phalanx")) {
+                    int adjCount = 0;
+                    for (LaneMinion f : homeInLane) {
+                        if (f != target && Math.abs(f.X - target.X) <= 100.0) {
+                            adjCount++;
+                        }
+                    }
+                    dmg *= Math.max(0.1, 1.0 - 0.1 * adjCount);
+                }
+                target.health -= dmg;
                 continue;
             }
+            double curSpeed = getLaneMinionSpeed(L, TeamAffiliation.AWAY, minionSpeed);
             if (!homeInLane.isEmpty()) {
                 double frontEnemyX = homeInLane.get(0).X;
-                a.X = Math.max(a.X - minionSpeed, frontEnemyX + fightRange);
+                a.X = Math.max(a.X - curSpeed, frontEnemyX + fightRange);
             } else {
-                a.X -= minionSpeed;
+                a.X -= curSpeed;
                 Titan t = findNearestTitanInLane(a.X, a.Y, TeamAffiliation.HOME,
                                                  TOP_CENTER, MID_CENTER, BOT_CENTER,
                                                  TOP_MID_DIV, MID_BOT_DIV);
-                if (t != null) t.damage(this, titanDmg);
+                if (t != null) t.damage(this, titanDmg * a.damageMultiplier);
             }
             if (a.X <= 300) {
                 a.health = 0;
-                awayLaneBonusEndTime[L] = nowEpochMs + 15000;
+                awayLaneBonusesList.get(L).add(new LaneBonus(nowEpochMs + c.getI("guardian.crashbonus.lifetime"), c.getI("guardian.crashbonus.amount")));
             }
         }
 
@@ -2276,61 +2626,233 @@ protected void tickLaneMinions() {
             goalieLane = 2; // BOT
         }
 
-        LaneMinion target = null;
+        Entity target = null;
+        boolean isDragon = false;
         double minDist = 45.0;
 
-        // Find closest minion in same lane
         for (Entity e : entityPool) {
-            if (!(e instanceof LaneMinion)) continue;
+            if (e instanceof LaneMinion) {
+                LaneMinion m = (LaneMinion) e;
+                if (m.getHealth() <= 0.0) continue;
+                if (m.laneIndex != goalieLane) continue;
 
-            LaneMinion m = (LaneMinion) e;
-            if (m.getHealth() <= 0.0) continue;
-
-            // ❗ Must be same lane as goalie
-            if (m.laneIndex != goalieLane) continue;
-
-            double dist = util.Util.dist(m.X, m.Y, clickX, clickY);
-            if (dist < minDist) {
-                minDist = dist;
-                target = m;   // single-target: closest only
+                double dist = util.Util.dist(m.X, m.Y, clickX, clickY);
+                if (dist < minDist) {
+                    minDist = dist;
+                    target = m;
+                    isDragon = false;
+                }
+            } else if (e instanceof gameserver.entity.minions.Dragon) {
+                gameserver.entity.minions.Dragon d = (gameserver.entity.minions.Dragon) e;
+                if (d.getHealth() <= 0.0) continue;
+                if (goalieLane == 2) {
+                    double dist = util.Util.dist(d.X + d.width/2.0, d.Y + d.height/2.0, clickX, clickY);
+                    if (dist < minDist + 30.0) {
+                        minDist = dist;
+                        target = d;
+                        isDragon = true;
+                    }
+                }
             }
         }
 
         if (target != null) {
-
-            // Apply goalie click cooldown
             effectPool.addUniqueEffect(
                 new EmptyEffect(500, goalie, EffectId.COOLDOWN_GOALIE),
                 this
             );
 
-            // Base damage
-            double dmg = 5.0;
+            double dmg = 10.0;
 
-            // Friendly minion = gold denial → 50% damage
-            if (target.team == goalieTeam) {
-                dmg *= 0.5;
-            }
-
-            // Apply damage
-            target.health -= dmg;
-
-            // Death handling
-            if (target.health <= 0.0) {
-                target.health = 0.0;
-
-                // Award currency only for killing enemy minions
-                if (target.team != goalieTeam) {
-                    if (goalieTeam == TeamAffiliation.HOME) {
-                        homeGoalieCurrency += 10.0;
-                    } else {
-                        awayGoalieCurrency += 10.0;
+            if (isDragon) {
+                gameserver.entity.minions.Dragon d = (gameserver.entity.minions.Dragon) target;
+                if (goalieTeam == TeamAffiliation.HOME) {
+                    d.homeDamage += dmg;
+                } else {
+                    d.awayDamage += dmg;
+                }
+                d.damage(this, dmg);
+            } else {
+                LaneMinion m = (LaneMinion) target;
+                if (m.team == goalieTeam) {
+                    dmg *= 0.5;
+                }
+                m.health -= dmg;
+                if (m.health <= 0.0) {
+                    m.health = 0.0;
+                    if (m.team != goalieTeam) {
+                        if (goalieTeam == TeamAffiliation.HOME) {
+                            homeGoalieCurrency += 10.0;
+                        } else {
+                            awayGoalieCurrency += 10.0;
+                        }
                     }
                 }
             }
         }
     }
 
+    private void tickGoalieMana() {
+        if (homeGoaliePurchasedUpgrades.contains("cultivation.t1.manawell")) {
+            double rate = 0.025;
+            if (homeGoaliePurchasedUpgrades.contains("cultivation.t3.manacompounding")) {
+                rate *= (1.0 + (homeGoalieMana / 500.0) * 0.5);
+            }
+            if (homeGoaliePurchasedUpgrades.contains("cultivation.t3.tollcollector")) {
+                int favored = countFavoredLanes(TeamAffiliation.HOME);
+                rate *= (1.0 + 0.20 * favored);
+            }
+            rate *= homeGoalieAbilities.manaRateMultiplier;
+            homeGoalieMana = Math.min(homeGoalieAbilities.getMaxMana(this), homeGoalieMana + rate);
+        }
+        if (awayGoaliePurchasedUpgrades.contains("cultivation.t1.manawell")) {
+            double rate = 0.025;
+            if (awayGoaliePurchasedUpgrades.contains("cultivation.t3.manacompounding")) {
+                rate *= (1.0 + (awayGoalieMana / 500.0) * 0.5);
+            }
+            if (awayGoaliePurchasedUpgrades.contains("cultivation.t3.tollcollector")) {
+                int favored = countFavoredLanes(TeamAffiliation.AWAY);
+                rate *= (1.0 + 0.20 * favored);
+            }
+            rate *= awayGoalieAbilities.manaRateMultiplier;
+            awayGoalieMana = Math.min(awayGoalieAbilities.getMaxMana(this), awayGoalieMana + rate);
+        }
+    }
+
+    private int countFavoredLanes(TeamAffiliation team) {
+        int favored = 0;
+        for (int L = 0; L < 3; L++) {
+            int homeCount = 0;
+            int awayCount = 0;
+            for (Entity entity : entityPool) {
+                if (entity instanceof LaneMinion && entity.getHealth() > 0.0 && ((LaneMinion) entity).laneIndex == L) {
+                    if (entity.team == TeamAffiliation.HOME) homeCount++;
+                    else awayCount++;
+                }
+            }
+            double[] YS = laneCenterYs();
+            double TOP_MID_DIV = (YS[0] + YS[1]) / 2.0;
+            double MID_BOT_DIV = (YS[1] + YS[2]) / 2.0;
+
+            int homeBonus = (homeLaneBonusEndTime[L] > nowEpochMs) ? 3 : 0;
+            int awayBonus = (awayLaneBonusEndTime[L] > nowEpochMs) ? 3 : 0;
+            int net = (team == TeamAffiliation.HOME)
+                ? (homeCount + homeBonus - (awayCount + awayBonus))
+                : (awayCount + awayBonus - (homeCount + homeBonus));
+            if (net > 0) favored++;
+        }
+        return favored;
+    }
+
+    private void checkDragonSpawning() {
+        boolean hasBreath = homeGoaliePurchasedUpgrades.contains("empowerment.t6.dragonsbreath") ||
+                            awayGoaliePurchasedUpgrades.contains("empowerment.t6.dragonsbreath");
+        if (hasBreath && (framesSinceStart % 3600 == 1)) {
+            boolean dragonExists = false;
+            for (Entity e : entityPool) {
+                if (e instanceof gameserver.entity.minions.Dragon) {
+                    dragonExists = true;
+                    break;
+                }
+            }
+            if (!dragonExists) {
+                gameserver.entity.minions.Dragon d = new gameserver.entity.minions.Dragon(1024 - 60, 790 - 60);
+                entityPool.add(d);
+            }
+        }
+    }
+
+    // Removed applyUninhibitedPortalForce
+
+    public double getLaneMinionSpeed(int L, TeamAffiliation team, double baseSpeed) {
+        int homeCount = 0;
+        int awayCount = 0;
+        for (Entity entity : entityPool) {
+            if (entity instanceof LaneMinion && entity.getHealth() > 0.0 && ((LaneMinion) entity).laneIndex == L) {
+                if (entity.team == TeamAffiliation.HOME) homeCount++;
+                else awayCount++;
+            }
+        }
+        int homeBonus = homeLaneBonusValue[L];
+        int awayBonus = awayLaneBonusValue[L];
+        
+        int netMinions = (team == TeamAffiliation.HOME)
+            ? (homeCount - awayCount)
+            : (awayCount - homeCount);
+
+        // Soft-cap base minion count difference at +10 / -10
+        if (netMinions > 10) netMinions = 10;
+        if (netMinions < -10) netMinions = -10;
+
+        int netBonus = (team == TeamAffiliation.HOME)
+            ? (homeBonus - awayBonus)
+            : (awayBonus - homeBonus);
+
+        int P = netMinions + netBonus;
+
+        // Clamp total lane advantage at hard-cap (+20 / -20)
+        if (P > 20) P = 20;
+        if (P < -20) P = -20;
+
+        if (P > 0) {
+            boolean maxPressure = homeGoaliePurchasedUpgrades.contains("siege.t6.maximumpressure") ||
+                                  awayGoaliePurchasedUpgrades.contains("siege.t6.maximumpressure");
+            double val = 0.0;
+            if (P <= 10) {
+                val = P * 0.01;
+            } else {
+                val = 0.10 + (P - 10) * 0.005;
+            }
+            if (maxPressure && P > 5) {
+                val *= 2.0;
+            }
+            return baseSpeed * (1.0 + val);
+        } else if (P < 0) {
+            boolean impenetrable = (team == TeamAffiliation.HOME)
+                ? homeGoaliePurchasedUpgrades.contains("fortress.t6.impenetrable")
+                : awayGoaliePurchasedUpgrades.contains("fortress.t6.impenetrable");
+            if (impenetrable && P < -3) {
+                P = -3;
+            }
+            long insuranceUntil = (team == TeamAffiliation.HOME)
+                ? homeGoalieAbilities.fastBreakUntilMs
+                : awayGoalieAbilities.fastBreakUntilMs;
+            
+            double val = 0.0;
+            if (nowEpochMs >= insuranceUntil) {
+                if (P >= -10) {
+                    val = P * 0.01;
+                } else {
+                    val = -0.10 + (P + 10) * 0.005;
+                }
+            }
+            double speed = baseSpeed * (1.0 + val);
+            return Math.max(0.2, speed);
+        }
+        return baseSpeed;
+    }
+
+    private void checkTurnovers() {
+        TeamAffiliation currentPossessionTeam = TeamAffiliation.UNAFFILIATED;
+        for (Titan t : players) {
+            if (t.possession == 1) {
+                currentPossessionTeam = t.team;
+                break;
+            }
+        }
+        if (currentPossessionTeam != lastPossessionTeam && currentPossessionTeam != TeamAffiliation.UNAFFILIATED) {
+            if (lastPossessionTeam == TeamAffiliation.HOME) {
+                if (homeGoaliePurchasedUpgrades.contains("fortress.t3.fastbreakinsurance")) {
+                    homeGoalieAbilities.fastBreakUntilMs = nowEpochMs + 5000;
+                }
+            } else if (lastPossessionTeam == TeamAffiliation.AWAY) {
+                if (awayGoaliePurchasedUpgrades.contains("fortress.t3.fastbreakinsurance")) {
+                    awayGoalieAbilities.fastBreakUntilMs = nowEpochMs + 5000;
+                }
+            }
+            lastPossessionTeam = currentPossessionTeam;
+        }
+    }
 
     public double homeWinBy() {
         return home.score - away.score;

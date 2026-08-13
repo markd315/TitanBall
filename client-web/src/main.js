@@ -418,12 +418,44 @@ function drawIngame(ctx, dt) {
   }
 
   // Draw Field
+  const hasDilators = (game.homeGoaliePurchasedUpgrades || []).includes("fortress.t5.dilators") ||
+                      (game.awayGoaliePurchasedUpgrades || []).includes("fortress.t5.dilators");
   if (AssetManager.images['field']) {
-    drawImageCam(ctx, AssetManager.images['field'], 1, 1, camX, camY);
+    const img = AssetManager.images['field'];
+    if (hasDilators) {
+      const dw = img.width * 1.3;
+      const dh = img.height * 1.3;
+      const dx = 1024 - dw / 2;
+      const dy = 609 - dh / 2;
+      ctx.drawImage(img, Math.floor(dx - camX), Math.floor(dy - camY), dw, dh);
+    } else {
+      ctx.drawImage(img, Math.floor(1 - camX), Math.floor(1 - camY));
+    }
   } else {
     ctx.fillStyle = '#0f3d0f';
     ctx.fillRect(0, 0, 1920, 1080);
   }
+
+  // Draw thin blue boundary lines for attacking/defensive thirds (680 and 1368)
+  const x1 = hasDilators ? 1024 + (680 - 1024) * 1.30 : 680;
+  const x2 = hasDilators ? 1024 + (1368 - 1024) * 1.30 : 1368;
+  const yMin = hasDilators ? 609 + (139 - 609) * 1.30 : 139;
+  const yMax = hasDilators ? 609 + (1079 - 609) * 1.30 : 1079;
+
+  ctx.save();
+  ctx.strokeStyle = 'rgba(59, 130, 246, 0.5)';
+  ctx.lineWidth = 2;
+  // Left line (680)
+  ctx.beginPath();
+  ctx.moveTo(Math.floor(x1 - camX), Math.floor(yMin - camY));
+  ctx.lineTo(Math.floor(x1 - camX), Math.floor(yMax - camY));
+  ctx.stroke();
+  // Right line (1368)
+  ctx.beginPath();
+  ctx.moveTo(Math.floor(x2 - camX), Math.floor(yMin - camY));
+  ctx.lineTo(Math.floor(x2 - camX), Math.floor(yMax - camY));
+  ctx.stroke();
+  ctx.restore();
   
   drawGoals(ctx, game, camX, camY);
   drawAimAndRangeIndicators(ctx, game, gameState.controlsHeld, camX, camY);

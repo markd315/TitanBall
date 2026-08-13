@@ -163,6 +163,14 @@ public class Masteries   {
             t.painReduction *= Math.pow(c.getD("masteries.painReduction.mult"), this.painReduction-1);
             System.out.println("speed, throw, range, steal, health, damage, cooldown, duration, eCast, rCast, sCast");
             System.out.println("[" + t.speed + "," + t.throwPower + "," + t.rangeFactor + "," + t.stealRad + "," + t.maxHealth + "," + t.damageFactor + "," + t.cooldownFactor + "," + t.durationsFactor + "," + t.eCastFrames + "," + t.rCastFrames + "," + t.sCastFrames + "]");
+            t.baseSpeed = t.speed;
+            t.baseThrowPower = t.throwPower;
+            t.baseRangeFactor = t.rangeFactor;
+            t.baseCooldownFactor = t.cooldownFactor;
+            t.baseDurationsFactor = t.durationsFactor;
+            t.baseMaxHealth = t.maxHealth;
+            t.basePainReduction = t.painReduction;
+            t.baseStealRad = t.stealRad;
             t.typeAndMasteriesLocked = true;
         }
     }

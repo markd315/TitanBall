@@ -49,7 +49,7 @@ export function initMouse() {
 
         const treeState = getTreeState(game, game.underControl.team, activeKey);
         const unlocked = isNodeUnlocked(activeKey, hitIdx, treeState);
-        const nodeKey = getNodeConfigKey(activeKey, hitIdx);
+        const nodeKey = getNodeConfigKey(activeKey, hitIdx, treeState.purchased);
         const purchased = def.kind === 'cost' && treeState.purchased.has(nodeKey);
 
         if (!unlocked) {

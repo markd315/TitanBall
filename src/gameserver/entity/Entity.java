@@ -24,7 +24,9 @@ import com.fasterxml.jackson.annotation.*;
     @JsonSubTypes.Type(value = gameserver.entity.minions.Fire.class, name = "Fire"),
     @JsonSubTypes.Type(value = gameserver.entity.minions.Wall.class, name = "Wall"),
     @JsonSubTypes.Type(value = gameserver.entity.minions.Trap.class, name = "Trap"),
-    @JsonSubTypes.Type(value = gameserver.entity.minions.LaneMinion.class, name = "LaneMinion")
+    @JsonSubTypes.Type(value = gameserver.entity.minions.LaneMinion.class, name = "LaneMinion"),
+    @JsonSubTypes.Type(value = gameserver.entity.minions.Dragon.class, name = "Dragon"),
+    @JsonSubTypes.Type(value = gameserver.entity.minions.SecondBall.class, name = "SecondBall")
 })
 public class Entity extends Box   {
     public double health, maxHealth;

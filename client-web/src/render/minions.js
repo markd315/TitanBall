@@ -6,6 +6,46 @@ let staticFrame = 0;
 export function drawMinions(ctx, game, camX, camY) {
     if (!game || !game.entityPool) return;
     
+    // Draw No-Fly Zone and Deep Freeze defensive aura overlays
+    ctx.save();
+    const homePurchased = game.homeGoaliePurchasedUpgrades ? Array.from(game.homeGoaliePurchasedUpgrades) : [];
+    const awayPurchased = game.awayGoaliePurchasedUpgrades ? Array.from(game.awayGoaliePurchasedUpgrades) : [];
+
+    // HOME defensive third: X from 36 to 680, Y from 36 to 1182
+    if (homePurchased.includes("fortress.t5.noflyzoneperm") || homePurchased.includes("fortress.t5.noflyzonetmp")) {
+        ctx.fillStyle = "rgba(239, 68, 68, 0.08)";
+        ctx.strokeStyle = "rgba(239, 68, 68, 0.35)";
+        ctx.lineWidth = 3;
+        ctx.fillRect(36 - camX, 36 - camY, 644, 1146);
+        ctx.strokeRect(36 - camX, 36 - camY, 644, 1146);
+    }
+    // AWAY defensive third: X from 1368 to 2012, Y from 36 to 1182
+    if (awayPurchased.includes("fortress.t5.noflyzoneperm") || awayPurchased.includes("fortress.t5.noflyzonetmp")) {
+        ctx.fillStyle = "rgba(239, 68, 68, 0.08)";
+        ctx.strokeStyle = "rgba(239, 68, 68, 0.35)";
+        ctx.lineWidth = 3;
+        ctx.fillRect(1368 - camX, 36 - camY, 644, 1146);
+        ctx.strokeRect(1368 - camX, 36 - camY, 644, 1146);
+    }
+
+    // HOME Deep Freeze
+    if (homePurchased.includes("fortress.t6.deepfreeze")) {
+        ctx.fillStyle = "rgba(59, 130, 246, 0.08)";
+        ctx.strokeStyle = "rgba(59, 130, 246, 0.35)";
+        ctx.lineWidth = 3;
+        ctx.fillRect(36 - camX, 36 - camY, 644, 1146);
+        ctx.strokeRect(36 - camX, 36 - camY, 644, 1146);
+    }
+    // AWAY Deep Freeze
+    if (awayPurchased.includes("fortress.t6.deepfreeze")) {
+        ctx.fillStyle = "rgba(59, 130, 246, 0.08)";
+        ctx.strokeStyle = "rgba(59, 130, 246, 0.35)";
+        ctx.lineWidth = 3;
+        ctx.fillRect(1368 - camX, 36 - camY, 644, 1146);
+        ctx.strokeRect(1368 - camX, 36 - camY, 644, 1146);
+    }
+    ctx.restore();
+
     staticFrame = (staticFrame + 1) % 60; // 60 frames per cycle roughly
     const isAltFrame = staticFrame > 30;
 
@@ -27,6 +67,14 @@ export function drawMinions(ctx, game, camX, camY) {
             if (pwr > 2 && pwr < 5) pwr = 3;
             if (pwr >= 5) pwr = 5;
             imgKey = `wolf${pwr}${face}`;
+        }
+        else if (e.entityClass === 'Dragon') {
+            imgKey = 'dragon';
+        }
+        else if (e.entityClass === 'SecondBall') {
+            const isFrameB = (staticFrame % 20) > 10;
+            const anyPoss = game.players && game.players.some(p => p.possession === 1);
+            imgKey = anyPoss ? (isFrameB ? 'ballB' : 'ballA') : (isFrameB ? 'ballFB' : 'ballFA');
         }
 
         else if (e.entityClass === 'LaneMinion') {
@@ -118,8 +166,8 @@ export function drawMinions(ctx, game, camX, camY) {
                 else if (e.team === 'AWAY') awayCount++;
             }
         }
-        const homeBonus = (game.homeLaneBonusEndTime && game.nowEpochMs < game.homeLaneBonusEndTime[L]) ? 3 : 0;
-        const awayBonus = (game.awayLaneBonusEndTime && game.nowEpochMs < game.awayLaneBonusEndTime[L]) ? 3 : 0;
+        const homeBonus = game.homeLaneBonusValue ? game.homeLaneBonusValue[L] : 0;
+        const awayBonus = game.awayLaneBonusValue ? game.awayLaneBonusValue[L] : 0;
         let net = 0;
         if (playerTeam === 'AWAY') {
             net = (awayCount + awayBonus) - (homeCount + homeBonus);

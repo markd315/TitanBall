@@ -44,15 +44,13 @@ Since the stack is fully self-contained (automatically building a clean VPC, sub
 Run this command from the `operations/` directory:
 
 ```bash
-aws cloudformation deploy \
-  --template-file pilot-light-stack.yaml \
-  --stack-name titanball-pilot-light \
-  --capabilities CAPABILITY_IAM \
-  --parameter-overrides \
-      DeploymentType=ECS \
-      CloudFrontDistributionId=E250EEB1SQKL1Z \
-      ECRImageUri=720291373173.dkr.ecr.us-east-1.amazonaws.com/titanball:latest \
-      DatabaseRootPassword=yoursecurepassword
+aws cloudformation deploy    --template-file operations/pilot-light-stack.yaml    --stack-name titanball-pilot-light    --capabilities CAPABILITY_IAM    --parameter-overrides       DeploymentType=ECS        CloudFrontDistributionId=E250EEB1SQKL1Z        ECRImageUri=720291373173.dkr.ecr.us-east-1.amazonaws.com/titanball:latest        DatabaseRootPassword=yoursecurepassword
+```
+
+
+hot refresh
+```
+ aws cloudformation delete-stack --stack-name titanball-pilot-light; sleep 250; aws cloudformation deploy    --template-file operations/pilot-light-stack.yaml    --stack-name titanball-pilot-light    --capabilities CAPABILITY_IAM    --parameter-overrides       DeploymentType=ECS        CloudFrontDistributionId=E250EEB1SQKL1Z        ECRImageUri=720291373173.dkr.ecr.us-east-1.amazonaws.com/titanball:latest        DatabaseRootPassword=yoursecurepassword
 ```
 
 > [NOTE]
