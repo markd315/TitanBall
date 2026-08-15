@@ -22,7 +22,10 @@ export const actionMap = {
 
 export async function setControlPreset(preset) {
   try {
-    const url = preset === 'rts' ? 'res/ctrls_example_rts.json' : 'res/config.json';
+    let url = 'res/ctrls_example_rts.json';
+    if (preset === 'keyboard' || preset === 'mobile-single' || preset === 'mobile-double') {
+      url = 'res/ctrls_example_3_pers_shooter.json';
+    }
     const response = await fetch(url);
     const data = await response.json();
     currentConfig = data;
@@ -34,7 +37,7 @@ export async function setControlPreset(preset) {
 }
 
 export async function initControlConfig() {
-  const saved = localStorage.getItem('controlPreset') || 'default';
+  const saved = localStorage.getItem('controlPreset') || 'rts';
   await setControlPreset(saved);
   // Set UI dropdown value if present
   const select = document.getElementById('controls-select');

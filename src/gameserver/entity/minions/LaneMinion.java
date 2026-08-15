@@ -21,8 +21,8 @@ public class LaneMinion extends Entity implements Tickable, Serializable {
         this.width = 20;
         this.height = 20;
         this.laneIndex = laneIndex;
-        this.health = 45.0;
-        this.maxHealth = 45.0;
+        this.health = 22.5;
+        this.maxHealth = 22.5;
         this.solid = false;
     }
 

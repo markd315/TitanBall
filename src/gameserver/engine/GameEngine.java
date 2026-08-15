@@ -40,15 +40,31 @@ public class GameEngine extends Game {
     public static class LaneBonus implements java.io.Serializable {
         public long expiryMs;
         public int amount;
+        public LaneBonus() {}
         public LaneBonus(long expiryMs, int amount) {
             this.expiryMs = expiryMs;
             this.amount = amount;
         }
     }
     
+    @com.fasterxml.jackson.annotation.JsonIgnore
     public transient List<List<LaneBonus>> homeLaneBonusesList = List.of(new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
+    @com.fasterxml.jackson.annotation.JsonIgnore
     public transient List<List<LaneBonus>> awayLaneBonusesList = List.of(new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
 
+    public List<List<LaneBonus>> getHomeLaneBonusesList() {
+        if (homeLaneBonusesList == null) {
+            homeLaneBonusesList = List.of(new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
+        }
+        return homeLaneBonusesList;
+    }
+
+    public List<List<LaneBonus>> getAwayLaneBonusesList() {
+        if (awayLaneBonusesList == null) {
+            awayLaneBonusesList = List.of(new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
+        }
+        return awayLaneBonusesList;
+    }
     public GameEngine(String id, List<PlayerDivider> clients, GameOptions options) {
         this.clients = clients;
         this.options = options;
@@ -57,6 +73,9 @@ public class GameEngine extends Game {
             System.out.println(mapper.writeValueAsString(this.options));
         } catch (JsonProcessingException e) {
             e.printStackTrace();
+        }
+        if (options.goaliesDisabled()) {
+            cullGoalies();
         }
         cullUnmappedTitans();
         for (PlayerDivider p : clients) {
@@ -73,9 +92,7 @@ public class GameEngine extends Game {
             p.selection = p.possibleSelection.get(0);
         }
         System.out.println("goalieoptions " + options.goalieIndex);
-        if (options.goaliesDisabled()) {
-            cullGoalies();
-        } else {
+        if (!options.goaliesDisabled()) {
             if (!(this instanceof TutorialOverrides)) {
                 players[0].setVarsBasedOnType();
                 players[1].setVarsBasedOnType();
@@ -84,7 +101,6 @@ public class GameEngine extends Game {
         this.gameId = id;
         this.lastControlPacket = new ClientPacket[clients.size()];
     }
-
     public GameEngine(String gameId, List<PlayerDivider> players, GameOptions options, ManagedGame managedGame) {
         this(gameId, players, options);
     }
@@ -383,7 +399,11 @@ protected void cullUnmappedTitans() {
             p.diagonalRunDir = 0;
         }
         resetPosSel();
-        phase = GamePhase.INGAME;
+        if (gameId != null && gameId.startsWith("tutorial-")) {
+            phase = GamePhase.TUTORIAL;
+        } else {
+            phase = GamePhase.COUNTDOWN;
+        }
     }
 
     public void resetPosSel() {
@@ -724,7 +744,7 @@ protected void cullUnmappedTitans() {
         return btn;
     }
 
-    public void kickoff() {
+    public synchronized void kickoff() {
         if (!began) {
             began = true;
             ScheduledExecutorService exec = Executors.newScheduledThreadPool(1);
@@ -833,7 +853,12 @@ protected void cullUnmappedTitans() {
         } else {
             if (isHome) homeGoalieCurrency = newBalance; else awayGoalieCurrency = newBalance;
         }
-        if (hasCost) purchased.add(nodeKey); // only one-time nodes get flagged; .use nodes just charge
+        if (hasCost) {
+            purchased.add(nodeKey);
+            if (nodeKey.equals("fortress.t5.noflyzoneperm")) {
+                purchased.add("fortress.t5.noflyzonetmp");
+            }
+        }
         
         if (isHome) {
             homeGoalieAbilities.purchaseOrUse(this, t, nodeKey);
@@ -1105,6 +1130,15 @@ protected void cullUnmappedTitans() {
         lock();
         this.nowEpochMs = System.currentTimeMillis();
         if (this.phase == GamePhase.SCORE_FREEZE) {
+            unlock();
+            return;
+        }
+        if (this.phase == GamePhase.COUNTDOWN) {
+            secondsToStart -= (GAMETICK_MS / 1000.0);
+            if (secondsToStart <= 0) {
+                secondsToStart = 0;
+                this.phase = GamePhase.INGAME;
+            }
             unlock();
             return;
         }
@@ -1867,7 +1901,17 @@ protected void cullUnmappedTitans() {
             if (nowEpochMs < lowGrav) {
                 gravityMult = 1.5;
             }
-            double D = 230.0 * t.throwPower * gravityMult;
+            double noFlyMult = 1.0;
+            if (t.team == TeamAffiliation.HOME) {
+                if (awayNoFlyZoneActive && t.X >= 1368.0 && t.X <= 2012.0) {
+                    noFlyMult = 0.5;
+                }
+            } else if (t.team == TeamAffiliation.AWAY) {
+                if (homeNoFlyZoneActive && t.X >= 36.0 && t.X <= 680.0) {
+                    noFlyMult = 0.5;
+                }
+            }
+            double D = 230.0 * t.throwPower * gravityMult * noFlyMult;
             double v_tick = (D * (20 - t.actionFrame)) / 190.0;
             double stepFactor = (v_tick * 4.0) / 800.0;
             
@@ -2354,12 +2398,12 @@ protected void cullUnmappedTitans() {
 protected void tickLaneMinions() {
     for (int L = 0; L < 3; L++) {
         long now = nowEpochMs;
-        homeLaneBonusesList.get(L).removeIf(b -> now >= b.expiryMs);
-        awayLaneBonusesList.get(L).removeIf(b -> now >= b.expiryMs);
+        getHomeLaneBonusesList().get(L).removeIf(b -> now >= b.expiryMs);
+        getAwayLaneBonusesList().get(L).removeIf(b -> now >= b.expiryMs);
         
         int hSum = 0;
         long maxHExpiry = 0;
-        for (LaneBonus b : homeLaneBonusesList.get(L)) {
+        for (LaneBonus b : getHomeLaneBonusesList().get(L)) {
             hSum += b.amount;
             if (b.expiryMs > maxHExpiry) maxHExpiry = b.expiryMs;
         }
@@ -2368,7 +2412,7 @@ protected void tickLaneMinions() {
         
         int aSum = 0;
         long maxAExpiry = 0;
-        for (LaneBonus b : awayLaneBonusesList.get(L)) {
+        for (LaneBonus b : getAwayLaneBonusesList().get(L)) {
             aSum += b.amount;
             if (b.expiryMs > maxAExpiry) maxAExpiry = b.expiryMs;
         }
@@ -2464,7 +2508,7 @@ protected void tickLaneMinions() {
             }
             if (h.X >= 1780) {
                 h.health = 0;
-                homeLaneBonusesList.get(L).add(new LaneBonus(nowEpochMs + c.getI("guardian.crashbonus.lifetime"), c.getI("guardian.crashbonus.amount")));
+                getHomeLaneBonusesList().get(L).add(new LaneBonus(nowEpochMs + c.getI("guardian.crashbonus.lifetime"), c.getI("guardian.crashbonus.amount")));
             }
         }
 
@@ -2498,7 +2542,7 @@ protected void tickLaneMinions() {
             }
             if (a.X <= 300) {
                 a.health = 0;
-                awayLaneBonusesList.get(L).add(new LaneBonus(nowEpochMs + c.getI("guardian.crashbonus.lifetime"), c.getI("guardian.crashbonus.amount")));
+                getAwayLaneBonusesList().get(L).add(new LaneBonus(nowEpochMs + c.getI("guardian.crashbonus.lifetime"), c.getI("guardian.crashbonus.amount")));
             }
         }
 
@@ -2662,7 +2706,7 @@ protected void tickLaneMinions() {
                 this
             );
 
-            double dmg = 10.0;
+            double dmg = c.getD("goalie.click.damage");
 
             if (isDragon) {
                 gameserver.entity.minions.Dragon d = (gameserver.entity.minions.Dragon) target;
@@ -2744,21 +2788,28 @@ protected void tickLaneMinions() {
         return favored;
     }
 
+    public boolean dragonSpawned = false;
+    private transient int framesSinceDragonDead = 0;
+
     private void checkDragonSpawning() {
+        if (dragonSpawned) {
+            return;
+        }
         boolean hasBreath = homeGoaliePurchasedUpgrades.contains("empowerment.t6.dragonsbreath") ||
                             awayGoaliePurchasedUpgrades.contains("empowerment.t6.dragonsbreath");
-        if (hasBreath && (framesSinceStart % 3600 == 1)) {
-            boolean dragonExists = false;
-            for (Entity e : entityPool) {
-                if (e instanceof gameserver.entity.minions.Dragon) {
-                    dragonExists = true;
-                    break;
-                }
-            }
-            if (!dragonExists) {
-                gameserver.entity.minions.Dragon d = new gameserver.entity.minions.Dragon(1024 - 60, 790 - 60);
-                entityPool.add(d);
-            }
+        if (!hasBreath) {
+            framesSinceDragonDead = 0;
+            return;
+        }
+
+        framesSinceDragonDead++;
+        double ticksPerSec = 1000.0 / Math.max(1, GAMETICK_MS);
+        int delayFrames = (int) (10.0 * ticksPerSec);
+        if (framesSinceDragonDead >= delayFrames) {
+            gameserver.entity.minions.Dragon d = new gameserver.entity.minions.Dragon(1024 - 60, 790 - 60);
+            entityPool.add(d);
+            dragonSpawned = true;
+            framesSinceDragonDead = 0;
         }
     }
 

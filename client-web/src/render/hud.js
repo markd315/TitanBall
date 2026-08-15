@@ -19,8 +19,8 @@ const ABILITY_TOOLTIPS = {
     "fortress.t5.repairdrone": { title: "Repair Drone", desc: "Active (50g). Heals all friendly minions passively over time." },
     "fortress.t5.icebarrage": { title: "Ice Barrage", desc: "Passive. Upgrades Barrage zone to continuously apply SLOW to enemies." },
     "fortress.t5.firebarrage": { title: "Fire Barrage", desc: "Passive. Upgrades Barrage zone to continuously apply BURN damage to enemies." },
-    "fortress.t5.noflyzonetmp": { title: "No-Fly Zone", desc: "Passive. Spawns a permanent endzone aura restricting enemy aerial and boost movement." },
-    "fortress.t5.noflyzoneperm": { title: "No-Fly Zone", desc: "Passive. Spawns a permanent endzone aura restricting enemy aerial and boost movement." },
+    "fortress.t5.noflyzonetmp": { title: "Temporary No-Fly Zone", desc: "Active (60g). Spawns a temporary endzone aura cutting enemy lob distance by 50% for 10 seconds." },
+    "fortress.t5.noflyzoneperm": { title: "Permanent No-Fly Zone", desc: "Passive. Spawns a permanent endzone aura cutting enemy lob distance by 50%." },
     "fortress.t5.dilators": { title: "Dilators", desc: "Passive. Larger field, slower game (entire game speed reduced by 10%)." },
     "fortress.t6.deepfreeze": { title: "Deep Freeze", desc: "Passive. Base zone aura continuously applies SLOW to enemies inside." },
     "fortress.t6.impenetrable": { title: "Impenetrable", desc: "Passive. Clamps the maximum speed penalty from enemy pressure at -3." },
@@ -45,7 +45,7 @@ const ABILITY_TOOLTIPS = {
     "siege.t5.wallsdown": { title: "Walls Down", desc: "Active (60g). Disables collision and rendering on all enemy walls for 1000ms." },
     "siege.t6.forwardmedics": { title: "Forward Medics", desc: "Passive. Spawns a permanent zone in the enemy third that heals allied units." },
     "siege.t6.maximumpressure": { title: "Maximum Pressure", desc: "Passive. Doubles lane pressure speed boost when base pressure exceeds +5." },
-    "siege.t6.multiball": { title: "Multiball", desc: "Passive. Spawns a second ball at the midline dedicated to sidegoal scoring." },
+    "siege.t6.multiball": { title: "Multiball", desc: "Passive. Spawns a second ball at the midline that can only be kicked, not picked up or thrown." },
     // Empowerment
     "empowerment.t1.combinecontract": { title: "Combine Contract", desc: "Unlock roster stat upgrades. Required for all Empowerment upgrades." },
     "empowerment.t2.sharpshooter": { title: "Sharpshooter", desc: "Active (30g). Temporarily grants +20% Throw Power and +20% Range to a random hero." },
@@ -316,7 +316,7 @@ export const NODE_DEFS = {
 // Single source of truth for tab geometry - hud.js (drawing) and mouse.js
 // (hit-testing) BOTH import this, never redeclare it.
 export const tabNames  = ["Siege", "Fortress", "Empowerment", "Cultivation"];
-export const tabColors = ["#ff6b6b", "#3b82f6", "Goldenrod", "Violet"];
+export const tabColors = ["#E05A07", "#075AE0", "#E0B107", "#7207E0"];
 export const tabKeys   = ["GOALIE_TREE_SIEGE", "GOALIE_TREE_FORTRESS", "GOALIE_TREE_EMPOWERMENT", "GOALIE_TREE_CULTIVATION"];
 export const tabCount  = tabKeys.length;
 export const tabWidth  = 180;
@@ -485,11 +485,11 @@ export function drawHud(ctx, game, state) {
     ctx.font = 'bold 30px Arial';
     if (game.home) {
         ctx.fillStyle = '#3b82f6'; // Home team blue
-        ctx.fillText(`HOME: ${game.home.score}`, 50, 50);
+        ctx.fillText(`HOME: ${game.home.score}`, 50, 35);
     }
     if (game.away) {
         ctx.fillStyle = '#ffffff'; // Away team white
-        ctx.fillText(`AWAY: ${game.away.score}`, CONSTANTS.X_RES - 200, 50);
+        ctx.fillText(`AWAY: ${game.away.score}`, CONSTANTS.X_RES - 200, 35);
     }
 
     // Draw Game Timer
@@ -520,7 +520,7 @@ export function drawHud(ctx, game, state) {
     ctx.textAlign = 'center';
     ctx.font = 'bold 36px Courier New';
     ctx.fillStyle = timerColor;
-    ctx.fillText(timeStr, CONSTANTS.X_RES / 2, 50);
+    ctx.fillText(timeStr, CONSTANTS.X_RES / 2, 35);
     ctx.restore();
 
     // Timer Warnings
@@ -800,6 +800,15 @@ export function drawHud(ctx, game, state) {
 
                             if (!isNodeUnlocked(activeKey, idx, treeState)) {
                                 drawOverlayIcon(ctx, 'lock', boxX, boxY, boxW, boxH, 1.0);
+                            } else {
+                                // Draw tabColors border around the buyable upgrade
+                                const tabIdx = tabKeys.indexOf(activeKey);
+                                const borderColor = tabColors[tabIdx] || '#ffffff';
+                                ctx.save();
+                                ctx.strokeStyle = borderColor;
+                                ctx.lineWidth = 3;
+                                ctx.strokeRect(boxX, boxY, boxW, boxH);
+                                ctx.restore();
                             }
                             // else: prereqs met, unpurchased (or repeatable) -> no overlay, still clickable.
                         });

@@ -13,7 +13,7 @@ public class GameOptions   {
             playToIndex, winByIndex, hardWinIndex, suddenDeathIndex, tieIndex;
 
 
-    protected static final int[] playersVal = {3,4,5,0,1,2};
+    protected static final int[] playersVal = {3,4,5,0,1,2,6,7,8};
     protected static final int[] goalieVal = {1, 0, 2};
     protected static final int[] bestOfVal = {1, 3, 5, 7, 9};
     protected static final int[] playToVal = {5, 10, 20, 30, 50, 100, 1};
@@ -21,7 +21,7 @@ public class GameOptions   {
     protected static final int[] hardWinVal = {9999, 5, 10, 20, 30, 50, 100};
     protected static final int[] suddenDeathVal = {10, 12, 15, 18, 20, 25, 30, 35, 60, 9999, 3, 5};
     protected static final int[] tieVal = {12, 15, 18, 20, 25, 30, 35, 60, 9999, 3, 5, 10};
-    protected static final String[] playersDisp = {"3v3", "4v4", "5v5 (sep goalie)", "Single-player", "1v1", "2v2"};
+    protected static final String[] playersDisp = {"3v3", "4v4", "5v5 (sep goalie)", "Single-player", "1v1", "2v2", "6v6", "7v7", "8v8"};
     protected static final String[] goalieDisp = {"Goalies on", "Goalies off", "Permanent goalies"};
     protected static final String[] bestOfDisp = {"Best of 1", "Best of 3", "Best of 5", "Best of 7", "Best of 9"} ;
     protected static final String[] playToDisp = {"Play to 5", "Play to 10", "Play to 20", "Play to 30", "Play to 50", "Play to 100", "Play to 1"};
@@ -35,7 +35,7 @@ public class GameOptions   {
 
     /** 1v1 scrimmage is the only mode where guardians may be omitted. */
     public boolean allowsNoGoalie() {
-        return playerIndex == 1;
+        return playerIndex >= 0 && playerIndex < playersVal.length && playersVal[playerIndex] == 1;
     }
 
     public boolean goaliesDisabled() {

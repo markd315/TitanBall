@@ -73,7 +73,11 @@ public class ConstOperations  implements Serializable {
             //System.err.println("Looked for null property " + key);
             return 0; // Alternatively, throw a custom exception
         }
-        return Integer.parseInt(s);
+        try {
+            return (int) Double.parseDouble(s);
+        } catch (NumberFormatException e) {
+            return Integer.parseInt(s);
+        }
     }
 
     public boolean getB(String key){

@@ -23,6 +23,7 @@ public class Matchmaker {
     private Map<String, String> waitingPool = new HashMap<>();//user emails -> tournament code
     private Map<String, String> gameMap = new HashMap<>();//user emails -> game id
     public Map<String, String> playerClasses = new java.util.concurrent.ConcurrentHashMap<>();
+    public Map<String, Set<String>> partnerPool = new java.util.concurrent.ConcurrentHashMap<>();
 
     private Map<String, String> teamMemberWaitingPool = new HashMap<>();//user emails -> teamN
     private Map<String, String> teamWaitingPool = new HashMap<>();//teamN -> tournament code
@@ -30,7 +31,7 @@ public class Matchmaker {
 
     private int desperation = 0; //TODO increase to eventually sacrifice match quality
 
-    public String findGame(Authentication login) {
+    public synchronized String findGame(Authentication login) {
         String email = login.getName();
         if (gameMap.containsKey(email)) {
             return gameMap.get(email);
@@ -53,34 +54,28 @@ public class Matchmaker {
                     count++;
                 }
             }
-            int players = 4;
-            try{
+            int players = 8;
+            try {
                 op = new GameOptions(val);
-                players = op.playerIndex * 2;
-                if(players == 0){
-                    players = 1;
+                int[] vals = GameOptions.getPlayersVal();
+                if (op.playerIndex >= 0 && op.playerIndex < vals.length) {
+                    int teamSize = vals[op.playerIndex];
+                    if (teamSize == 0) {
+                        players = 1; // Single-player
+                    } else {
+                        players = teamSize * 2;
+                    }
                 }
-            }catch(Exception ex1){
+            } catch (Exception ex1) {
                 System.out.println("catch");
             }
-            if(count >= players){
-                int goalieCount = 0;
+            if (count >= players) {
                 int addedCount = 0;
                 List<String> selectedPlayers = new ArrayList<>();
-                for(String email : waitingPool.keySet()){
-                    if(waitingPool.get(email).equals(val) && !gameFor.contains(email)) {
-                        String userClass = playerClasses.getOrDefault(email, "WARRIOR");
-                        boolean isGoalie = "GOALIE".equalsIgnoreCase(userClass);
-                        if (isGoalie) {
-                            if (goalieCount < 2) {
-                                selectedPlayers.add(email);
-                                goalieCount++;
-                                addedCount++;
-                            }
-                        } else {
-                            selectedPlayers.add(email);
-                            addedCount++;
-                        }
+                for (String email : waitingPool.keySet()) {
+                    if (waitingPool.get(email).equals(val) && !gameFor.contains(email)) {
+                        selectedPlayers.add(email);
+                        addedCount++;
                         if (addedCount == players) {
                             break;
                         }
@@ -151,15 +146,15 @@ public class Matchmaker {
 
     private String normalizeTournamentCode(String code) {
         if (code == null || code.isEmpty() || code.equals("3v3") || code.equals("/3v3")) {
-            return "/3/0/1/5/2/9999/10/12";
+            return "/0/0/1/5/2/9999/10/12"; // 3v3 is index 0
         }
         if (code.equals("1v1") || code.equals("/1v1")) {
-            return "/1/1/1/5/2/9999/10/12";
+            return "/4/1/1/5/2/9999/10/12"; // 1v1 is index 4
         }
         return code;
     }
 
-    public void registerIntent(Authentication login, String tournamentCode, String teamname, String classSelection) {
+    public synchronized void registerIntent(Authentication login, String tournamentCode, String teamname, String classSelection, String partners) {
         tournamentCode = normalizeTournamentCode(tournamentCode);
         if (teamname != null) {
             registerIntentTeam(login, tournamentCode, teamname);
@@ -170,6 +165,18 @@ public class Matchmaker {
             playerClasses.put(email, classSelection);
         } else {
             playerClasses.put(email, "WARRIOR");
+        }
+
+        if (partners != null && !partners.trim().isEmpty()) {
+            Set<String> partnersSet = new HashSet<>();
+            for (String p : partners.split(",")) {
+                if (!p.trim().isEmpty()) {
+                    partnersSet.add(p.trim());
+                }
+            }
+            partnerPool.put(email, partnersSet);
+        } else {
+            partnerPool.remove(email);
         }
 
         boolean contains = false;
@@ -184,11 +191,15 @@ public class Matchmaker {
         }
     }
 
-    public void registerIntent(Authentication login, String tournamentCode, String teamname) {
-        registerIntent(login, tournamentCode, teamname, "WARRIOR");
+    public synchronized void registerIntent(Authentication login, String tournamentCode, String teamname, String classSelection) {
+        registerIntent(login, tournamentCode, teamname, classSelection, null);
     }
 
-    public void registerIntentTeam(Authentication login, String tournamentCode, String teamname) {
+    public synchronized void registerIntent(Authentication login, String tournamentCode, String teamname) {
+        registerIntent(login, tournamentCode, teamname, "WARRIOR", null);
+    }
+
+    public synchronized void registerIntentTeam(Authentication login, String tournamentCode, String teamname) {
         tournamentCode = normalizeTournamentCode(tournamentCode);
         System.out.println("rit 1");
         String email = login.getName();
@@ -213,7 +224,14 @@ public class Matchmaker {
             }
         }
         GameOptions op = new GameOptions(tournamentCode);
-        if (teamQueue > (op.playerIndex - 1)) {
+        int teamSize = 1;
+        try {
+            int[] vals = GameOptions.getPlayersVal();
+            if (op.playerIndex >= 0 && op.playerIndex < vals.length) {
+                teamSize = Math.max(1, vals[op.playerIndex]);
+            }
+        } catch (Exception e) {}
+        if (teamQueue >= teamSize) {
             System.out.println("rit 6");
             teamWaitingPool.put(teamname, tournamentCode);
             makeTeamMatches();
@@ -222,7 +240,7 @@ public class Matchmaker {
         waitingPool.put(email, tournamentCode);
     }
 
-    public void removeIntent(Authentication login) {
+    public synchronized void removeIntent(Authentication login) {
         String email = login.getName();
         System.out.println("DEREGISTERING " + email);
         String rm = null;
@@ -235,15 +253,17 @@ public class Matchmaker {
             waitingPool.remove(rm);
         }
         playerClasses.remove(email);
+        partnerPool.remove(email);
     }
 
-    public void clearWaitingPools() { //for graceful shutdown
+    public synchronized void clearWaitingPools() { //for graceful shutdown
         waitingPool.clear();
         teamMemberWaitingPool.clear();
         teamWaitingPool.clear();
+        partnerPool.clear();
     }
 
-    public void endGame(String id) {
+    public synchronized void endGame(String id) {
         List<String> rm = new ArrayList<>();
         for (String email : gameMap.keySet()) {
             if (gameMap.get(email)
@@ -254,10 +274,12 @@ public class Matchmaker {
         for (String email : rm) {
             System.out.println("ENDING AND FREEING " + email);
             gameMap.remove(email);
+            playerClasses.remove(email);
+            partnerPool.remove(email);
         }
     }
 
-    public void registerTutorialGame(String email, String gameId) {
+    public synchronized void registerTutorialGame(String email, String gameId) {
         gameMap.put(email, gameId);
     }
 }

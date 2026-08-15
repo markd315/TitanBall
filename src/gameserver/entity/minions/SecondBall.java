@@ -117,6 +117,53 @@ public class SecondBall extends Entity implements Tickable, Collidable, Serializ
                 break;
             }
         }
+
+        // Check scoring on high goals (center goals)
+        for (GoalHoop goal : context.hiGoals) {
+            if (goal.checkReady() && ballIntersectsGoal(goal)) {
+                Team us, enemy;
+                if (goal.team == TeamAffiliation.HOME) {
+                    us = context.away;
+                    enemy = context.home;
+                } else {
+                    us = context.home;
+                    enemy = context.away;
+                }
+                goal.trigger();
+                
+                // Cash in all ghost/combo points for a full point
+                long iPart = (long) us.score;
+                double fPart = us.score - iPart;
+                us.score = Math.floor(us.score);
+                us.score += fPart * 4 + 1;
+                
+                // Reset enemy team ghost points
+                boolean saveProgressHi = (enemy == context.home)
+                    ? context.homeGoaliePurchasedUpgrades.contains("siege.t5.saveprogress")
+                    : context.awayGoaliePurchasedUpgrades.contains("siege.t5.saveprogress");
+                if (!saveProgressHi) {
+                    enemy.score = Math.floor(enemy.score);
+                }
+                
+                us.hasBall = true;
+                enemy.hasBall = false;
+                context.ballVisible = false;
+                context.inGame = false;
+                context.goalVisible = true;
+                
+                context.checkWinCondition(false);
+                context.serverDelayReset();
+
+                // Reset this second ball to the center
+                this.X = 1040;
+                this.Y = 609;
+                double angle = rand.nextDouble() * 2 * Math.PI;
+                double speed = 3.0;
+                vx = Math.cos(angle) * speed;
+                vy = Math.sin(angle) * speed;
+                break;
+            }
+        }
     }
 
     private boolean ballIntersectsGoal(GoalHoop goal) {

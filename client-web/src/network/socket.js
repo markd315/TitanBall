@@ -7,7 +7,7 @@ let _diagMsgCount = 0;
 let _diagSendCount = 0;
 let _diagLastPhase = null;
 let reconnectAttempts = 0;
-const MAX_RECONNECT_ATTEMPTS = 3;
+const MAX_RECONNECT_ATTEMPTS = 20;
 
 export function connectGame(gameID) {
   if (socket) {

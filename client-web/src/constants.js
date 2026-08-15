@@ -15,7 +15,7 @@ export const GamePhase = {
 
 export const CONSTANTS = {
     X_RES: 1920,
-    Y_RES: 1080,
+    Y_RES: 960,
     DEFENSIVE_THIRD_X: 680,
     ATTACKING_THIRD_X: 1368
 };

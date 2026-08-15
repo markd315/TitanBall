@@ -11,9 +11,9 @@ export async function login(usernameOrEmail, password) {
   return data;
 }
 
-export async function joinQueue(tournamentCode = '', classSelection = '') {
+export async function joinQueue(tournamentCode = '', classSelection = '', partners = '') {
   const token = sessionStorage.getItem('accessToken');
-  const url = `/pages/titanball/api/join?tournamentCode=${encodeURIComponent(tournamentCode)}&classSelection=${encodeURIComponent(classSelection)}`;
+  const url = `/pages/titanball/api/join?tournamentCode=${encodeURIComponent(tournamentCode)}&classSelection=${encodeURIComponent(classSelection)}&partners=${encodeURIComponent(partners)}`;
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${token}` }

@@ -67,6 +67,14 @@ public class Game   {
     public double awayGoalieMana = 0.0;
     public Set<String> homeGoaliePurchasedUpgrades = new HashSet<String>();
     public Set<String> awayGoaliePurchasedUpgrades = new HashSet<String>();
+    public boolean homeNoFlyZoneActive = false;
+    public boolean awayNoFlyZoneActive = false;
+    public long homeNoFlyZoneActiveUntil = 0;
+    public long awayNoFlyZoneActiveUntil = 0;
+    public boolean homeDeepFreezeActive = false;
+    public boolean awayDeepFreezeActive = false;
+    public boolean homeLowGravityActive = false;
+    public boolean awayLowGravityActive = false;
 
     public boolean ballVisible, inGame, goalVisible;
 
@@ -116,6 +124,7 @@ public class Game   {
     public Box ball = new Box(0, 0, c.getI("ball.w"), c.getI("ball.h"));
 
     public Map<String, TitanType> picksAndBans = new HashMap<>();
+    public List<String> bans = new ArrayList<>();
     public TeamAffiliation yourteam;
 
     public boolean anyPoss() {

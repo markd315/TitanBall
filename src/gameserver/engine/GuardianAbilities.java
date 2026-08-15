@@ -5,6 +5,7 @@ import gameserver.effects.effects.EmptyEffect;
 import gameserver.effects.effects.HealEffect;
 import gameserver.effects.effects.RatioEffect;
 import gameserver.effects.effects.Effect;
+import gameserver.effects.effects.CallbackEffect;
 import gameserver.entity.Entity;
 import gameserver.entity.Titan;
 import gameserver.entity.TitanType;
@@ -67,10 +68,16 @@ public class GuardianAbilities implements Serializable {
             applyHemmedIn(context, goalie);
         } else if (nodeKey.endsWith(".emergencybarrier")) {
             spawnWall(context, goalie, 8, context.c.getI("guardian.emergencybarrier.lifetime"));
-        } else if (nodeKey.endsWith(".noflyzoneperm") || nodeKey.endsWith(".noflyzonetmp")) {
-            spawnNoFlyZoneEntity(context, goalie);
+        } else if (nodeKey.endsWith(".noflyzoneperm")) {
+            // Permanent passive - no entity spawned
+        } else if (nodeKey.endsWith(".noflyzonetmp")) {
+            if (team == TeamAffiliation.HOME) {
+                context.homeNoFlyZoneActiveUntil = context.nowEpochMs + 10000;
+            } else {
+                context.awayNoFlyZoneActiveUntil = context.nowEpochMs + 10000;
+            }
         } else if (nodeKey.endsWith(".deepfreeze")) {
-            spawnDeepFreezeEntity(context, goalie);
+            // Permanent passive - no entity spawned
         } else if (nodeKey.endsWith(".dilators")) {
             // Dilators is passive, speed scale is checked globally
         }
@@ -225,7 +232,13 @@ public class GuardianAbilities implements Serializable {
         }
 
         // Deep Freeze: slow ratio of 1.50 (33% slow) to enemy units in defensive third
-        if (purchased.contains("fortress.t6.deepfreeze")) {
+        boolean deepFreeze = purchased.contains("fortress.t6.deepfreeze");
+        if (team == TeamAffiliation.HOME) {
+            context.homeDeepFreezeActive = deepFreeze;
+        } else {
+            context.awayDeepFreezeActive = deepFreeze;
+        }
+        if (deepFreeze) {
             double minX = (team == TeamAffiliation.HOME) ? 36.0 : 1368.0;
             double maxX = (team == TeamAffiliation.HOME) ? 680.0 : 2012.0;
             for (Titan t : context.players) {
@@ -240,16 +253,21 @@ public class GuardianAbilities implements Serializable {
             }
         }
 
-        // No-Fly Zone: restrict boost fuel to 0
-        if (purchased.contains("fortress.t5.noflyzoneperm") || purchased.contains("fortress.t5.noflyzonetmp")) {
-            double minX = (team == TeamAffiliation.HOME) ? 36.0 : 1368.0;
-            double maxX = (team == TeamAffiliation.HOME) ? 680.0 : 2012.0;
-            for (Titan t : context.players) {
-                if (t.team != team && t.health > 0.0 && t.X >= minX && t.X <= maxX) {
-                    t.fuel = 0.0;
-                    t.isBoosting = false;
-                }
-            }
+        // No-Fly Zone active check
+        boolean noFly = purchased.contains("fortress.t5.noflyzoneperm") || 
+                        context.nowEpochMs < (team == TeamAffiliation.HOME ? context.homeNoFlyZoneActiveUntil : context.awayNoFlyZoneActiveUntil);
+        if (team == TeamAffiliation.HOME) {
+            context.homeNoFlyZoneActive = noFly;
+        } else {
+            context.awayNoFlyZoneActive = noFly;
+        }
+
+        // Low Gravity active check
+        boolean lowGrav = context.nowEpochMs < lowGravityUntilMs;
+        if (team == TeamAffiliation.HOME) {
+            context.homeLowGravityActive = lowGrav;
+        } else {
+            context.awayLowGravityActive = lowGrav;
         }
 
         // Dynamic moving barrage configuration alternation
@@ -738,8 +756,8 @@ public class GuardianAbilities implements Serializable {
         double sx = getSpawnX(context, lane, team);
         double sy = getSpawnY(context, lane);
         LaneMinion sm = new LaneMinion(sx, sy, team, lane);
-        sm.health = 90.0; // 2x base health (doubled)
-        sm.maxHealth = 90.0;
+        sm.health = context.c.getD("minion.heavy.health");
+        sm.maxHealth = sm.health;
         context.entityPool.add(sm);
     }
 
@@ -782,16 +800,13 @@ public class GuardianAbilities implements Serializable {
                 }
             }
             // Schedule resetting them
-            context.effectPool.addUniqueEffect(new EmptyEffect(1000, goalieOfTeam(context, enemyGa.team), EffectId.COOLDOWN_STEAL) {
-                @Override
-                public void onCease(GameEngine ctx) {
-                    for (Entity wall : ctx.entityPool) {
-                        if (wall instanceof Wall && wall.team == enemyGa.team && wall.maxHealth > 100.0) {
-                            wall.solid = true;
-                        }
+            context.effectPool.addUniqueEffect(new CallbackEffect(1000, goalieOfTeam(context, enemyGa.team), EffectId.COOLDOWN_STEAL, () -> {
+                for (Entity wall : context.entityPool) {
+                    if (wall instanceof Wall && wall.team == enemyGa.team && wall.maxHealth > 100.0) {
+                        wall.solid = true;
                     }
                 }
-            }, context);
+            }), context);
         }
     }
 
@@ -813,13 +828,10 @@ public class GuardianAbilities implements Serializable {
             target.throwPower *= 1.20;
             target.rangeFactor *= 1.20;
             // Restore after 10s
-            context.effectPool.addUniqueEffect(new EmptyEffect(10000, target, EffectId.COOLDOWN_Q) {
-                @Override
-                public void onCease(GameEngine ctx) {
-                    target.throwPower = oldPower;
-                    target.rangeFactor = oldRange;
-                }
-            }, context);
+            context.effectPool.addUniqueEffect(new CallbackEffect(10000, target, EffectId.COOLDOWN_Q, () -> {
+                target.throwPower = oldPower;
+                target.rangeFactor = oldRange;
+            }), context);
         }
     }
 
@@ -860,8 +872,8 @@ public class GuardianAbilities implements Serializable {
             double sx = getSpawnX(context, lane, team);
             double sy = getSpawnY(context, lane);
             LaneMinion sm = new LaneMinion(sx, sy, team, lane);
-            sm.health = 90.0; // 2x health (doubled)
-            sm.maxHealth = 90.0;
+            sm.health = context.c.getD("minion.heavy.health");
+            sm.maxHealth = sm.health;
             context.entityPool.add(sm);
         }
     }
@@ -1006,29 +1018,7 @@ public class GuardianAbilities implements Serializable {
         entityExpiries.put(w.id, context.nowEpochMs + lifetimeMs);
     }
 
-    private void spawnNoFlyZoneEntity(GameEngine context, Titan goalie) {
-        int px = (team == TeamAffiliation.HOME) ? 200 : 1720;
-        int py = 583 - 100;
-        Trap t = new Trap(goalie, context, px, py);
-        t.team = team;
-        t.health = 99999;
-        t.maxHealth = 99999;
-        t.width = 150;
-        t.height = 200;
-        context.entityPool.add(t);
-    }
 
-    private void spawnDeepFreezeEntity(GameEngine context, Titan goalie) {
-        int px = (team == TeamAffiliation.HOME) ? 200 : 1720;
-        int py = 583 - 100;
-        Trap t = new Trap(goalie, context, px, py);
-        t.team = team;
-        t.health = 99999;
-        t.maxHealth = 99999;
-        t.width = 150;
-        t.height = 200;
-        context.entityPool.add(t);
-    }
 
     private void spawnWallPortals(GameEngine context, Titan goalie) {
         double wallX = (team == TeamAffiliation.HOME) ? context.c.MIN_X : context.c.MAX_X;
@@ -1090,12 +1080,7 @@ public class GuardianAbilities implements Serializable {
         if (purchased.contains("fortress.t4.bastionprotocol")) {
             spawnBastionWalls(context, goalie);
         }
-        if (purchased.contains("fortress.t5.noflyzoneperm") || purchased.contains("fortress.t5.noflyzonetmp")) {
-            spawnNoFlyZoneEntity(context, goalie);
-        }
-        if (purchased.contains("fortress.t6.deepfreeze")) {
-            spawnDeepFreezeEntity(context, goalie);
-        }
+
         if (purchased.contains("siege.t3.rushlane")) {
             spawnRushLane(context, goalie);
         }

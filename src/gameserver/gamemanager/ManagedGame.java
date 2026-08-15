@@ -70,7 +70,16 @@ public class ManagedGame {
         this.gameId = id;
         this.options = op;
         
-        int teamSize = Math.max(1, op.playerIndex);
+        int teamSize = 1;
+        try {
+            int[] vals = GameOptions.getPlayersVal();
+            if (op.playerIndex >= 0 && op.playerIndex < vals.length) {
+                teamSize = Math.max(1, vals[op.playerIndex]);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
         if (gameFor != null && !gameFor.isEmpty()) {
             teamSize = gameFor.size() / 2;
         }
@@ -86,13 +95,180 @@ public class ManagedGame {
         }
 
         if (gameFor != null && !gameFor.isEmpty()) {
-            int index = 0;
-            for (String email : gameFor) {
-                if (index < availableSlots.size()) {
-                    preAssignedSlots.put(email, availableSlots.get(index));
+            if (teamSize <= 1 || op.goaliesDisabled()) {
+                int index = 0;
+                for (String email : gameFor) {
+                    if (index == 0) {
+                        preAssignedSlots.put(email, 3);
+                    } else if (index == 1) {
+                        preAssignedSlots.put(email, 4);
+                    }
                     index++;
                 }
+            } else {
+                List<String> playerList = new ArrayList<>(gameFor);
+                List<String> teamHome = new ArrayList<>();
+                List<String> teamAway = new ArrayList<>();
+                
+                partitionTeams(playerList, teamHome, teamAway, teamSize);
+                
+                authserver.matchmaking.Matchmaker mm = authserver.SpringContextBridge.services().getMatchmaker();
+                
+                // Assign slots for Home Team
+                String homeGoalie = null;
+                for (String email : teamHome) {
+                    String chosenClass = mm.playerClasses.getOrDefault(email, "WARRIOR");
+                    if ("GOALIE".equalsIgnoreCase(chosenClass)) {
+                        homeGoalie = email;
+                        break;
+                    }
+                }
+                if (homeGoalie == null && !teamHome.isEmpty()) {
+                    homeGoalie = teamHome.get(0); // fallback
+                }
+                if (homeGoalie != null) {
+                    preAssignedSlots.put(homeGoalie, 1);
+                }
+                
+                int homeFieldIndex = 0;
+                for (String email : teamHome) {
+                    if (email.equals(homeGoalie)) continue;
+                    int slot = 3 + homeFieldIndex;
+                    preAssignedSlots.put(email, slot);
+                    homeFieldIndex++;
+                }
+                
+                // Assign slots for Away Team
+                String awayGoalie = null;
+                for (String email : teamAway) {
+                    String chosenClass = mm.playerClasses.getOrDefault(email, "WARRIOR");
+                    if ("GOALIE".equalsIgnoreCase(chosenClass)) {
+                        awayGoalie = email;
+                        break;
+                    }
+                }
+                if (awayGoalie == null && !teamAway.isEmpty()) {
+                    awayGoalie = teamAway.get(0); // fallback
+                }
+                if (awayGoalie != null) {
+                    preAssignedSlots.put(awayGoalie, 2);
+                }
+                
+                int awayFieldIndex = 0;
+                for (String email : teamAway) {
+                    if (email.equals(awayGoalie)) continue;
+                    int slot = 3 + teamSize + awayFieldIndex;
+                    preAssignedSlots.put(email, slot);
+                    awayFieldIndex++;
+                }
             }
+        }
+    }
+
+    private void partitionTeams(List<String> selectedPlayers, List<String> teamHome, List<String> teamAway, int teamSize) {
+        List<String> unassigned = new ArrayList<>(selectedPlayers);
+        authserver.matchmaking.Matchmaker mm = authserver.SpringContextBridge.services().getMatchmaker();
+        
+        // Find all connected components of partner groups
+        List<List<String>> partnerGroups = new ArrayList<>();
+        Set<String> visited = new HashSet<>();
+        
+        for (String player : selectedPlayers) {
+            if (!visited.contains(player)) {
+                List<String> component = new ArrayList<>();
+                Queue<String> queue = new LinkedList<>();
+                queue.add(player);
+                visited.add(player);
+                
+                while (!queue.isEmpty()) {
+                    String curr = queue.poll();
+                    component.add(curr);
+                    for (String other : selectedPlayers) {
+                        if (!visited.contains(other) && arePartners(curr, other)) {
+                            visited.add(other);
+                            queue.add(other);
+                        }
+                    }
+                }
+                
+                if (component.size() >= 2) {
+                    partnerGroups.add(component);
+                }
+            }
+        }
+        
+        // 1. Process groups with exactly one goalie that fit within the team size
+        for (List<String> group : partnerGroups) {
+            int goalieCount = 0;
+            for (String email : group) {
+                String chosenClass = mm.playerClasses.getOrDefault(email, "WARRIOR");
+                if ("GOALIE".equalsIgnoreCase(chosenClass)) {
+                    goalieCount++;
+                }
+            }
+            
+            if (goalieCount == 1 && group.size() <= teamSize) {
+                // Try to place on Home team
+                if (teamHome.size() + group.size() <= teamSize) {
+                    teamHome.addAll(group);
+                    unassigned.removeAll(group);
+                }
+                // Else try to place on Away team
+                else if (teamAway.size() + group.size() <= teamSize) {
+                    teamAway.addAll(group);
+                    unassigned.removeAll(group);
+                }
+            }
+        }
+        
+        // 2. Process other partner groups (that fit) to keep partners together if possible
+        for (List<String> group : partnerGroups) {
+            // Check if not already placed
+            boolean alreadyPlaced = false;
+            for (String email : group) {
+                if (!unassigned.contains(email)) {
+                    alreadyPlaced = true;
+                    break;
+                }
+            }
+            if (alreadyPlaced) continue;
+            
+            if (group.size() <= teamSize) {
+                if (teamHome.size() + group.size() <= teamSize) {
+                    teamHome.addAll(group);
+                    unassigned.removeAll(group);
+                } else if (teamAway.size() + group.size() <= teamSize) {
+                    teamAway.addAll(group);
+                    unassigned.removeAll(group);
+                }
+            }
+        }
+        
+        // 3. Distribute remaining unassigned singletons
+        for (String p : unassigned) {
+            if (teamHome.size() < teamSize) {
+                teamHome.add(p);
+            } else {
+                teamAway.add(p);
+            }
+        }
+    }
+
+    private boolean arePartners(String email1, String email2) {
+        try {
+            authserver.matchmaking.Matchmaker mm = authserver.SpringContextBridge.services().getMatchmaker();
+            Set<String> s1 = mm.partnerPool.get(email1);
+            Set<String> s2 = mm.partnerPool.get(email2);
+            
+            String name1 = email1.split("@")[0];
+            String name2 = email2.split("@")[0];
+            
+            boolean aWantsB = (s1 != null && s1.contains(name2));
+            boolean bWantsA = (s2 != null && s2.contains(name1));
+            
+            return aWantsB || bWantsA;
+        } catch (Exception e) {
+            return false;
         }
     }
 
@@ -193,7 +369,7 @@ public class ManagedGame {
     }
 
     private void startGame(List<WebSocketPlayerConnection> gameIncludedClients) {
-        if (state != null && state.away.score + state.home.score > 0) {
+        if (state != null) {
             return;
         }
 
@@ -208,16 +384,9 @@ public class ManagedGame {
             state = new GameEngine(gameId, players, options, this);
         }
         
-        try {
-            state.initializeServer();
-            state.secondsToStart = c.getD("server.startDelay");
-            for (int i = 0; i < 5; i++) {
-                Thread.sleep(1000);
-                state.secondsToStart -= 1;
-            }
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+        state.initializeServer();
+        state.secondsToStart = c.getD("server.startDelay") / 1000.0;
+        state.kickoff();
         
         exec = Executors.newScheduledThreadPool(gameIncludedClients.size());
         clients = gameIncludedClients;
@@ -231,7 +400,6 @@ public class ManagedGame {
             if (baseClone == null) return;
             
             final Game finalBaseClone = baseClone;
-            clients.removeIf(client -> !client.isConnected());
             
             clients.parallelStream().forEach(client -> {
                 try {

@@ -4,6 +4,7 @@ import { initMasteries } from './screens/masteries.js';
 import { drawCredits } from './screens/credits.js';
 import { initKeyboard, setControlPreset } from './input/keyboard.js';
 import { initMouse } from './input/mouse.js';
+import { initMobileControls, updateMobileControls } from './input/mobile.js';
 import { GamePhase } from './constants.js';
 import { updateCamera } from './util/math.js';
 import { initAssets, AssetManager } from './assets/sprites.js';
@@ -90,6 +91,30 @@ function stopQueuePolling() {
   }
 }
 
+async function checkAndRejoinActiveGame() {
+  const token = sessionStorage.getItem('accessToken');
+  if (!token) return;
+  try {
+    const status = await checkGame();
+    if (status && status !== 'NOT QUEUED') {
+      if (status === 'WAITING') {
+        const lastQueueSize = sessionStorage.getItem('lastQueueSize') || '4';
+        const modeLabel = document.getElementById('queue-mode-label');
+        if (modeLabel) modeLabel.textContent = `${lastQueueSize}v${lastQueueSize}`;
+        gameState.phase = GamePhase.WAIT_FOR_GAME;
+        startQueuePolling();
+      } else {
+        console.log("Active game found! Rejoining game ID:", status);
+        gameState.gameID = status;
+        gameState.phase = GamePhase.COUNTDOWN;
+        connectGame(status);
+      }
+    }
+  } catch (e) {
+    console.error("Failed to check active game:", e);
+  }
+}
+
 function initUIListeners() {
   // Login click
   const loginBtn = document.getElementById('login-btn');
@@ -106,6 +131,7 @@ function initUIListeners() {
         sessionStorage.setItem('username', email.split('@')[0]);
         console.log("Login successful");
         gameState.phase = GamePhase.SHOW_GAME_MODES;
+        checkAndRejoinActiveGame();
       } catch (err) {
         console.error(err);
         if (errorDiv) {
@@ -175,6 +201,7 @@ function initUIListeners() {
             const data = await login(email, pass);
             sessionStorage.setItem('username', username);
             gameState.phase = GamePhase.SHOW_GAME_MODES;
+            checkAndRejoinActiveGame();
           } catch (loginErr) {
             console.error(loginErr);
             currentScreen = 'login';
@@ -193,25 +220,116 @@ function initUIListeners() {
   }
 
   // Selected Match Size state
-  let selectedMatchSize = 4;
+  let selectedMatchSize = parseInt(sessionStorage.getItem('lastQueueSize') || '4');
   
   const sizeDisplay = document.getElementById('match-size-display');
   const sizeDownBtn = document.getElementById('size-down-btn');
   const sizeUpBtn = document.getElementById('size-up-btn');
+
+  if (sizeDisplay) {
+    sizeDisplay.textContent = `${selectedMatchSize}v${selectedMatchSize}`;
+  }
   
   if (sizeDownBtn && sizeUpBtn && sizeDisplay) {
     sizeDownBtn.addEventListener('click', () => {
       if (selectedMatchSize > 2) {
         selectedMatchSize--;
         sizeDisplay.textContent = `${selectedMatchSize}v${selectedMatchSize}`;
+        sessionStorage.setItem('lastQueueSize', selectedMatchSize);
       }
     });
     sizeUpBtn.addEventListener('click', () => {
       if (selectedMatchSize < 8) {
         selectedMatchSize++;
         sizeDisplay.textContent = `${selectedMatchSize}v${selectedMatchSize}`;
+        sessionStorage.setItem('lastQueueSize', selectedMatchSize);
       }
     });
+  }
+
+  // Partner List UI management
+  const partnerInput = document.getElementById('partner-input');
+  const addPartnerBtn = document.getElementById('add-partner-btn');
+  const partnerListContainer = document.getElementById('partner-list-container');
+  
+  let partners = [];
+  try {
+    partners = JSON.parse(sessionStorage.getItem('partners') || '[]');
+  } catch (e) {
+    partners = [];
+  }
+  
+  function renderPartners() {
+    if (!partnerListContainer) return;
+    partnerListContainer.innerHTML = '';
+    if (partners.length === 0) {
+      partnerListContainer.innerHTML = '<span style="color: #888; font-style: italic;">No partners added</span>';
+      return;
+    }
+    partners.forEach((p, idx) => {
+      const item = document.createElement('div');
+      item.style.display = 'flex';
+      item.style.justifyContent = 'space-between';
+      item.style.alignItems = 'center';
+      item.style.padding = '4px 8px';
+      item.style.background = 'rgba(255,255,255,0.05)';
+      item.style.borderRadius = '4px';
+      item.style.color = '#fff';
+      
+      const name = document.createElement('span');
+      name.textContent = p;
+      
+      const delBtn = document.createElement('button');
+      delBtn.textContent = '✕';
+      delBtn.style.background = 'none';
+      delBtn.style.border = 'none';
+      delBtn.style.color = '#f87171';
+      delBtn.style.cursor = 'pointer';
+      delBtn.style.fontSize = '12px';
+      delBtn.style.padding = '0';
+      delBtn.style.margin = '0';
+      
+      delBtn.addEventListener('click', () => {
+        partners.splice(idx, 1);
+        sessionStorage.setItem('partners', JSON.stringify(partners));
+        renderPartners();
+      });
+      
+      item.appendChild(name);
+      item.appendChild(delBtn);
+      partnerListContainer.appendChild(item);
+    });
+  }
+  
+  if (addPartnerBtn && partnerInput) {
+    addPartnerBtn.addEventListener('click', () => {
+      const val = partnerInput.value.trim();
+      if (val && !partners.includes(val)) {
+        partners.push(val);
+        sessionStorage.setItem('partners', JSON.stringify(partners));
+        partnerInput.value = '';
+        renderPartners();
+      }
+    });
+    partnerInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        addPartnerBtn.click();
+      }
+    });
+  }
+  
+  renderPartners();
+
+  function getPlayerIndexForSize(size) {
+    if (size === 3) return 0;
+    if (size === 4) return 1;
+    if (size === 5) return 2;
+    if (size === 1) return 4;
+    if (size === 2) return 5;
+    if (size === 6) return 6;
+    if (size === 7) return 7;
+    if (size === 8) return 8;
+    return 1; // fallback
   }
 
   // Join Team Match click
@@ -229,9 +347,11 @@ function initUIListeners() {
         const lobbyStatus = document.querySelector('#lobby-overlay .stat-value[style*="pulse"]');
         if (lobbyStatus) lobbyStatus.textContent = 'FINDING PLAYERS...';
         
-        const code = `/${selectedMatchSize}/0/1/5/2/9999/10/12`;
-        console.log(`Joining Team Match Queue with size ${selectedMatchSize}v${selectedMatchSize} and class ${classSel}`);
-        await joinQueue(code, classSel);
+        const playerIndex = getPlayerIndexForSize(selectedMatchSize);
+        const code = `/${playerIndex}/0/1/5/2/9999/10/12`;
+        const partnersCsv = partners.join(',');
+        console.log(`Joining Team Match Queue with size ${selectedMatchSize}v${selectedMatchSize}, class ${classSel}, partners: ${partnersCsv}`);
+        await joinQueue(code, classSel, partnersCsv);
         gameState.is3v3 = true;
         gameState.phase = GamePhase.WAIT_FOR_GAME;
         startQueuePolling();
@@ -265,7 +385,7 @@ function initUIListeners() {
         
         const classSel = classSelect ? classSelect.value : 'WARRIOR';
         console.log("Joining Scrimmage (1v1) Queue as class:", classSel);
-        await joinQueue('/1/0/1/5/2/9999/10/12', classSel);
+        await joinQueue('/4/1/1/5/2/9999/10/12', classSel, ''); // index 4 is 1v1, goalieIndex 1 is off
         gameState.is3v3 = false;
         gameState.phase = GamePhase.WAIT_FOR_GAME;
         startQueuePolling();
@@ -283,7 +403,7 @@ function initUIListeners() {
         console.log("Leaving queue");
         stopQueuePolling();
         const token = sessionStorage.getItem('accessToken');
-        await fetch('/api/leave', {
+        await fetch('/pages/titanball/api/leave', {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -433,7 +553,7 @@ function drawIngame(ctx, dt) {
     }
   } else {
     ctx.fillStyle = '#0f3d0f';
-    ctx.fillRect(0, 0, 1920, 1080);
+    ctx.fillRect(0, 0, 1920, 960);
   }
 
   // Draw thin blue boundary lines for attacking/defensive thirds (680 and 1368)
@@ -477,10 +597,10 @@ function drawIngame(ctx, dt) {
       gameState.localGoalVisible = false;
     } else {
       const img = AssetManager.images['goal'];
-      let gy = 1080 / 2 - 100;
+      let gy = 960 / 2 - 100;
       if (img && img.width > 0) {
         const gx = 1920 / 2 - img.width / 2;
-        gy = 1080 / 2 - img.height / 2 - 100;
+        gy = 960 / 2 - img.height / 2 - 100;
         ctx.drawImage(img, gx, gy);
       }
       
@@ -580,6 +700,7 @@ function gameLoop(timestamp) {
 
   clearScreen(ctx);
   updateOverlays();
+  updateMobileControls(gameState.game);
 
   // If already logged in, skip login screen
   if (gameState.phase === GamePhase.CREDITS && sessionStorage.getItem('accessToken')) {
@@ -604,11 +725,93 @@ function gameLoop(timestamp) {
     case GamePhase.COUNTDOWN:
       if (gameState.is3v3) {
         drawDraftShowcase(ctx);
+        
+        // Draw top banner for draft showcase
+        const game = gameState.game;
+        if (game && game.underControl) {
+          const myTitan = game.underControl;
+          ctx.save();
+          ctx.fillStyle = 'rgba(10, 26, 20, 0.85)';
+          ctx.fillRect(1920 / 2 - 350, 20, 700, 80);
+          ctx.strokeStyle = '#ffd700';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(1920 / 2 - 350, 20, 700, 80);
+          
+          ctx.fillStyle = '#ffd700';
+          ctx.font = 'bold 22px Outfit, Arial, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('YOUR DRAFT DETAILS', 1920 / 2, 50);
+          
+          ctx.fillStyle = 'white';
+          ctx.font = '16px Outfit, Arial, sans-serif';
+          const isGoalie = myTitan.type === 'GOALIE';
+          const posDesc = isGoalie ? "Goal Box" : "Field Player";
+          ctx.fillText(`TEAM: ${myTitan.team}  |  CLASS: ${myTitan.type}  |  ROLE: ${posDesc}`, 1920 / 2, 83);
+          ctx.restore();
+        }
       } else {
-        ctx.fillStyle = 'white';
-        ctx.font = '80px Arial';
+        // Draw the field and players
+        drawIngame(ctx, dt);
+        
+        // Highlight own Titan
+        const game = gameState.game;
+        if (game) {
+          const myTitan = game.underControl;
+          const { camX, camY } = gameState;
+          if (myTitan) {
+            const rx = myTitan.X + myTitan.width / 2 - camX;
+            const ry = myTitan.Y + myTitan.height / 2 - camY;
+            ctx.save();
+            ctx.strokeStyle = '#ffd700'; // Gold ring
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(rx, ry, Math.max(myTitan.width, myTitan.height) * 0.8, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            ctx.fillStyle = '#ffd700';
+            ctx.font = 'bold 16px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('YOU', rx, ry - myTitan.height / 2 - 12);
+            ctx.restore();
+          }
+          
+          // Draw top banner showing side, position, class
+          ctx.save();
+          ctx.fillStyle = 'rgba(10, 26, 20, 0.85)';
+          ctx.fillRect(1920 / 2 - 350, 40, 700, 80);
+          ctx.strokeStyle = '#ffd700';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(1920 / 2 - 350, 40, 700, 80);
+          
+          ctx.fillStyle = '#ffd700';
+          ctx.font = 'bold 22px Outfit, Arial, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('MATCH DETAILS', 1920 / 2, 70);
+          
+          ctx.fillStyle = 'white';
+          ctx.font = '16px Outfit, Arial, sans-serif';
+          if (myTitan) {
+            const isGoalie = myTitan.type === 'GOALIE';
+            const posDesc = isGoalie ? "Goal Box" : `Coordinates (${Math.round(myTitan.X)}, ${Math.round(myTitan.Y)})`;
+            ctx.fillText(`TEAM: ${myTitan.team}  |  CLASS: ${myTitan.type}  |  POSITION: ${posDesc}`, 1920 / 2, 103);
+          } else {
+            ctx.fillText('SPECTATING', 1920 / 2, 103);
+          }
+          ctx.restore();
+        }
+        
+        // Draw large countdown overlay
+        ctx.save();
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+        ctx.fillRect(0, 0, 1920, 960);
+        
+        ctx.fillStyle = '#00ff00';
+        ctx.font = 'bold 120px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText('PREPARING MATCH...', 1920 / 2, 1080 / 2);
+        ctx.textBaseline = 'middle';
+        const sec = game && game.secondsToStart !== undefined ? Math.max(0, Math.ceil(game.secondsToStart)) : 5;
+        ctx.fillText(sec > 0 ? sec.toString() : "GO!", 1920 / 2, 960 / 2);
+        ctx.restore();
       }
       break;
     case GamePhase.INGAME:
@@ -775,7 +978,7 @@ function drawDraftShowcase(ctx) {
     ctx.fillStyle = 'white';
     ctx.font = '80px Arial';
     ctx.textAlign = 'center';
-    ctx.fillText("PREPARING MATCH...", 1920 / 2, 1080 / 2);
+    ctx.fillText("PREPARING MATCH...", 1920 / 2, 960 / 2);
     return;
   }
 
@@ -784,14 +987,14 @@ function drawDraftShowcase(ctx) {
 
   // Background panel
   ctx.fillStyle = 'rgba(10, 26, 20, 0.9)';
-  ctx.fillRect(0, 0, 1920, 1080);
+  ctx.fillRect(0, 0, 1920, 960);
   
   // Draw Center VS
   ctx.save();
   ctx.fillStyle = '#ff7f11';
   ctx.font = 'italic bold 90px Impact, Arial';
   ctx.textAlign = 'center';
-  ctx.fillText('VS', 1920 / 2, 1080 / 2 - 50);
+  ctx.fillText('VS', 1920 / 2, 960 / 2 - 50);
   ctx.restore();
 
   // Roster Columns
@@ -843,7 +1046,11 @@ function drawDraftShowcase(ctx) {
       ctx.fillStyle = '#ffffff';
       ctx.font = `bold ${fontSizeText}px Arial`;
       ctx.textAlign = 'left';
-      ctx.fillText(`Slot ${idx + 1}: Player`, startX + 80, py + textOffsetY1);
+      
+      const origIdx = game.players.indexOf(p);
+      const client = game.clients.find(c => c.selection === origIdx + 1);
+      const displayName = client && client.email ? client.email.split('@')[0] : `Slot ${idx + 1}: Player`;
+      ctx.fillText(displayName, startX + 80, py + textOffsetY1);
 
       ctx.fillStyle = '#ff9f1c';
       ctx.font = `bold ${fontSizeClass}px Courier New`;
@@ -864,12 +1071,15 @@ function drawDraftShowcase(ctx) {
   drawColumn(awayPlayers, false, 1070);
 
   // Banned Overlay
-  ctx.save();
-  ctx.fillStyle = '#ef4444';
-  ctx.font = 'bold 24px Courier New';
-  ctx.textAlign = 'center';
-  ctx.fillText('TACTICAL BANS: [STEALTH] banned by HOME | [GOLEM] banned by AWAY', 1920 / 2, 920);
-  ctx.restore();
+  if (game.bans && game.bans.length > 0) {
+    ctx.save();
+    ctx.fillStyle = '#ef4444';
+    ctx.font = 'bold 24px Courier New';
+    ctx.textAlign = 'center';
+    const banText = `TACTICAL BANS: ${game.bans.join(' | ')}`;
+    ctx.fillText(banText, 1920 / 2, 870);
+    ctx.restore();
+  }
 
   // Match Start timer
   ctx.save();
@@ -877,7 +1087,7 @@ function drawDraftShowcase(ctx) {
   ctx.font = 'bold 36px Arial';
   ctx.textAlign = 'center';
   const sec = game.secondsToStart !== undefined ? Math.max(0, Math.ceil(game.secondsToStart)) : 5;
-  ctx.fillText(`MATCH STARTING IN: ${sec}s`, 1920 / 2, 990);
+  ctx.fillText(`MATCH STARTING IN: ${sec}s`, 1920 / 2, 920);
   ctx.restore();
 }
 
@@ -887,11 +1097,16 @@ export function start() {
   initMasteries();
   initKeyboard();
   initMouse();
+  initMobileControls();
   initUIListeners();
   
   // Warm the pilot-light server immediately on startup and keep warm every 10 minutes
   warmServer();
   setInterval(warmServer, 600000);
+
+  if (sessionStorage.getItem('accessToken')) {
+    checkAndRejoinActiveGame();
+  }
 
   requestAnimationFrame(gameLoop);
 }

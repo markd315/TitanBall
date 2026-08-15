@@ -158,11 +158,12 @@ public class LoginController {
     public ResponseEntity<String> joinLobby(Authentication auth,
               @RequestParam String tournamentCode,
               @RequestParam(required = false) String teamname,
-              @RequestParam(required = false) String classSelection) throws IOException {
+              @RequestParam(required = false) String classSelection,
+              @RequestParam(required = false) String partners) throws IOException {
         if (shutDownMode) {
             return new ResponseEntity<>("Shutting down", HttpStatus.SERVICE_UNAVAILABLE);
         }
-        userPool.registerIntent(auth, tournamentCode, teamname, classSelection);
+        userPool.registerIntent(auth, tournamentCode, teamname, classSelection, partners);
         return new ResponseEntity<>(userPool.findGame(auth), HttpStatus.OK);
     }
 

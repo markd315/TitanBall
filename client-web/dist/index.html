@@ -305,13 +305,215 @@
         width: 14px;
         text-align: center;
       }
+      
+      /* Mobile Controls CSS */
+      #mobile-controls-container {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 45vmin;
+        pointer-events: none;
+        z-index: 10;
+        display: none;
+        justify-content: space-between;
+        align-items: flex-end;
+        padding: 4.5vmin;
+        box-sizing: border-box;
+      }
+      #virtual-joystick-zone {
+        width: 27vmin;
+        height: 27vmin;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        pointer-events: auto;
+      }
+      #joystick-base {
+        width: 22.5vmin;
+        height: 22.5vmin;
+        border-radius: 50%;
+        background: rgba(10, 26, 20, 0.4);
+        backdrop-filter: blur(10px);
+        border: 2px solid rgba(45, 140, 100, 0.3);
+        box-shadow: 0 1.5vmin 4.5vmin rgba(0,0,0,0.5), inset 0 0 3vmin rgba(45, 140, 100, 0.1);
+        position: relative;
+        touch-action: none;
+      }
+      #joystick-stick {
+        width: 9vmin;
+        height: 9vmin;
+        border-radius: 50%;
+        background: radial-gradient(circle, #2ed573 0%, #1b4d3e 100%);
+        border: 2px solid rgba(255, 255, 255, 0.4);
+        box-shadow: 0 0 2.25vmin rgba(46, 213, 115, 0.6);
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        margin-top: -4.5vmin;
+        margin-left: -4.5vmin;
+        transition: transform 0.05s ease-out;
+      }
+      #mobile-right-zone {
+        display: flex;
+        align-items: flex-end;
+        gap: 4.5vmin;
+        pointer-events: auto;
+      }
+      #aim-joystick-zone {
+        width: 27vmin;
+        height: 27vmin;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      #aim-joystick-base {
+        width: 22.5vmin;
+        height: 22.5vmin;
+        border-radius: 50%;
+        background: rgba(10, 26, 20, 0.4);
+        backdrop-filter: blur(10px);
+        border: 2px solid rgba(168, 85, 247, 0.3);
+        box-shadow: 0 1.5vmin 4.5vmin rgba(0,0,0,0.5), inset 0 0 3vmin rgba(168, 85, 247, 0.1);
+        position: relative;
+        touch-action: none;
+      }
+      #aim-joystick-stick {
+        width: 9vmin;
+        height: 9vmin;
+        border-radius: 50%;
+        background: radial-gradient(circle, #a855f7 0%, #4c1d95 100%);
+        border: 2px solid rgba(255, 255, 255, 0.4);
+        box-shadow: 0 0 2.25vmin rgba(168, 85, 247, 0.6);
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        margin-top: -4.5vmin;
+        margin-left: -4.5vmin;
+        transition: transform 0.05s ease-out;
+      }
+      #mobile-buttons-zone {
+        display: grid;
+        grid-template-areas: 
+          ". pos"
+          "ab1 ab2";
+        gap: 1.8vmin;
+      }
+      #mobile-buttons-zone.double-joy {
+        grid-template-areas: 
+          "shot pos"
+          "ab1 ab2";
+      }
+      .mobile-action-btn {
+        width: 12vmin;
+        height: 12vmin;
+        border-radius: 50%;
+        background: rgba(10, 26, 20, 0.6);
+        backdrop-filter: blur(10px);
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        color: #fff;
+        font-family: 'Outfit', sans-serif;
+        font-size: 3vmin;
+        font-weight: 800;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        box-shadow: 0 1.2vmin 3vmin rgba(0,0,0,0.4);
+        touch-action: none;
+        user-select: none;
+        cursor: pointer;
+        transition: transform 0.1s, background-color 0.2s, box-shadow 0.2s;
+      }
+      .mobile-action-btn:active {
+        transform: scale(0.9);
+      }
+      #btn-ability-1 {
+        grid-area: ab1;
+        border-color: rgba(168, 85, 247, 0.4);
+        box-shadow: 0 0 2.25vmin rgba(168, 85, 247, 0.2);
+      }
+      #btn-ability-1:active {
+        background: rgba(168, 85, 247, 0.2);
+        box-shadow: 0 0 3.75vmin rgba(168, 85, 247, 0.6);
+      }
+      #btn-ability-2 {
+        grid-area: ab2;
+        border-color: rgba(59, 130, 246, 0.4);
+        box-shadow: 0 0 2.25vmin rgba(59, 130, 246, 0.2);
+      }
+      #btn-ability-2:active {
+        background: rgba(59, 130, 246, 0.2);
+        box-shadow: 0 0 3.75vmin rgba(59, 130, 246, 0.6);
+      }
+      #btn-possession {
+        grid-area: pos;
+        width: 15vmin;
+        height: 15vmin;
+        font-size: 2.7vmin;
+        border-radius: 50%;
+        background: rgba(255, 159, 28, 0.15);
+        border-color: rgba(255, 159, 28, 0.6);
+        box-shadow: 0 0 3vmin rgba(255, 159, 28, 0.3);
+      }
+      #btn-possession.lob-mode {
+        background: rgba(255, 159, 28, 0.2);
+        border-color: rgba(255, 159, 28, 0.8);
+        box-shadow: 0 0 3.75vmin rgba(255, 159, 28, 0.5);
+      }
+      #btn-possession.steal-mode {
+        background: rgba(46, 213, 115, 0.15);
+        border-color: rgba(46, 213, 115, 0.6);
+        box-shadow: 0 0 3vmin rgba(46, 213, 115, 0.3);
+      }
+      #btn-shot {
+        grid-area: shot;
+        width: 15vmin;
+        height: 15vmin;
+        font-size: 2.7vmin;
+        border-radius: 50%;
+        background: rgba(239, 68, 68, 0.15);
+        border-color: rgba(239, 68, 68, 0.6);
+        box-shadow: 0 0 3vmin rgba(239, 68, 68, 0.3);
+      }
+      #btn-shot:active {
+        background: rgba(239, 68, 68, 0.3);
+        box-shadow: 0 0 3.75vmin rgba(239, 68, 68, 0.6);
+      }
     </style>
-    <script type="module" crossorigin src="./assets/index-71a3f121.js"></script>
+    <script type="module" crossorigin src="./assets/index-76fc29ba.js"></script>
   </head>
   <body>
     <div id="app">
       <div class="court-decor"></div>
-      <canvas id="gameCanvas" width="1920" height="1080"></canvas>
+      <canvas id="gameCanvas" width="1920" height="960"></canvas>
+      
+      <!-- Mobile Controls Overlay -->
+      <div id="mobile-controls-container">
+        <!-- Left Side: Movement Joystick -->
+        <div id="virtual-joystick-zone">
+          <div id="joystick-base">
+            <div id="joystick-stick"></div>
+          </div>
+        </div>
+        
+        <!-- Right Side: Aim Joystick and Action Buttons -->
+        <div id="mobile-right-zone">
+          <!-- Aim Joystick (only shown in double-joy) -->
+          <div id="aim-joystick-zone" style="display: none;">
+            <div id="aim-joystick-base">
+              <div id="aim-joystick-stick"></div>
+            </div>
+          </div>
+          
+          <!-- Buttons Zone -->
+          <div id="mobile-buttons-zone">
+            <button id="btn-shot" class="mobile-action-btn" style="display: none;">SHOT</button>
+            <button id="btn-ability-1" class="mobile-action-btn">1</button>
+            <button id="btn-ability-2" class="mobile-action-btn">2</button>
+            <button id="btn-possession" class="mobile-action-btn">STEAL</button>
+          </div>
+        </div>
+      </div>
       
       <!-- HTML UI Overlays -->
       <div id="ui-container">
@@ -387,12 +589,25 @@
             <label for="controls-select">Controls Layout</label>
             <select id="controls-select">
               <option value="rts">RTS Style (Click to Move + Ability Hotkeys)</option>
-              <option value="default">Default Style (WASD + Mouse Aim/Shoot)</option>
+              <option value="keyboard">Keyboard Style (WASD + Mouse Aim/Shoot)</option>
+              <option value="mobile-single">Mobile (Single Joystick)</option>
+              <option value="mobile-double">Mobile (Double Joystick)</option>
             </select>
           </div>
           <!-- Masteries Button -->
           <div class="input-group">
             <button id="masteries-modal-btn" class="btn btn-secondary">Configure Masteries</button>
+          </div>
+          <!-- Partner List Section -->
+          <div class="input-group" style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
+            <label style="font-weight: bold; margin-bottom: 8px; display: block; color: #ff9f1c;">Teammate Partner List</label>
+            <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+              <input type="text" id="partner-input" placeholder="Enter username" style="flex: 1; padding: 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.4); color: white; font-family: inherit; font-size: 14px;">
+              <button id="add-partner-btn" class="btn" style="padding: 10px 16px; margin: 0; font-size: 14px; min-width: 70px;">Add</button>
+            </div>
+            <div id="partner-list-container" style="max-height: 100px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); font-size: 13px; display: flex; flex-direction: column; gap: 6px;">
+              <!-- Partners will be dynamically rendered here -->
+            </div>
           </div>
           <div class="menu-list">
             <div class="team-match-container">

@@ -12,7 +12,7 @@ export function drawMinions(ctx, game, camX, camY) {
     const awayPurchased = game.awayGoaliePurchasedUpgrades ? Array.from(game.awayGoaliePurchasedUpgrades) : [];
 
     // HOME defensive third: X from 36 to 680, Y from 36 to 1182
-    if (homePurchased.includes("fortress.t5.noflyzoneperm") || homePurchased.includes("fortress.t5.noflyzonetmp")) {
+    if (game.homeNoFlyZoneActive) {
         ctx.fillStyle = "rgba(239, 68, 68, 0.08)";
         ctx.strokeStyle = "rgba(239, 68, 68, 0.35)";
         ctx.lineWidth = 3;
@@ -20,7 +20,7 @@ export function drawMinions(ctx, game, camX, camY) {
         ctx.strokeRect(36 - camX, 36 - camY, 644, 1146);
     }
     // AWAY defensive third: X from 1368 to 2012, Y from 36 to 1182
-    if (awayPurchased.includes("fortress.t5.noflyzoneperm") || awayPurchased.includes("fortress.t5.noflyzonetmp")) {
+    if (game.awayNoFlyZoneActive) {
         ctx.fillStyle = "rgba(239, 68, 68, 0.08)";
         ctx.strokeStyle = "rgba(239, 68, 68, 0.35)";
         ctx.lineWidth = 3;
@@ -29,7 +29,7 @@ export function drawMinions(ctx, game, camX, camY) {
     }
 
     // HOME Deep Freeze
-    if (homePurchased.includes("fortress.t6.deepfreeze")) {
+    if (game.homeDeepFreezeActive) {
         ctx.fillStyle = "rgba(59, 130, 246, 0.08)";
         ctx.strokeStyle = "rgba(59, 130, 246, 0.35)";
         ctx.lineWidth = 3;
@@ -37,7 +37,7 @@ export function drawMinions(ctx, game, camX, camY) {
         ctx.strokeRect(36 - camX, 36 - camY, 644, 1146);
     }
     // AWAY Deep Freeze
-    if (awayPurchased.includes("fortress.t6.deepfreeze")) {
+    if (game.awayDeepFreezeActive) {
         ctx.fillStyle = "rgba(59, 130, 246, 0.08)";
         ctx.strokeStyle = "rgba(59, 130, 246, 0.35)";
         ctx.lineWidth = 3;
@@ -168,12 +168,27 @@ export function drawMinions(ctx, game, camX, camY) {
         }
         const homeBonus = game.homeLaneBonusValue ? game.homeLaneBonusValue[L] : 0;
         const awayBonus = game.awayLaneBonusValue ? game.awayLaneBonusValue[L] : 0;
-        let net = 0;
+        
+        let netMinions = 0;
+        let netBonus = 0;
         if (playerTeam === 'AWAY') {
-            net = (awayCount + awayBonus) - (homeCount + homeBonus);
+            netMinions = awayCount - homeCount;
+            netBonus = awayBonus - homeBonus;
         } else {
-            net = (homeCount + homeBonus) - (awayCount + awayBonus);
+            netMinions = homeCount - awayCount;
+            netBonus = homeBonus - awayBonus;
         }
+
+        // Clamp base minion difference at soft-cap (10)
+        if (netMinions > 10) netMinions = 10;
+        if (netMinions < -10) netMinions = -10;
+
+        let net = netMinions + netBonus;
+
+        // Clamp total at hard-cap (20)
+        if (net > 20) net = 20;
+        if (net < -20) net = -20;
+
         const text = net >= 0 ? `+${net}` : `${net}`;
 
         ctx.save();
@@ -195,7 +210,27 @@ export function drawMinions(ctx, game, camX, camY) {
             ctx.stroke();
         }
 
-        ctx.fillStyle = net > 0 ? '#10b981' : (net < 0 ? '#ef4444' : '#ffffff');
+        // Display a small, scaled down fire sprite behind the number if abs(net) > 10
+        if (Math.abs(net) > 10) {
+            const fireImg = AssetManager.images[isAltFrame ? 'fire2' : 'fire1'];
+            if (fireImg) {
+                ctx.save();
+                ctx.globalAlpha = 0.55;
+                ctx.drawImage(fireImg, displayX - 16, displayY - 16, 32, 32);
+                ctx.restore();
+            }
+        }
+
+        // Flashing numbers if it is exactly 10 or -10
+        let fillCol = net > 0 ? '#10b981' : (net < 0 ? '#ef4444' : '#ffffff');
+        if (net === 10 || net === -10) {
+            const flash = Math.floor(staticFrame / 8) % 2 === 0;
+            if (flash) {
+                fillCol = '#fbbf24'; // bright yellow amber flash
+            }
+        }
+
+        ctx.fillStyle = fillCol;
         ctx.font = 'bold 18px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';

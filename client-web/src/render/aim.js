@@ -44,7 +44,25 @@ export function drawAimAndRangeIndicators(ctx, game, controlsHeld, camX, camY) {
             ctx.stroke();
         };
 
-        const lobDistVal = LOB_DIST * pow;
+        let gravityMult = 1.0;
+        if (t.team === 'HOME' && game.homeLowGravityActive) {
+            gravityMult = 1.5;
+        } else if (t.team === 'AWAY' && game.awayLowGravityActive) {
+            gravityMult = 1.5;
+        }
+
+        let noFlyMult = 1.0;
+        if (t.team === 'HOME') {
+            if (game.awayNoFlyZoneActive && t.X >= 1368.0 && t.X <= 2012.0) {
+                noFlyMult = 0.5;
+            }
+        } else if (t.team === 'AWAY') {
+            if (game.homeNoFlyZoneActive && t.X >= 36.0 && t.X <= 680.0) {
+                noFlyMult = 0.5;
+            }
+        }
+
+        const lobDistVal = LOB_DIST * pow * gravityMult * noFlyMult;
         
         // Yellow lob block: 0 to 0.2 * lobDistVal + BALL_HALF
         drawLineSegment(0, 0.2 * lobDistVal + BALL_HALF, 'rgba(255, 230, 0, 0.65)');
