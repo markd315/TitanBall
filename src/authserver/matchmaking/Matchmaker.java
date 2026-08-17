@@ -32,7 +32,9 @@ public class Matchmaker {
     private int desperation = 0; //TODO increase to eventually sacrifice match quality
 
     public synchronized String findGame(Authentication login) {
-        String email = login.getName();
+        String email = (login.getPrincipal() instanceof authserver.models.User)
+                ? ((authserver.models.User) login.getPrincipal()).getEmail()
+                : login.getName();
         if (gameMap.containsKey(email)) {
             return gameMap.get(email);
         }
@@ -90,7 +92,6 @@ public class Matchmaker {
         //only to avoid comod exception
         for (String s : gameFor) {
             waitingPool.remove(s);
-            playerClasses.remove(s);
             System.out.println("WAITING POOL SIZE: " + waitingPool.size());
         }
     }
@@ -159,7 +160,9 @@ public class Matchmaker {
         if (teamname != null) {
             registerIntentTeam(login, tournamentCode, teamname);
         }
-        String email = login.getName();
+        String email = (login.getPrincipal() instanceof authserver.models.User)
+                ? ((authserver.models.User) login.getPrincipal()).getEmail()
+                : login.getName();
         
         if (classSelection != null && !classSelection.isEmpty()) {
             playerClasses.put(email, classSelection);
@@ -202,7 +205,9 @@ public class Matchmaker {
     public synchronized void registerIntentTeam(Authentication login, String tournamentCode, String teamname) {
         tournamentCode = normalizeTournamentCode(tournamentCode);
         System.out.println("rit 1");
-        String email = login.getName();
+        String email = (login.getPrincipal() instanceof authserver.models.User)
+                ? ((authserver.models.User) login.getPrincipal()).getEmail()
+                : login.getName();
         boolean contains = false;
         int teamQueue = 0;
         //email -> teamN (after full -> tournament code)
@@ -241,7 +246,9 @@ public class Matchmaker {
     }
 
     public synchronized void removeIntent(Authentication login) {
-        String email = login.getName();
+        String email = (login.getPrincipal() instanceof authserver.models.User)
+                ? ((authserver.models.User) login.getPrincipal()).getEmail()
+                : login.getName();
         System.out.println("DEREGISTERING " + email);
         String rm = null;
         for (String e : waitingPool.keySet()) {

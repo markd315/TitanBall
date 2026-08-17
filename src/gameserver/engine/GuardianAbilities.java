@@ -23,6 +23,13 @@ public class GuardianAbilities implements Serializable {
     public TeamAffiliation team;
     public Map<UUID, Long> entityExpiries = new HashMap<>();
     public List<UUID> activeBarrageIds = new ArrayList<>();
+    public List<Integer> activeBarrageRegions = new ArrayList<>();
+    public List<String> activeBarrageTypes = new ArrayList<>();
+    public List<Integer> pendingBarrageRegions = new ArrayList<>();
+    public List<String> pendingBarrageTypes = new ArrayList<>();
+    public Set<Integer> lastBarrageRegions = new HashSet<>();
+    public Map<UUID, String> barrageEntityTypes = new HashMap<>();
+    public int barrageCycleTick = 0;
     public Set<UUID> tollPaidMinions = new HashSet<>();
 
     // Active timers/state
@@ -35,9 +42,8 @@ public class GuardianAbilities implements Serializable {
     public long riskAdjustedReturnUntilMs = 0;
     public boolean riskAdjustedReturnPending = false;
     public double manaRateMultiplier = 1.0;
-    
-    // Flag to prevent double field dilatation
-    private boolean fieldDilated = false;
+    public transient Set<UUID> titansOnParapetLastTick = new HashSet<>();
+    public transient Set<UUID> enemiesInVinesLastTick = new HashSet<>();
 
     public GuardianAbilities() {
         // No-arg constructor for Jackson deserialization
@@ -49,6 +55,7 @@ public class GuardianAbilities implements Serializable {
 
     public void purchaseOrUse(GameEngine context, Titan goalie, String nodeKey) {
         if (nodeKey == null) return;
+        Set<String> purchased = (team == TeamAffiliation.HOME) ? context.homeGoaliePurchasedUpgrades : context.awayGoaliePurchasedUpgrades;
 
         // Fortress Tree
         if (nodeKey.endsWith(".reinforce")) {
@@ -62,8 +69,22 @@ public class GuardianAbilities implements Serializable {
             scaleAlliedTitans(context);
         } else if (nodeKey.endsWith(".bastionprotocol")) {
             spawnBastionWalls(context, goalie);
-        } else if (nodeKey.endsWith(".barrage")) {
-            spawnBarrageConfig(context, 1);
+        } else if (nodeKey.endsWith(".barrage") || nodeKey.endsWith(".icebarrage") || nodeKey.endsWith(".firebarrage")) {
+            clearBarrageConfig(context);
+            lastBarrageRegions.clear();
+            activeBarrageRegions.clear();
+            activeBarrageTypes.clear();
+            pendingBarrageRegions.clear();
+            pendingBarrageTypes.clear();
+            rollNextBarrage(purchased);
+            activeBarrageRegions.addAll(pendingBarrageRegions);
+            activeBarrageTypes.addAll(pendingBarrageTypes);
+            pendingBarrageRegions.clear();
+            pendingBarrageTypes.clear();
+            for (int i = 0; i < activeBarrageRegions.size(); i++) {
+                spawnBarrageRegion(context, activeBarrageRegions.get(i), activeBarrageTypes.get(i));
+            }
+            barrageCycleTick = 0;
         } else if (nodeKey.endsWith(".hemmedin")) {
             applyHemmedIn(context, goalie);
         } else if (nodeKey.endsWith(".emergencybarrier")) {
@@ -91,8 +112,11 @@ public class GuardianAbilities implements Serializable {
             applyEnergyRush(context);
         } else if (nodeKey.endsWith(".forwardmines")) {
             spawnForwardMines(context, goalie);
-        } else if (nodeKey.endsWith(".ballportal_rough")) {
-            spawnBallPortalRough(context, goalie);
+        } else if (nodeKey.endsWith(".incendiarymines") || nodeKey.endsWith(".forwardoutpost")) {
+            context.entityPool.removeIf(e -> e instanceof Fire && e.team == team && (e.width == 80 || e.width == 150));
+            spawnForwardMines(context, goalie);
+        } else if (nodeKey.endsWith(".ballportal")) {
+            spawnBallPortal(context, goalie);
         } else if (nodeKey.endsWith(".rushlane")) {
             spawnRushLane(context, goalie);
         } else if (nodeKey.endsWith(".parapet")) {
@@ -270,25 +294,66 @@ public class GuardianAbilities implements Serializable {
             context.awayLowGravityActive = lowGrav;
         }
 
-        // Dynamic moving barrage configuration alternation
+        // 3x3 Nine Regions Dynamic moving barrage logic
+        // Duty Cycle:
+        // 0.0s – 3.0s (ticks 0..119): effect starts/runs (active hazards on board, no telegraph)
+        // 3.0s – 5.0s (ticks 120..199): effect continues, NEXT BARRAGE IS TELEGRAPHED IN A NEW AREA (#b8f9ff at 50% opacity)
+        // 5.0s -> 0.0s (tick 200): next cycle begins, prior effect stops.
         if (purchased.contains("fortress.t4.barrage")) {
-            int cycleFrame = context.framesSinceStart % 300;
-            if (cycleFrame == 0) {
-                clearBarrageConfig(context);
-                spawnBarrageConfig(context, 1);
-            } else if (cycleFrame == 60) {
-                clearBarrageConfig(context);
-            } else if (cycleFrame == 100) {
-                clearBarrageConfig(context);
-                spawnBarrageConfig(context, 2);
-            } else if (cycleFrame == 160) {
-                clearBarrageConfig(context);
-            } else if (cycleFrame == 200) {
-                clearBarrageConfig(context);
-                spawnBarrageConfig(context, 3);
-            } else if (cycleFrame == 260) {
-                clearBarrageConfig(context);
+            barrageCycleTick++;
+            if (activeBarrageRegions.isEmpty() && pendingBarrageRegions.isEmpty()) {
+                rollNextBarrage(purchased);
+                activeBarrageRegions.addAll(pendingBarrageRegions);
+                activeBarrageTypes.addAll(pendingBarrageTypes);
+                pendingBarrageRegions.clear();
+                pendingBarrageTypes.clear();
+                for (int i = 0; i < activeBarrageRegions.size(); i++) {
+                    spawnBarrageRegion(context, activeBarrageRegions.get(i), activeBarrageTypes.get(i));
+                }
+                barrageCycleTick = 0;
             }
+            if (barrageCycleTick == 120) {
+                // At 3.0s: effect continues, telegraph next barrage in a new area for 2.0s
+                rollNextBarrage(purchased);
+            } else if (barrageCycleTick >= 200) {
+                // At 5.0s: prior effect stops, telegraphed barrage becomes active
+                barrageCycleTick = 0;
+                clearBarrageConfig(context);
+                lastBarrageRegions.clear();
+                lastBarrageRegions.addAll(activeBarrageRegions);
+                activeBarrageRegions.clear();
+                activeBarrageRegions.addAll(pendingBarrageRegions);
+                activeBarrageTypes.clear();
+                activeBarrageTypes.addAll(pendingBarrageTypes);
+                pendingBarrageRegions.clear();
+                pendingBarrageTypes.clear();
+                for (int i = 0; i < activeBarrageRegions.size(); i++) {
+                    spawnBarrageRegion(context, activeBarrageRegions.get(i), activeBarrageTypes.get(i));
+                }
+            }
+        } else {
+            if (!activeBarrageIds.isEmpty() || !activeBarrageRegions.isEmpty() || !pendingBarrageRegions.isEmpty()) {
+                clearBarrageConfig(context);
+                activeBarrageRegions.clear();
+                activeBarrageTypes.clear();
+                pendingBarrageRegions.clear();
+                pendingBarrageTypes.clear();
+                lastBarrageRegions.clear();
+                barrageCycleTick = 0;
+            }
+        }
+
+        // Synchronize barrage state directly to Game context for client serialization
+        if (team == TeamAffiliation.HOME) {
+            context.homeActiveBarrageRegions = new ArrayList<>(activeBarrageRegions);
+            context.homeActiveBarrageTypes = new ArrayList<>(activeBarrageTypes);
+            context.homePendingBarrageRegions = new ArrayList<>(pendingBarrageRegions);
+            context.homePendingBarrageTypes = new ArrayList<>(pendingBarrageTypes);
+        } else {
+            context.awayActiveBarrageRegions = new ArrayList<>(activeBarrageRegions);
+            context.awayActiveBarrageTypes = new ArrayList<>(activeBarrageTypes);
+            context.awayPendingBarrageRegions = new ArrayList<>(pendingBarrageRegions);
+            context.awayPendingBarrageTypes = new ArrayList<>(pendingBarrageTypes);
         }
 
         // 4. Continuous tick checks (zones, auras, drones, etc.)
@@ -313,33 +378,43 @@ public class GuardianAbilities implements Serializable {
 
             // Barrage hazards spawned by us
             if (e instanceof Fire && e.team == team && activeBarrageIds.contains(e.id)) {
+                String bType = barrageEntityTypes.getOrDefault(e.id, "BASE");
+                double baseDmg = context.c.getD("guardian.barrage.dmg");
+                double dmg = "FIRE".equals(bType) ? baseDmg : (baseDmg * 0.5);
+
                 // Apply damage & effects to enemy Titans and Minions overlapping the zone
                 for (Titan t : context.players) {
                     if (t.team != team && t.health > 0.0 && e.asBounds().intersects(t.asBounds())) {
-                        t.damage(context, context.c.getD("guardian.barrage.dmg"));
-                        applyBarrageEffects(context, t, purchased);
+                        t.damage(context, dmg);
+                        applyBarrageRegionEffects(context, t, bType);
                     }
                 }
                 for (Entity mn : context.entityPool) {
                     if (mn instanceof LaneMinion && mn.team != team && mn.getHealth() > 0.0 && e.asBounds().intersects(mn.asBounds())) {
-                        mn.damage(context, context.c.getD("guardian.barrage.dmg"));
-                        applyBarrageEffects(context, mn, purchased);
+                        mn.damage(context, dmg);
+                        applyBarrageRegionEffects(context, mn, bType);
                     }
                 }
             }
 
-            // Forward Mines
-            if (e instanceof Fire && e.team == team && e.width == 150 && !purchased.contains("siege.t5.forwardoutpost")) {
+            // Forward Mines & Incendiary Mines
+            if (e instanceof Fire && e.team == team && (e.width == 80 || e.width == 150)) {
+                boolean isIncendiary = (e.width == 150) || purchased.contains("siege.t5.incendiarymines") || purchased.contains("siege.t5.forwardoutpost");
+                double dmg = context.c.getD("guardian.barrage.dmg") * 0.75;
                 for (Titan t : context.players) {
                     if (t.team != team && t.health > 0.0 && e.asBounds().intersects(t.asBounds())) {
-                        t.damage(context, context.c.getD("guardian.barrage.dmg") * 0.75);
-                        context.effectPool.addUniqueEffect(new RatioEffect(1200, t, EffectId.BURN, 1.0), context);
+                        t.damage(context, dmg);
+                        if (isIncendiary) {
+                            context.effectPool.addUniqueEffect(new RatioEffect(1200, t, EffectId.BURN, 1.0), context);
+                        }
                     }
                 }
                 for (Entity mn : context.entityPool) {
                     if (mn instanceof LaneMinion && mn.team != team && mn.getHealth() > 0.0 && e.asBounds().intersects(mn.asBounds())) {
-                        mn.damage(context, context.c.getD("guardian.barrage.dmg") * 0.75);
-                        context.effectPool.addUniqueEffect(new RatioEffect(1200, mn, EffectId.BURN, 1.0), context);
+                        mn.damage(context, dmg);
+                        if (isIncendiary) {
+                            context.effectPool.addUniqueEffect(new RatioEffect(1200, mn, EffectId.BURN, 1.0), context);
+                        }
                     }
                 }
             }
@@ -392,76 +467,192 @@ public class GuardianAbilities implements Serializable {
                 }
             }
 
-            // Mana Vines (Slow/Burn hazard at base entrance)
+            // Mana Vines (Slow/Burn hazard at base entrance + 30 mana on pass-through)
             if (e instanceof Trap && e.team == team && e.width == 80) {
+                if (enemiesInVinesLastTick == null) {
+                    enemiesInVinesLastTick = new HashSet<>();
+                }
+                Set<UUID> currentVinesOverlaps = new HashSet<>();
                 for (Titan t : context.players) {
                     if (t.team != team && t.health > 0.0 && e.asBounds().intersects(t.asBounds())) {
+                        currentVinesOverlaps.add(t.id);
+                        if (!enemiesInVinesLastTick.contains(t.id)) {
+                            if (team == TeamAffiliation.HOME) {
+                                context.homeGoalieMana = Math.min(getMaxMana(context), context.homeGoalieMana + 30.0);
+                            } else {
+                                context.awayGoalieMana = Math.min(getMaxMana(context), context.awayGoalieMana + 30.0);
+                            }
+                        }
                         context.effectPool.addUniqueEffect(new RatioEffect(2000, t, EffectId.SLOW, 1.40), context);
                         context.effectPool.addUniqueEffect(new RatioEffect(2000, t, EffectId.BURN, 1.0), context);
                     }
                 }
                 for (Entity mn : context.entityPool) {
                     if (mn instanceof LaneMinion && mn.team != team && mn.getHealth() > 0.0 && e.asBounds().intersects(mn.asBounds())) {
+                        currentVinesOverlaps.add(mn.id);
+                        if (!enemiesInVinesLastTick.contains(mn.id)) {
+                            if (team == TeamAffiliation.HOME) {
+                                context.homeGoalieMana = Math.min(getMaxMana(context), context.homeGoalieMana + 30.0);
+                            } else {
+                                context.awayGoalieMana = Math.min(getMaxMana(context), context.awayGoalieMana + 30.0);
+                            }
+                        }
                         context.effectPool.addUniqueEffect(new RatioEffect(2000, mn, EffectId.SLOW, 1.40), context);
                         context.effectPool.addUniqueEffect(new RatioEffect(2000, mn, EffectId.BURN, 1.0), context);
                     }
                 }
+                enemiesInVinesLastTick.clear();
+                enemiesInVinesLastTick.addAll(currentVinesOverlaps);
             }
 
             // Parapet elevated platform
-            if (e instanceof Portal && e.width == 100) {
+            if (e instanceof Parapet) {
+                if (titansOnParapetLastTick == null) {
+                    titansOnParapetLastTick = new HashSet<>();
+                }
+                Set<UUID> currentOverlaps = new HashSet<>();
                 for (Titan t : context.players) {
                     if (t.health > 0.0 && e.asBounds().intersects(t.asBounds())) {
-                        // Apply brief root upon entering Parapet
-                        if (!context.effectPool.hasEffect(t, EffectId.ROOT)) {
+                        currentOverlaps.add(t.id);
+                        if (!titansOnParapetLastTick.contains(t.id)) {
                             context.effectPool.addUniqueEffect(new EmptyEffect(1000, t, EffectId.ROOT), context);
                         }
                     }
                 }
+                titansOnParapetLastTick.clear();
+                titansOnParapetLastTick.addAll(currentOverlaps);
             }
         }
 
-        // No-Fly Zone aura check (blocks LOB and boosts in defensive third)
-        if (purchased.contains("fortress.t5.noflyzoneperm") || purchased.contains("fortress.t5.noflyzonetmp")) {
-            for (Titan t : context.players) {
-                if (t.team != team && t.health > 0.0) {
-                    boolean inOwnEnd = (team == TeamAffiliation.HOME) ? (t.X <= 680) : (t.X >= 1368);
-                    if (inOwnEnd) {
-                        t.isBoosting = false;
-                        if (t.actionState == Titan.TitanState.LOB) {
-                            t.actionState = Titan.TitanState.SHOOT; // Turn lob into a regular shot
-                        }
-                    }
-                }
-            }
-        }
 
-        // Ice Portal aura check (continuously SLOWs all enemy minions)
+
+        // Ice Portal aura check (continuously SLOWs all enemy heroes by 10%)
         if (purchased.contains("cultivation.t6.iceportal")) {
-            for (Entity mn : context.entityPool) {
-                if (mn instanceof LaneMinion && mn.team != team && mn.getHealth() > 0.0) {
-                    context.effectPool.addUniqueEffect(new RatioEffect(1000, mn, EffectId.SLOW, 1.25), context);
+            for (Titan t : context.players) {
+                if (t.team != team && t.health > 0.0 && t.getType() != TitanType.GOALIE) {
+                    context.effectPool.addUniqueEffect(new RatioEffect(1000, t, EffectId.SLOW, 1.111), context);
                 }
             }
         }
+        applyRosterStatBoosts(context);
     }
 
-    private void applyBarrageEffects(GameEngine context, Entity target, Set<String> purchased) {
-        if (purchased.contains("fortress.t5.icebarrage")) {
+    private void applyBarrageRegionEffects(GameEngine context, Entity target, String bType) {
+        if ("ICE".equals(bType)) {
             context.effectPool.addUniqueEffect(new RatioEffect(
                 context.c.getI("guardian.barrage.slow.dur"), 
                 target, 
                 EffectId.SLOW, 
                 context.c.getD("guardian.barrage.slow.ratio")
             ), context);
-        }
-        if (purchased.contains("fortress.t5.firebarrage")) {
+        } else if ("FIRE".equals(bType)) {
             context.effectPool.addUniqueEffect(new RatioEffect(
                 context.c.getI("guardian.barrage.burn.dur"), 
                 target, 
                 EffectId.BURN, 
                 1.0
             ), context);
+        }
+    }
+
+    public static class RegionBounds {
+        public int x, y, width, height;
+        public RegionBounds(int x, int y, int width, int height) {
+            this.x = x; this.y = y; this.width = width; this.height = height;
+        }
+    }
+
+    public RegionBounds getBarrageRegionBounds(int regionIndex) {
+        int row = regionIndex / 3; // 0=top, 1=mid, 2=bot
+        int col = regionIndex % 3; // 0, 1, 2
+
+        // Y bounds: 232, 484, 736 (height = 252 per row, covering 232 to 988)
+        int y = 232 + row * 252;
+        int height = 252;
+
+        int x, width;
+        if (team == TeamAffiliation.HOME) {
+            // HOME defensive third: X from 36 to 680 (width 644)
+            if (col == 0) {
+                x = 36; width = 214;
+            } else if (col == 1) {
+                x = 250; width = 215;
+            } else {
+                x = 465; width = 215;
+            }
+        } else {
+            // AWAY defensive third: X from 1368 to 2012 (width 644)
+            if (col == 0) {
+                x = 1368; width = 215;
+            } else if (col == 1) {
+                x = 1583; width = 215;
+            } else {
+                x = 1798; width = 214;
+            }
+        }
+        return new RegionBounds(x, y, width, height);
+    }
+
+    public void rollNextBarrage(Set<String> purchased) {
+        pendingBarrageRegions.clear();
+        pendingBarrageTypes.clear();
+
+        if (!purchased.contains("fortress.t4.barrage")) {
+            return;
+        }
+
+        boolean hasFire = purchased.contains("fortress.t5.firebarrage");
+        boolean hasIce = purchased.contains("fortress.t5.icebarrage");
+
+        Random rand = new Random();
+        // Exclude currently active and last active regions so the same location cannot roll twice in a row
+        List<Integer> candidateRegions = new ArrayList<>();
+        for (int i = 0; i < 9; i++) {
+            if (!activeBarrageRegions.contains(i) && !lastBarrageRegions.contains(i)) {
+                candidateRegions.add(i);
+            }
+        }
+        if (candidateRegions.size() < 2) {
+            candidateRegions.clear();
+            for (int i = 0; i < 9; i++) {
+                if (!activeBarrageRegions.contains(i)) {
+                    candidateRegions.add(i);
+                }
+            }
+        }
+        Collections.shuffle(candidateRegions, rand);
+
+        if (hasFire && hasIce) {
+            // Both fire and ice: exactly 1 fire + 1 ice (100% chance, 2 distinct new regions, 2/9 aoe denial)
+            pendingBarrageRegions.add(candidateRegions.get(0));
+            pendingBarrageTypes.add("FIRE");
+            pendingBarrageRegions.add(candidateRegions.get(1));
+            pendingBarrageTypes.add("ICE");
+        } else if (hasFire) {
+            // Only fire barrage: 90% chance 1 region, 10% chance 2 regions
+            boolean twoRegions = rand.nextDouble() < 0.10;
+            pendingBarrageRegions.add(candidateRegions.get(0));
+            pendingBarrageTypes.add("FIRE");
+            if (twoRegions && candidateRegions.size() > 1) {
+                pendingBarrageRegions.add(candidateRegions.get(1));
+                pendingBarrageTypes.add("FIRE");
+            }
+        } else if (hasIce) {
+            // Only ice barrage: 90% chance 1 region, 10% chance 2 regions
+            boolean twoRegions = rand.nextDouble() < 0.10;
+            pendingBarrageRegions.add(candidateRegions.get(0));
+            pendingBarrageTypes.add("ICE");
+            if (twoRegions && candidateRegions.size() > 1) {
+                pendingBarrageRegions.add(candidateRegions.get(1));
+                pendingBarrageTypes.add("ICE");
+            }
+        } else {
+            // Standard barrage: 80% chance 1 region, 20% chance 0 regions
+            boolean oneRegion = rand.nextDouble() < 0.80;
+            if (oneRegion) {
+                pendingBarrageRegions.add(candidateRegions.get(0));
+                pendingBarrageTypes.add("BASE");
+            }
         }
     }
 
@@ -484,13 +675,14 @@ public class GuardianAbilities implements Serializable {
     }
 
     private void spawnSnareTrap(GameEngine context, Titan goalie) {
-        int sx = (int) goalie.X;
-        int sy = (int) goalie.Y + 35 - 50;
+        Random rand = new Random();
+        int sx, sy;
         if (team == TeamAffiliation.HOME) {
-            sx = context.c.GOALIE_XH_MAX + 120;
+            sx = 150 + rand.nextInt(400); // 150 to 550
         } else {
-            sx = context.c.GOALIE_XA_MIN - 120 - 100;
+            sx = 1418 + rand.nextInt(282); // 1418 to 1700
         }
+        sy = 100 + rand.nextInt(900); // 100 to 1000
         Trap t = new Trap(goalie, context, sx, sy);
         t.team = team;
         t.health = context.c.getD("guardian.snaretrap.permhealth");
@@ -505,9 +697,13 @@ public class GuardianAbilities implements Serializable {
         int wHeight = hemmedIn ? 180 : 120;
         int hp = 999999;
 
-        // Top lane and bottom lane walls
-        int hY = 354 - wHeight / 2;
-        int aY = 790 - wHeight / 2;
+        int topHoopCY = (int) (context.c.getI("goal.low.y") + context.c.getI("goal.low.height") / 2.0);
+        int botHoopCY = (int) (context.c.getI("goal.low2.y") + context.c.getI("goal.low.height") / 2.0);
+        int midHoopCY = (int) (context.c.getI("goal.hi.y") + context.c.getI("goal.hi.height") / 2.0);
+
+        // Top lane and bottom lane walls centered on friendly hoop Y values
+        int hY = topHoopCY - wHeight / 2;
+        int aY = botHoopCY - wHeight / 2;
         int sx = (team == TeamAffiliation.HOME) ? context.c.GOALIE_XH_MAX + 150 : context.c.GOALIE_XA_MIN - 150 - wWidth;
 
         Wall w1 = new Wall(context, sx, hY);
@@ -518,46 +714,44 @@ public class GuardianAbilities implements Serializable {
         w2.team = team; w2.width = wWidth; w2.height = wHeight; w2.health = hp; w2.maxHealth = hp;
         context.entityPool.add(w2);
 
-        // Hemmed In extra goal wall
+        // Hemmed In extra goal wall behind center goal centered on middle hoop Y
         if (hemmedIn) {
             int gx = (team == TeamAffiliation.HOME) ? context.c.GOALIE_XH_MIN - 50 : context.c.GOALIE_XA_MAX + 50;
-            Wall w3 = new Wall(context, gx, 583 - wHeight / 2);
+            Wall w3 = new Wall(context, gx, midHoopCY - wHeight / 2);
             w3.team = team; w3.width = wWidth; w3.height = wHeight; w3.health = hp; w3.maxHealth = hp;
             context.entityPool.add(w3);
         }
     }
 
-    private void spawnBarrageConfig(GameEngine context, int config) {
+    private void spawnBarrageRegion(GameEngine context, int regionIndex, String type) {
         Titan goalie = (team == TeamAffiliation.HOME) ? context.players[0] : context.players[1];
-        int bx = (team == TeamAffiliation.HOME) ? 250 : 1670;
-        int by = 0;
-        if (config == 1) {
-            by = 150;
-        } else if (config == 2) {
-            by = 470;
-        } else {
-            by = 790;
-        }
+        RegionBounds b = getBarrageRegionBounds(regionIndex);
         
-        Fire f = new Fire(goalie, bx, by);
+        Fire f = new Fire(goalie, b.x, b.y);
         f.team = team;
-        f.width = 150;
-        f.height = 280;
+        f.width = b.width;
+        f.height = b.height;
         f.health = 99999;
         f.maxHealth = 99999;
         context.entityPool.add(f);
         activeBarrageIds.add(f.id);
+        barrageEntityTypes.put(f.id, type);
     }
 
     private void clearBarrageConfig(GameEngine context) {
         context.entityPool.removeIf(e -> activeBarrageIds.contains(e.id));
         activeBarrageIds.clear();
+        barrageEntityTypes.clear();
     }
 
     private void applyHemmedIn(GameEngine context, Titan goalie) {
         int wWidth = 18;
         int wHeight = 180;
         int hp = 999999;
+        int topHoopCY = (int) (context.c.getI("goal.low.y") + context.c.getI("goal.low.height") / 2.0);
+        int botHoopCY = (int) (context.c.getI("goal.low2.y") + context.c.getI("goal.low.height") / 2.0);
+        int midHoopCY = (int) (context.c.getI("goal.hi.y") + context.c.getI("goal.hi.height") / 2.0);
+
         for (Entity e : context.entityPool) {
             if (e instanceof Wall && e.team == team) {
                 boolean isBastion = false;
@@ -569,16 +763,16 @@ public class GuardianAbilities implements Serializable {
                 if (isBastion) {
                     e.width = wWidth;
                     e.height = wHeight;
-                    if (e.Y < 500) {
-                        e.Y = 354 - wHeight / 2;
+                    if (e.Y < 600) {
+                        e.Y = topHoopCY - wHeight / 2;
                     } else {
-                        e.Y = 790 - wHeight / 2;
+                        e.Y = botHoopCY - wHeight / 2;
                     }
                 }
             }
         }
         int gx = (team == TeamAffiliation.HOME) ? context.c.GOALIE_XH_MIN - 50 : context.c.GOALIE_XA_MAX + 50;
-        Wall w3 = new Wall(context, gx, 583 - wHeight / 2);
+        Wall w3 = new Wall(context, gx, midHoopCY - wHeight / 2);
         w3.team = team;
         w3.width = wWidth;
         w3.height = wHeight;
@@ -589,92 +783,92 @@ public class GuardianAbilities implements Serializable {
 
     private void spawnForwardMines(GameEngine context, Titan goalie) {
         Set<String> purchased = (team == TeamAffiliation.HOME) ? context.homeGoaliePurchasedUpgrades : context.awayGoaliePurchasedUpgrades;
-        int mx = (team == TeamAffiliation.HOME) ? 1600 : 400;
-        int my = 583 - 75;
+        int midHoopCY = (int) (context.c.getI("goal.hi.y") + context.c.getI("goal.hi.height") / 2.0);
+        int baseMx = (team == TeamAffiliation.HOME) ? 1600 : 400;
 
-        if (purchased.contains("siege.t5.forwardoutpost")) {
-            // Spawn Outpost standing structure instead of mines
-            Wall outpost = new Wall(context, mx, my);
-            outpost.team = team;
-            outpost.width = 24;
-            outpost.height = 120;
-            outpost.health = context.c.getD("guardian.outpost.health");
-            outpost.maxHealth = outpost.health;
-            context.entityPool.add(outpost);
-        } else {
-            Fire mines = new Fire(goalie, mx, my);
-            mines.team = team;
-            mines.width = 150;
-            mines.height = 150;
-            mines.health = 99999;
-            mines.maxHealth = 99999;
-            context.entityPool.add(mines);
-        }
+        boolean isIncendiary = purchased.contains("siege.t5.incendiarymines") || purchased.contains("siege.t5.forwardoutpost");
+        int mSize = isIncendiary ? 150 : 80;
+        int mx = isIncendiary ? (baseMx - (150 - 80) / 2) : baseMx;
+        int my = midHoopCY - mSize / 2;
+
+        Fire mines = new Fire(goalie, mx, my);
+        mines.team = team;
+        mines.width = mSize;
+        mines.height = mSize;
+        mines.health = 99999;
+        mines.maxHealth = 99999;
+        context.entityPool.add(mines);
     }
 
-    private void spawnBallPortalRough(GameEngine context, Titan goalie) {
-        int px = (team == TeamAffiliation.HOME) ? context.c.GOALIE_XH_MAX + 350 : context.c.GOALIE_XA_MIN - 350 - 50;
+    // Saved implementation for "Quantum portals" (no-cooldown instant teleportation)
+    /*
+    private void spawnQuantumPortals(GameEngine context, Titan goalie) {
+        int px = (team == TeamAffiliation.HOME) ? context.c.GOALIE_XA_MIN - 350 - 50 : context.c.GOALIE_XH_MAX + 350;
         int py1 = 354 - 25;
         int py2 = 790 - 25;
-        
         BallPortal p1 = new BallPortal(team, goalie, context.entityPool, px, py1, context) {
             @Override
             public void triggerCollide(GameEngine ctx, Box entity) {
-                if (!this.isCooldown(new Instant(ctx.nowEpochMs)) && ctx.ball.id.equals(entity.id) && !ctx.anyPoss() && !ctx.contactExemptBall()) {
+                if (ctx.ball.id.equals(entity.id) && !ctx.anyPoss() && !ctx.contactExemptBall()) {
                     entity.setX(px);
                     entity.setY(py2);
-                    ctx.effectPool.addUniqueEffect(new EmptyEffect(2000, this, EffectId.COOLDOWN_GOALIE), ctx);
-                    for (Entity other : ctx.entityPool) {
-                        if (other instanceof BallPortal && other.team == team && other.Y == py2) {
-                            ctx.effectPool.addUniqueEffect(new EmptyEffect(2000, other, EffectId.COOLDOWN_GOALIE), ctx);
-                        }
-                    }
                 }
             }
         };
         p1.team = team; p1.health = 99999; p1.maxHealth = 99999;
         context.entityPool.add(p1);
-
         BallPortal p2 = new BallPortal(team, goalie, context.entityPool, px, py2, context) {
             @Override
             public void triggerCollide(GameEngine ctx, Box entity) {
-                if (!this.isCooldown(new Instant(ctx.nowEpochMs)) && ctx.ball.id.equals(entity.id) && !ctx.anyPoss() && !ctx.contactExemptBall()) {
+                if (ctx.ball.id.equals(entity.id) && !ctx.anyPoss() && !ctx.contactExemptBall()) {
                     entity.setX(px);
                     entity.setY(py1);
-                    ctx.effectPool.addUniqueEffect(new EmptyEffect(2000, this, EffectId.COOLDOWN_GOALIE), ctx);
-                    for (Entity other : ctx.entityPool) {
-                        if (other instanceof BallPortal && other.team == team && other.Y == py1) {
-                            ctx.effectPool.addUniqueEffect(new EmptyEffect(2000, other, EffectId.COOLDOWN_GOALIE), ctx);
-                        }
-                    }
                 }
             }
         };
         p2.team = team; p2.health = 99999; p2.maxHealth = 99999;
         context.entityPool.add(p2);
     }
+    */
+
+    private void spawnBallPortal(GameEngine context, Titan goalie) {
+        int topHoopCY = (int) (context.c.getI("goal.low.y") + context.c.getI("goal.low.height") / 2.0);
+        int botHoopCY = (int) (context.c.getI("goal.low2.y") + context.c.getI("goal.low.height") / 2.0);
+        int px = (team == TeamAffiliation.HOME) ? context.c.GOALIE_XA_MIN - 350 - 50 : context.c.GOALIE_XH_MAX + 350;
+        int py1 = topHoopCY - 25;
+        int py2 = botHoopCY - 25;
+        
+        BallPortal p1 = new BallPortal(team, goalie, context.entityPool, px, py1, context);
+        p1.team = team; p1.health = 99999; p1.maxHealth = 99999;
+        context.entityPool.add(p1);
+        
+        BallPortal p2 = new BallPortal(team, goalie, context.entityPool, px, py2, context);
+        p2.team = team; p2.health = 99999; p2.maxHealth = 99999;
+        context.entityPool.add(p2);
+    }
 
     private void spawnRushLane(GameEngine context, Titan goalie) {
+        int topHoopCY = (int) (context.c.getI("goal.low.y") + context.c.getI("goal.low.height") / 2.0);
+        int botHoopCY = (int) (context.c.getI("goal.low2.y") + context.c.getI("goal.low.height") / 2.0);
+        int midHoopCY = (int) (context.c.getI("goal.hi.y") + context.c.getI("goal.hi.height") / 2.0);
         int lane = randIndex();
-        int ly = (lane == 0 ? 354 : lane == 1 ? 583 : 790) - 20;
+        int targetCY = (lane == 0 ? topHoopCY : (lane == 1 ? midHoopCY : botHoopCY));
+        int rHeight = 40;
+        int ly = targetCY - rHeight / 2;
         Fire rl = new Fire(goalie, 36, ly);
         rl.team = team;
         rl.width = 1976;
-        rl.height = 40;
+        rl.height = rHeight;
         rl.health = 99999;
         rl.maxHealth = 99999;
         context.entityPool.add(rl);
     }
 
     private void spawnParapet(GameEngine context, Titan goalie) {
-        int px = 1024 - 50;
-        int py = 354 - 50;
-        Portal platform = new Portal(team, goalie, context.entityPool, px, py, context);
-        platform.team = team;
-        platform.width = 100;
-        platform.height = 100;
-        platform.health = 99999;
-        platform.maxHealth = 99999;
+        int topHoopCY = (int) (context.c.getI("goal.low.y") + context.c.getI("goal.low.height") / 2.0);
+        int px = (team == TeamAffiliation.HOME) ? 350 - 50 : 1690 - 50;
+        int py = topHoopCY - 50;
+        Parapet platform = new Parapet(team, goalie, px, py);
         context.entityPool.add(platform);
     }
 
@@ -684,37 +878,43 @@ public class GuardianAbilities implements Serializable {
     }
 
     private void spawnHeroPortals(GameEngine context, Titan goalie) {
+        int topHoopCY = (int) (context.c.getI("goal.low.y") + context.c.getI("goal.low.height") / 2.0);
+        int botHoopCY = (int) (context.c.getI("goal.low2.y") + context.c.getI("goal.low.height") / 2.0);
         int offset = context.c.getI("guardian.heroportals.xoffset");
         int x1 = (team == TeamAffiliation.HOME) ? 1024 + offset : 1024 - offset;
 
-        Portal p1 = new Portal(team, goalie, context.entityPool, x1, 354 - 25, context);
+        Portal p1 = new Portal(team, goalie, context.entityPool, x1, topHoopCY - 25, context);
         p1.team = team; p1.health = 99999; p1.maxHealth = 99999;
         context.entityPool.add(p1);
 
-        Portal p2 = new Portal(team, goalie, context.entityPool, x1, 790 - 25, context);
+        Portal p2 = new Portal(team, goalie, context.entityPool, x1, botHoopCY - 25, context);
         p2.team = team; p2.health = 99999; p2.maxHealth = 99999;
         context.entityPool.add(p2);
     }
 
     private void spawnManaVines(GameEngine context, Titan goalie) {
+        int midHoopCY = (int) (context.c.getI("goal.hi.y") + context.c.getI("goal.hi.height") / 2.0);
         int vx = (team == TeamAffiliation.HOME) ? context.c.GOALIE_XH_MAX + 100 : context.c.GOALIE_XA_MIN - 100 - 80;
-        int vy = 583 - 100;
+        int vHeight = 200;
+        int vy = midHoopCY - vHeight / 2;
         Trap vines = new Trap(goalie, context, vx, vy);
         vines.team = team;
         vines.width = 80;
-        vines.height = 200;
+        vines.height = vHeight;
         vines.health = 99999;
         vines.maxHealth = 99999;
         context.entityPool.add(vines);
     }
 
     private void spawnForwardMedics(GameEngine context, Titan goalie) {
+        int midHoopCY = (int) (context.c.getI("goal.hi.y") + context.c.getI("goal.hi.height") / 2.0);
         int mx = (team == TeamAffiliation.HOME) ? 1600 : 400;
-        int my = 583 - 80;
+        int mHeight = 160;
+        int my = midHoopCY - mHeight / 2;
         Fire medics = new Fire(goalie, mx, my);
         medics.team = team;
         medics.width = 160;
-        medics.height = 160;
+        medics.height = mHeight;
         medics.health = 99999;
         medics.maxHealth = 99999;
         context.entityPool.add(medics);
@@ -823,15 +1023,8 @@ public class GuardianAbilities implements Serializable {
         }
         if (!pool.isEmpty()) {
             Titan target = pool.get(new Random().nextInt(pool.size()));
-            double oldPower = target.throwPower;
-            double oldRange = target.rangeFactor;
-            target.throwPower *= 1.20;
-            target.rangeFactor *= 1.20;
-            // Restore after 10s
-            context.effectPool.addUniqueEffect(new CallbackEffect(10000, target, EffectId.COOLDOWN_Q, () -> {
-                target.throwPower = oldPower;
-                target.rangeFactor = oldRange;
-            }), context);
+            context.effectPool.addUniqueEffect(new EmptyEffect(10000, target, EffectId.FLARE), context);
+            applyRosterStatBoosts(context);
         }
     }
 
@@ -867,10 +1060,24 @@ public class GuardianAbilities implements Serializable {
     }
 
     private void manaSummon(GameEngine context, Titan goalie) {
+        double y0 = getSpawnY(context, 0);
+        double y1 = getSpawnY(context, 1);
+        double y2 = getSpawnY(context, 2);
+        double d0 = Math.abs(goalie.Y - y0);
+        double d1 = Math.abs(goalie.Y - y1);
+        double d2 = Math.abs(goalie.Y - y2);
+        
+        int lane = 0;
+        if (d1 < d0 && d1 < d2) {
+            lane = 1;
+        } else if (d2 < d0 && d2 < d1) {
+            lane = 2;
+        }
+
+        double sx = getSpawnX(context, lane, team);
+        double sy = getSpawnY(context, lane);
+
         for (int i = 0; i < 2; i++) {
-            int lane = randIndex();
-            double sx = getSpawnX(context, lane, team);
-            double sy = getSpawnY(context, lane);
             LaneMinion sm = new LaneMinion(sx, sy, team, lane);
             sm.health = context.c.getD("minion.heavy.health");
             sm.maxHealth = sm.health;
@@ -898,30 +1105,6 @@ public class GuardianAbilities implements Serializable {
         }
     }
 
-    private void widenFieldBounds(GameEngine context) {
-        if (fieldDilated) return;
-        fieldDilated = true;
-
-        Const c = context.c;
-        double factor = 1.30;
-        
-        // Center X is 1024, Center Y is 609
-        int width = c.MAX_X - c.MIN_X;
-        c.MIN_X = (int) (1024 - (width * factor) / 2);
-        c.MAX_X = (int) (1024 + (width * factor) / 2);
-
-        int height = c.MAX_Y - c.MIN_Y;
-        c.MIN_Y = (int) (609 - (height * factor) / 2);
-        c.MAX_Y = (int) (609 + (height * factor) / 2);
-
-        int eWidth = c.E_MAX_X - c.E_MIN_X;
-        c.E_MIN_X = (int) (1024 - (eWidth * factor) / 2);
-        c.E_MAX_X = (int) (1024 + (eWidth * factor) / 2);
-
-        int eHeight = c.E_MAX_Y - c.E_MIN_Y;
-        c.E_MIN_Y = (int) (609 - (eHeight * factor) / 2);
-        c.E_MAX_Y = (int) (609 + (eHeight * factor) / 2);
-    }
 
     private void applyRosterStatBoosts(GameEngine context) {
         Set<String> purchased = (team == TeamAffiliation.HOME) ? context.homeGoaliePurchasedUpgrades : context.awayGoaliePurchasedUpgrades;
@@ -933,30 +1116,81 @@ public class GuardianAbilities implements Serializable {
         int durCount = 0;
         int hpCount = 0;
         int painCount = 0;
+        int stealCount = 0;
+        int damageCount = 0;
 
         if (purchased.contains("empowerment.t3.grit")) { hpCount++; painCount++; }
         if (purchased.contains("empowerment.t3.marksmanship")) { throwCount++; rangeCount++; }
         if (purchased.contains("empowerment.t3.footwork")) { speedCount++; }
         if (purchased.contains("empowerment.t3.discipline")) { cdCount++; durCount++; }
+        
         if (purchased.contains("empowerment.t6.apexform")) {
-            speedCount += 2; throwCount += 2; rangeCount += 2; cdCount += 2;
-            durCount += 2; hpCount += 2; painCount += 2;
+            speedCount += 1; throwCount += 1; rangeCount += 1; cdCount += 1;
+            durCount += 1; hpCount += 1; painCount += 1; stealCount += 1; damageCount += 1;
         }
 
-        // Focused Training logic (+1 speed as choice)
+        // Focused Training logic (+2 in highest existing mastery category)
+        int gritVal = purchased.contains("empowerment.t3.grit") ? 1 : 0;
+        int marksVal = purchased.contains("empowerment.t3.marksmanship") ? 1 : 0;
+        int footVal = purchased.contains("empowerment.t3.footwork") ? 1 : 0;
+        int discVal = purchased.contains("empowerment.t3.discipline") ? 1 : 0;
+
+        int highest = 2; // 0 = Grit, 1 = Marksmanship, 2 = Footwork, 3 = Discipline. Default to footwork/speed.
+        int maxVal = footVal;
+        if (gritVal > maxVal) { maxVal = gritVal; highest = 0; }
+        if (marksVal > maxVal) { maxVal = marksVal; highest = 1; }
+        if (discVal > maxVal) { maxVal = discVal; highest = 3; }
+
         int focusTimes = countPurchases(purchased, "empowerment.t5.focusedtraining");
-        speedCount += focusTimes;
+        if (focusTimes > 0) {
+            int bonus = focusTimes * 2;
+            if (highest == 0) {
+                hpCount += bonus;
+                painCount += bonus;
+            } else if (highest == 1) {
+                throwCount += bonus;
+                rangeCount += bonus;
+            } else if (highest == 2) {
+                speedCount += bonus;
+            } else {
+                cdCount += bonus;
+                durCount += bonus;
+            }
+        }
 
         for (Titan t : context.players) {
             if (t.team == team && t.getType() != null && t.getType() != TitanType.GOALIE) {
                 // Apply enhancements
                 t.speed = t.baseSpeed * Math.pow(context.c.getD("masteries.speed.mult"), speedCount);
-                t.throwPower = t.baseThrowPower * Math.pow(context.c.getD("masteries.throw.mult"), throwCount);
-                t.rangeFactor = t.baseRangeFactor * Math.pow(context.c.getD("masteries.range.mult"), rangeCount);
-                t.cooldownFactor = t.baseCooldownFactor / Math.pow(context.c.getD("masteries.cooldowns.mult"), cdCount);
+
+                boolean hasSharpshooter = context.effectPool.hasEffect(t, EffectId.FLARE);
+                boolean hasShoot = context.effectPool.hasEffect(t, EffectId.SHOOT);
+                double sharpMult = hasSharpshooter ? 1.20 : 1.0;
+                double shootMult = hasShoot ? 1.50 : 1.0;
+
+                t.throwPower = t.baseThrowPower * Math.pow(context.c.getD("masteries.throw.mult"), throwCount) * sharpMult * shootMult;
+                t.rangeFactor = t.baseRangeFactor * Math.pow(context.c.getD("masteries.range.mult"), rangeCount) * sharpMult;
+                
+                double cf = t.baseCooldownFactor / Math.pow(context.c.getD("masteries.cooldowns.mult"), cdCount);
+                if (purchased.contains("cultivation.t4.manafrenzy")) {
+                    double currentMana = (team == TeamAffiliation.HOME) ? context.homeGoalieMana : context.awayGoalieMana;
+                    double frenzyCdr = currentMana / 30.0;
+                    double frenzyMult = Math.max(0.0, 1.0 - (frenzyCdr / 100.0));
+                    cf *= frenzyMult;
+                }
+                t.cooldownFactor = cf;
+
                 t.durationsFactor = t.baseDurationsFactor * Math.pow(context.c.getD("masteries.effectDuration.mult"), durCount);
                 t.maxHealth = t.baseMaxHealth * Math.pow(context.c.getD("masteries.health.mult"), hpCount);
                 t.painReduction = t.basePainReduction * Math.pow(context.c.getD("masteries.painReduction.mult"), painCount);
+                
+                double heistMult = purchased.contains("empowerment.t5.heistcamp") ? 1.2 : 1.0;
+                double stealBonus = 0.0;
+                if (purchased.contains("empowerment.t4.forecheck") && t.X >= 680 && t.X <= 1368) {
+                    stealBonus = context.c.getD("guardian.forecheck.bonus");
+                }
+                t.stealRad = (int) ((t.baseStealRad * heistMult * Math.pow(context.c.getD("masteries.stealRadius.mult"), stealCount)) + stealBonus);
+                t.damageFactor = t.baseDamageFactor * Math.pow(context.c.getD("masteries.damage.mult"), damageCount);
             }
         }
     }
@@ -974,7 +1208,7 @@ public class GuardianAbilities implements Serializable {
 
     public double getMaxMana(GameEngine context) {
         Set<String> purchased = (team == TeamAffiliation.HOME) ? context.homeGoaliePurchasedUpgrades : context.awayGoaliePurchasedUpgrades;
-        return purchased.contains("cultivation.t3.highermanacap") ? 1000.0 : 500.0;
+        return purchased.contains("cultivation.t3.highermanacap") ? 1000.0 : 250.0;
     }
 
     public double getMaxFuel(GameEngine context) {
@@ -1021,52 +1255,103 @@ public class GuardianAbilities implements Serializable {
 
 
     private void spawnWallPortals(GameEngine context, Titan goalie) {
-        double wallX = (team == TeamAffiliation.HOME) ? context.c.MIN_X : context.c.MAX_X;
-        double midX = 1024.0;
-        int count = context.c.getI("guardian.wallportals.count");
         int cd = context.c.getI("guardian.wallportals.cooldown");
+        int count = 15;
         
-        for (int i = 0; i < count; i++) {
-            double y = context.c.MIN_Y + 50.0 + i * (context.c.MAX_Y - context.c.MIN_Y - 100.0) / (count - 1.0);
-            final double targetY = y;
-            
-            BallPortal pWall = new BallPortal(team, goalie, context.entityPool, (int)wallX, (int)y, context) {
-                @Override
-                public void triggerCollide(GameEngine ctx, Box entity) {
-                    if (!this.isCooldown(new Instant(ctx.nowEpochMs)) && ctx.ball.id.equals(entity.id) && !ctx.anyPoss() && !ctx.contactExemptBall()) {
-                        entity.setX(midX);
-                        entity.setY(targetY);
-                        ctx.effectPool.addUniqueEffect(new EmptyEffect(cd, this, EffectId.COOLDOWN_GOALIE), ctx);
-                        for (Entity other : ctx.entityPool) {
-                            if (other instanceof BallPortal && other.team == team && other.X == (int)midX && Math.abs(other.Y - targetY) < 5.0) {
-                                ctx.effectPool.addUniqueEffect(new EmptyEffect(cd, other, EffectId.COOLDOWN_GOALIE), ctx);
-                            }
-                        }
-                    }
-                }
-            };
-            pWall.team = team; pWall.health = 99999; pWall.maxHealth = 99999;
-            pWall.width = 40; pWall.height = 40;
-            context.entityPool.add(pWall);
+        if (team == TeamAffiliation.HOME) {
+            // HOME goalie purchased upgrade (opponent is AWAY)
+            // Top-to-Bottom Pairing (15 sets = 30 portals total)
+            double startX = 1100.0;
+            double endX = 2012.0;
+            double topY = 36.0;
+            double botY = 1182.0;
+            for (int i = 0; i < count; i++) {
+                int xVal = (int) (startX + i * (endX - startX) / (count - 1.0));
+                
+                BallPortal pTop = new BallPortal(team, goalie, context.entityPool, xVal, (int)topY, context);
+                pTop.team = team; pTop.health = 99999; pTop.maxHealth = 99999;
+                pTop.width = 40; pTop.height = 40;
+                pTop.destinationX = xVal;
+                pTop.destinationY = (int)botY;
+                context.entityPool.add(pTop);
 
-            BallPortal pMid = new BallPortal(team, goalie, context.entityPool, (int)midX, (int)y, context) {
-                @Override
-                public void triggerCollide(GameEngine ctx, Box entity) {
-                    if (!this.isCooldown(new Instant(ctx.nowEpochMs)) && ctx.ball.id.equals(entity.id) && !ctx.anyPoss() && !ctx.contactExemptBall()) {
-                        entity.setX(wallX);
-                        entity.setY(targetY);
-                        ctx.effectPool.addUniqueEffect(new EmptyEffect(cd, this, EffectId.COOLDOWN_GOALIE), ctx);
-                        for (Entity other : ctx.entityPool) {
-                            if (other instanceof BallPortal && other.team == team && other.X == (int)wallX && Math.abs(other.Y - targetY) < 5.0) {
-                                ctx.effectPool.addUniqueEffect(new EmptyEffect(cd, other, EffectId.COOLDOWN_GOALIE), ctx);
-                            }
-                        }
-                    }
-                }
-            };
-            pMid.team = team; pMid.health = 99999; pMid.maxHealth = 99999;
-            pMid.width = 40; pMid.height = 40;
-            context.entityPool.add(pMid);
+                BallPortal pBot = new BallPortal(team, goalie, context.entityPool, xVal, (int)botY, context);
+                pBot.team = team; pBot.health = 99999; pBot.maxHealth = 99999;
+                pBot.width = 40; pBot.height = 40;
+                pBot.destinationX = xVal;
+                pBot.destinationY = (int)topY;
+                context.entityPool.add(pBot);
+            }
+
+            // Backwall-to-1/3-Line Pairing (15 sets = 30 portals total)
+            double backX = 2012.0;
+            double thirdX = 1368.0;
+            double startY = 36.0;
+            double endY = 1182.0;
+            for (int i = 0; i < count; i++) {
+                int yVal = (int) (startY + i * (endY - startY) / (count - 1.0));
+
+                BallPortal pBack = new BallPortal(team, goalie, context.entityPool, (int)backX, yVal, context);
+                pBack.team = team; pBack.health = 99999; pBack.maxHealth = 99999;
+                pBack.width = 40; pBack.height = 40;
+                pBack.destinationX = (int)thirdX;
+                pBack.destinationY = yVal;
+                context.entityPool.add(pBack);
+
+                BallPortal pThird = new BallPortal(team, goalie, context.entityPool, (int)thirdX, yVal, context);
+                pThird.team = team; pThird.health = 99999; pThird.maxHealth = 99999;
+                pThird.width = 40; pThird.height = 40;
+                pThird.destinationX = (int)backX;
+                pThird.destinationY = yVal;
+                context.entityPool.add(pThird);
+            }
+        } else {
+            // AWAY goalie purchased upgrade (opponent is HOME)
+            // Top-to-Bottom Pairing (15 sets = 30 portals total)
+            double startX = 36.0;
+            double endX = 948.0;
+            double topY = 36.0;
+            double botY = 1182.0;
+            for (int i = 0; i < count; i++) {
+                int xVal = (int) (startX + i * (endX - startX) / (count - 1.0));
+
+                BallPortal pTop = new BallPortal(team, goalie, context.entityPool, xVal, (int)topY, context);
+                pTop.team = team; pTop.health = 99999; pTop.maxHealth = 99999;
+                pTop.width = 40; pTop.height = 40;
+                pTop.destinationX = xVal;
+                pTop.destinationY = (int)botY;
+                context.entityPool.add(pTop);
+
+                BallPortal pBot = new BallPortal(team, goalie, context.entityPool, xVal, (int)botY, context);
+                pBot.team = team; pBot.health = 99999; pBot.maxHealth = 99999;
+                pBot.width = 40; pBot.height = 40;
+                pBot.destinationX = xVal;
+                pBot.destinationY = (int)topY;
+                context.entityPool.add(pBot);
+            }
+
+            // Backwall-to-1/3-Line Pairing (15 sets = 30 portals total)
+            double backX = 36.0;
+            double thirdX = 680.0;
+            double startY = 36.0;
+            double endY = 1182.0;
+            for (int i = 0; i < count; i++) {
+                int yVal = (int) (startY + i * (endY - startY) / (count - 1.0));
+
+                BallPortal pBack = new BallPortal(team, goalie, context.entityPool, (int)backX, yVal, context);
+                pBack.team = team; pBack.health = 99999; pBack.maxHealth = 99999;
+                pBack.width = 40; pBack.height = 40;
+                pBack.destinationX = (int)thirdX;
+                pBack.destinationY = yVal;
+                context.entityPool.add(pBack);
+
+                BallPortal pThird = new BallPortal(team, goalie, context.entityPool, (int)thirdX, yVal, context);
+                pThird.team = team; pThird.health = 99999; pThird.maxHealth = 99999;
+                pThird.width = 40; pThird.height = 40;
+                pThird.destinationX = (int)backX;
+                pThird.destinationY = yVal;
+                context.entityPool.add(pThird);
+            }
         }
     }
 
@@ -1080,15 +1365,21 @@ public class GuardianAbilities implements Serializable {
         if (purchased.contains("fortress.t4.bastionprotocol")) {
             spawnBastionWalls(context, goalie);
         }
+        if (purchased.contains("fortress.t4.barrage") && !activeBarrageRegions.isEmpty()) {
+            clearBarrageConfig(context);
+            for (int i = 0; i < activeBarrageRegions.size(); i++) {
+                spawnBarrageRegion(context, activeBarrageRegions.get(i), activeBarrageTypes.get(i));
+            }
+        }
 
         if (purchased.contains("siege.t3.rushlane")) {
             spawnRushLane(context, goalie);
         }
-        if (purchased.contains("siege.t3.forwardmines")) {
+        if (purchased.contains("siege.t3.forwardmines") || purchased.contains("siege.t5.incendiarymines") || purchased.contains("siege.t5.forwardoutpost")) {
             spawnForwardMines(context, goalie);
         }
-        if (purchased.contains("siege.t3.ballportal_rough")) {
-            spawnBallPortalRough(context, goalie);
+        if (purchased.contains("siege.t3.ballportal")) {
+            spawnBallPortal(context, goalie);
         }
         if (purchased.contains("siege.t4.parapet")) {
             spawnParapet(context, goalie);

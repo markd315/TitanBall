@@ -173,7 +173,10 @@ public class LoginController {
             return new ResponseEntity<>("Shutting down", HttpStatus.SERVICE_UNAVAILABLE);
         }
         String gameId = "tutorial-" + UUID.randomUUID().toString();
-        gameserver.gamemanager.ServerApplication.addNewTutorial(gameId, auth.getName());
+        String email = (auth.getPrincipal() instanceof authserver.models.User)
+                ? ((authserver.models.User) auth.getPrincipal()).getEmail()
+                : auth.getName();
+        gameserver.gamemanager.ServerApplication.addNewTutorial(gameId, email);
         return new ResponseEntity<>(gameId, HttpStatus.OK);
     }
 

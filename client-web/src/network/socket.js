@@ -32,6 +32,10 @@ export function connectGame(gameID) {
         const posX = isGoalie ? Math.floor((gameState.mouseX || 0) / 0.9375) : (gameState.mouseX || 0);
         const posY = gameState.mouseY || 0;
         
+        if (gameState.game && gameState.game.underControl && gameState.game.underControl.possession !== 1) {
+          gameState.controlsHeld.artisanShot = 'SHOT';
+        }
+
         const controls = {
           ...gameState.controlsHeld,
           token: token,

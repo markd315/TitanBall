@@ -26,7 +26,8 @@ import com.fasterxml.jackson.annotation.*;
     @JsonSubTypes.Type(value = gameserver.entity.minions.Trap.class, name = "Trap"),
     @JsonSubTypes.Type(value = gameserver.entity.minions.LaneMinion.class, name = "LaneMinion"),
     @JsonSubTypes.Type(value = gameserver.entity.minions.Dragon.class, name = "Dragon"),
-    @JsonSubTypes.Type(value = gameserver.entity.minions.SecondBall.class, name = "SecondBall")
+    @JsonSubTypes.Type(value = gameserver.entity.minions.SecondBall.class, name = "SecondBall"),
+    @JsonSubTypes.Type(value = gameserver.entity.minions.Parapet.class, name = "Parapet")
 })
 public class Entity extends Box   {
     public double health, maxHealth;
@@ -59,7 +60,14 @@ public class Entity extends Box   {
     }
 
     public void damage(GameEngine context, double health) {
-        health /= this.armorRatio;
+        double currentArmor = this.armorRatio;
+        if (this instanceof Titan t) {
+            java.util.Set<String> purchased = (t.team == TeamAffiliation.HOME) ? context.homeGoaliePurchasedUpgrades : context.awayGoaliePurchasedUpgrades;
+            if (purchased != null && purchased.contains("empowerment.t5.clutchgene") && t.possession == 1) {
+                currentArmor *= 1.3;
+            }
+        }
+        health /= currentArmor;
         this.health -= health;
         if (this.health < 0.0)
             this.die(context);

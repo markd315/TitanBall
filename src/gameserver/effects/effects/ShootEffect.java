@@ -23,21 +23,11 @@ public class ShootEffect extends Effect  {
 
     @Override
     public void onActivate(GameEngine context) {
-        if(on instanceof Titan) {
-            Titan t = (Titan) on;
-            t.throwPower *= shotRatio;
-        }
     }
 
     @Override
     public void onCease(GameEngine context) {
-        if(!ceased){
-            if(on instanceof Titan) {
-                Titan t = (Titan) on;
-                t.throwPower /= shotRatio;
-            }
-            ceased = true;
-        }
+        ceased = true;
     }
 
     @Override

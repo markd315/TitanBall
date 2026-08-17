@@ -176,7 +176,7 @@ Cultivation Tree (Mana/Long-Term)
 
     Tier 4 (Pick 1 of 2, requires 2 from T3):
 
-        Mana Vines: Spawns a growing hazard entity at the base entrance. Collisions continuously refresh SLOW and BURN effect dur timers.
+        Mana Vines: Spawns a hazard entity at the base entrance that slows and burns enemies, granting +30 mana when an enemy passes through.
 
         Mana Frenzy: Applies a multiplier to masteries.cooldowns.mult for titans that scales with the current mana bank.
 

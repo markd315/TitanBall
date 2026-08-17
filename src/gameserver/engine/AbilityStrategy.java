@@ -328,6 +328,9 @@ public class AbilityStrategy    {
         sel.select(Collections.EMPTY_SET, x, y, caster);
         if (sel.latestCollider.intersects(context.ball.asBounds()) && !context.anyPoss()) {
             goOnCooldown(caster, "titan.suck.cdms", 'Q');
+            if (context.lastPossessed != null && context.lastPossessed.equals(caster.id)) {
+                context.lastPossessed = null;
+            }
             double tx = caster.X + caster.centerDist - context.ball.centerDist;
             double ty = caster.Y + caster.centerDist - context.ball.centerDist;
             double ang = Util.degreesFromCoords(tx - context.ball.X, ty - context.ball.Y);
@@ -336,7 +339,16 @@ public class AbilityStrategy    {
             while (!context.anyPoss() && limit < maxDist) {
                 context.ball.X += 3.0 * Math.cos(Math.toRadians((ang)));
                 context.ball.Y += 3.0 * Math.sin(Math.toRadians((ang)));
-                context.intersectAll();
+                if (!context.contactExemptBall()) {
+                    for (int n = context.players.length - 1; n >= 0; n--) {
+                        Titan p = context.players[n];
+                        if (p.id.equals(caster.id) || p.team != caster.team) {
+                            context.intersectBall(n + 1, (int) p.X, (int) p.Y);
+                        }
+                    }
+                    Entity[] arr = new Entity[1];
+                    context.ball.collidesSolid(context, context.entityPool.toArray(arr));
+                }
                 try {
                     context.detectGoals();
                 } catch (Exception e) {
@@ -452,12 +464,20 @@ public class AbilityStrategy    {
             goOnCooldown(caster, "titan.steal.cdms", 'S');
             if (context.titanInPossession().isPresent()) {
                 Titan tip = context.titanInPossession().get();
-                double cCtrX = caster.X + caster.width / 2;
-                double cCtrY = caster.Y + caster.height / 2;
-                if (context.ball.intersectCircle(cCtrX, cCtrY, caster.stealRad) && context.ballVisible) {
-                    context.stats.grant(context, tip, StatEngine.StatEnum.TURNOVERS);
-                    context.stats.grant(context, caster, StatEngine.StatEnum.STEALS);
-                    tip.possession = 0;
+                boolean isOccupyingParapet = false;
+                for (Entity e : context.entityPool) {
+                    if (e instanceof Parapet && e.asBounds().intersects(tip.asBounds())) {
+                        isOccupyingParapet = true;
+                        break;
+                    }
+                }
+                if (!isOccupyingParapet) {
+                    double cCtrX = caster.X + caster.width / 2;
+                    double cCtrY = caster.Y + caster.height / 2;
+                    if (context.ball.intersectCircle(cCtrX, cCtrY, caster.stealRad) && context.ballVisible) {
+                        context.stats.grant(context, tip, StatEngine.StatEnum.TURNOVERS);
+                        context.stats.grant(context, caster, StatEngine.StatEnum.STEALS);
+                        tip.possession = 0;
                     eff = new EmptyEffect((int) (c.STOLEN_STUN * caster.durationsFactor), tip, EffectId.STEAL);
                     context.effectPool.addStackingEffect(caster, eff);
 
@@ -469,8 +489,9 @@ public class AbilityStrategy    {
                     return true;
                 }
             }
-            caster.pushMove();
         }
-        return false;
+        caster.pushMove();
     }
+    return false;
+}
 }

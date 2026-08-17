@@ -62,7 +62,27 @@ export function drawAimAndRangeIndicators(ctx, game, controlsHeld, camX, camY) {
             }
         }
 
-        const lobDistVal = LOB_DIST * pow * gravityMult * noFlyMult;
+        let parapetMult = 1.0;
+        if (game.entityPool) {
+            for (const e of game.entityPool) {
+                if (e.entityClass === 'Parapet') {
+                    const px = t.X;
+                    const py = t.Y;
+                    const pw = t.width || 70;
+                    const ph = t.height || 70;
+                    const ex = e.X;
+                    const ey = e.Y;
+                    const ew = e.width || 100;
+                    const eh = e.height || 100;
+                    if (px < ex + ew && px + pw > ex && py < ey + eh && py + ph > ey) {
+                        parapetMult = 1.5;
+                        break;
+                    }
+                }
+            }
+        }
+
+        const lobDistVal = LOB_DIST * pow * gravityMult * noFlyMult * parapetMult;
         
         // Yellow lob block: 0 to 0.2 * lobDistVal + BALL_HALF
         drawLineSegment(0, 0.2 * lobDistVal + BALL_HALF, 'rgba(255, 230, 0, 0.65)');
@@ -112,12 +132,11 @@ export function drawAimAndRangeIndicators(ctx, game, controlsHeld, camX, camY) {
     } else {
         // 2. If player does NOT possess the ball, draw their turquoise steal radius circle
         const stealRad = t.stealRad || 70;
-        const w = stealRad * 2 * (t.rangeFactor || 1.0);
         const cx = t.X + t.width / 2 - camX;
         const cy = t.Y + t.height / 2 - camY;
         
         ctx.beginPath();
-        ctx.arc(cx, cy, w / 2, 0, Math.PI * 2);
+        ctx.arc(cx, cy, stealRad, 0, Math.PI * 2);
         ctx.strokeStyle = 'rgba(64, 224, 208, 0.4)'; // Turquoise
         ctx.lineWidth = 3;
         ctx.stroke();

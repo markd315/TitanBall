@@ -171,6 +171,7 @@ public class Masteries   {
             t.baseMaxHealth = t.maxHealth;
             t.basePainReduction = t.painReduction;
             t.baseStealRad = t.stealRad;
+            t.baseDamageFactor = t.damageFactor;
             t.typeAndMasteriesLocked = true;
         }
     }

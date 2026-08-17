@@ -30,9 +30,10 @@ public class Dragon extends Entity implements Serializable {
         this.solid = false;
     }
 
-    @Override
-    public void damage(GameEngine context, double amount) {
-        TeamAffiliation damageTeam = findNearestPlayerTeam(context);
+    public void damage(GameEngine context, double amount, TeamAffiliation damageTeam) {
+        if (damageTeam == null || damageTeam == TeamAffiliation.UNAFFILIATED) {
+            damageTeam = findNearestPlayerTeam(context);
+        }
         double dmgTaken = amount / this.armorRatio;
         
         if (damageTeam == TeamAffiliation.HOME) {
@@ -58,6 +59,11 @@ public class Dragon extends Entity implements Serializable {
                 }
             }
         }
+    }
+
+    @Override
+    public void damage(GameEngine context, double amount) {
+        damage(context, amount, null);
     }
 
     private TeamAffiliation findNearestPlayerTeam(GameEngine context) {

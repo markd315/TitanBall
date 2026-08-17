@@ -20,6 +20,8 @@ public class BallPortal extends Entity implements Collidable, Serializable {
     private UUID createdById;
     private Instant createdAt;//only used serverside so clock skew is irrelevant
     private Instant cdUntil;
+    public Integer destinationX;
+    public Integer destinationY;
 
     public BallPortal(TeamAffiliation team, Titan pl, List<Entity> pool, int x, int y, GameEngine context) {
         super(team);
@@ -98,17 +100,30 @@ public class BallPortal extends Entity implements Collidable, Serializable {
         return Optional.empty();
     }
 
-    private void triggerCd(Instant now) {
+    public void triggerCd(Instant now) {
         this.cdUntil = now.plus(COOLDOWN_MS);
     }
 
     @Override
     public void triggerCollide(GameEngine context, Box entity) {
         if (!this.isCooldown(new Instant(context.nowEpochMs)) && !context.anyPoss() && !context.contactExemptBall()) {
-            Optional<BallPortal> p = findFriendlyBallPortal(context, this.createdById);
             if(!context.ball.id.equals(entity.id)){
                 return;
             }
+            if (destinationX != null && destinationY != null) {
+                this.triggerCd(new Instant(context.nowEpochMs));
+                for (Entity other : context.entityPool) {
+                    if (other instanceof BallPortal && other.X == destinationX && other.Y == destinationY) {
+                        ((BallPortal) other).triggerCd(new Instant(context.nowEpochMs));
+                    }
+                }
+                int tx = destinationX + 25 - context.ball.centerDist;
+                int ty = destinationY + 25 - context.ball.centerDist;
+                entity.setX(tx);
+                entity.setY(ty);
+                return;
+            }
+            Optional<BallPortal> p = findFriendlyBallPortal(context, this.createdById);
             if (p.isPresent() && !p.get().isCooldown(new Instant(context.nowEpochMs))) {
                 this.triggerCd(new Instant(context.nowEpochMs));
                 p.get().triggerCd(new Instant(context.nowEpochMs));

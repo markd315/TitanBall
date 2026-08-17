@@ -39,9 +39,10 @@ export function drawPlayers(ctx, game, camX, camY) {
             action = 'atk2';
         }
 
-        let spriteKey = `${t.type}_${action}${facing}`;
+        const playerType = t.type || (i === 0 || i === 1 ? 'GOALIE' : 'WARRIOR');
+        let spriteKey = `${playerType}_${action}${facing}`;
         
-        if (t.type === 'GOALIE') {
+        if (playerType === 'GOALIE') {
             const goalieCdEffect = game.effectPool && game.effectPool.effects.find(ef => ef.effect === 'COOLDOWN_GOALIE' && ef.on && ef.on.id === t.id);
             if (goalieCdEffect) {
                 if (goalieCdEffect.percentLeft > 90) {
@@ -53,7 +54,8 @@ export function drawPlayers(ctx, game, camX, camY) {
                 spriteKey = `GOALIE_stand${facing}`;
             }
         }
-        const img = AssetManager.images[spriteKey] || AssetManager.images[`${t.type}_stand${facing}`];
+        
+        const img = AssetManager.images[spriteKey] || AssetManager.images[`${playerType}_stand${facing}`];
 
         // Apply team color tint via globalCompositeOperation if desired, or just draw
         // (Vanilla canvas tinting is slow unless pre-rendered, so we'll just draw for now)
@@ -138,8 +140,8 @@ export function drawPlayers(ctx, game, camX, camY) {
             const now = Date.now();
             if (now - _playerLogThrottle > 2000) {
                 console.warn(
-                    `[DIAG] Sprite MISS for player ${i}: key='${spriteKey}' | type='${t.type}' | action='${action}' | facing='${facing}' | actionState='${t.actionState}'\n` +
-                    `  Available keys matching '${t.type}_':`, Object.keys(AssetManager.images).filter(k => k.startsWith(t.type + '_'))
+                    `[DIAG] Sprite MISS for player ${i}: key='${spriteKey}' | type='${playerType}' | action='${action}' | facing='${facing}' | actionState='${t.actionState}'\n` +
+                    `  Available keys matching '${playerType}_':`, Object.keys(AssetManager.images).filter(k => k.startsWith(playerType + '_'))
                 );
                 _playerLogThrottle = now;
             }
@@ -150,7 +152,7 @@ export function drawPlayers(ctx, game, camX, camY) {
             ctx.fillStyle = 'white';
             ctx.font = '10px monospace';
             ctx.textAlign = 'center';
-            ctx.fillText(t.type || '?', Math.floor(t.X - camX) + 35, Math.floor(t.Y - camY) + 38);
+            ctx.fillText(playerType, Math.floor(t.X - camX) + 35, Math.floor(t.Y - camY) + 38);
             ctx.restore();
         }
     }

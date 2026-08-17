@@ -22,9 +22,6 @@ public class Trap extends gameserver.entity.Entity implements Collidable, Serial
         this.health = 8;
         this.maxHealth = 8;
         this.solid = false;
-        context.effectPool.addUniqueEffect(
-                new EmptyEffect(context.c.getI("trap.stealth.dur"), this, EffectId.STEALTHED),
-                context);
     }
 
     @Override
@@ -32,9 +29,6 @@ public class Trap extends gameserver.entity.Entity implements Collidable, Serial
         if (box instanceof Entity) {
             Entity entity = (Entity) box;
             if (entity.team != this.team) {
-                if(context.effectPool.hasEffect(this, EffectId.STEALTHED)){
-                    context.effectPool.cullAllOn(context, this);
-                }
                 context.effectPool.addUniqueEffect(
                         new RatioEffect(context.c.getI("trap.dur"), entity, EffectId.SLOW, context.c.getD("trap.ratio")), context);
             }

@@ -36,8 +36,14 @@ export async function setControlPreset(preset) {
   }
 }
 
+export function getDefaultPreset() {
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+  return isMobile ? 'mobile-double' : 'rts';
+}
+
 export async function initControlConfig() {
-  const saved = localStorage.getItem('controlPreset') || 'rts';
+  const defaultPreset = getDefaultPreset();
+  const saved = localStorage.getItem('controlPreset') || defaultPreset;
   await setControlPreset(saved);
   // Set UI dropdown value if present
   const select = document.getElementById('controls-select');
@@ -111,6 +117,22 @@ export function initKeyboard() {
     const action = getActionForKey(e);
     if (action && actionMap[action]) {
       const field = actionMap[action];
+      
+      if (field === 'E' && !gameState.controlsHeld.E) {
+        const game = gameState.game;
+        if (game && game.underControl) {
+          const t = game.underControl;
+          if (t.type === 'ARTISAN' && t.possession === 1) {
+            const current = gameState.controlsHeld.artisanShot || 'SHOT';
+            let next = 'LEFT';
+            if (current === 'LEFT') next = 'RIGHT';
+            else if (current === 'RIGHT') next = 'SHOT';
+            gameState.controlsHeld.artisanShot = next;
+            console.log(`Artisan shot mode cycled to: ${next}`);
+          }
+        }
+      }
+      
       gameState.controlsHeld[field] = true;
       
       if (field === 'CAM') {

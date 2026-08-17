@@ -49,6 +49,25 @@ export function drawMinions(ctx, game, camX, camY) {
     staticFrame = (staticFrame + 1) % 60; // 60 frames per cycle roughly
     const isAltFrame = staticFrame > 30;
 
+    const isGoalie = game.underControl && game.underControl.type === 'GOALIE';
+
+    // For field players, pre-calculate the frontmost minion X per lane per team to only render lead groups
+    const homeLeadX = [-Infinity, -Infinity, -Infinity];
+    const awayLeadX = [Infinity, Infinity, Infinity];
+    if (!isGoalie) {
+        for (let i = 0; i < game.entityPool.length; i++) {
+            const e = game.entityPool[i];
+            if (e.entityClass === 'LaneMinion' && e.health > 0) {
+                const lane = e.laneIndex >= 0 && e.laneIndex < 3 ? e.laneIndex : 0;
+                if (e.team === 'HOME') {
+                    if (e.X > homeLeadX[lane]) homeLeadX[lane] = e.X;
+                } else if (e.team === 'AWAY') {
+                    if (e.X < awayLeadX[lane]) awayLeadX[lane] = e.X;
+                }
+            }
+        }
+    }
+
     for (let i = 0; i < game.entityPool.length; i++) {
         const e = game.entityPool[i];
         let imgKey = null;
@@ -56,10 +75,18 @@ export function drawMinions(ctx, game, camX, camY) {
         const isCooldown = e.cdUntilEpochMs && game.nowEpochMs < e.cdUntilEpochMs;
 
         if (e.entityClass === 'Wall') imgKey = 'wall';
-        else if (e.entityClass === 'Trap') imgKey = isAltFrame ? 'trap2' : 'trap1';
+        else if (e.entityClass === 'Trap') {
+            const isVines = (e.width === 80 && e.height === 200) || e.width === 80;
+            imgKey = isVines ? 'vines' : (isAltFrame ? 'trap2' : 'trap1');
+        }
         else if (e.entityClass === 'BallPortal') imgKey = isCooldown ? 'bportalcd' : (isAltFrame ? 'bportal2' : 'bportal1');
         else if (e.entityClass === 'Portal') imgKey = isCooldown ? 'portalcd' : (isAltFrame ? 'portal2' : 'portal1');
-        else if (e.entityClass === 'Fire') imgKey = isAltFrame ? 'fire2' : 'fire1';
+        else if (e.entityClass === 'Fire') {
+            const isBarrage = (e.height === 252 || e.height === 260 || (e.width === 150 && e.height === 280));
+            if (!isBarrage) {
+                imgKey = isAltFrame ? 'fire2' : 'fire1';
+            }
+        }
         else if (e.entityClass === 'Cage') imgKey = 'cage';
         else if (e.entityClass === 'Wolf') {
             const face = e.facingRight ? 'R' : 'L';
@@ -78,11 +105,18 @@ export function drawMinions(ctx, game, camX, camY) {
         }
 
         else if (e.entityClass === 'LaneMinion') {
-            ctx.save();
-            const isGoalie = game.underControl && game.underControl.type === 'GOALIE';
-            ctx.globalAlpha = isGoalie ? 0.7 : 0.2;
+            if (!isGoalie) {
+                const lane = e.laneIndex >= 0 && e.laneIndex < 3 ? e.laneIndex : 0;
+                const leadX = e.team === 'HOME' ? homeLeadX[lane] : awayLeadX[lane];
+                // Do not draw minions that aren't in the lead group of minions
+                if (e.team === 'HOME' && (leadX - e.X > 65.0)) continue;
+                if (e.team === 'AWAY' && (e.X - leadX > 65.0)) continue;
+            }
 
-            const radius = isGoalie ? 20 : 10;
+            ctx.save();
+            ctx.globalAlpha = isGoalie ? 0.7 : 0.30;
+
+            const radius = isGoalie ? 20 : 4;
             const mx = Math.floor(e.X - camX);
             const my = Math.floor(e.Y - camY);
 
@@ -92,13 +126,15 @@ export function drawMinions(ctx, game, camX, camY) {
             ctx.fillStyle = e.team === 'HOME' ? '#3b82f6' : '#ffffff';
             ctx.fill();
 
-            // Border arc representing health
-            ctx.beginPath();
-            const ratio = Math.max(0, Math.min(1, e.health / e.maxHealth));
-            ctx.arc(mx, my, radius, -Math.PI / 2, -Math.PI / 2 + 2 * Math.PI * ratio);
-            ctx.strokeStyle = '#000000';
-            ctx.lineWidth = 3;
-            ctx.stroke();
+            // Border arc representing health (only for Guardians)
+            if (isGoalie) {
+                ctx.beginPath();
+                const ratio = Math.max(0, Math.min(1, e.health / e.maxHealth));
+                ctx.arc(mx, my, radius, -Math.PI / 2, -Math.PI / 2 + 2 * Math.PI * ratio);
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+            }
 
             ctx.restore();
         }

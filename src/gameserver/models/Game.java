@@ -53,7 +53,7 @@ public class Game   {
     protected boolean extremeSuddenDeath = false;
     protected boolean tieAble = false;
     public final double GOALIE_DISABLE_TIME = c.getD("goalie.disable.time");
-    public final double PAIN_DISABLE_TIME = 9999999.0; //420
+    public final double PAIN_DISABLE_TIME = 9999999.0;
     public GameOptions options;
     public EffectPool effectPool = new EffectPool();
     public List<Entity> entityPool = new ArrayList<>();
@@ -75,6 +75,16 @@ public class Game   {
     public boolean awayDeepFreezeActive = false;
     public boolean homeLowGravityActive = false;
     public boolean awayLowGravityActive = false;
+    public boolean dragonSpawned = false;
+    public boolean dragonPreIndicatorActive = false;
+    public List<Integer> homeActiveBarrageRegions = new ArrayList<>();
+    public List<String> homeActiveBarrageTypes = new ArrayList<>();
+    public List<Integer> homePendingBarrageRegions = new ArrayList<>();
+    public List<String> homePendingBarrageTypes = new ArrayList<>();
+    public List<Integer> awayActiveBarrageRegions = new ArrayList<>();
+    public List<String> awayActiveBarrageTypes = new ArrayList<>();
+    public List<Integer> awayPendingBarrageRegions = new ArrayList<>();
+    public List<String> awayPendingBarrageTypes = new ArrayList<>();
 
     public boolean ballVisible, inGame, goalVisible;
 

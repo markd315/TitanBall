@@ -60,6 +60,7 @@ export function initAssets() {
     AssetManager.loadSprite('wall', 'res/Court/wall.png');
     AssetManager.loadSprite('trap1', 'res/Court/trap.png');
     AssetManager.loadSprite('trap2', 'res/Court/trap2.png');
+    AssetManager.loadSprite('vines', 'res/Court/vines.png');
     AssetManager.loadSprite('portal1', 'res/Court/portal.png');
     AssetManager.loadSprite('portal2', 'res/Court/portal2.png');
     AssetManager.loadSprite('portalcd', 'res/Court/portalcd.png');

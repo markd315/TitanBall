@@ -1,5 +1,6 @@
 import { gameState } from '../state.js';
 import { GamePhase } from '../constants.js';
+import { getDefaultPreset } from './keyboard.js';
 
 let joystickBase = null;
 let joystickStick = null;
@@ -69,6 +70,18 @@ export function initMobileControls() {
 
   // Button Ability 1 (labeled "1")
   btnAbility1.addEventListener('touchstart', (e) => {
+    const game = gameState.game;
+    if (game && game.underControl) {
+      const t = game.underControl;
+      if (t.type === 'ARTISAN' && t.possession === 1) {
+        const current = gameState.controlsHeld.artisanShot || 'SHOT';
+        let next = 'LEFT';
+        if (current === 'LEFT') next = 'RIGHT';
+        else if (current === 'RIGHT') next = 'SHOT';
+        gameState.controlsHeld.artisanShot = next;
+        console.log(`Artisan shot mode cycled to: ${next}`);
+      }
+    }
     gameState.controlsHeld.E = true;
     e.preventDefault();
     e.stopPropagation();
@@ -93,7 +106,7 @@ export function initMobileControls() {
 
   // Button Possession (swaps STEAL / LOB)
   btnPossession.addEventListener('touchstart', (e) => {
-    const currentPreset = localStorage.getItem('controlPreset') || 'rts';
+    const currentPreset = localStorage.getItem('controlPreset') || getDefaultPreset();
     const game = gameState.game;
     const hasPossession = game && game.underControl && game.underControl.possession === 1;
     if (hasPossession) {
@@ -352,7 +365,7 @@ function updateCoordinates(touch, canvas) {
 }
 
 function handleCanvasTouchStart(e) {
-  const currentPreset = localStorage.getItem('controlPreset') || 'rts';
+  const currentPreset = localStorage.getItem('controlPreset') || getDefaultPreset();
   if (currentPreset !== 'mobile-single') return;
 
   const canvas = e.currentTarget;
@@ -366,7 +379,7 @@ function handleCanvasTouchStart(e) {
 }
 
 function handleCanvasTouchMove(e) {
-  const currentPreset = localStorage.getItem('controlPreset') || 'rts';
+  const currentPreset = localStorage.getItem('controlPreset') || getDefaultPreset();
   if (currentPreset !== 'mobile-single') return;
 
   const canvas = e.currentTarget;
@@ -383,7 +396,7 @@ function handleCanvasTouchMove(e) {
 }
 
 function handleCanvasTouchEnd(e) {
-  const currentPreset = localStorage.getItem('controlPreset') || 'rts';
+  const currentPreset = localStorage.getItem('controlPreset') || getDefaultPreset();
   if (currentPreset !== 'mobile-single') return;
 
   if (activeCanvasTouchId !== null) {
@@ -413,7 +426,7 @@ function handleCanvasTouchEnd(e) {
 export function updateMobileControls(game) {
   if (!container) return;
 
-  const currentPreset = localStorage.getItem('controlPreset') || 'rts';
+  const currentPreset = localStorage.getItem('controlPreset') || getDefaultPreset();
   const isGameplayPhase = gameState.phase === GamePhase.INGAME || 
                           gameState.phase === GamePhase.COUNTDOWN || 
                           gameState.phase === GamePhase.SCORE_FREEZE;

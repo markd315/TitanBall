@@ -14,6 +14,7 @@ import { drawAimAndRangeIndicators } from './render/aim.js';
 import { drawEffectIcons } from './render/effects.js';
 import { drawBall, displayBallArrow } from './render/ball.js';
 import { drawGoals } from './render/goals.js';
+import { drawAllPseudotextures } from './render/pseudotextures.js';
 import { drawHud } from './render/hud.js';
 import { login, joinQueue, checkGame, register, startTutorial } from './network/auth.js';
 import { connectGame, disconnectGame } from './network/socket.js';
@@ -538,29 +539,18 @@ function drawIngame(ctx, dt) {
   }
 
   // Draw Field
-  const hasDilators = (game.homeGoaliePurchasedUpgrades || []).includes("fortress.t5.dilators") ||
-                      (game.awayGoaliePurchasedUpgrades || []).includes("fortress.t5.dilators");
   if (AssetManager.images['field']) {
-    const img = AssetManager.images['field'];
-    if (hasDilators) {
-      const dw = img.width * 1.3;
-      const dh = img.height * 1.3;
-      const dx = 1024 - dw / 2;
-      const dy = 609 - dh / 2;
-      ctx.drawImage(img, Math.floor(dx - camX), Math.floor(dy - camY), dw, dh);
-    } else {
-      ctx.drawImage(img, Math.floor(1 - camX), Math.floor(1 - camY));
-    }
+    ctx.drawImage(AssetManager.images['field'], Math.floor(1 - camX), Math.floor(1 - camY));
   } else {
     ctx.fillStyle = '#0f3d0f';
     ctx.fillRect(0, 0, 1920, 960);
   }
 
   // Draw thin blue boundary lines for attacking/defensive thirds (680 and 1368)
-  const x1 = hasDilators ? 1024 + (680 - 1024) * 1.30 : 680;
-  const x2 = hasDilators ? 1024 + (1368 - 1024) * 1.30 : 1368;
-  const yMin = hasDilators ? 609 + (139 - 609) * 1.30 : 139;
-  const yMax = hasDilators ? 609 + (1079 - 609) * 1.30 : 1079;
+  const x1 = 680;
+  const x2 = 1368;
+  const yMin = 139;
+  const yMax = 1079;
 
   ctx.save();
   ctx.strokeStyle = 'rgba(59, 130, 246, 0.5)';
@@ -579,6 +569,7 @@ function drawIngame(ctx, dt) {
   
   drawGoals(ctx, game, camX, camY);
   drawAimAndRangeIndicators(ctx, game, gameState.controlsHeld, camX, camY);
+  drawAllPseudotextures(ctx, game, camX, camY);
   drawPlayers(ctx, game, camX, camY);
   drawMinions(ctx, game, camX, camY);
   drawEffectIcons(ctx, game, camX, camY);
@@ -1000,13 +991,13 @@ function drawDraftShowcase(ctx) {
   // Roster Columns
   const drawColumn = (players, isHome, startX) => {
     ctx.save();
-    ctx.fillStyle = isHome ? 'rgba(59, 130, 246, 0.15)' : 'rgba(239, 68, 68, 0.15)';
+    ctx.fillStyle = isHome ? 'rgba(59, 130, 246, 0.15)' : 'rgba(200, 200, 200, 0.15)';
     ctx.fillRect(startX, 150, 700, 700);
-    ctx.strokeStyle = isHome ? '#3b82f6' : '#ef4444';
+    ctx.strokeStyle = isHome ? '#3b82f6' : '#444444';
     ctx.lineWidth = 4;
     ctx.strokeRect(startX, 150, 700, 700);
 
-    ctx.fillStyle = isHome ? '#3b82f6' : '#ef4444';
+    ctx.fillStyle = isHome ? '#3b82f6' : '#ffffff';
     ctx.font = 'bold 40px Arial';
     ctx.textAlign = 'center';
     ctx.fillText(isHome ? 'HOME TEAM DRAFT' : 'AWAY TEAM DRAFT', startX + 350, 210);
@@ -1039,7 +1030,7 @@ function drawDraftShowcase(ctx) {
       // Draw card background
       ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
       ctx.fillRect(startX + 50, py, 600, cardHeight);
-      ctx.strokeStyle = isHome ? 'rgba(59, 130, 246, 0.3)' : 'rgba(239, 68, 68, 0.3)';
+      ctx.strokeStyle = isHome ? 'rgba(59, 130, 246, 0.3)' : 'rgba(68, 68, 68, 0.3)';
       ctx.strokeRect(startX + 50, py, 600, cardHeight);
 
       // Text details

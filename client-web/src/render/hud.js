@@ -8,7 +8,7 @@ const ABILITY_TOOLTIPS = {
     "fortress.t1.homeward": { title: "Home Ward Charter", desc: "Unlock base defense mechanics. Required for all Fortress upgrades." },
     "fortress.t2.reinforce": { title: "Reinforce", desc: "Active (80g). Spawns a solid wall near your base in a random Y location. Despawns and decays health over 10 seconds." },
     "fortress.t2.healingburst": { title: "Healing Burst", desc: "Active (30g). Applies a healing zone to all allied entities in your defensive third." },
-    "fortress.t3.snaretrap": { title: "Snare Trap", desc: "Passive. Spawns a stealthy trap that slows enemy units on contact." },
+    "fortress.t3.snaretrap": { title: "Snare Trap", desc: "Passive. Spawns a permanent trap at a random location in your third that slows enemy units on contact." },
     "fortress.t3.homehealamp": { title: "Amplified Healing", desc: "Passive. Enhances the potency of all defensive third heal effects." },
     "fortress.t3.fastbreakinsurance": { title: "Fast-break Insurance", desc: "Passive. Nullifies uphill speed penalty for 5s after a turnover." },
     "fortress.t3.biggermodels": { title: "Bigger Character Models", desc: "Passive. Increases the hitbox size and collision radius of all allied units." },
@@ -21,23 +21,24 @@ const ABILITY_TOOLTIPS = {
     "fortress.t5.firebarrage": { title: "Fire Barrage", desc: "Passive. Upgrades Barrage zone to continuously apply BURN damage to enemies." },
     "fortress.t5.noflyzonetmp": { title: "Temporary No-Fly Zone", desc: "Active (60g). Spawns a temporary endzone aura cutting enemy lob distance by 50% for 10 seconds." },
     "fortress.t5.noflyzoneperm": { title: "Permanent No-Fly Zone", desc: "Passive. Spawns a permanent endzone aura cutting enemy lob distance by 50%." },
-    "fortress.t5.dilators": { title: "Dilators", desc: "Passive. Larger field, slower game (entire game speed reduced by 10%)." },
-    "fortress.t6.deepfreeze": { title: "Deep Freeze", desc: "Passive. Base zone aura continuously applies SLOW to enemies inside." },
+    "fortress.t5.dilators": { title: "Dilators", desc: "Passive. Slower game (entire game speed reduced by 10%)." },
     "fortress.t6.impenetrable": { title: "Impenetrable", desc: "Passive. Clamps the maximum speed penalty from enemy pressure at -3." },
     "fortress.t6.hemmedin": { title: "Hemmed In", desc: "Passive. Enlarges lane walls and spawns a new wall behind the center goal." },
+    "fortress.t6.deepfreeze": { title: "Deep Freeze", desc: "Passive. Base zone aura continuously applies SLOW to enemies inside." },
     // Siege
     "siege.t1.siegedoctrine": { title: "Siege Doctrine", desc: "Unlock offensive breaching mechanics. Required for all Siege upgrades." },
     "siege.t2.overchargeminion": { title: "Overcharge Minion", desc: "Active (15g). Grants a permanent 1.5x stats multiplier to the next minion wave." },
     "siege.t2.lowgravity": { title: "Low Gravity", desc: "Active (15g). Temporarily reduces ball gravity, extending lob trajectories." },
     "siege.t2.energyrush": { title: "Energy Rush", desc: "Active (30g). Injects the FAST effect (+35% speed) to a random friendly hero." },
     "siege.t3.rushlane": { title: "Rush Lane", desc: "Passive. Spawns a conveyor zone that shoves all units forward along one lane." },
-    "siege.t3.forwardmines": { title: "Forward Mines", desc: "Passive. Spawns a persistent hazard zone in the opponent's third." },
-    "siege.t3.ballportal_rough": { title: "Ball Portal (Rough)", desc: "Passive. Spawns a portal that teleports balls toward the attacking third." },
+    "siege.t3.forwardmines": { title: "Forward Mines", desc: "Passive. Spawns a compact hazard zone in the opponent's third." },
+    "siege.t3.ballportal": { title: "Ball Portal", desc: "Passive. Spawns two portals that teleport the ball between the enemy top and bottom lanes." },
     "siege.t3.vanguards": { title: "Vanguards", desc: "Passive. Spawns 1 extra minion per wave when your team crosses the midfield." },
     "siege.t4.accumulators": { title: "Accumulators", desc: "Passive. Expands opponent goal size when friendly minions overlap them." },
     "siege.t4.parapet": { title: "Parapet", desc: "Passive. Spawns a high lane platform that roots units and prevents steal actions." },
     "siege.t5.saveprogress": { title: "Save Progress", desc: "Passive. Disables scoring decay, making banked sidegoal progress persistent." },
-    "siege.t5.forwardoutpost": { title: "Forward Outpost", desc: "Passive. Replaces Forward Mines with a defensive structure applying chip damage." },
+    "siege.t5.incendiarymines": { title: "Incendiary Mines", desc: "Passive. Expands Forward Mines hazard zone and continuously applies BURN damage to enemies." },
+    "siege.t5.forwardoutpost": { title: "Incendiary Mines", desc: "Passive. Expands Forward Mines hazard zone and continuously applies BURN damage to enemies." },
     "siege.t5.phalanx": { title: "Phalanx", desc: "Passive. Damage from other minions is reduced by 10% for each adjacent friendly minion." },
     "siege.t5.callsiegeminion": { title: "Call Siege Minion", desc: "Active (55g). Spawns a heavy minion wave at spawn locations." },
     "siege.t5.anchor": { title: "Anchor", desc: "Active (70g). Tethers two opposing heroes, constraining their distance." },
@@ -56,28 +57,30 @@ const ABILITY_TOOLTIPS = {
     "empowerment.t4.forecheck": { title: "Forecheck", desc: "Passive. Flat bonus to steal radius when friendly units are in the middle third." },
     "empowerment.t4.fuelreserves": { title: "Fuel Reserves", desc: "Passive. Multiplies maximum speed boost (fuel) capacity by 1.5x." },
     "empowerment.t4.heroportals": { title: "Hero Portals", desc: "Passive. Spawns repositioning node portals restricted to hero interactions." },
-    "empowerment.t5.focusedtraining": { title: "Focused Training", desc: "Passive. Adds +1 permanent point to a random mastery stat for friendly heroes." },
-    "empowerment.t5.focusedtraining2": { title: "Focused Training II", desc: "Passive. Adds +1 permanent point to a random mastery stat for friendly heroes." },
+    "empowerment.t5.focusedtraining": { title: "Focused Training", desc: "Passive. Adds +2 points to your highest existing goalie mastery category." },
+    "empowerment.t5.focusedtraining2": { title: "Focused Training II", desc: "Passive. Adds +2 points to your highest existing goalie mastery category." },
     "empowerment.t5.energysurge": { title: "Energy Surge", desc: "Active (50g). Instantly restores maximum fuel capacity for all friendly heroes." },
     "empowerment.t5.secondwind": { title: "Second Wind", desc: "Active (50g). Immediately resets active Q and W ability cooldown timers." },
+    "empowerment.t5.heistcamp": { title: "Heist Camp", desc: "Passive. Grants a permanent +20% increase to steal radius for all friendly heroes." },
+    "empowerment.t5.clutchgene": { title: "Clutch Gene", desc: "Passive. Grants +30% defense (armor ratio) to friendly heroes when in possession of the ball." },
     "empowerment.t6.dragonsbreath": { title: "Dragon's Breath", desc: "Passive. Spawns a miniboss in bot lane; slaying it grants team permanent FAST." },
-    "empowerment.t6.apexform": { title: "Apex Form", desc: "Passive. Adds a permanent +2 allocation to all 9 core masteries for friendly heroes." },
-    "empowerment.t6.bannerofcommand": { title: "Banner of Command", desc: "Passive. Allied minions gain +10% damage for each hero in their lane at spawn." },
+    "empowerment.t6.apexform": { title: "Apex Form", desc: "Passive. Adds a permanent +1 allocation to all 9 core masteries for friendly heroes." },
+    "empowerment.t6.bannerofcommand": { title: "Banner of Command", desc: "Passive. Allied minions gain +15% damage for each hero in their lane at spawn." },
     // Cultivation
     "cultivation.t1.manawell": { title: "Mana Well", desc: "Passive. Unlocks cultivation mana resource and generates passive mana tick." },
     "cultivation.t2.manainfusion": { title: "Mana Infusion", desc: "Active (50g). Instantly grants +100 mana and permanently increases tick rate by 10%." },
     "cultivation.t3.manacompounding": { title: "Mana Compounding", desc: "Passive. Multiplies passive mana tick rate based on the current mana bank." },
     "cultivation.t3.highermanacap": { title: "Higher Mana Cap", desc: "Passive. Increases the maximum goalie mana pool threshold to 1000." },
     "cultivation.t3.tollcollector": { title: "Toll Collector", desc: "Passive. Gain +5 goalie mana whenever a friendly minion crosses the midfield line." },
-    "cultivation.t4.manavines": { title: "Mana Vines", desc: "Passive (250m). Spawns a base hazard zone continuously slowing and burning enemies." },
-    "cultivation.t4.manafrenzy": { title: "Mana Frenzy", desc: "Passive (275m). Boosts friendly hero cooldown recovery speed scaling with current mana." },
+    "cultivation.t4.manavines": { title: "Mana Vines", desc: "Passive (250m). Spawns a base hazard zone that slows and burns enemies, granting +30 mana when an enemy passes through." },
+    "cultivation.t4.manafrenzy": { title: "Mana Frenzy", desc: "Passive (275m). Boosts friendly hero cooldown recovery speed by 1% per 30 current mana." },
     "cultivation.t5.manasurge": { title: "Mana Surge", desc: "Active (40m). Injects an ultimate team burst, resetting Q/W cds and restoring health/fuel." },
     "cultivation.t5.manasummon": { title: "Mana Summon", desc: "Active (50m). Spawns 2 heavy minions at your end of the field." },
-    "cultivation.t5.manapollinate": { title: "Mana Pollinate", desc: "Passive (250m). Allows mana to purchase T5 upgrades from other trees." },
+    "cultivation.t5.manapollinate": { title: "Mana Pollinate", desc: "Passive (250m). Allows mana to purchase a single T5 upgrade from another tree (one-time benefit)." },
     "cultivation.t5.riskadjustedreturn": { title: "Risk-Adjusted Return", desc: "Passive (300m). Grants enemy 1 point; awards 1.5 points to your team after 150s." },
     "cultivation.t5.tripledown": { title: "Triple Down", desc: "Passive (350m). Gives opponent +3 sidegoals (0.75 pts); awards you +1 main goal." },
     "cultivation.t6.wallportals": { title: "Wall Portals", desc: "Passive (300m). Spawns 20 permanent ball portals on the borders and midline paired horizontally." },
-    "cultivation.t6.uninhibitedportal": { title: "Uninhibited Portal", desc: "Passive (275m). Constantly spawns 2 minions in the middle lane." },
+    "cultivation.t6.uninhibitedportal": { title: "Uninhibited Portal", desc: "Passive (275m). Spawns 2 extra allied minions in the middle lane every wave." },
     "cultivation.t6.iceportal": { title: "Ice Portal", desc: "Passive (250m). Continuously applies SLOW effect to all enemy minion units." }
 };
 
@@ -94,25 +97,26 @@ const HARDCODED_COSTS = {
     "fortress.t4.barrage": { cost: 325 },
     "fortress.t5.emergencybarrier": { use: 50 },
     "fortress.t5.repairdrone": { use: 50 },
-    "fortress.t5.noflyzonetmp": { cost: 60 },
+    "fortress.t5.noflyzonetmp": { use: 60 },
     "fortress.t5.noflyzoneperm": { cost: 60 },
     "fortress.t5.dilators": { cost: 400 },
     "fortress.t5.icebarrage": { cost: 250 },
     "fortress.t5.firebarrage": { cost: 250 },
-    "fortress.t6.deepfreeze": { cost: 400 },
     "fortress.t6.impenetrable": { cost: 450 },
     "fortress.t6.hemmedin": { cost: 500 },
+    "fortress.t6.deepfreeze": { cost: 400 },
     "siege.t1.siegedoctrine": { cost: 50 },
     "siege.t2.overchargeminion": { use: 15 },
     "siege.t2.lowgravity": { use: 15 },
     "siege.t2.energyrush": { use: 30 },
     "siege.t3.rushlane": { cost: 100 },
     "siege.t3.forwardmines": { cost: 125 },
-    "siege.t3.ballportal_rough": { cost: 150 },
+    "siege.t3.ballportal": { cost: 150 },
     "siege.t3.vanguards": { cost: 125 },
     "siege.t4.accumulators": { cost: 275 },
     "siege.t4.parapet": { cost: 325 },
     "siege.t5.saveprogress": { cost: 400 },
+    "siege.t5.incendiarymines": { cost: 325 },
     "siege.t5.forwardoutpost": { cost: 325 },
     "siege.t5.phalanx": { cost: 300 },
     "siege.t5.callsiegeminion": { use: 55 },
@@ -135,9 +139,11 @@ const HARDCODED_COSTS = {
     "empowerment.t5.focusedtraining2": { cost: 300 },
     "empowerment.t5.energysurge": { use: 50 },
     "empowerment.t5.secondwind": { use: 50 },
+    "empowerment.t5.heistcamp": { cost: 300 },
+    "empowerment.t5.clutchgene": { cost: 300 },
     "empowerment.t6.dragonsbreath": { cost: 400 },
-    "empowerment.t6.apexform": { cost: 450 },
-    "empowerment.t6.bannerofcommand": { cost: 500 },
+    "empowerment.t6.apexform": { cost: 600 },
+    "empowerment.t6.bannerofcommand": { cost: 450 },
     "cultivation.t1.manawell": { cost: 50 },
     "cultivation.t2.manainfusion": { use: 50 },
     "cultivation.t3.manacompounding": { cost: 100 },
@@ -181,7 +187,7 @@ export const TREE_NODES = {
         [485,120,537,170],
         [272,210,354,259], [397,210,492,259], [537,210,616,259], [670,212,746,259],
         [339,317,489,372], [537,317,685,372],
-        [187,404,377,447], [420,389,610,451], [650,406,752,447],
+        [187,404,377,447], [420,389,610,451], [650,380,880,447],
         [147,478,399,548], [405,478,629,548], [653,478,870,548]
     ],
     GOALIE_TREE_CULTIVATION: [
@@ -209,7 +215,7 @@ export const NODE_DEFS = {
         { tier: 't2', name: 'reinforce',         kind: 'use'  },
         { tier: 't2', name: 'healingburst',       kind: 'use'  },
         { tier: 't5', name: 'emergencybarrier',   kind: 'use'  },
-        { tier: 't5', name: 'noflyzonetmp',       kind: 'cost' }, // one-time, just drawn in row 1
+        { tier: 't5', name: 'noflyzonetmp',       kind: 'use'  },
         { tier: 't5', name: 'repairdrone',        kind: 'use'  },
         // row 2
         { tier: 't1', name: 'homeward',           kind: 'cost' },
@@ -228,9 +234,9 @@ export const NODE_DEFS = {
         { tier: 't5', name: 'icebarrage',         kind: 'cost' },
         { tier: 't5', name: 'firebarrage',        kind: 'cost' },
         // row 6
-        { tier: 't6', name: 'deepfreeze',         kind: 'cost' },
         { tier: 't6', name: 'impenetrable',       kind: 'cost' },
         { tier: 't6', name: 'hemmedin',           kind: 'cost' },
+        { tier: 't6', name: 'deepfreeze',         kind: 'cost' },
     ],
     GOALIE_TREE_SIEGE: [
         // row 1
@@ -245,16 +251,16 @@ export const NODE_DEFS = {
         { tier: 't1', name: 'siegedoctrine',       kind: 'cost' },
         // row 3
         { tier: 't3', name: 'forwardmines',        kind: 'cost' },
-        { tier: 't3', name: 'ballportal_rough',    kind: 'cost' },
+        { tier: 't3', name: 'ballportal',          kind: 'cost' },
         { tier: 't3', name: 'rushlane',            kind: 'cost' },
         { tier: 't3', name: 'vanguards',           kind: 'cost' },
         // row 4
         { tier: 't4', name: 'accumulators',        kind: 'cost' },
         { tier: 't4', name: 'parapet',             kind: 'cost' },
         // row 5
-        { tier: 't5', name: 'forwardoutpost',      kind: 'cost' },
-        { tier: 't5', name: 'saveprogress',        kind: 'cost' },
+        { tier: 't5', name: 'incendiarymines',     kind: 'cost' },
         { tier: 't5', name: 'phalanx',             kind: 'cost' },
+        { tier: 't5', name: 'saveprogress',        kind: 'cost' },
         // row 6
         { tier: 't6', name: 'maximumpressure',     kind: 'cost' },
         { tier: 't6', name: 'forwardmedics',       kind: 'cost' },
@@ -279,8 +285,8 @@ export const NODE_DEFS = {
         { tier: 't4', name: 'heroportals',         kind: 'cost' },
         { tier: 't4', name: 'forecheck',           kind: 'cost' },
         // row 5
-        { tier: 't5', name: 'energysurge',         kind: 'use'  },
-        { tier: 't5', name: 'secondwind',          kind: 'use'  },
+        { tier: 't5', name: 'heistcamp',           kind: 'cost' },
+        { tier: 't5', name: 'clutchgene',          kind: 'cost' },
         { tier: 't5', name: 'focusedtraining',     kind: 'cost' },
         // row 6
         { tier: 't6', name: 'apexform',            kind: 'cost' },
@@ -349,10 +355,32 @@ function tierUnlocked(shortName, tier, treeState) {
     return (treeState.tierProgress[prevTier] || 0) >= required;
 }
 
+export function canPollinateT5(nodeKey, purchasedSet) {
+    if (!nodeKey || !purchasedSet) return false;
+    const parts = nodeKey.split('.');
+    if (parts.length < 3) return false;
+    const tree = parts[0];
+    const tier = parts[1];
+    if (tier === 't5' && tree !== 'cultivation' && purchasedSet.has('cultivation.t5.manapollinate')) {
+        for (const key of purchasedSet) {
+            if (key.includes('.t5.') && !key.startsWith('cultivation.t5.')) {
+                return false;
+            }
+        }
+        return true;
+    }
+    return false;
+}
+
 export function isNodeUnlocked(activeKey, idx, treeState) {
     const def = getNodeDef(activeKey, idx);
     if (!def) return false;
-    return tierUnlocked(TREE_SHORT_NAME[activeKey], def.tier, treeState);
+    const shortName = TREE_SHORT_NAME[activeKey];
+    const nodeKey = `${shortName}.${def.tier}.${def.name}`;
+    if (def.kind === 'cost' && canPollinateT5(nodeKey, treeState.purchased)) {
+        return true;
+    }
+    return tierUnlocked(shortName, def.tier, treeState);
 }
 
 export function getNodeDef(activeKey, idx) {
@@ -418,6 +446,8 @@ export function drawHud(ctx, game, state) {
 
     for (const e of entities) {
         if (e.health > 0 && e.entityClass !== 'LaneMinion') {
+            if (e.entityClass === 'Fire' || e.entityClass === 'Portal' || e.entityClass === 'BallPortal' || e.entityClass === 'Parapet' || (e.entityClass === 'Trap' && (e.width === 80 || e.maxHealth >= 99999))) continue;
+
             const invisible = game.underControl && game.underControl.team !== e.team &&
                               game.effectPool && game.effectPool.effects.some(ef => ef.effect === 'STEALTHED' && ef.on && ef.on.id === e.id);
             if (invisible) continue;
@@ -496,6 +526,8 @@ export function drawHud(ctx, game, state) {
     const fps = 1000 / (game.GAMETICK_MS || 25);
     const timeSec = game.framesSinceStart / fps;
     const sdTime = (game.options && game.options.suddenDeathIndex ? game.options.suddenDeathIndex * 60 : 240);
+    const hsdTime = (game.options && game.options.tieIndex ? game.options.hardcoreSuddenDeathIndex * 60 : 240); //TODO recover value from server
+    const tieTime = (game.options && game.options.tieIndex ? game.options.tieIndex * 60 : 360);
 
     let displayTime = 0;
     let timerColor = '#00ff00';
@@ -528,7 +560,6 @@ export function drawHud(ctx, game, state) {
     let warningColor = "rgba(0, 255, 0, 0.4)";
     const WARN = 30, FWARN = 10;
     const gTime = game.GOALIE_DISABLE_TIME || 120;
-    const tieTime = (game.options && game.options.tieIndex ? game.options.tieIndex * 60 : 300);
 
     const timer = Math.floor(timeSec);
     const CHWARN = 10;
@@ -551,6 +582,15 @@ export function drawHud(ctx, game, state) {
     } else if (timer >= sdTime && timer < sdTime + CHWARN) {
         warningColor = "rgba(255, 0, 0, 1.0)";
         bottomText = "SUDDEN DEATH ENABLED";
+    } else if (timer >= hsdTime - WARN && timer < hsdTime - FWARN) {
+        warningColor = "rgba(230, 230, 0, 0.8)";
+        bottomText = "HARDCORE SUDDEN DEATH WARNING";
+    } else if (timer >= hsdTime - FWARN && timer < hsdTime) {
+        warningColor = "rgba(255, 0, 0, 0.9)";
+        bottomText = "HARDCORE SUDDEN DEATH WARNING";
+    } else if (timer >= hsdTime && timer < hsdTime + CHWARN) {
+        warningColor = "rgba(255, 0, 0, 1.0)";
+        bottomText = "HARDCORE SUDDEN DEATH ENABLED";
     } else if (timer >= tieTime - WARN && timer < tieTime - FWARN) {
         warningColor = "rgba(230, 230, 0, 0.9)";
         bottomText = "TIE GAME WARNING";
@@ -695,7 +735,7 @@ export function drawHud(ctx, game, state) {
                 ctx.textAlign = 'left';
                 ctx.textBaseline = 'middle';
                 const manaVal = Math.floor(isHome ? (game.homeGoalieMana || 0) : (game.awayGoalieMana || 0));
-                const maxManaVal = purchasedArray.includes('cultivation.t3.highermanacap') ? 1000 : 500;
+                const maxManaVal = purchasedArray.includes('cultivation.t3.highermanacap') ? 1000 : 250;
                 ctx.fillText(`Mana: ${manaVal}/${maxManaVal}`, 100, CONSTANTS.Y_RES - 195);
                 ctx.restore();
             }
@@ -806,7 +846,7 @@ export function drawHud(ctx, game, state) {
                                 const borderColor = tabColors[tabIdx] || '#ffffff';
                                 ctx.save();
                                 ctx.strokeStyle = borderColor;
-                                ctx.lineWidth = 3;
+                                ctx.lineWidth = 5;
                                 ctx.strokeRect(boxX, boxY, boxW, boxH);
                                 ctx.restore();
                             }
@@ -848,9 +888,14 @@ export function drawHud(ctx, game, state) {
         // Look up cost in the hardcoded map
         const costData = HARDCODED_COSTS[hoveredNode.nodeKey] || {};
         let costText = "";
+        const isHome = game.underControl && (game.underControl.team === 0 || game.underControl.team === 'HOME');
+        const rawUpgrades = isHome ? game.homeGoaliePurchasedUpgrades : game.awayGoaliePurchasedUpgrades;
+        const purchasedSet = new Set(rawUpgrades || []);
+
         if (hoveredNode.def.kind === 'cost') {
             const amt = costData.cost !== undefined ? costData.cost : 0;
-            costText = costData.isMana ? `Cost: ${amt} Mana` : `Cost: ${amt} Gold`;
+            const useMana = costData.isMana || canPollinateT5(hoveredNode.nodeKey, purchasedSet);
+            costText = useMana ? `Cost: ${amt} Mana` : `Cost: ${amt} Gold`;
         } else {
             const amt = costData.use !== undefined ? costData.use : 0;
             costText = costData.isMana ? `Use: ${amt} Mana` : `Use: ${amt} Gold`;

@@ -104,7 +104,7 @@ CREATE TABLE premadestats (
 
 -- Admin user
 INSERT INTO users (id, username, email, password, role, created, subexpiration, enabled)
-VALUES (10, 'markd315', 'markd315@gmail.com',
+VALUES (24, 'markd315', 'markd315@gmail.com',
         '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.',
         'ADMIN', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1);
 
@@ -119,7 +119,22 @@ INSERT INTO users (id, username, email, password, role, created, subexpiration, 
 (7,  'u7',         'e7@gmail.com',         '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.', 'USER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1),
 (8,  'u8',         'e8@gmail.com',         '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.', 'USER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1),
 (9,  'u0',         'e0@gmail.com',         '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.', 'USER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1),
-(11, 'mattbuster', 'mattbuster@gmail.com', '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.', 'USER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1);
+(11, 'mattbuster', 'mattbuster@gmail.com', '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.', 'USER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1),
+(12,  'matt',       'matt@gmail.com',         '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.', 'USER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1),
+(13,  'rick',         'rick@gmail.com',         '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.', 'USER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1),
+(14,  'mark',         'mark@gmail.com',         '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.', 'USER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1),
+(15,  'heather',         'heather@gmail.com',         '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.', 'USER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1),
+(16,  'kerri',         'kerri@gmail.com',         '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.', 'USER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1),
+(17,  'john',         'john@gmail.com',         '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.', 'USER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1),
+(18,  'krystal',         'krystal@gmail.com',         '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.', 'USER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1),
+(19,  'ricky',         'ricky@gmail.com',         '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.', 'USER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1),
+(20,  'pam',         'pam@gmail.com',         '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.', 'USER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1),
+(21,  'tim',         'tim@gmail.com',         '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.', 'USER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1),
+(22,  'brianna',         'brianna@gmail.com',         '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.', 'USER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1),
+(23,  'xheni',         'xheni@gmail.com',         '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.', 'USER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1);
+
+
+
 
 -- Class stat rows (one per playable class)
 INSERT INTO classstat (role) VALUES

@@ -166,11 +166,29 @@ public class ManagedGame {
     }
 
     private void partitionTeams(List<String> selectedPlayers, List<String> teamHome, List<String> teamAway, int teamSize) {
-        List<String> unassigned = new ArrayList<>(selectedPlayers);
-        authserver.matchmaking.Matchmaker mm = authserver.SpringContextBridge.services().getMatchmaker();
+        authserver.matchmaking.Matchmaker mm = null;
+        try {
+            mm = authserver.SpringContextBridge.services().getMatchmaker();
+        } catch (Exception e) {
+            // Spring context might not be initialized
+        }
         
-        // Find all connected components of partner groups
-        List<List<String>> partnerGroups = new ArrayList<>();
+        if (mm == null) {
+            int mid = selectedPlayers.size() / 2;
+            for (int i = 0; i < selectedPlayers.size(); i++) {
+                if (i < mid) {
+                    teamHome.add(selectedPlayers.get(i));
+                } else {
+                    teamAway.add(selectedPlayers.get(i));
+                }
+            }
+            return;
+        }
+
+        final authserver.matchmaking.Matchmaker finalMm = mm;
+
+        // Find all connected components of partner groups based on mutual partner requests
+        List<List<String>> mutualComponents = new ArrayList<>();
         Set<String> visited = new HashSet<>();
         
         for (String player : selectedPlayers) {
@@ -184,73 +202,165 @@ public class ManagedGame {
                     String curr = queue.poll();
                     component.add(curr);
                     for (String other : selectedPlayers) {
-                        if (!visited.contains(other) && arePartners(curr, other)) {
+                        if (!visited.contains(other) && areMutualPartners(curr, other)) {
                             visited.add(other);
                             queue.add(other);
                         }
                     }
                 }
-                
-                if (component.size() >= 2) {
-                    partnerGroups.add(component);
+                mutualComponents.add(component);
+            }
+        }
+        
+        // Identify components that have exactly one goalie choice
+        List<List<String>> mustKeepTogether = new ArrayList<>();
+        for (List<String> comp : mutualComponents) {
+            if (comp.size() >= 2) {
+                int goalieCount = 0;
+                for (String email : comp) {
+                    String chosenClass = finalMm.playerClasses.getOrDefault(email, "WARRIOR");
+                    if ("GOALIE".equalsIgnoreCase(chosenClass)) {
+                        goalieCount++;
+                    }
+                }
+                if (goalieCount == 1) {
+                    mustKeepTogether.add(comp);
                 }
             }
         }
         
-        // 1. Process groups with exactly one goalie that fit within the team size
-        for (List<String> group : partnerGroups) {
-            int goalieCount = 0;
-            for (String email : group) {
-                String chosenClass = mm.playerClasses.getOrDefault(email, "WARRIOR");
-                if ("GOALIE".equalsIgnoreCase(chosenClass)) {
-                    goalieCount++;
+        // Exhaustive search over all possible team partitions to find the one with the minimum penalty.
+        // A partition splits selectedPlayers into teamHome and teamAway (each of size teamSize).
+        // To avoid symmetry, we fix selectedPlayers.get(0) to always be in teamHome.
+        int n = selectedPlayers.size();
+        List<Integer> bestHomeIndices = null;
+        long bestPenalty = Long.MAX_VALUE;
+        
+        List<List<Integer>> combinations = new ArrayList<>();
+        generateCombinations(combinations, new ArrayList<>(), 1, n - 1, teamSize - 1);
+        
+        for (List<Integer> comb : combinations) {
+            List<Integer> homeIdx = new ArrayList<>();
+            homeIdx.add(0);
+            homeIdx.addAll(comb);
+            
+            List<Integer> awayIdx = new ArrayList<>();
+            for (int i = 0; i < n; i++) {
+                if (!homeIdx.contains(i)) {
+                    awayIdx.add(i);
                 }
             }
             
-            if (goalieCount == 1 && group.size() <= teamSize) {
-                // Try to place on Home team
-                if (teamHome.size() + group.size() <= teamSize) {
-                    teamHome.addAll(group);
-                    unassigned.removeAll(group);
+            long penalty = calculatePartitionPenalty(selectedPlayers, homeIdx, awayIdx, mustKeepTogether, finalMm);
+            if (penalty < bestPenalty) {
+                bestPenalty = penalty;
+                bestHomeIndices = homeIdx;
+            }
+        }
+        
+        if (bestHomeIndices != null) {
+            for (int i = 0; i < n; i++) {
+                if (bestHomeIndices.contains(i)) {
+                    teamHome.add(selectedPlayers.get(i));
+                } else {
+                    teamAway.add(selectedPlayers.get(i));
                 }
-                // Else try to place on Away team
-                else if (teamAway.size() + group.size() <= teamSize) {
-                    teamAway.addAll(group);
-                    unassigned.removeAll(group);
+            }
+        } else {
+            int mid = n / 2;
+            for (int i = 0; i < n; i++) {
+                if (i < mid) {
+                    teamHome.add(selectedPlayers.get(i));
+                } else {
+                    teamAway.add(selectedPlayers.get(i));
+                }
+            }
+        }
+    }
+
+    private void generateCombinations(List<List<Integer>> result, List<Integer> current, int start, int end, int k) {
+        if (current.size() == k) {
+            result.add(new ArrayList<>(current));
+            return;
+        }
+        for (int i = start; i <= end; i++) {
+            current.add(i);
+            generateCombinations(result, current, i + 1, end, k);
+            current.remove(current.size() - 1);
+        }
+    }
+
+    private long calculatePartitionPenalty(List<String> selectedPlayers, List<Integer> homeIdx, List<Integer> awayIdx,
+                                           List<List<String>> mustKeepTogether, authserver.matchmaking.Matchmaker mm) {
+        long penalty = 0;
+        
+        // 1. Must-Keep-Together components split penalty: 100,000 per split component
+        for (List<String> comp : mustKeepTogether) {
+            int inHome = 0;
+            int inAway = 0;
+            for (String email : comp) {
+                int idx = selectedPlayers.indexOf(email);
+                if (homeIdx.contains(idx)) {
+                    inHome++;
+                } else {
+                    inAway++;
+                }
+            }
+            if (inHome > 0 && inAway > 0) {
+                penalty += 100000;
+            }
+        }
+        
+        // 2. Class reassignment penalty: 1,000 per reassigned player
+        penalty += getTeamReassignmentCost(selectedPlayers, homeIdx, mm) * 1000;
+        penalty += getTeamReassignmentCost(selectedPlayers, awayIdx, mm) * 1000;
+        
+        // 3. Other partner splits penalty: 1 per split partner pair (one-way or mutual)
+        for (int i = 0; i < selectedPlayers.size(); i++) {
+            for (int j = i + 1; j < selectedPlayers.size(); j++) {
+                if (arePartners(selectedPlayers.get(i), selectedPlayers.get(j))) {
+                    boolean sameTeam = (homeIdx.contains(i) && homeIdx.contains(j)) || (awayIdx.contains(i) && awayIdx.contains(j));
+                    if (!sameTeam) {
+                        penalty += 1;
+                    }
                 }
             }
         }
         
-        // 2. Process other partner groups (that fit) to keep partners together if possible
-        for (List<String> group : partnerGroups) {
-            // Check if not already placed
-            boolean alreadyPlaced = false;
-            for (String email : group) {
-                if (!unassigned.contains(email)) {
-                    alreadyPlaced = true;
-                    break;
-                }
+        return penalty;
+    }
+
+    private int getTeamReassignmentCost(List<String> selectedPlayers, List<Integer> teamIndices, authserver.matchmaking.Matchmaker mm) {
+        int goalieChoices = 0;
+        for (int idx : teamIndices) {
+            String p = selectedPlayers.get(idx);
+            if ("GOALIE".equalsIgnoreCase(mm.playerClasses.getOrDefault(p, "WARRIOR"))) {
+                goalieChoices++;
             }
-            if (alreadyPlaced) continue;
+        }
+        if (goalieChoices > 0) {
+            return goalieChoices - 1;
+        } else {
+            return 1;
+        }
+    }
+
+    private boolean areMutualPartners(String email1, String email2) {
+        try {
+            authserver.matchmaking.Matchmaker mm = authserver.SpringContextBridge.services().getMatchmaker();
+            Set<String> s1 = mm.partnerPool.get(email1);
+            Set<String> s2 = mm.partnerPool.get(email2);
+            if (s1 == null || s2 == null) return false;
             
-            if (group.size() <= teamSize) {
-                if (teamHome.size() + group.size() <= teamSize) {
-                    teamHome.addAll(group);
-                    unassigned.removeAll(group);
-                } else if (teamAway.size() + group.size() <= teamSize) {
-                    teamAway.addAll(group);
-                    unassigned.removeAll(group);
-                }
-            }
-        }
-        
-        // 3. Distribute remaining unassigned singletons
-        for (String p : unassigned) {
-            if (teamHome.size() < teamSize) {
-                teamHome.add(p);
-            } else {
-                teamAway.add(p);
-            }
+            String name1 = email1.split("@")[0];
+            String name2 = email2.split("@")[0];
+            
+            boolean aWantsB = s1.contains(name2) || s1.contains(email2);
+            boolean bWantsA = s2.contains(name1) || s2.contains(email1);
+            
+            return aWantsB && bWantsA;
+        } catch (Exception e) {
+            return false;
         }
     }
 
@@ -263,8 +373,8 @@ public class ManagedGame {
             String name1 = email1.split("@")[0];
             String name2 = email2.split("@")[0];
             
-            boolean aWantsB = (s1 != null && s1.contains(name2));
-            boolean bWantsA = (s2 != null && s2.contains(name1));
+            boolean aWantsB = (s1 != null && (s1.contains(name2) || s1.contains(email2)));
+            boolean bWantsA = (s2 != null && (s2.contains(name1) || s2.contains(email1)));
             
             return aWantsB || bWantsA;
         } catch (Exception e) {

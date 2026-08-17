@@ -57,6 +57,7 @@ public class Titan extends Entity   {
     public double baseMaxHealth = 100.0;
     public double basePainReduction = 1.0;
     public int baseStealRad = 26;
+    public double baseDamageFactor = 1.0;
 
     private TitanType type;
 
@@ -71,6 +72,7 @@ public class Titan extends Entity   {
         this.width = 70;
         this.height = 70;
         this.solid = true;
+        this.setVarsBasedOnType();
     }
 
     public double getThrowPower() {
@@ -93,6 +95,22 @@ public class Titan extends Entity   {
             this.rCastFrames = titanRFrames.get(type);
             this.sCastFrames = titanStealFrames.get(type);
             this.stealRad = titanStealRad.get(type);
+            this.rangeFactor = 1.0;
+            this.damageFactor = 1.0;
+            this.cooldownFactor = 1.0;
+            this.durationsFactor = 1.0;
+            this.painReduction = 1.0;
+
+            this.baseMaxHealth = this.maxHealth;
+            this.baseThrowPower = this.throwPower;
+            this.baseSpeed = this.speed;
+            this.baseStealRad = this.stealRad;
+            this.baseRangeFactor = this.rangeFactor;
+            this.baseDamageFactor = this.damageFactor;
+            this.baseCooldownFactor = this.cooldownFactor;
+            this.baseDurationsFactor = this.durationsFactor;
+            this.basePainReduction = this.painReduction;
+
             if(titanRange.containsKey(this.type)){
                 this.rangeIndicators = new ArrayList<>();
                 this.rangeIndicators.addAll(titanRange.get(this.type));
@@ -111,19 +129,25 @@ public class Titan extends Entity   {
 
     @JsonProperty("type")
     public void setType(TitanType type) {
-        if (typeAndMasteriesLocked && this.type != null && this.type != type) {
-            //System.out.println("[DIAG] Titan.setType BLOCKED (typeAndMasteriesLocked=true): requested="
-            //        + type + " current=" + this.type + " id=" + id);
+        if (type == null) {
+            return;
+        }
+        if (this.type == type) {
+            if (this.maxHealth <= 0 || this.rangeIndicators == null || this.rangeIndicators.isEmpty()) {
+                this.setVarsBasedOnType();
+            }
+            return;
+        }
+        if (typeAndMasteriesLocked && this.type != null) {
             return;
         }
         TitanType prev = this.type;
         double prevHealth = this.health;
         this.type = type;
         this.setVarsBasedOnType();
-        if (prevHealth != -999.0) {
+        if (prevHealth != -999.0 && prevHealth > 0.0) {
             this.health = prevHealth;
         }
-        //System.out.println("[DIAG] Titan.setType OK: " + prev + " -> " + this.type + " id=" + id);
     }
 
     public Titan(){
@@ -203,9 +227,12 @@ public class Titan extends Entity   {
                 : inspeed;
 
         int L = 0;
-        double d0 = Math.abs(this.Y - 354);
-        double d1 = Math.abs(this.Y - 583);
-        double d2 = Math.abs(this.Y - 790);
+        int topCY = (int) (context.c.getI("goal.low.y") + context.c.getI("goal.low.height") / 2.0);
+        int midCY = (int) (context.c.getI("goal.hi.y") + context.c.getI("goal.hi.height") / 2.0);
+        int botCY = (int) (context.c.getI("goal.low2.y") + context.c.getI("goal.low.height") / 2.0);
+        double d0 = Math.abs(this.Y - topCY);
+        double d1 = Math.abs(this.Y - midCY);
+        double d2 = Math.abs(this.Y - botCY);
         if (d1 < d0 && d1 < d2) L = 1;
         else if (d2 < d0 && d2 < d1) L = 2;
 
@@ -263,7 +290,7 @@ public class Titan extends Entity   {
         titanSpeed.put(TitanType.BUILDER, 4.75);
         titanSpeed.put(TitanType.DASHER, 4.7); //Has a 1.5x as effective boost, so this is pretty solid
         titanSpeed.put(TitanType.GOLEM, 4.5);
-        titanSpeed.put(TitanType.GOALIE, 2.75);
+        titanSpeed.put(TitanType.GOALIE, 3.575);
         //titanSpeed.put(TitanType.RECON, 7);
 
 
