@@ -1,5 +1,9 @@
 import { gameState } from '../state.js';
 import { GamePhase } from '../constants.js';
+import {
+    TREE_SHORT_NAME, NODE_DEFS,
+    getNodeDef, getNodeConfigKey, isNodeUnlocked, getTreeState
+} from '../render/hud.js';
 
 export let currentConfig = {};
 export const actionMap = {
@@ -17,7 +21,8 @@ export const actionMap = {
   'LOB': 'lobBtn',
   'SHOT': 'shotBtn',
   'MV_CLICK': 'MV_CLICK',
-  'MV_BALL': 'MV_BALL'
+  'MV_BALL': 'MV_BALL',
+  'BUILD_NEXT': 'BUILD_NEXT'
 };
 
 export async function setControlPreset(preset) {
@@ -97,6 +102,21 @@ export function initKeyboard() {
       return;
     }
 
+    // X key — execute next build order upgrade (Goalie, in-game)
+    if (e.key === 'x' || e.key === 'X') {
+      const game = gameState.game;
+      if (
+        game &&
+        game.underControl &&
+        game.underControl.type === 'GOALIE' &&
+        (gameState.phase === GamePhase.INGAME || gameState.phase === GamePhase.SCORE_FREEZE)
+      ) {
+        _executeNextBuildOrder(game);
+        e.preventDefault();
+        return;
+      }
+    }
+
     // Menu navigation on Space or Enter
     if (e.code === 'Space' || e.code === 'Enter') {
       if (gameState.phase === GamePhase.CREDITS) {
@@ -156,4 +176,88 @@ export function initKeyboard() {
       e.preventDefault();
     }
   });
+}
+
+// ─── build order execution ────────────────────────────────────────────────────
+function _executeNextBuildOrder(game) {
+  const order = gameState.buildOrder;
+  if (!order || order.length === 0) {
+    console.log('[Build Order] No build order configured.');
+    return;
+  }
+
+  const team = game.underControl.team;
+  let i = gameState.buildOrderIndex || 0;
+
+  while (i < order.length) {
+    const item      = order[i];
+    const activeKey = item.tree;
+    const targetKey = item.nodeKey;   // base key stored in planner
+
+    const treeState = getTreeState(game, team, activeKey);
+    const defs      = NODE_DEFS[activeKey];
+    const shortName = TREE_SHORT_NAME[activeKey];
+
+    if (!defs || !shortName) { i++; continue; }
+
+    // Find the node index by matching the stored base key
+    let nodeIdx = -1;
+    for (let j = 0; j < defs.length; j++) {
+      if (`${shortName}.${defs[j].tier}.${defs[j].name}` === targetKey) {
+        nodeIdx = j; break;
+      }
+    }
+    if (nodeIdx === -1) { i++; continue; }
+
+    const def         = getNodeDef(activeKey, nodeIdx);
+    if (!def) { i++; continue; }
+
+    // Resolve actual key (handles focusedtraining → focusedtraining2)
+    const resolvedKey = getNodeConfigKey(activeKey, nodeIdx, treeState.purchased);
+    const purchased   = def.kind === 'cost' && treeState.purchased.has(resolvedKey);
+    const unlocked    = isNodeUnlocked(activeKey, nodeIdx, treeState);
+
+    if (purchased) {
+      // Already bought — skip this slot permanently
+      i++;
+      gameState.buildOrderIndex = i;
+      continue;
+    }
+
+    if (!unlocked) {
+      // Tier prerequisites not yet met — stop and tell the player
+      console.log(`[Build Order] Step ${i + 1} "${resolvedKey}" is locked — tier requirements not met yet.`);
+      break;
+    }
+
+    // Fire the purchase via the standard pending-buy pipe
+    gameState.pendingGoalieBuy  = { tree: activeKey, nodeKey: resolvedKey };
+    gameState.buildOrderIndex   = i + 1;
+    console.log(`[Build Order] Executing step ${i + 1}: ${resolvedKey}`);
+    return;
+  }
+
+  // Build order exhausted (or blocked by locks) — repeat the last 'use' node in the list.
+  // Scan backward; no state changes, lists are short.
+  for (let j = order.length - 1; j >= 0; j--) {
+    const item      = order[j];
+    const activeKey = item.tree;
+    const defs      = NODE_DEFS[activeKey];
+    const shortName = TREE_SHORT_NAME[activeKey];
+    if (!defs || !shortName) continue;
+
+    const def = defs.find(d => `${shortName}.${d.tier}.${d.name}` === item.nodeKey);
+    if (!def || def.kind !== 'use') continue;
+
+    const treeState = getTreeState(game, team, activeKey);
+    const nodeIdx   = defs.indexOf(def);
+    if (!isNodeUnlocked(activeKey, nodeIdx, treeState)) continue;
+
+    const resolvedKey = getNodeConfigKey(activeKey, nodeIdx, treeState.purchased);
+    gameState.pendingGoalieBuy = { tree: activeKey, nodeKey: resolvedKey };
+    console.log(`[Build Order] Repeating last use node: ${resolvedKey}`);
+    return;
+  }
+
+  console.log('[Build Order] Build order complete — no repeatable use node found.');
 }

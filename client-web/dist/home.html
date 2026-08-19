@@ -85,12 +85,14 @@
         backdrop-filter: blur(20px);
         border: 2px solid rgba(45, 140, 100, 0.2);
         border-radius: 24px;
-        padding: 40px;
-        width: 440px;
+        padding: clamp(20px, 4vw, 40px);
+        width: min(440px, 94vw);
+        max-height: 95vh;
+        overflow-y: auto;
         box-shadow: 0 40px 80px rgba(0, 0, 0, 0.8), 0 0 120px rgba(255, 127, 17, 0.08);
         display: flex;
         flex-direction: column;
-        gap: 20px;
+        gap: clamp(12px, 2vh, 20px);
         animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
       }
       @keyframes fadeIn {
@@ -168,10 +170,10 @@
         background: linear-gradient(135deg, #ff9f1c, #e65c00);
         border: none;
         border-radius: 12px;
-        padding: 16px;
+        padding: clamp(10px, 2vh, 16px);
         color: white;
         font-weight: 700;
-        font-size: 16px;
+        font-size: clamp(13px, 1.8vh, 16px);
         font-family: inherit;
         cursor: pointer;
         transition: all 0.3s;
@@ -480,7 +482,7 @@
         box-shadow: 0 0 3.75vmin rgba(239, 68, 68, 0.6);
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-5cfa4412.js"></script>
+    <script type="module" crossorigin src="./assets/index-b5756151.js"></script>
   </head>
   <body>
     <div id="app">
@@ -598,6 +600,10 @@
           <div class="input-group">
             <button id="masteries-modal-btn" class="btn btn-secondary">Configure Masteries</button>
           </div>
+          <!-- Plan Build Order Button (shown only when GOALIE is selected) -->
+          <div class="input-group" id="plan-build-btn-container" style="display:none">
+            <button id="plan-build-btn" class="btn btn-secondary" style="border-color:rgba(114,7,224,0.45);color:#a855f7;">Plan Build Order</button>
+          </div>
           <!-- Partner List Section -->
           <div class="input-group" style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
             <label style="font-weight: bold; margin-bottom: 8px; display: block; color: #ff9f1c;">Teammate Partner List</label>
@@ -661,6 +667,58 @@
             <h2 style="color: #ff9f1c; margin-bottom: 20px; font-size: 2.2rem; letter-spacing: 1px; font-weight: 800;">SESSION EXPIRED</h2>
             <p style="color: #e2e8f0; font-size: 1.1rem; margin-bottom: 30px; line-height: 1.6;">You have been idle on this screen for over 4 hours. To conserve server resources, please refresh the page to continue.</p>
             <button onclick="window.location.reload()" style="background: #ff9f1c; color: #0f172a; border: none; padding: 12px 30px; font-size: 1.1rem; font-weight: bold; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 15px rgba(255,159,28,0.4); transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='scale(1.05)';" onmouseout="this.style.transform='scale(1)';">REFRESH PAGE</button>
+          </div>
+        </div>
+
+        <!-- Build Order Planner Modal -->
+        <div id="build-order-modal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:200;pointer-events:auto;background:rgba(5,12,10,0.93);backdrop-filter:blur(10px);justify-content:center;align-items:center;">
+
+          <div style="background:rgba(10,26,20,0.98);border:1.5px solid rgba(45,140,100,0.3);border-radius:20px;width:min(1120px,97vw);max-height:93vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 30px 90px rgba(0,0,0,0.85);">
+
+            <!-- Header -->
+            <div style="padding:18px 24px 14px;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
+              <div>
+                <h2 style="margin:0;font-size:clamp(16px,2.2vw,22px);letter-spacing:2px;">GOALIE BUILD ORDER PLANNER</h2>
+                <p style="margin:4px 0 0;font-size:12px;color:#64748b;">Plan your upgrade sequence. Press <kbd style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:4px;padding:1px 6px;font-family:monospace;">X</kbd> in-game to execute the next step.</p>
+              </div>
+              <button id="build-order-close-btn" style="background:none;border:none;color:#64748b;cursor:pointer;font-size:22px;padding:4px 8px;line-height:1;transition:color 0.2s;" onmouseover="this.style.color='#e2e8f0'" onmouseout="this.style.color='#64748b'">✕</button>
+            </div>
+
+            <!-- Tree Tabs -->
+            <div style="display:flex;gap:2px;padding:10px 20px 0;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,0.06);">
+              <button id="planner-tab-0" class="planner-tab-btn">Siege</button>
+              <button id="planner-tab-1" class="planner-tab-btn">Fortress</button>
+              <button id="planner-tab-2" class="planner-tab-btn">Empowerment</button>
+              <button id="planner-tab-3" class="planner-tab-btn">Cultivation</button>
+            </div>
+
+            <!-- Body -->
+            <div style="display:flex;flex:1;overflow:hidden;padding:14px 16px 14px;gap:14px;min-height:0;">
+
+              <!-- Tree Canvas pane -->
+              <div style="flex:2;display:flex;flex-direction:column;min-width:0;gap:6px;">
+                <canvas id="planner-canvas" width="900" height="495" style="width:100%;height:auto;cursor:crosshair;border-radius:10px;border:1px solid rgba(45,140,100,0.18);display:block;"></canvas>
+                <p style="margin:0;color:#475569;font-size:11px;text-align:center;">Click an unlocked node to add it · Hover for details · Cost nodes can only be added once · Active nodes can be repeated</p>
+              </div>
+
+              <!-- Build Order sidebar -->
+              <div style="flex:0 0 260px;display:flex;flex-direction:column;min-width:180px;max-width:300px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                  <span style="font-weight:700;font-size:12px;letter-spacing:1.5px;color:#a7f3d0;text-transform:uppercase;">Build Order</span>
+                  <button id="build-order-clear-btn" style="background:rgba(220,38,38,0.08);border:1px solid rgba(220,38,38,0.25);color:#f87171;border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer;font-family:inherit;transition:all 0.2s;" onmouseover="this.style.background='rgba(220,38,38,0.2)'" onmouseout="this.style.background='rgba(220,38,38,0.08)'">Clear All</button>
+                </div>
+                <div id="planner-build-list" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:4px;padding-right:2px;"></div>
+              </div>
+            </div>
+
+            <!-- Footer -->
+            <div style="padding:14px 24px;border-top:1px solid rgba(255,255,255,0.07);display:flex;gap:10px;align-items:center;flex-shrink:0;flex-wrap:wrap;">
+              <span id="build-order-count" style="color:#475569;font-size:13px;flex:1;min-width:80px;"></span>
+              <button id="build-order-export-btn" style="background:rgba(15,100,60,0.15);border:1px solid rgba(45,140,100,0.35);color:#a7f3d0;border-radius:8px;padding:7px 14px;font-size:12px;cursor:pointer;font-family:inherit;font-weight:600;letter-spacing:.5px;transition:all 0.2s;" onmouseover="this.style.background='rgba(45,140,100,0.25)'" onmouseout="this.style.background='rgba(15,100,60,0.15)'">⬆ Export</button>
+              <button id="build-order-paste-btn" style="background:rgba(15,100,60,0.15);border:1px solid rgba(45,140,100,0.35);color:#a7f3d0;border-radius:8px;padding:7px 14px;font-size:12px;cursor:pointer;font-family:inherit;font-weight:600;letter-spacing:.5px;transition:all 0.2s;" onmouseover="this.style.background='rgba(45,140,100,0.25)'" onmouseout="this.style.background='rgba(15,100,60,0.15)'">⬇ Paste</button>
+              <button id="build-order-cancel-btn" class="btn btn-secondary" style="padding:10px 22px;font-size:13px;margin:0;">Cancel</button>
+              <button id="build-order-save-btn" style="background:linear-gradient(135deg,#7c3aed,#5b21b6);border:none;border-radius:12px;padding:10px 22px;color:#fff;font-weight:700;font-size:13px;font-family:inherit;cursor:pointer;text-transform:uppercase;letter-spacing:1px;box-shadow:0 6px 20px rgba(124,58,237,0.4);transition:all 0.3s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">Save Build Order</button>
+            </div>
           </div>
         </div>
 
@@ -728,6 +786,123 @@
       @keyframes fadeIn {
         from { opacity: 0; transform: translateY(-5px); }
         to { opacity: 1; transform: translateY(0); }
+      }
+
+      /* ── Build Order Planner ─────────────────────────────── */
+      .planner-tab-btn {
+        padding: 8px 16px;
+        border: none;
+        border-bottom: 3px solid transparent;
+        border-radius: 8px 8px 0 0;
+        background: rgba(255,255,255,0.04);
+        color: #94a3b8;
+        cursor: pointer;
+        font-family: 'Outfit', sans-serif;
+        font-weight: 600;
+        font-size: clamp(12px, 1.5vw, 14px);
+        transition: all 0.2s;
+        white-space: nowrap;
+      }
+      .planner-tab-btn:hover { background: rgba(255,255,255,0.09); }
+
+      .build-order-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 8px;
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(45,140,100,0.12);
+        border-radius: 8px;
+        transition: background 0.2s, border-color 0.2s;
+      }
+      .build-order-row:hover {
+        background: rgba(255,255,255,0.06);
+        border-color: rgba(45,140,100,0.25);
+      }
+      .bo-num {
+        color: #475569;
+        font-size: 11px;
+        font-weight: 700;
+        min-width: 18px;
+        text-align: right;
+      }
+      .bo-info {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        overflow: hidden;
+      }
+      .bo-name {
+        font-size: 12px;
+        font-weight: 600;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .bo-tree {
+        font-size: 10px;
+        color: #475569;
+        white-space: nowrap;
+      }
+      .bo-controls {
+        display: flex;
+        gap: 3px;
+        align-items: center;
+        flex-shrink: 0;
+      }
+      .bo-arrow {
+        background: none;
+        border: 1px solid rgba(255,255,255,0.08);
+        color: #64748b;
+        border-radius: 4px;
+        width: 20px;
+        height: 20px;
+        font-size: 9px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s;
+        padding: 0;
+        font-family: inherit;
+      }
+      .bo-arrow:hover:not(:disabled) {
+        background: rgba(255,255,255,0.1);
+        color: #e2e8f0;
+        border-color: rgba(255,255,255,0.2);
+      }
+      .bo-arrow:disabled { opacity: 0.25; cursor: not-allowed; }
+      .bo-remove {
+        background: rgba(220,38,38,0.08);
+        border: 1px solid rgba(220,38,38,0.18);
+        color: #f87171;
+        border-radius: 4px;
+        width: 20px;
+        height: 20px;
+        font-size: 10px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s;
+        padding: 0;
+        font-family: inherit;
+      }
+      .bo-remove:hover {
+        background: rgba(220,38,38,0.22);
+        border-color: rgba(220,38,38,0.45);
+        color: #fca5a5;
+      }
+      .bo-empty {
+        color: #334155;
+        font-size: 12px;
+        text-align: center;
+        padding: 24px 12px;
+        font-style: italic;
+        border: 1px dashed rgba(45,140,100,0.15);
+        border-radius: 8px;
+        margin-top: 8px;
       }
     </style>
   </body>

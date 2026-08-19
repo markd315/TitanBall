@@ -1,0 +1,11 @@
+cultivation.t1.manawell
+cultivation.t3.manacompounding
+cultivation.t3.highermanacap
+cultivation.t2.manainfusion
+cultivation.t4.manavines
+cultivation.t5.manapollinate
+siege.t5.phalanx
+cultivation.t6.uninhibitedportal
+cultivation.t5.manasummon
+cultivation.t5.manasummon
+cultivation.t5.manasummon

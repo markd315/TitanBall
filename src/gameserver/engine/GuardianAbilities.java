@@ -299,7 +299,12 @@ public class GuardianAbilities implements Serializable {
         // 0.0s – 3.0s (ticks 0..119): effect starts/runs (active hazards on board, no telegraph)
         // 3.0s – 5.0s (ticks 120..199): effect continues, NEXT BARRAGE IS TELEGRAPHED IN A NEW AREA (#b8f9ff at 50% opacity)
         // 5.0s -> 0.0s (tick 200): next cycle begins, prior effect stops.
-        if (purchased.contains("fortress.t4.barrage")) {
+        // Elemental barrages purchased without base barrage (via mana pollinate) also run the
+        // cycle, but rollNextBarrage caps them at 50% spawn probability per cycle.
+        boolean hasAnyBarrage = purchased.contains("fortress.t4.barrage")
+            || purchased.contains("fortress.t5.icebarrage")
+            || purchased.contains("fortress.t5.firebarrage");
+        if (hasAnyBarrage) {
             barrageCycleTick++;
             if (activeBarrageRegions.isEmpty() && pendingBarrageRegions.isEmpty()) {
                 rollNextBarrage(purchased);
@@ -594,18 +599,27 @@ public class GuardianAbilities implements Serializable {
     }
 
     public void rollNextBarrage(Set<String> purchased) {
+        /*
+        Purchased	Spawn chance per cycle
+        barrage + firebarrage + icebarrage	100% (1 fire + 1 ice)
+        barrage + firebarrage only	100% (1 or 2 fire regions)
+        barrage + icebarrage only	100% (1 or 2 ice regions)
+        barrage only	80% (1 BASE region)
+        firebarrage only (mana pollinate bypass)	50% → then 90%/10%
+        icebarrage only (mana pollinate bypass)	50% → then 90%/10%
+        */
         pendingBarrageRegions.clear();
         pendingBarrageTypes.clear();
 
-        if (!purchased.contains("fortress.t4.barrage")) {
+        boolean hasBarrage = purchased.contains("fortress.t4.barrage");
+        boolean hasFire    = purchased.contains("fortress.t5.firebarrage");
+        boolean hasIce     = purchased.contains("fortress.t5.icebarrage");
+
+        if (!hasBarrage && !hasFire && !hasIce) {
             return;
         }
 
-        boolean hasFire = purchased.contains("fortress.t5.firebarrage");
-        boolean hasIce = purchased.contains("fortress.t5.icebarrage");
-
         Random rand = new Random();
-        // Exclude currently active and last active regions so the same location cannot roll twice in a row
         List<Integer> candidateRegions = new ArrayList<>();
         for (int i = 0; i < 9; i++) {
             if (!activeBarrageRegions.contains(i) && !lastBarrageRegions.contains(i)) {
@@ -623,33 +637,32 @@ public class GuardianAbilities implements Serializable {
         Collections.shuffle(candidateRegions, rand);
 
         if (hasFire && hasIce) {
-            // Both fire and ice: exactly 1 fire + 1 ice (100% chance, 2 distinct new regions, 2/9 aoe denial)
             pendingBarrageRegions.add(candidateRegions.get(0));
             pendingBarrageTypes.add("FIRE");
             pendingBarrageRegions.add(candidateRegions.get(1));
             pendingBarrageTypes.add("ICE");
         } else if (hasFire) {
-            // Only fire barrage: 90% chance 1 region, 10% chance 2 regions
-            boolean twoRegions = rand.nextDouble() < 0.10;
-            pendingBarrageRegions.add(candidateRegions.get(0));
-            pendingBarrageTypes.add("FIRE");
-            if (twoRegions && candidateRegions.size() > 1) {
-                pendingBarrageRegions.add(candidateRegions.get(1));
+            if (hasBarrage || rand.nextDouble() < 0.50) {
+                boolean twoRegions = rand.nextDouble() < 0.10;
+                pendingBarrageRegions.add(candidateRegions.get(0));
                 pendingBarrageTypes.add("FIRE");
+                if (twoRegions && candidateRegions.size() > 1) {
+                    pendingBarrageRegions.add(candidateRegions.get(1));
+                    pendingBarrageTypes.add("FIRE");
+                }
             }
         } else if (hasIce) {
-            // Only ice barrage: 90% chance 1 region, 10% chance 2 regions
-            boolean twoRegions = rand.nextDouble() < 0.10;
-            pendingBarrageRegions.add(candidateRegions.get(0));
-            pendingBarrageTypes.add("ICE");
-            if (twoRegions && candidateRegions.size() > 1) {
-                pendingBarrageRegions.add(candidateRegions.get(1));
+            if (hasBarrage || rand.nextDouble() < 0.50) {
+                boolean twoRegions = rand.nextDouble() < 0.10;
+                pendingBarrageRegions.add(candidateRegions.get(0));
                 pendingBarrageTypes.add("ICE");
+                if (twoRegions && candidateRegions.size() > 1) {
+                    pendingBarrageRegions.add(candidateRegions.get(1));
+                    pendingBarrageTypes.add("ICE");
+                }
             }
         } else {
-            // Standard barrage: 80% chance 1 region, 20% chance 0 regions
-            boolean oneRegion = rand.nextDouble() < 0.80;
-            if (oneRegion) {
+            if (rand.nextDouble() < 0.80) {
                 pendingBarrageRegions.add(candidateRegions.get(0));
                 pendingBarrageTypes.add("BASE");
             }

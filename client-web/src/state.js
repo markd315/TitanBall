@@ -40,5 +40,7 @@ export const gameState = {
     prevHomeScore: 0,
     prevAwayScore: 0,
     prevGoalVisible: false,
-    goalComboType: null
+    goalComboType: null,
+    buildOrder: [],
+    buildOrderIndex: 0
 };

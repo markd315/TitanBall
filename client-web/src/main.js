@@ -1,6 +1,7 @@
 import { gameState } from './state.js';
 import { initCanvas, clearScreen, drawImageCam } from './render/canvas.js';
 import { initMasteries } from './screens/masteries.js';
+import { initBuildOrderPlanner, updatePlanBuildButtonVisibility } from './screens/buildOrderPlanner.js';
 import { drawCredits } from './screens/credits.js';
 import { initKeyboard, setControlPreset } from './input/keyboard.js';
 import { initMouse } from './input/mouse.js';
@@ -349,7 +350,7 @@ function initUIListeners() {
         if (lobbyStatus) lobbyStatus.textContent = 'FINDING PLAYERS...';
         
         const playerIndex = getPlayerIndexForSize(selectedMatchSize);
-        const code = `/${playerIndex}/0/1/5/2/9999/10/12`;
+        const code = `/${playerIndex}/0/1/10/2/9999/10/12`;
         const partnersCsv = partners.join(',');
         console.log(`Joining Team Match Queue with size ${selectedMatchSize}v${selectedMatchSize}, class ${classSel}, partners: ${partnersCsv}`);
         await joinQueue(code, classSel, partnersCsv);
@@ -486,7 +487,10 @@ function initUIListeners() {
       gameState.controlsHeld.classSelection = e.target.value;
       sessionStorage.setItem('classSelection', e.target.value);
       console.log("Selected Titan Class:", e.target.value);
+      updatePlanBuildButtonVisibility();
     });
+    // Set initial visibility of Plan Build Order button
+    updatePlanBuildButtonVisibility();
   }
 
   // Controls Layout dropdown change
@@ -1086,6 +1090,7 @@ export function start() {
   ctx = initCanvas();
   initAssets();
   initMasteries();
+  initBuildOrderPlanner();
   initKeyboard();
   initMouse();
   initMobileControls();

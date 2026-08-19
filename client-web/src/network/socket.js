@@ -24,8 +24,10 @@ export function connectGame(gameID) {
   socket.onopen = () => {
     console.log("WebSocket connected");
     reconnectAttempts = 0;
+    // Reset build order pointer for fresh game
+    gameState.buildOrderIndex = 0;
     // Start sending control inputs
-    // Start sending control inputs
+
     updateInterval = setInterval(() => {
       if (socket && socket.readyState === WebSocket.OPEN) {
         const isGoalie = gameState.game && gameState.game.underControl && gameState.game.underControl.type === 'GOALIE';

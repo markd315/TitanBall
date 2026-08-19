@@ -3,7 +3,7 @@ import { CONSTANTS } from '../constants.js';
 import { AssetManager } from '../assets/sprites.js';
 import { clientUI, gameState } from '../state.js';
 
-const ABILITY_TOOLTIPS = {
+export const ABILITY_TOOLTIPS = {
     // Fortress
     "fortress.t1.homeward": { title: "Home Ward Charter", desc: "Unlock base defense mechanics. Required for all Fortress upgrades." },
     "fortress.t2.reinforce": { title: "Reinforce", desc: "Active (80g). Spawns a solid wall near your base in a random Y location. Despawns and decays health over 10 seconds." },
@@ -84,7 +84,7 @@ const ABILITY_TOOLTIPS = {
     "cultivation.t6.iceportal": { title: "Ice Portal", desc: "Passive (250m). Continuously applies SLOW effect to all enemy minion units." }
 };
 
-const HARDCODED_COSTS = {
+export const HARDCODED_COSTS = {
     "fortress.t1.homeward": { cost: 50 },
     "fortress.t2.reinforce": { use: 80 },
     "fortress.t2.healingburst": { use: 30 },
@@ -329,7 +329,7 @@ export const tabWidth  = 180;
 export const tabHeight = 48;
 export const spacing   = 14;
 
-const TREE_SHORT_NAME = {
+export const TREE_SHORT_NAME = {
     GOALIE_TREE_SIEGE: "siege",
     GOALIE_TREE_FORTRESS: "fortress",
     GOALIE_TREE_EMPOWERMENT: "empowerment",
@@ -700,24 +700,68 @@ export function drawHud(ctx, game, state) {
 
         // Draw Goalie Currency (Gold) & Mana
         if (game.underControl && game.underControl.type === 'GOALIE') {
-            const isHome = game.underControl.team === 'HOME';
-            const purchased = isHome ? (game.homeGoaliePurchasedUpgrades || []) : (game.awayGoaliePurchasedUpgrades || []);
-            const purchasedArray = Array.from(purchased);
+            const isHome       = game.underControl.team === 'HOME';
+            const purchased    = isHome ? (game.homeGoaliePurchasedUpgrades || []) : (game.awayGoaliePurchasedUpgrades || []);
+            const purchasedSet = new Set(purchased);
+            const purchasedArray = Array.from(purchasedSet);
             const hasMana = purchasedArray.some(key => key.startsWith('cultivation.'));
+
+            // ── Auto-advance buildOrderIndex past already-purchased cost nodes ──
+            // Handles the case where the player buys an upgrade manually (without X).
+            const order = gameState.buildOrder;
+            while (
+                gameState.buildOrderIndex < order.length
+            ) {
+                const item = order[gameState.buildOrderIndex];
+                const itemDefs     = NODE_DEFS[item.tree];
+                const itemShort    = TREE_SHORT_NAME[item.tree];
+                if (!itemDefs || !itemShort) { gameState.buildOrderIndex++; continue; }
+                const itemDef = itemDefs.find(d => `${itemShort}.${d.tier}.${d.name}` === item.nodeKey);
+                if (!itemDef || itemDef.kind !== 'cost') break; // 'use' nodes never auto-skip
+                // Resolve actual key (handles focusedtraining→focusedtraining2)
+                let resolvedNodeKey = item.nodeKey;
+                if (itemDef.name === 'focusedtraining' && purchasedSet.has('empowerment.t5.focusedtraining') && !purchasedSet.has('empowerment.t5.focusedtraining2')) {
+                    resolvedNodeKey = 'empowerment.t5.focusedtraining2';
+                }
+                if (purchasedSet.has(resolvedNodeKey)) {
+                    gameState.buildOrderIndex++; // permanently skip
+                } else {
+                    break; // next unpurchased cost node found
+                }
+            }
+
+            // ── Determine if next BO upgrade is affordable (for flash) ──
+            let flashGold = false;
+            let flashMana = false;
+            if (gameState.buildOrderIndex < order.length) {
+                const nextItem = order[gameState.buildOrderIndex];
+                const costData = HARDCODED_COSTS[nextItem.nodeKey] || {};
+                const amount   = costData.use !== undefined ? costData.use : (costData.cost !== undefined ? costData.cost : 0);
+                const isManaNext = !!(costData.isMana);
+                if (amount > 0) {
+                    const goldAmt = Math.floor(isHome ? (game.homeGoalieCurrency || 0) : (game.awayGoalieCurrency || 0));
+                    const manaAmt = Math.floor(isHome ? (game.homeGoalieMana    || 0) : (game.awayGoalieMana    || 0));
+                    if (isManaNext && manaAmt >= amount) flashMana = true;
+                    if (!isManaNext && goldAmt >= amount) flashGold = true;
+                }
+            }
+
+            // Pulse: 0→1→0 on ~1.2 s cycle
+            const pulse = 0.55 + 0.45 * Math.sin(Date.now() / 190);
 
             if (hasMana) {
                 ctx.save();
-                ctx.fillStyle = 'rgba(10, 26, 20, 0.8)';
-                ctx.strokeStyle = 'violet';
-                ctx.lineWidth = 2;
+                ctx.fillStyle   = 'rgba(10, 26, 20, 0.8)';
+                ctx.strokeStyle = flashMana ? `rgba(220,160,255,${pulse})` : 'violet';
+                ctx.lineWidth   = flashMana ? 3 + pulse * 2 : 2;
+                if (flashMana) ctx.shadowColor = `rgba(220,160,255,${pulse})`;
+                if (flashMana) ctx.shadowBlur  = 14 * pulse;
                 ctx.beginPath();
-                if (ctx.roundRect) {
-                    ctx.roundRect(50, CONSTANTS.Y_RES - 220, 220, 50, 8);
-                } else {
-                    ctx.rect(50, CONSTANTS.Y_RES - 220, 220, 50);
-                }
+                if (ctx.roundRect) ctx.roundRect(50, CONSTANTS.Y_RES - 220, 220, 50, 8);
+                else ctx.rect(50, CONSTANTS.Y_RES - 220, 220, 50);
                 ctx.fill();
                 ctx.stroke();
+                ctx.shadowBlur = 0;
 
                 ctx.fillStyle = 'violet';
                 ctx.beginPath();
@@ -730,28 +774,28 @@ export function drawHud(ctx, game, state) {
                 ctx.textBaseline = 'middle';
                 ctx.fillText('M', 75, CONSTANTS.Y_RES - 195);
 
-                ctx.fillStyle = '#ffffff';
+                ctx.fillStyle = flashMana ? `rgba(255,220,255,${0.7 + 0.3 * pulse})` : '#ffffff';
                 ctx.font = 'bold 20px Arial';
                 ctx.textAlign = 'left';
                 ctx.textBaseline = 'middle';
-                const manaVal = Math.floor(isHome ? (game.homeGoalieMana || 0) : (game.awayGoalieMana || 0));
+                const manaVal    = Math.floor(isHome ? (game.homeGoalieMana || 0) : (game.awayGoalieMana || 0));
                 const maxManaVal = purchasedArray.includes('cultivation.t3.highermanacap') ? 1000 : 250;
                 ctx.fillText(`Mana: ${manaVal}/${maxManaVal}`, 100, CONSTANTS.Y_RES - 195);
                 ctx.restore();
             }
 
             ctx.save();
-            ctx.fillStyle = 'rgba(10, 26, 20, 0.8)';
-            ctx.strokeStyle = '#ff9f1c';
-            ctx.lineWidth = 2;
+            ctx.fillStyle   = 'rgba(10, 26, 20, 0.8)';
+            ctx.strokeStyle = flashGold ? `rgba(255,200,60,${pulse})` : '#ff9f1c';
+            ctx.lineWidth   = flashGold ? 3 + pulse * 2 : 2;
+            if (flashGold) ctx.shadowColor = `rgba(255,180,0,${pulse})`;
+            if (flashGold) ctx.shadowBlur  = 14 * pulse;
             ctx.beginPath();
-            if (ctx.roundRect) {
-                ctx.roundRect(50, CONSTANTS.Y_RES - 160, 220, 50, 8);
-            } else {
-                ctx.rect(50, CONSTANTS.Y_RES - 160, 220, 50);
-            }
+            if (ctx.roundRect) ctx.roundRect(50, CONSTANTS.Y_RES - 160, 220, 50, 8);
+            else ctx.rect(50, CONSTANTS.Y_RES - 160, 220, 50);
             ctx.fill();
             ctx.stroke();
+            ctx.shadowBlur = 0;
 
             ctx.fillStyle = '#ff9f1c';
             ctx.beginPath();
@@ -764,7 +808,7 @@ export function drawHud(ctx, game, state) {
             ctx.textBaseline = 'middle';
             ctx.fillText('$', 75, CONSTANTS.Y_RES - 135);
 
-            ctx.fillStyle = '#ffffff';
+            ctx.fillStyle = flashGold ? `rgba(255,230,100,${0.7 + 0.3 * pulse})` : '#ffffff';
             ctx.font = 'bold 20px Arial';
             ctx.textAlign = 'left';
             ctx.textBaseline = 'middle';
