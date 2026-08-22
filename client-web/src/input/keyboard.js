@@ -25,6 +25,17 @@ export const actionMap = {
   'BUILD_NEXT': 'BUILD_NEXT'
 };
 
+export function getKeysForAction(actionName) {
+  const keys = [];
+  for (const [key, act] of Object.entries(currentConfig)) {
+    if (act === actionName && !['Xres', 'Yres', 'SCALE', 'theme', 'rangewidth', 'shotwidth'].includes(key)) {
+      if (!isNaN(key) && key.length > 1) continue;
+      keys.push(key);
+    }
+  }
+  return keys.length > 0 ? keys.join(' / ') : actionName;
+}
+
 export async function setControlPreset(preset) {
   try {
     let url = 'res/ctrls_example_rts.json';
@@ -102,6 +113,13 @@ export function initKeyboard() {
       return;
     }
 
+    // Tab key — Show Class Stats & Ability Guide HUD
+    if (e.key === 'Tab' || e.code === 'Tab') {
+      gameState.controlsHeld.TAB = true;
+      e.preventDefault();
+      return;
+    }
+
     // X key — execute next build order upgrade (Goalie, in-game)
     if (e.key === 'x' || e.key === 'X') {
       const game = gameState.game;
@@ -165,7 +183,9 @@ export function initKeyboard() {
 
   window.addEventListener('keyup', (e) => {
     // If typing in an input field, do not capture/prevent default controls
-    if (document.activeElement && document.activeElement.tagName === 'INPUT') {
+    if (e.key === 'Tab' || e.code === 'Tab') {
+      gameState.controlsHeld.TAB = false;
+      e.preventDefault();
       return;
     }
 

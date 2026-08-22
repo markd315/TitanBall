@@ -1224,23 +1224,27 @@ public class GuardianAbilities implements Serializable {
 
     private void applyPullGoalie(GameEngine context, Titan goalie) {
         if (goalie != null) {
-            goalie.maxHealth = 60.0;
-            goalie.baseMaxHealth = 60.0;
-            goalie.health = Math.min(goalie.health, 60.0);
-            goalie.throwPower = 0.8;
-            goalie.baseThrowPower = 0.8;
-            goalie.speed = 0.8;
-            goalie.baseSpeed = 0.8;
-            goalie.damageFactor = 0.8;
-            goalie.baseDamageFactor = 0.8;
-            goalie.cooldownFactor = 0.8;
-            goalie.baseCooldownFactor = 0.8;
-            goalie.durationsFactor = 0.8;
-            goalie.baseDurationsFactor = 0.8;
-            goalie.rangeFactor = 0.8;
-            goalie.baseRangeFactor = 0.8;
-            goalie.painReduction = 0.8;
-            goalie.basePainReduction = 0.8;
+            double hp = context.c.getD("guardian.pullgoalie.health");
+            double speed = context.c.getD("guardian.pullgoalie.speed");
+            double factor = context.c.getD("guardian.pullgoalie.statfactor");
+
+            goalie.maxHealth = hp;
+            goalie.baseMaxHealth = hp;
+            goalie.health = Math.min(goalie.health, hp);
+            goalie.throwPower = factor;
+            goalie.baseThrowPower = factor;
+            goalie.speed = speed;
+            goalie.baseSpeed = speed;
+            goalie.damageFactor = factor;
+            goalie.baseDamageFactor = factor;
+            goalie.cooldownFactor = factor;
+            goalie.baseCooldownFactor = factor;
+            goalie.durationsFactor = factor;
+            goalie.baseDurationsFactor = factor;
+            goalie.rangeFactor = factor;
+            goalie.baseRangeFactor = factor;
+            goalie.painReduction = factor;
+            goalie.basePainReduction = factor;
         }
     }
 

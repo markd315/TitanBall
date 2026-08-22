@@ -21,6 +21,7 @@ export const gameState = {
         BOOST_LOCK: false,
         lobBtn: false,
         shotBtn: false,
+        TAB: false,
         artisanShot: 'SHOT',
         posX: -1,
         posY: -1,

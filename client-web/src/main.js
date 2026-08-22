@@ -17,6 +17,7 @@ import { drawBall, displayBallArrow } from './render/ball.js';
 import { drawGoals } from './render/goals.js';
 import { drawAllPseudotextures } from './render/pseudotextures.js';
 import { drawHud } from './render/hud.js';
+import { drawClassStatsOverlay, formatClassTooltip, CLASS_INFO, computeStatWithMastery, getActiveMasteries, getAbilityCd, loadGameConfig } from './render/classStats.js';
 import { login, joinQueue, checkGame, register, startTutorial } from './network/auth.js';
 import { connectGame, disconnectGame } from './network/socket.js';
 import { warmServer } from './network/warm.js';
@@ -477,6 +478,7 @@ function initUIListeners() {
 
   // Class Select dropdown change
   const classSelect = document.getElementById('class-select');
+  const classDesc = document.getElementById('class-select-desc');
   if (classSelect) {
     const savedClass = sessionStorage.getItem('classSelection') || 'WARRIOR';
     classSelect.value = savedClass;
@@ -484,15 +486,96 @@ function initUIListeners() {
     
     const classError = document.getElementById('class-select-error');
 
+    function _updateClassInfoDisplay(classKey) {
+      if (!classKey) return;
+      const info = CLASS_INFO[classKey.toUpperCase()];
+      if (!info) return;
+
+      const tooltipText = formatClassTooltip(classKey);
+      classSelect.title = tooltipText;
+
+      if (classDesc) {
+        const masteries = getActiveMasteries();
+        const hp = computeStatWithMastery('hp', info.rawHp, masteries.health);
+        const spd = computeStatWithMastery('speed', info.rawSpeed, masteries.speed);
+        const thr = computeStatWithMastery('throwPower', info.rawThrow, masteries.shot);
+        const stl = computeStatWithMastery('stealRad', info.rawSteal, masteries.stealRadius);
+
+        const abText = info.abilities.map(ab => {
+          const cdInfo = getAbilityCd(ab, masteries);
+          const cdDisplay = cdInfo ? (cdInfo.isModified ? `${cdInfo.display} (${cdInfo.bonusStr})` : cdInfo.display) : null;
+          const cdColor = cdInfo && cdInfo.isModified ? '#60a5fa' : '#67e8f9';
+          return `<div style="margin-bottom:4px;"><span style="color:#ffd700;font-weight:bold;">${ab.label} (${ab.name}):</span> ${cdDisplay ? `<span style="color:${cdColor};font-size:11px;font-weight:bold;margin-left:4px;">[${cdDisplay}]</span> ` : ''}<span style="color:#d0e5dd;">${ab.desc}</span></div>`;
+        }).join('');
+        
+        function _renderBarHtml(label, statObj, unit = '', decimals = 0) {
+          const baseStr = decimals > 0 ? statObj.baseVal.toFixed(decimals) : statObj.baseVal;
+          const bonusStr = statObj.bonusVal > 0.001 
+            ? ` <span style="color:#60a5fa;">(+${decimals > 0 ? statObj.bonusVal.toFixed(decimals) : statObj.bonusVal.toFixed(1)})</span>` 
+            : '';
+          const bonusPct = statObj.totalPct > statObj.basePct ? statObj.totalPct - statObj.basePct : 0;
+
+          return `
+            <div>
+              <div style="display:flex;justify-content:space-between;color:#94c2b5;margin-bottom:2px;">
+                <span>${label}</span>
+                <span style="color:#fff;">${baseStr}${bonusStr}${unit} <span style="color:#8abcb0;font-size:10px;">[${statObj.basePct}%ile]</span></span>
+              </div>
+              <div style="background:rgba(0,0,0,0.6);height:7px;border-radius:3px;overflow:hidden;border:1px solid rgba(255,255,255,0.15);display:flex;">
+                <div style="background:${statObj.baseColor};height:100%;width:${statObj.basePct}%;"></div>
+                ${bonusPct > 0 ? `<div style="background:#3b82f6;height:100%;width:${bonusPct}%;"></div>` : ''}
+              </div>
+            </div>
+          `;
+        }
+
+        classDesc.innerHTML = `
+          <div style="color:#ffd700;font-weight:bold;font-size:14px;margin-bottom:3px;">${info.name} <span style="color:#4deeea;font-size:11px;font-weight:normal;">[${info.role}]</span></div>
+          <div style="margin-bottom:8px;color:#e0f0ec;font-size:12px;">${info.overview}</div>
+          <div style="margin-bottom:8px;font-size:12px;">${abText}</div>
+          
+          <div style="border-top:1px solid rgba(255,215,0,0.2);padding-top:6px;margin-top:6px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+              <span style="font-size:11px;font-weight:bold;color:#ffd700;">PERCENTILE STATS</span>
+              <span style="font-size:10px;color:#8abcb0;">🔴 &lt;33% &nbsp;🟡 33-66% &nbsp;🟢 ≥66% &nbsp;|&nbsp; <span style="color:#60a5fa;">🔵 Mastery</span></span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;font-size:11px;">
+              ${_renderBarHtml('Health', hp, ' HP', 0)}
+              ${_renderBarHtml('Speed', spd, '', 2)}
+              ${_renderBarHtml('Throw Range', thr, '', 2)}
+              ${_renderBarHtml('Steal Radius', stl, 'px', 0)}
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    // Populate native mouseover tooltips on all option elements
+    Array.from(classSelect.options).forEach(opt => {
+      opt.title = formatClassTooltip(opt.value);
+    });
+
+    _updateClassInfoDisplay(savedClass);
+
     classSelect.addEventListener('change', (e) => {
       if (classError) {
         classError.style.display = 'none';
       }
       gameState.controlsHeld.classSelection = e.target.value;
       sessionStorage.setItem('classSelection', e.target.value);
+      _updateClassInfoDisplay(e.target.value);
       console.log("Selected Titan Class:", e.target.value);
       updatePlanBuildButtonVisibility();
     });
+
+    // Re-render class info preview card & option tooltips immediately when masteries are saved
+    window.addEventListener('masteriesUpdated', () => {
+      _updateClassInfoDisplay(classSelect.value);
+      Array.from(classSelect.options).forEach(opt => {
+        opt.title = formatClassTooltip(opt.value);
+      });
+    });
+
     // Set initial visibility of Plan Build Order button
     updatePlanBuildButtonVisibility();
   }
@@ -811,6 +894,9 @@ function gameLoop(timestamp) {
         const sec = game && game.secondsToStart !== undefined ? Math.max(0, Math.ceil(game.secondsToStart)) : 5;
         ctx.fillText(sec > 0 ? sec.toString() : "GO!", 1920 / 2, 960 / 2);
         ctx.restore();
+
+        // Display class stats & abilities guide during countdown
+        drawClassStatsOverlay(ctx, gameState.game, true);
       }
       break;
     case GamePhase.INGAME:
@@ -825,6 +911,11 @@ function gameLoop(timestamp) {
       ctx.font = '30px Arial';
       ctx.fillText('Phase: ' + gameState.phase, 100, 100);
       break;
+  }
+
+  // Draw full Class Abilities & Stats Guide overlay whenever [TAB] is held
+  if (gameState.controlsHeld && gameState.controlsHeld.TAB && gameState.game) {
+    drawClassStatsOverlay(ctx, gameState.game, false);
   }
 
   requestAnimationFrame(gameLoop);

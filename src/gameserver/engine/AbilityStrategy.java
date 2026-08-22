@@ -102,7 +102,7 @@ public class AbilityStrategy    {
         dur *= caster.durationsFactor;
         initialD *= caster.damageFactor;
         recurringD *= caster.damageFactor;
-        int range = (int) (250 * caster.rangeFactor);
+        int range = (int) (c.getI("titan.ignite.range") * caster.rangeFactor);
         shape = new CollisionMath.Bounds(0, 0, 20, 20);
         sel = new Selector(shape, SelectorOffset.MOUSE_CENTER,
                 range);

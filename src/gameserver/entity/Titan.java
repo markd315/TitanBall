@@ -278,120 +278,16 @@ public class Titan extends Entity   {
 
     static{
         Const c = new Const("res/game.cfg");
-        titanSpeed.put(TitanType.SUPPORT, 5.5);
-        titanSpeed.put(TitanType.WARRIOR, 5.5);
-        titanSpeed.put(TitanType.ARTISAN, 5.3);
-        titanSpeed.put(TitanType.MARKSMAN, 5.1);
-        titanSpeed.put(TitanType.HOUNDMASTER, 5.1);
-        titanSpeed.put(TitanType.RANGER, 5.0);
-        titanSpeed.put(TitanType.STEALTH, 4.85);
-        titanSpeed.put(TitanType.GRENADIER, 4.8);
-        titanSpeed.put(TitanType.MAGE, 4.8);
-        titanSpeed.put(TitanType.BUILDER, 4.75);
-        titanSpeed.put(TitanType.DASHER, 4.7); //Has a 1.5x as effective boost, so this is pretty solid
-        titanSpeed.put(TitanType.GOLEM, 4.5);
-        titanSpeed.put(TitanType.GOALIE, 3.575);
-        //titanSpeed.put(TitanType.RECON, 7);
-
-
-        titanHealth.put(TitanType.GOALIE, 200.0);
-        titanHealth.put(TitanType.GOLEM, 200.0);
-        titanHealth.put(TitanType.WARRIOR, 135.0);
-        titanHealth.put(TitanType.RANGER, 120.0);
-        titanHealth.put(TitanType.HOUNDMASTER, 120.0);
-        titanHealth.put(TitanType.MAGE, 110.0);
-        titanHealth.put(TitanType.GRENADIER, 110.0);
-        titanHealth.put(TitanType.ARTISAN, 90.0);
-        titanHealth.put(TitanType.BUILDER, 90.0);
-        titanHealth.put(TitanType.SUPPORT, 85.0);
-        titanHealth.put(TitanType.MARKSMAN, 85.0);
-        titanHealth.put(TitanType.DASHER, 80.0);
-        titanHealth.put(TitanType.STEALTH, 80.0);
-        //titanHealth.put(TitanType.RECON, 65.0);
-
-
-        titanShoot.put(TitanType.GOALIE, 1.5);
-        titanShoot.put(TitanType.MARKSMAN, 1.5);
-        titanShoot.put(TitanType.GOLEM, 1.45);
-        titanShoot.put(TitanType.ARTISAN, 1.15);
-        titanShoot.put(TitanType.DASHER, 1.09);
-        titanShoot.put(TitanType.STEALTH, 1.09);
-        titanShoot.put(TitanType.GRENADIER, 1.02);
-        titanShoot.put(TitanType.BUILDER, 1.00);
-        titanShoot.put(TitanType.HOUNDMASTER, 0.90);
-        titanShoot.put(TitanType.RANGER, 0.84);
-        titanShoot.put(TitanType.MAGE, 0.84);
-        titanShoot.put(TitanType.WARRIOR, 0.80);
-        titanShoot.put(TitanType.SUPPORT, 0.80);
-        //titanShoot.put(TitanType.RECON, 0.8);
-
-        //33 Frames == 1 Second
-        titanEFrames.put(TitanType.GOALIE, 1);
-        titanEFrames.put(TitanType.DASHER, 3); //Cover ball
-        titanEFrames.put(TitanType.GOLEM, 3); //steroids
-        titanEFrames.put(TitanType.BUILDER, 5);//Wall
-        titanEFrames.put(TitanType.RANGER, 5); //Single targets
-        titanEFrames.put(TitanType.MARKSMAN, 5);
-        titanEFrames.put(TitanType.STEALTH, 8); //stealth
-        titanEFrames.put(TitanType.ARTISAN, 10);//Suck
-        titanEFrames.put(TitanType.HOUNDMASTER, 5); //minions
-        titanEFrames.put(TitanType.MAGE, 12);
-        titanEFrames.put(TitanType.WARRIOR, 16);
-        titanEFrames.put(TitanType.SUPPORT, 16); //Stun (for 1.5s)
-        titanEFrames.put(TitanType.GRENADIER, 16); //flashbang
-
-        titanRFrames.put(TitanType.GOALIE, 1);
-        titanRFrames.put(TitanType.WARRIOR, 1);//blinks
-        titanRFrames.put(TitanType.STEALTH, 1);
-        titanRFrames.put(TitanType.MARKSMAN, 3);//steroids
-        titanRFrames.put(TitanType.MAGE, 5);//Single Targets
-        titanRFrames.put(TitanType.DASHER, 5);
-        titanRFrames.put(TitanType.SUPPORT, 5);
-        titanRFrames.put(TitanType.ARTISAN, 10);//Minions
-        titanRFrames.put(TitanType.BUILDER, 10);
-        titanRFrames.put(TitanType.GRENADIER, 12); //fire
-        titanRFrames.put(TitanType.GOLEM, 12);//Scatters
-        titanRFrames.put(TitanType.RANGER, 15);
-        titanRFrames.put(TitanType.HOUNDMASTER, 25); //unleash
-        //titanRFrames.put(TitanType.RECON, 1);
-
-        //Most cast lag=support(21) warrior (17) ranger (17) mage (17)
-        //2 points is a 40% reduction, 0 points is a 30% increase (in fullcombo)
-        //Would take support from 27 frames to 12 frames for fullcombo, a difference of .45 seconds
-        //Least cast lag=, slasher (8), marksman (8), stealth (9)
-        //If inted, reduces a single-target from 6 to 3 frames (0pts vs max)
-        //anything less than 4 frames may have no effect for some points with 30% scaling
-
-
-        titanStealRad.put(TitanType.ARTISAN, 33);
-        titanStealRad.put(TitanType.GOALIE, 40);
-        titanStealRad.put(TitanType.MARKSMAN, 24);
-        titanStealRad.put(TitanType.GOLEM, 35);
-        titanStealRad.put(TitanType.RANGER, 24);
-        //titanStealFrames.put(TitanType.RECON, 40);
-        titanStealRad.put(TitanType.DASHER, 30);
-        titanStealRad.put(TitanType.STEALTH, 26);
-        titanStealRad.put(TitanType.SUPPORT, 28);
-        titanStealRad.put(TitanType.WARRIOR, 26);
-        titanStealRad.put(TitanType.MAGE, 26);
-        titanStealRad.put(TitanType.BUILDER, 26);
-        titanStealRad.put(TitanType.GRENADIER, 27);
-        titanStealRad.put(TitanType.HOUNDMASTER, 28);
-
-        titanStealFrames.put(TitanType.ARTISAN, 40);
-        titanStealFrames.put(TitanType.GOALIE, 1);
-        titanStealFrames.put(TitanType.MARKSMAN, 40);
-        titanStealFrames.put(TitanType.GOLEM, 40);
-        titanStealFrames.put(TitanType.RANGER, 40);
-        //titanStealFrames.put(TitanType.RECON, 40);
-        titanStealFrames.put(TitanType.DASHER, 40);
-        titanStealFrames.put(TitanType.STEALTH, 40);
-        titanStealFrames.put(TitanType.SUPPORT, 40);
-        titanStealFrames.put(TitanType.WARRIOR, 40);
-        titanStealFrames.put(TitanType.MAGE, 40);
-        titanStealFrames.put(TitanType.BUILDER, 40);
-        titanStealFrames.put(TitanType.GRENADIER, 40);
-        titanStealFrames.put(TitanType.HOUNDMASTER, 40);
+        for (TitanType t : TitanType.values()) {
+            String prefix = "titan." + t.name().toLowerCase() + ".";
+            if (c.hasKey(prefix + "speed")) titanSpeed.put(t, c.getD(prefix + "speed"));
+            if (c.hasKey(prefix + "health")) titanHealth.put(t, c.getD(prefix + "health"));
+            if (c.hasKey(prefix + "shoot")) titanShoot.put(t, c.getD(prefix + "shoot"));
+            if (c.hasKey(prefix + "eframes")) titanEFrames.put(t, c.getI(prefix + "eframes"));
+            if (c.hasKey(prefix + "rframes")) titanRFrames.put(t, c.getI(prefix + "rframes"));
+            if (c.hasKey(prefix + "stealrad")) titanStealRad.put(t, c.getI(prefix + "stealrad"));
+            if (c.hasKey(prefix + "stealframes")) titanStealFrames.put(t, c.getI(prefix + "stealframes"));
+        }
 
         HashSet<RangeCircle> mage= new HashSet<>();
         HashSet<RangeCircle> builder= new HashSet<>();

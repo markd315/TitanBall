@@ -16,8 +16,8 @@ public class ConstOperations  implements Serializable {
             while (sc.hasNextLine()) {
                 String line = sc.nextLine();
                 
-                // Skip empty lines or lines without an equals sign
-                if (line == null || line.trim().isEmpty() || !line.contains("=")) {
+                // Skip empty lines, comments, or lines without an equals sign
+                if (line == null || line.trim().isEmpty() || line.trim().startsWith("#") || line.trim().startsWith("//") || !line.contains("=")) {
                     continue;
                 }
                 

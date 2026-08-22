@@ -96,6 +96,9 @@ export function initMasteries() {
       gameState.controlsHeld.masteries = { ...localMasteries };
       sessionStorage.setItem('titanMasteries', JSON.stringify(localMasteries));
       
+      // Dispatch event to live-update all stat bars and tooltips across the UI
+      window.dispatchEvent(new CustomEvent('masteriesUpdated', { detail: localMasteries }));
+
       modal.style.display = 'none';
       if (modeOverlay) modeOverlay.style.pointerEvents = 'auto';
     });
