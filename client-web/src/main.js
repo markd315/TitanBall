@@ -513,7 +513,9 @@ function initUIListeners() {
           const bonusStr = statObj.bonusVal > 0.001 
             ? ` <span style="color:#60a5fa;">(+${decimals > 0 ? statObj.bonusVal.toFixed(decimals) : statObj.bonusVal.toFixed(1)})</span>` 
             : '';
-          const bonusPct = statObj.totalPct > statObj.basePct ? statObj.totalPct - statObj.basePct : 0;
+          const bonusPct = statObj.totalPct > statObj.basePct 
+            ? (statObj.totalPct - statObj.basePct) 
+            : (statObj.bonusVal > 0.001 ? 2 : 0);
 
           return `
             <div>

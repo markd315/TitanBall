@@ -357,15 +357,47 @@ export function getActiveMasteries() {
 
 export function getStatPercentile(statType, value) {
   const list = ROSTER_STATS[statType];
-  if (!list) return 50;
-  const numBelow = list.filter(v => v < value).length;
-  const numEqual = list.filter(v => v === value).length;
-  const pct = Math.round(((numBelow + (0.5 * numEqual)) / list.length) * 100);
-  return Math.max(6, Math.min(100, pct));
+  if (!list || list.length === 0) return 50;
+
+  const min = list[0];
+  const max = list[list.length - 1];
+  if (value <= min) return 6;
+  if (value >= max) return 96;
+
+  let idx = 0;
+  while (idx < list.length - 1 && list[idx + 1] <= value) {
+    idx++;
+  }
+
+  if (idx >= list.length - 1) return 96;
+
+  const lowVal = list[idx];
+  const highVal = list[idx + 1];
+  const segmentFraction = (highVal === lowVal) ? 0 : (value - lowVal) / (highVal - lowVal);
+  const rank = (idx + segmentFraction) / (list.length - 1);
+  const pct = Math.round(rank * 90 + 6);
+  return Math.max(6, Math.min(99, pct));
 }
 
-export function computeStatWithMastery(statType, baseVal, masteryPoints = 1) {
-  const mult = Math.pow(1.04, (masteryPoints || 1) - 1);
+const STAT_MASTERY_CONFIG_MAP = {
+  hp: 'masteries.health.mult',
+  speed: 'masteries.speed.mult',
+  throwPower: 'masteries.throw.mult',
+  stealRad: 'masteries.stealRadius.mult',
+  damage: 'masteries.damage.mult',
+  cooldowns: 'masteries.cooldowns.mult',
+  effectDuration: 'masteries.effectDuration.mult',
+  abilityRange: 'masteries.range.mult',
+  painReduction: 'masteries.painReduction.mult'
+};
+
+export function computeStatWithMastery(statType, baseVal, masteryPoints = 0) {
+  const points = Number(masteryPoints) || 0;
+  const cfgKey = STAT_MASTERY_CONFIG_MAP[statType];
+  const stepMult = cfgKey ? getCfgNum(cfgKey, 1.04) : 1.04;
+  
+  // Apply the specific mastery multiplier from game.cfg
+  const mult = points > 0 ? (1 + points * (stepMult - 1.0)) : 1.0;
   const totalVal = baseVal * mult;
   const basePct = getStatPercentile(statType, baseVal);
   const totalPct = getStatPercentile(statType, totalVal);
