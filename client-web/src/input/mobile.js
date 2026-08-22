@@ -1,6 +1,7 @@
 import { gameState } from '../state.js';
 import { GamePhase } from '../constants.js';
 import { getDefaultPreset } from './keyboard.js';
+import { handleUIClick } from './mouse.js';
 
 let joystickBase = null;
 let joystickStick = null;
@@ -8,6 +9,10 @@ let container = null;
 let btnAbility1 = null;
 let btnAbility2 = null;
 let btnPossession = null;
+
+// Boost Switch element
+let boostSwitchContainer = null;
+let boostSwitch = null;
 
 // New elements for Double Joystick Mode
 let aimJoystickZone = null;
@@ -35,6 +40,59 @@ let hasLobbedCurrentTouch = false;
 // Active action of the possession button (LOB or STEAL)
 let possessionActiveAction = null;
 
+export function getControlledTitan(game) {
+  if (!game) return null;
+  if (game.underControl) return game.underControl;
+  if (game.clients && game.players) {
+    const token = gameState.token || sessionStorage.getItem('accessToken');
+    if (token) {
+      try {
+        const payloadBase64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+        const decoded = decodeURIComponent(atob(payloadBase64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+        const email = JSON.parse(decoded).sub || '';
+        const client = game.clients.find(c => c.email === email);
+        if (client && client.selection > 0) {
+          return game.players[client.selection - 1] || null;
+        }
+      } catch (e) {}
+    }
+  }
+  return null;
+}
+
+export function setBoostState(enabled) {
+  gameState.controlsHeld.BOOST = enabled;
+  if (boostSwitch) {
+    if (enabled) {
+      boostSwitch.classList.add('active');
+      boostSwitch.setAttribute('aria-checked', 'true');
+    } else {
+      boostSwitch.classList.remove('active');
+      boostSwitch.setAttribute('aria-checked', 'false');
+    }
+  }
+}
+
+export function toggleBoost() {
+  const game = gameState.game;
+  const t = getControlledTitan(game);
+  if (!gameState.controlsHeld.BOOST) {
+    // Attempting to turn ON
+    if (t) {
+      if (t.type === 'GOALIE' || t.health <= 0 || t.fuel <= 0 || t.fuel < 1.0) {
+        return;
+      }
+      if (t.possession === 1 && t.type !== 'DASHER') {
+        return;
+      }
+    }
+    setBoostState(true);
+  } else {
+    // Turn OFF
+    setBoostState(false);
+  }
+}
+
 export function initMobileControls() {
   joystickBase = document.getElementById('joystick-base');
   joystickStick = document.getElementById('joystick-stick');
@@ -42,6 +100,8 @@ export function initMobileControls() {
   btnAbility1 = document.getElementById('btn-ability-1');
   btnAbility2 = document.getElementById('btn-ability-2');
   btnPossession = document.getElementById('btn-possession');
+  boostSwitchContainer = document.getElementById('boost-switch-container');
+  boostSwitch = document.getElementById('boost-switch');
 
   // Double joystick elements
   aimJoystickZone = document.getElementById('aim-joystick-zone');
@@ -53,10 +113,20 @@ export function initMobileControls() {
   const canvas = document.getElementById('gameCanvas');
 
   if (!joystickBase || !joystickStick || !container || !btnAbility1 || !btnAbility2 || !btnPossession || !canvas ||
-      !aimJoystickZone || !aimJoystickBase || !aimJoystickStick || !btnShot || !mobileButtonsZone) {
+      !aimJoystickZone || !aimJoystickBase || !aimJoystickStick || !btnShot || !mobileButtonsZone ||
+      !boostSwitchContainer || !boostSwitch) {
     console.warn("Mobile control HTML elements not found.");
     return;
   }
+
+  // Boost Switch toggle events
+  const handleBoostToggle = (e) => {
+    toggleBoost();
+    if (e.cancelable) e.preventDefault();
+    e.stopPropagation();
+  };
+  boostSwitch.addEventListener('touchstart', handleBoostToggle, { passive: false });
+  boostSwitch.addEventListener('click', handleBoostToggle);
 
   // Virtual Joystick touch events
   joystickBase.addEventListener('touchstart', handleJoystickStart, { passive: false });
@@ -106,9 +176,10 @@ export function initMobileControls() {
 
   // Button Possession (swaps STEAL / LOB)
   btnPossession.addEventListener('touchstart', (e) => {
-    const currentPreset = localStorage.getItem('controlPreset') || getDefaultPreset();
+    const currentPreset = sessionStorage.getItem('controlPreset') || getDefaultPreset();
     const game = gameState.game;
-    const hasPossession = game && game.underControl && game.underControl.possession === 1;
+    const myTitan = getControlledTitan(game);
+    const hasPossession = myTitan && myTitan.possession === 1;
     if (hasPossession) {
       if (currentPreset === 'mobile-single' && activeCanvasTouchId !== null) {
         hasLobbedCurrentTouch = true;
@@ -365,8 +436,11 @@ function updateCoordinates(touch, canvas) {
 }
 
 function handleCanvasTouchStart(e) {
-  const currentPreset = localStorage.getItem('controlPreset') || getDefaultPreset();
-  if (currentPreset !== 'mobile-single') return;
+  const myTitan = getControlledTitan(gameState.game);
+  const isGoalie = myTitan && myTitan.type === 'GOALIE';
+  const currentPreset = sessionStorage.getItem('controlPreset') || getDefaultPreset();
+
+  if (!isGoalie && currentPreset !== 'mobile-single') return;
 
   const canvas = e.currentTarget;
   if (e.targetTouches.length > 0) {
@@ -374,13 +448,30 @@ function handleCanvasTouchStart(e) {
     activeCanvasTouchId = touch.identifier;
     hasLobbedCurrentTouch = false;
     updateCoordinates(touch, canvas);
+
+    if (isGoalie) {
+      if (handleUIClick(gameState.mouseX, gameState.mouseY)) {
+        e.preventDefault();
+        return;
+      }
+      // Goalie screen tap: target & kill minion without affecting movement or shotBtn
+      const posX = Math.floor((gameState.mouseX || 0) / 0.9375);
+      const posY = gameState.mouseY || 0;
+      gameState.pendingGoalieAttack = { x: posX, y: posY };
+      e.preventDefault();
+      return;
+    }
+
     e.preventDefault();
   }
 }
 
 function handleCanvasTouchMove(e) {
-  const currentPreset = localStorage.getItem('controlPreset') || getDefaultPreset();
-  if (currentPreset !== 'mobile-single') return;
+  const myTitan = getControlledTitan(gameState.game);
+  const isGoalie = myTitan && myTitan.type === 'GOALIE';
+  const currentPreset = sessionStorage.getItem('controlPreset') || getDefaultPreset();
+
+  if (!isGoalie && currentPreset !== 'mobile-single') return;
 
   const canvas = e.currentTarget;
   if (activeCanvasTouchId !== null) {
@@ -396,8 +487,11 @@ function handleCanvasTouchMove(e) {
 }
 
 function handleCanvasTouchEnd(e) {
-  const currentPreset = localStorage.getItem('controlPreset') || getDefaultPreset();
-  if (currentPreset !== 'mobile-single') return;
+  const myTitan = getControlledTitan(gameState.game);
+  const isGoalie = myTitan && myTitan.type === 'GOALIE';
+  const currentPreset = sessionStorage.getItem('controlPreset') || getDefaultPreset();
+
+  if (!isGoalie && currentPreset !== 'mobile-single') return;
 
   if (activeCanvasTouchId !== null) {
     // Check if the active touch has ended
@@ -410,11 +504,13 @@ function handleCanvasTouchEnd(e) {
     }
 
     if (touchEnded) {
-      if (!hasLobbedCurrentTouch) {
-        gameState.controlsHeld.shotBtn = true;
-        setTimeout(() => {
-          gameState.controlsHeld.shotBtn = false;
-        }, 50);
+      if (!isGoalie) {
+        if (!hasLobbedCurrentTouch) {
+          gameState.controlsHeld.shotBtn = true;
+          setTimeout(() => {
+            gameState.controlsHeld.shotBtn = false;
+          }, 50);
+        }
       }
       activeCanvasTouchId = null;
       hasLobbedCurrentTouch = false;
@@ -426,10 +522,14 @@ function handleCanvasTouchEnd(e) {
 export function updateMobileControls(game) {
   if (!container) return;
 
-  const currentPreset = localStorage.getItem('controlPreset') || getDefaultPreset();
+  const currentPreset = sessionStorage.getItem('controlPreset') || getDefaultPreset();
   const isGameplayPhase = gameState.phase === GamePhase.INGAME || 
                           gameState.phase === GamePhase.COUNTDOWN || 
-                          gameState.phase === GamePhase.SCORE_FREEZE;
+                          gameState.phase === GamePhase.SCORE_FREEZE ||
+                          gameState.phase === GamePhase.TUTORIAL ||
+                          gameState.phase === GamePhase.TUTORIAL_START ||
+                          gameState.phase === 'TUTORIAL' ||
+                          gameState.phase === 'TUTORIAL_START';
 
   const isMobile = currentPreset === 'mobile-single' || currentPreset === 'mobile-double';
 
@@ -447,6 +547,16 @@ export function updateMobileControls(game) {
       isAimDragging = false;
       activeCanvasTouchId = null;
       hasLobbedCurrentTouch = false;
+    }
+
+    const myTitan = getControlledTitan(game);
+    const isGoalie = myTitan && myTitan.type === 'GOALIE';
+
+    if (joystickBase && joystickBase.style.display !== '') {
+      joystickBase.style.display = '';
+    }
+    if (mobileButtonsZone && mobileButtonsZone.style.display !== 'flex') {
+      mobileButtonsZone.style.display = 'flex';
     }
 
     // Toggle single vs double joystick specific layout/UI elements
@@ -472,9 +582,28 @@ export function updateMobileControls(game) {
       }
     }
 
+    // Ability 1 and 2 buttons (hidden for Goalie as Goalie has no 1/2 abilities)
+    if (isGoalie) {
+      if (btnAbility1 && btnAbility1.style.display !== 'none') {
+        btnAbility1.style.display = 'none';
+        gameState.controlsHeld.E = false;
+      }
+      if (btnAbility2 && btnAbility2.style.display !== 'none') {
+        btnAbility2.style.display = 'none';
+        gameState.controlsHeld.R = false;
+      }
+    } else {
+      if (btnAbility1 && btnAbility1.style.display !== 'flex') {
+        btnAbility1.style.display = 'flex';
+      }
+      if (btnAbility2 && btnAbility2.style.display !== 'flex') {
+        btnAbility2.style.display = 'flex';
+      }
+    }
+
     // Dynamic possession button text & classes
-    if (btnPossession && game && game.underControl) {
-      const hasPossession = game.underControl.possession === 1;
+    if (btnPossession && myTitan) {
+      const hasPossession = myTitan.possession === 1;
       if (hasPossession) {
         if (btnPossession.textContent !== 'LOB') {
           btnPossession.textContent = 'LOB';
@@ -489,6 +618,32 @@ export function updateMobileControls(game) {
         }
       }
     }
+
+    // Dynamic Boost switch state synchronization
+    if (boostSwitch) {
+      if (boostSwitchContainer && boostSwitchContainer.style.display !== 'flex') {
+        boostSwitchContainer.style.display = 'flex';
+      }
+
+      // Auto-shutoff: Turn off automatically if titan runs out of boost or cannot boost
+      if (gameState.controlsHeld.BOOST && myTitan) {
+        if (myTitan.fuel <= 0 || myTitan.fuel < 1.0 || myTitan.health <= 0 || (myTitan.possession === 1 && myTitan.type !== 'DASHER')) {
+          setBoostState(false);
+        }
+      }
+
+      // Ensure visual switch state always mirrors gameState.controlsHeld.BOOST
+      const isBoosting = !!gameState.controlsHeld.BOOST;
+      if (isBoosting !== boostSwitch.classList.contains('active')) {
+        if (isBoosting) {
+          boostSwitch.classList.add('active');
+          boostSwitch.setAttribute('aria-checked', 'true');
+        } else {
+          boostSwitch.classList.remove('active');
+          boostSwitch.setAttribute('aria-checked', 'false');
+        }
+      }
+    }
   } else {
     if (container.style.display !== 'none') {
       container.style.display = 'none';
@@ -498,6 +653,8 @@ export function updateMobileControls(game) {
       gameState.controlsHeld.lobBtn = false;
       gameState.controlsHeld.STEAL = false;
       gameState.controlsHeld.shotBtn = false;
+      gameState.controlsHeld.MV_CLICK = false;
+      setBoostState(false);
     }
   }
 }

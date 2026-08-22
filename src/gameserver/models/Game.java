@@ -171,17 +171,9 @@ public class Game   {
     }
 
     public void cullOldColliders() {
-        if (this.colliders == null) {
-            this.colliders = new ArrayList<>();
+        if (this.colliders != null) {
+            this.colliders.removeIf(coll -> !coll.checkDisp());
         }
-        ArrayList<ShapePayload> rm = new ArrayList<>();
-        for (int i=0; i<this.colliders.size(); i++) {
-            ShapePayload coll = this.colliders.get(i);
-            if (!coll.checkDisp()) {
-                rm.add(coll);
-            }
-        }
-        this.colliders.removeAll(rm);
     }
     //used for legacy AI only
     protected final int TOP_WING_ST = 0;

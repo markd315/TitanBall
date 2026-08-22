@@ -10,6 +10,8 @@ export const GamePhase = {
     COUNTDOWN: 'COUNTDOWN',
     INGAME: 'INGAME',
     SCORE_FREEZE: 'SCORE_FREEZE',
+    TUTORIAL_START: 'TUTORIAL_START',
+    TUTORIAL: 'TUTORIAL',
     ENDED: 'ENDED'
 };
 

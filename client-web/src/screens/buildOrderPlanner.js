@@ -146,7 +146,7 @@ export function updatePlanBuildButtonVisibility() {
 // ─── persistence ─────────────────────────────────────────────────────────────
 function _loadBuildOrder() {
     try {
-        const saved = localStorage.getItem('goalieBuildOrder');
+        const saved = sessionStorage.getItem('goalieBuildOrder');
         if (saved) gameState.buildOrder = JSON.parse(saved);
     } catch (e) {
         gameState.buildOrder = [];
@@ -155,7 +155,7 @@ function _loadBuildOrder() {
 }
 
 function _saveBuildOrder() {
-    localStorage.setItem('goalieBuildOrder', JSON.stringify(gameState.buildOrder));
+    sessionStorage.setItem('goalieBuildOrder', JSON.stringify(gameState.buildOrder));
 }
 
 // ─── simulated tree state (based on local build order, not server state) ─────

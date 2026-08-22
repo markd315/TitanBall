@@ -34,7 +34,7 @@ export async function setControlPreset(preset) {
     const response = await fetch(url);
     const data = await response.json();
     currentConfig = data;
-    localStorage.setItem('controlPreset', preset);
+    sessionStorage.setItem('controlPreset', preset);
     console.log("Loaded control layout configuration:", preset, currentConfig);
   } catch (e) {
     console.error("Failed to load control configuration:", e);
@@ -48,7 +48,7 @@ export function getDefaultPreset() {
 
 export async function initControlConfig() {
   const defaultPreset = getDefaultPreset();
-  const saved = localStorage.getItem('controlPreset') || defaultPreset;
+  const saved = sessionStorage.getItem('controlPreset') || defaultPreset;
   await setControlPreset(saved);
   // Set UI dropdown value if present
   const select = document.getElementById('controls-select');

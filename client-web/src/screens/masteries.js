@@ -92,7 +92,7 @@ export function initMasteries() {
 
       if (errEl) errEl.style.display = 'none';
 
-      // Save to game state and localStorage
+      // Save to game state and sessionStorage
       gameState.controlsHeld.masteries = { ...localMasteries };
       sessionStorage.setItem('titanMasteries', JSON.stringify(localMasteries));
       

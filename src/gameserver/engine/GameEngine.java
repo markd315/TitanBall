@@ -42,6 +42,19 @@ public class GameEngine extends Game {
     @com.fasterxml.jackson.annotation.JsonIgnore
     private transient Titan activeLobThrower = null;
 
+    // ── Performance: ObjectMapper is heavyweight and thread-safe; share one instance
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    // ── Performance: per-lane minion bucket lists reused every tick to avoid per-tick allocation
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private transient final ArrayList<LaneMinion> hmL0 = new ArrayList<>(), hmL1 = new ArrayList<>(), hmL2 = new ArrayList<>();
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private transient final ArrayList<LaneMinion> amL0 = new ArrayList<>(), amL1 = new ArrayList<>(), amL2 = new ArrayList<>();
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private transient final List<List<LaneMinion>> homeMinionsReused = List.of(hmL0, hmL1, hmL2);
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private transient final List<List<LaneMinion>> awayMinionsReused = List.of(amL0, amL1, amL2);
+
     public static class LaneBonus implements java.io.Serializable {
         public long expiryMs;
         public int amount;
@@ -103,9 +116,8 @@ public class GameEngine extends Game {
                 }
             }
         }
-        ObjectMapper mapper = new ObjectMapper();
         try {
-            System.out.println(mapper.writeValueAsString(this.options));
+            System.out.println(MAPPER.writeValueAsString(this.options));
         } catch (JsonProcessingException e) {
             e.printStackTrace();
         }
@@ -150,30 +162,30 @@ public class GameEngine extends Game {
             players[1].X = 999000;
             players[1].Y = 999000;
             for (PlayerDivider p : clients) {
-                List<Integer> rm = new ArrayList<>();
-                for (Integer poss : p.possibleSelection) {
-                    if (poss == 1 || poss == 2) {
-                        rm.add(poss);
-                    }
+                p.possibleSelection.removeIf(poss -> poss == 1 || poss == 2);
+                if (!p.possibleSelection.isEmpty()) {
+                    p.selection = p.possibleSelection.get(0);
                 }
-                p.possibleSelection.removeAll(rm);
-                p.selection = p.possibleSelection.get(0);
             }
         }
-
     }
 
-protected void cullUnmappedTitans() {
+    protected void cullUnmappedTitans() {
         List<Titan> keepTitans = new ArrayList<>();
         Map<Integer, Integer> oldToNewIndex = new HashMap<>();
         int newIndex = 1;
         
         for (int i = 0; i < players.length; i++) {
             boolean found = false;
-            for (PlayerDivider p : clients) {
-                if (p.possibleSelection.contains(i + 1)) {
-                    found = true;
-                    break;
+            // Always keep goalie slots 1 and 2 (indices 0 and 1) to preserve engine slot mapping
+            if (i == 0 || i == 1) {
+                found = true;
+            } else {
+                for (PlayerDivider p : clients) {
+                    if (p.possibleSelection.contains(i + 1)) {
+                        found = true;
+                        break;
+                    }
                 }
             }
             if (found) {
@@ -574,6 +586,17 @@ protected void cullUnmappedTitans() {
         this.phase = GamePhase.INGAME;
         goalVisible = false;
         ballVisible = true;
+        // Remove transient entities (non-Titans, non-LaneMinions, non-permanent structures) once,
+        // not once-per-player as before — the predicate never depended on `p`.
+        entityPool.removeIf(e -> {
+            if (e instanceof Titan || e instanceof LaneMinion) {
+                return false;
+            }
+            if (e.maxHealth >= 99999.0) {
+                return false;
+            }
+            return true;
+        });
         for (Titan p : players) {
             p.actionState = Titan.TitanState.IDLE;
             p.health = 3.0 * p.maxHealth / 4;
@@ -581,15 +604,6 @@ protected void cullUnmappedTitans() {
             p.marchingOrderX = (int) p.X;
             p.marchingOrderY = (int) p.Y;
             effectPool.cullAllOn(this, p);
-            entityPool.removeIf(e -> {
-                if (e instanceof Titan || e instanceof LaneMinion) {
-                    return false;
-                }
-                if (e.maxHealth >= 99999.0) {
-                    return false;
-                }
-                return true;
-            });
             p.facing = 0;
             p.possession = 0;
             p.runningFrame = 0;
@@ -616,8 +630,8 @@ protected void cullUnmappedTitans() {
         for (int n = players.length - 1; n >= 0; n--) {
             intersectBall(n + 1, (int) players[n].X, (int) players[n].Y);
         }
-        Entity[] arr = new Entity[1];
-        ball.collidesSolid(this, entityPool.toArray(arr));
+        Entity[] solids = (allSolids != null) ? allSolids : entityPool.toArray(new Entity[0]);
+        ball.collidesSolid(this, solids);
     }
 
     public boolean contactExemptBall() {
@@ -660,9 +674,8 @@ protected void cullUnmappedTitans() {
         if (from != null) {
             if(logs){
                 System.out.println(from + " packet");
-                ObjectMapper mapper = new ObjectMapper();
                 try {
-                    System.out.println(mapper.writeValueAsString(request));
+                    System.out.println(MAPPER.writeValueAsString(request));
                 } catch (JsonProcessingException e) {
                     e.printStackTrace();
                 }
@@ -886,10 +899,16 @@ protected void cullUnmappedTitans() {
             }
             KeyDifferences controlsHeld = new KeyDifferences(controls, lastControlPacket[clientIndex]);
             boost(controlsHeld, t);
-            if (t.getType() == TitanType.GOALIE && controls.shotBtn && t.possession == 0 && this.phase == GamePhase.INGAME) {
-                double clickX = controls.posX + controls.camX;
-                double clickY = controls.posY + controls.camY;
-                handleGoalieAttackClick(from.getEmail(), clickX, clickY, t.team, t);
+            if (t.getType() == TitanType.GOALIE && this.phase == GamePhase.INGAME) {
+                if (controls.goalieClickX != null && controls.goalieClickY != null) {
+                    double clickX = controls.goalieClickX + controls.camX;
+                    double clickY = controls.goalieClickY + controls.camY;
+                    handleGoalieAttackClick(from.getEmail(), clickX, clickY, t.team, t);
+                } else if (controls.shotBtn && t.possession == 0) {
+                    double clickX = controls.posX + controls.camX;
+                    double clickY = controls.posY + controls.camY;
+                    handleGoalieAttackClick(from.getEmail(), clickX, clickY, t.team, t);
+                }
             }
             // Goalie skill-tree purchase. buyGoalieNode is one-shot from the
             // client (set on the packet only for the tick of the click, null
@@ -1273,11 +1292,16 @@ protected void cullUnmappedTitans() {
                 }
                 tickLaneMinions();
 
-                List<Entity> tempSolids = new ArrayList<>();
-                tempSolids.addAll(Arrays.asList(players));
+                // Build allSolids directly without an ArrayList intermediate.
+                // tickEntities removes dead entries from entityPool first, then we
+                // copy players + surviving entities into a single array.
                 tickEntities(entityPool);
-                tempSolids.addAll(entityPool);
-                allSolids = tempSolids.toArray(new Entity[tempSolids.size()]);
+                Entity[] newSolids = new Entity[players.length + entityPool.size()];
+                System.arraycopy(players, 0, newSolids, 0, players.length);
+                for (int si = 0; si < entityPool.size(); si++) {
+                    newSolids[players.length + si] = entityPool.get(si);
+                }
+                allSolids = newSolids;
                 updateBallIfPossessed();
                 effectPool.tickAll(this);
                 doHealthModification();
@@ -1394,13 +1418,7 @@ protected void cullUnmappedTitans() {
                         t.actionState == Titan.TitanState.CURVE_RIGHT)){
             ballVisible = true;
             lastPossessed = t.id;
-            Set<Effect> rm = new HashSet<>();
-            for(Effect ef : effectPool.getEffects()){
-                if(ef.on.id.equals(t.id) && ef.effect.equals(EffectId.HIDE_BALL)){
-                    rm.add(ef);
-                }
-            }
-            effectPool.getEffects().removeAll(rm);
+            effectPool.getEffects().removeIf(ef -> ef.on.id.equals(t.id) && ef.effect.equals(EffectId.HIDE_BALL));
         }
     }
 
@@ -1710,11 +1728,12 @@ protected void cullUnmappedTitans() {
         if (effectPool.isRooted(goalie)) {
             return;
         }
-        int YMAX = c.GOALIE_Y_MAX, XMAX = c.GOALIE_XH_MAX, YMIN = c.GOALIE_Y_MIN, XMIN = c.GOALIE_XH_MIN;
-        if (team == TeamAffiliation.AWAY) {
-            XMAX = c.GOALIE_XA_MAX;
-            XMIN = c.GOALIE_XA_MIN;
-        }
+        Set<String> purchased = (team == TeamAffiliation.HOME) ? homeGoaliePurchasedUpgrades : awayGoaliePurchasedUpgrades;
+        boolean pullGoalie = purchased != null && purchased.contains("siege.t3.pullgoalie");
+        int YMAX = pullGoalie ? c.E_MAX_Y : c.GOALIE_Y_MAX;
+        int YMIN = pullGoalie ? c.E_MIN_Y : c.GOALIE_Y_MIN;
+        int XMAX = pullGoalie ? c.E_MAX_X : (team == TeamAffiliation.AWAY ? c.GOALIE_XA_MAX : c.GOALIE_XH_MAX);
+        int XMIN = pullGoalie ? c.E_MIN_X : (team == TeamAffiliation.AWAY ? c.GOALIE_XA_MIN : c.GOALIE_XH_MIN);
         for (GoalHoop goal : this.lowGoals) {
             if (goalie.possession == 1 &&
                     ballIntersectsEllipse(goal) && goal.team.equals(TeamAffiliation.HOME)) {
@@ -1820,16 +1839,7 @@ protected void cullUnmappedTitans() {
     // Movement methods with player selection
     public void runUpCtrl(Titan t) {
         if (phase == GamePhase.INGAME || phase == GamePhase.TUTORIAL) {
-            if (!c.GOALIE_DISABLED && t.id.equals(players[0].id) && !effectPool.isRooted(players[0])) {
-                players[0].setY(players[0].getY() - 5.2);
-                if (players[0].getY() < c.GOALIE_Y_MIN) players[0].setY(c.GOALIE_Y_MIN);
-            }
-            if (!c.GOALIE_DISABLED && t.id.equals(players[1].id) && !effectPool.isRooted(players[1])) {
-                players[1].setY(players[1].getY() - 5.2);
-                if (players[1].getY() < c.GOALIE_Y_MIN) players[1].setY(c.GOALIE_Y_MIN);
-            }
-            int p = c.GOALIE_DISABLED ? 0 : 2;
-            for (; p < players.length; p++) {
+            for (int p = 0; p < players.length; p++) {
                 if (t.id.equals(players[p].id) && !effectPool.isRooted(t)
                     /*&& t.actionState == Titan.TitanState.IDLE*/) {
                     if (!t.collidesSolid(this, allSolids, (int) -t.speed, 0)) {
@@ -1837,7 +1847,7 @@ protected void cullUnmappedTitans() {
                         if (t.X > ball.X) t.dirToBall = 2;
                         if (t.diagonalRunDir == 1) t.dirToBall = 1;
                         if (t.diagonalRunDir == 2) t.dirToBall = 2;
-                        if(!t.programmed){
+                        if (!t.programmed) {
                             t.translateBounded(this, 0.0, -t.actualSpeed(this));
                         }
                         t.runningFrameCounter += 1;
@@ -1854,16 +1864,7 @@ protected void cullUnmappedTitans() {
 
     public void runDownCtrl(Titan t) {
         if (phase == GamePhase.INGAME || phase == GamePhase.TUTORIAL) {
-            if (!c.GOALIE_DISABLED && t.id.equals(players[0].id) && !effectPool.isRooted(players[0])) {
-                players[0].setY(players[0].getY() + 5.2);
-                if (players[0].getY() > c.GOALIE_Y_MAX) players[0].setY(c.GOALIE_Y_MAX);
-            }
-            if (!c.GOALIE_DISABLED && t.id.equals(players[1].id) && !effectPool.isRooted(players[1])) {
-                players[1].setY(players[1].getY() + 5.2);
-                if (players[1].getY() > c.GOALIE_Y_MAX) players[1].setY(c.GOALIE_Y_MAX);
-            }
-            int p = c.GOALIE_DISABLED ? 0 : 2;
-            for (; p < players.length; p++) {
+            for (int p = 0; p < players.length; p++) {
                 if (t.id.equals(players[p].id) && !effectPool.isRooted(t)
                     /*&& t.actionState == Titan.TitanState.IDLE*/) {
                     if (!t.collidesSolid(this, allSolids, (int) t.speed, 0)) {
@@ -1871,7 +1872,7 @@ protected void cullUnmappedTitans() {
                         if (t.X > ball.X) t.dirToBall = 2;
                         if (t.diagonalRunDir == 1) t.dirToBall = 1;
                         if (t.diagonalRunDir == 2) t.dirToBall = 2;
-                        if(!t.programmed) {
+                        if (!t.programmed) {
                             t.translateBounded(this, 0.0, t.actualSpeed(this));
                         }
                         t.runningFrameCounter += 1;
@@ -1888,20 +1889,11 @@ protected void cullUnmappedTitans() {
 
     public void runRightCtrl(Titan t) {
         if (phase == GamePhase.INGAME || phase == GamePhase.TUTORIAL) {
-            if (!c.GOALIE_DISABLED && t.id.equals(players[0].id) && !effectPool.isRooted(players[0])) {
-                players[0].setX(players[0].getX() + 5.2);
-                if (players[0].getX() > c.GOALIE_XH_MAX) players[0].setX(c.GOALIE_XH_MAX);
-            }
-            if (!c.GOALIE_DISABLED && t.id.equals(players[1].id) && !effectPool.isRooted(players[1])) {
-                players[1].setX(players[1].getX() + 5.2);
-                if (players[1].getX() > c.GOALIE_XA_MAX) players[1].setX(c.GOALIE_XA_MAX);
-            }
-            int p = c.GOALIE_DISABLED ? 0 : 2;
-            for (; p < players.length; p++) {
+            for (int p = 0; p < players.length; p++) {
                 if (t.id.equals(players[p].id) && !effectPool.isRooted(t)
                         /*&& t.actionState == Titan.TitanState.IDLE*/) {
                     if (!t.collidesSolid(this, allSolids, 0, (int) t.speed)) {
-                        if(!t.programmed) {
+                        if (!t.programmed) {
                             t.translateBounded(this, t.actualSpeed(this), 0.0);
                         }
                         t.diagonalRunDir = 1;
@@ -1919,21 +1911,12 @@ protected void cullUnmappedTitans() {
 
     public void runLeftCtrl(Titan t) {
         if (phase == GamePhase.INGAME || phase == GamePhase.TUTORIAL) {
-            if (!c.GOALIE_DISABLED && t.id.equals(players[0].id) && !effectPool.isRooted(players[0])) {
-                players[0].setX(players[0].getX() - 3.9);
-                if (players[0].getX() < c.GOALIE_XH_MIN) players[0].setX(c.GOALIE_XH_MIN);
-            }
-            if (!c.GOALIE_DISABLED && t.id.equals(players[1].id) && !effectPool.isRooted(players[1])) {
-                players[1].setX(players[1].getX() - 3.9);
-                if (players[1].getX() < c.GOALIE_XA_MIN) players[1].setX(c.GOALIE_XA_MIN);
-            }
-            int p = c.GOALIE_DISABLED ? 0 : 2;
-            for (; p < players.length; p++) {
+            for (int p = 0; p < players.length; p++) {
                 if (t.id.equals(players[p].id) && !effectPool.isRooted(t)
                     /*&& t.actionState == Titan.TitanState.IDLE*/) {
                     t.diagonalRunDir = 2;
                     if (!t.collidesSolid(this, allSolids, 0, (int) -t.speed)) {
-                        if(!t.programmed) {
+                        if (!t.programmed) {
                             t.translateBounded(this, -t.actualSpeed(this), 0.0);
                         }
                         t.runningFrameCounter += 1;
@@ -1968,6 +1951,8 @@ protected void cullUnmappedTitans() {
             double D = 316.0 * t.throwPower;
             double v_tick = (D * (20 - t.actionFrame)) / 190.0;
             double stepFactor = (v_tick * 4.0) / 800.0;
+            // Snapshot once — entityPool doesn't change during ball travel (no entity removal inside the loop)
+            Entity[] wallSnap = entityPool.toArray(new Entity[0]);
             for (int i = 0; i < 800; i++) {
                 if (this.phase == GamePhase.SCORE_FREEZE || !ballVisible) {
                     break;
@@ -1977,7 +1962,7 @@ protected void cullUnmappedTitans() {
                 ball.Y -= stepFactor * yKickPow * speedMult;
                 intersectAll();
                 detectGoals();
-                bounceWalls();
+                bounceWalls(wallSnap);
             }
         }
         if (t.actionFrame == t.kickingFrames) {
@@ -2036,6 +2021,8 @@ protected void cullUnmappedTitans() {
             double v_tick = (D * (20 - t.actionFrame)) / 190.0;
             double stepFactor = (v_tick * 4.0) / 800.0;
             
+            // Snapshot once — entityPool doesn't change during ball travel (no entity removal inside the loop)
+            Entity[] wallSnap = entityPool.toArray(new Entity[0]);
             for (int i = 0; i < 800; i++) {
                 if (this.phase == GamePhase.SCORE_FREEZE || !ballVisible) {
                     break;
@@ -2045,7 +2032,7 @@ protected void cullUnmappedTitans() {
                 ball.Y -= stepFactor * yKickPow * speedMult;
                 intersectAll();
                 detectGoals();
-                bounceWalls();
+                bounceWalls(wallSnap);
             }
         }
         if (t.actionFrame == t.kickingFrames) {
@@ -2065,10 +2052,18 @@ protected void cullUnmappedTitans() {
         ball.Y = t.getY() + 35 - ball.centerDist;
     }
 
+    /** Public entry-point used for one-off bounces (post-shot, etc.). Takes its own snapshot. */
     public void bounceWalls() {
-        Entity[] temp = new Entity[entityPool.size()];
-        entityPool.toArray(temp);
-        Optional<Box> coll = ball.collidesSolidWhich(this, temp);
+        bounceWalls(entityPool.toArray(new Entity[0]));
+    }
+
+    /**
+     * Core wall-bounce logic.  Accepts a pre-computed entity snapshot so callers
+     * inside tight loops (the 800-step ball-travel loop) can snapshot once and
+     * reuse it, instead of allocating a new array on every iteration.
+     */
+    private void bounceWalls(Entity[] wallEntities) {
+        Optional<Box> coll = ball.collidesSolidWhich(this, wallEntities);
         if(coll.isPresent() && !contactExemptBall()){
             if(coll.get().ballNearestEdgeisX(ball)){
                 //System.out.println("wall");
@@ -2172,12 +2167,14 @@ protected void cullUnmappedTitans() {
             angle += curveFactor * 6.8;
             double tempXPow = Math.cos(Math.toRadians(angle));
             double tempYPow = Math.sin(Math.toRadians(angle));
+            // Snapshot once — entityPool doesn't change during ball travel (no entity removal inside the loop)
+            Entity[] wallSnap = entityPool.toArray(new Entity[0]);
             for (int i = 0; i < 800; i++) {
                 ball.X += .0295 * tempXPow * t.throwPower;
                 ball.Y -= .0295 * tempYPow * t.throwPower;
                 intersectAll();
                 detectGoals();
-                bounceWalls();
+                bounceWalls(wallSnap);
             }
         }
         if (t.actionFrame == t.kickingFrames) {
@@ -2544,21 +2541,19 @@ protected void tickLaneMinions() {
     double titanDmg    = 0.05;
     double fightRange  = 45.0;
 
-    // Collect minions by lane
-    List<List<LaneMinion>> homeMinions = new ArrayList<>();
-    List<List<LaneMinion>> awayMinions = new ArrayList<>();
-    for (int i = 0; i < 3; i++) {
-        homeMinions.add(new ArrayList<>());
-        awayMinions.add(new ArrayList<>());
-    }
+    // Collect minions by lane into reused bucket lists (cleared each tick)
+    hmL0.clear(); hmL1.clear(); hmL2.clear();
+    amL0.clear(); amL1.clear(); amL2.clear();
 
     for (Entity e : entityPool) {
         if (e instanceof LaneMinion && e.getHealth() > 0.0) {
             LaneMinion m = (LaneMinion) e;
-            if (m.team == TeamAffiliation.HOME) {
-                homeMinions.get(m.laneIndex).add(m);
-            } else {
-                awayMinions.get(m.laneIndex).add(m);
+            if (m.laneIndex == 0) {
+                if (m.team == TeamAffiliation.HOME) hmL0.add(m); else amL0.add(m);
+            } else if (m.laneIndex == 1) {
+                if (m.team == TeamAffiliation.HOME) hmL1.add(m); else amL1.add(m);
+            } else if (m.laneIndex == 2) {
+                if (m.team == TeamAffiliation.HOME) hmL2.add(m); else amL2.add(m);
             }
         }
     }
@@ -2566,8 +2561,8 @@ protected void tickLaneMinions() {
     // Process each lane independently
     for (int L = 0; L < 3; L++) {
 
-        List<LaneMinion> homeInLane = homeMinions.get(L);
-        List<LaneMinion> awayInLane = awayMinions.get(L);
+        List<LaneMinion> homeInLane = homeMinionsReused.get(L);
+        List<LaneMinion> awayInLane = awayMinionsReused.get(L);
 
         // Sort so front minions are at the front
         homeInLane.sort((a, b) -> Double.compare(b.X, a.X)); // home moves +X, front = largest X
@@ -2577,6 +2572,9 @@ protected void tickLaneMinions() {
             (L == 0 ? TOP_CENTER :
              L == 1 ? MID_CENTER :
                       BOT_CENTER);
+
+        double curHomeSpeed = getLaneMinionSpeed(L, TeamAffiliation.HOME, minionSpeed, homeInLane.size(), awayInLane.size());
+        double curAwaySpeed = getLaneMinionSpeed(L, TeamAffiliation.AWAY, minionSpeed, homeInLane.size(), awayInLane.size());
 
         // HOME MINIONS
         // Every minion independently targets its nearest live enemy - multiple attackers can
@@ -2598,15 +2596,14 @@ protected void tickLaneMinions() {
                 target.health -= dmg;
                 continue; // engaged: hold position, never push through the enemy line
             }
-            double curSpeed = getLaneMinionSpeed(L, TeamAffiliation.HOME, minionSpeed);
             if (!awayInLane.isEmpty()) {
                 // Enemy wave still exists in this lane (just outside fightRange) - advance,
                 // but clamp so we can never cross past the frontmost living enemy.
                 double frontEnemyX = awayInLane.get(0).X;
-                h.X = Math.min(h.X + curSpeed, frontEnemyX - fightRange);
+                h.X = Math.min(h.X + curHomeSpeed, frontEnemyX - fightRange);
             } else {
                 // Lane is fully clear of enemy minions - free to push toward the goal/titans.
-                h.X += curSpeed;
+                h.X += curHomeSpeed;
                 Titan t = findNearestTitanInLane(h.X, h.Y, TeamAffiliation.AWAY,
                                                  TOP_CENTER, MID_CENTER, BOT_CENTER,
                                                  TOP_MID_DIV, MID_BOT_DIV);
@@ -2635,12 +2632,11 @@ protected void tickLaneMinions() {
                 target.health -= dmg;
                 continue;
             }
-            double curSpeed = getLaneMinionSpeed(L, TeamAffiliation.AWAY, minionSpeed);
             if (!homeInLane.isEmpty()) {
                 double frontEnemyX = homeInLane.get(0).X;
-                a.X = Math.max(a.X - curSpeed, frontEnemyX + fightRange);
+                a.X = Math.max(a.X - curAwaySpeed, frontEnemyX + fightRange);
             } else {
-                a.X -= curSpeed;
+                a.X -= curAwaySpeed;
                 Titan t = findNearestTitanInLane(a.X, a.Y, TeamAffiliation.HOME,
                                                  TOP_CENTER, MID_CENTER, BOT_CENTER,
                                                  TOP_MID_DIV, MID_BOT_DIV);
@@ -2673,8 +2669,9 @@ protected void tickLaneMinions() {
     }
 
     private void separateMinionsVertically(List<LaneMinion> list, double minSpacing, double laneCenterY) {
-        if (list.isEmpty()) return;
-        if (list.size() == 1) {
+        int size = list.size();
+        if (size == 0) return;
+        if (size == 1) {
             list.get(0).Y = laneCenterY;
             return;
         }
@@ -2683,47 +2680,28 @@ protected void tickLaneMinions() {
         final double GROUP_X_THRESHOLD = 65.0;
         final int MAX_GROUP_SIZE = 5;
 
-        // Build groups of minions whose X positions are within range
-        List<List<LaneMinion>> groups = new ArrayList<>();
-        List<LaneMinion> current = new ArrayList<>();
-
-        for (LaneMinion m : list) {
-            if (current.isEmpty()) {
-                current.add(m);
-            } else {
-                LaneMinion last = current.get(current.size() - 1);
-                if (Math.abs(m.X - last.X) <= GROUP_X_THRESHOLD) {
-                    current.add(m);
+        int groupStart = 0;
+        for (int i = 1; i <= size; i++) {
+            if (i == size || Math.abs(list.get(i).X - list.get(i - 1).X) > GROUP_X_THRESHOLD) {
+                int groupLen = i - groupStart;
+                if (groupLen == 1) {
+                    list.get(groupStart).Y = laneCenterY;
                 } else {
-                    groups.add(current);
-                    current = new ArrayList<>();
-                    current.add(m);
+                    double frontX = list.get(groupStart).X;
+                    int centerSlot = MAX_GROUP_SIZE / 2;
+                    for (int j = 0; j < groupLen; j++) {
+                        LaneMinion m = list.get(groupStart + j);
+                        int col = j / MAX_GROUP_SIZE;
+                        int slot = j % MAX_GROUP_SIZE;
+                        m.Y = laneCenterY + (slot - centerSlot) * minSpacing;
+                        if (m.team == TeamAffiliation.HOME) {
+                            m.X = frontX - col * COL_SPACING_X;
+                        } else {
+                            m.X = frontX + col * COL_SPACING_X;
+                        }
+                    }
                 }
-            }
-        }
-        if (!current.isEmpty()) {
-            groups.add(current);
-        }
-
-        // Apply column and vertical slot layout to each group
-        for (List<LaneMinion> g : groups) {
-            if (g.size() == 1) {
-                g.get(0).Y = laneCenterY;
-                continue;
-            }
-
-            double frontX = g.get(0).X;
-            for (int i = 0; i < g.size(); i++) {
-                LaneMinion m = g.get(i);
-                int col = i / MAX_GROUP_SIZE;
-                int centerSlot = MAX_GROUP_SIZE / 2;
-                int slot = i % MAX_GROUP_SIZE; // centered across lane height at slot n/2
-                m.Y = laneCenterY + (slot - centerSlot) * minSpacing;
-                if (m.team == TeamAffiliation.HOME) {
-                    m.X = frontX - col * COL_SPACING_X;
-                } else {
-                    m.X = frontX + col * COL_SPACING_X;
-                }
+                groupStart = i;
             }
         }
     }
@@ -2949,6 +2927,10 @@ protected void tickLaneMinions() {
                 else awayCount++;
             }
         }
+        return getLaneMinionSpeed(L, team, baseSpeed, homeCount, awayCount);
+    }
+
+    public double getLaneMinionSpeed(int L, TeamAffiliation team, double baseSpeed, int homeCount, int awayCount) {
         int homeBonus = homeLaneBonusValue[L];
         int awayBonus = awayLaneBonusValue[L];
         

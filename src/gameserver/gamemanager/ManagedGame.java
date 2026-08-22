@@ -544,6 +544,18 @@ public class ManagedGame {
             for (Entity ent : update.entityPool) {
                 if (!ent.id.equals(underControl)) censor(ent);
             }
+            if (update.effectPool != null) {
+                if (update.effectPool.getOn() != null) {
+                    for (Entity ent : update.effectPool.getOn()) {
+                        if (ent != null && !ent.id.equals(underControl.id)) censor(ent);
+                    }
+                }
+                if (update.effectPool.getEffects() != null) {
+                    for (gameserver.effects.effects.Effect eff : update.effectPool.getEffects()) {
+                        if (eff != null && eff.on != null && !eff.on.id.equals(underControl.id)) censor(eff.on);
+                    }
+                }
+            }
             update.ball.X = 9999;
             update.ball.Y = 9999;
         }
@@ -555,6 +567,22 @@ public class ManagedGame {
         for (Entity entity : update.entityPool) {
             if (fx.hasEffect(entity, EffectId.STEALTHED) && !fx.hasEffect(entity, EffectId.FLARE)) {
                 if (entity.team != underControl.team) censor(entity);
+            }
+        }
+        if (update.effectPool != null) {
+            if (update.effectPool.getOn() != null) {
+                for (Entity ent : update.effectPool.getOn()) {
+                    if (ent != null && fx.hasEffect(ent, EffectId.STEALTHED) && !fx.hasEffect(ent, EffectId.FLARE)) {
+                        if (ent.team != underControl.team) censor(ent);
+                    }
+                }
+            }
+            if (update.effectPool.getEffects() != null) {
+                for (gameserver.effects.effects.Effect eff : update.effectPool.getEffects()) {
+                    if (eff != null && eff.on != null && fx.hasEffect(eff.on, EffectId.STEALTHED) && !fx.hasEffect(eff.on, EffectId.FLARE)) {
+                        if (eff.on.team != underControl.team) censor(eff.on);
+                    }
+                }
             }
         }
         return update;

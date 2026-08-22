@@ -316,13 +316,13 @@ public class Titan extends Entity   {
         titanShoot.put(TitanType.ARTISAN, 1.15);
         titanShoot.put(TitanType.DASHER, 1.09);
         titanShoot.put(TitanType.STEALTH, 1.09);
-        titanShoot.put(TitanType.SUPPORT, 1.02);
         titanShoot.put(TitanType.GRENADIER, 1.02);
         titanShoot.put(TitanType.BUILDER, 1.00);
         titanShoot.put(TitanType.HOUNDMASTER, 0.90);
         titanShoot.put(TitanType.RANGER, 0.84);
         titanShoot.put(TitanType.MAGE, 0.84);
         titanShoot.put(TitanType.WARRIOR, 0.80);
+        titanShoot.put(TitanType.SUPPORT, 0.80);
         //titanShoot.put(TitanType.RECON, 0.8);
 
         //33 Frames == 1 Second

@@ -465,6 +465,10 @@ function initUIListeners() {
       sessionStorage.removeItem('username');
       sessionStorage.removeItem('classSelection');
       sessionStorage.removeItem('titanMasteries');
+      sessionStorage.removeItem('partners');
+      sessionStorage.removeItem('controlPreset');
+      sessionStorage.removeItem('goalieBuildOrder');
+      sessionStorage.removeItem('lastQueueSize');
       gameState.phase = GamePhase.CREDITS;
       currentScreen = 'login';
       updateOverlays();

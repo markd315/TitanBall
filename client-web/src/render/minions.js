@@ -140,7 +140,15 @@ export function drawMinions(ctx, game, camX, camY) {
         }
 
         if (imgKey && AssetManager.images[imgKey]) {
+            const isPhasedWall = (e.entityClass === 'Wall' && e.solid === false);
+            if (isPhasedWall) {
+                ctx.save();
+                ctx.globalAlpha = 0.20;
+            }
             ctx.drawImage(AssetManager.images[imgKey], Math.floor(e.X - camX), Math.floor(e.Y - camY), e.width || 70, e.height || 70);
+            if (isPhasedWall) {
+                ctx.restore();
+            }
 
             // Draw cooldown progress bar for portals
             if ((e.entityClass === 'Portal' || e.entityClass === 'BallPortal') && isCooldown) {

@@ -115,41 +115,44 @@ public class Entity extends Box   {
             return;
         }
         if(this instanceof Titan && ((Titan) this).getType() == TitanType.GOALIE){
-            if(this.team == TeamAffiliation.HOME ){
-                if(this.X > context.c.GOALIE_XH_MAX){
-                    this.X = context.c.GOALIE_XH_MAX;
+            java.util.Set<String> purchased = (this.team == TeamAffiliation.HOME) ? context.homeGoaliePurchasedUpgrades : context.awayGoaliePurchasedUpgrades;
+            boolean pullGoalie = purchased != null && purchased.contains("siege.t3.pullgoalie");
+            if (!pullGoalie) {
+                if(this.team == TeamAffiliation.HOME ){
+                    if(this.X > context.c.GOALIE_XH_MAX){
+                        this.X = context.c.GOALIE_XH_MAX;
+                    }
+                    if(this.X < context.c.GOALIE_XH_MIN){
+                        this.X = context.c.GOALIE_XH_MIN;
+                    }
+                }else{
+                    if(this.X > context.c.GOALIE_XA_MAX){
+                        this.X = context.c.GOALIE_XA_MAX;
+                    }
+                    if(this.X < context.c.GOALIE_XA_MIN){
+                        this.X = context.c.GOALIE_XA_MIN;
+                    }
                 }
-                if(this.X < context.c.GOALIE_XH_MIN){
-                    this.X = context.c.GOALIE_XH_MIN;
+                if(this.Y > context.c.GOALIE_Y_MAX){
+                    this.Y = context.c.GOALIE_Y_MAX;
                 }
-            }else{
-                if(this.X > context.c.GOALIE_XA_MAX){
-                    this.X = context.c.GOALIE_XA_MAX;
+                if(this.Y < context.c.GOALIE_Y_MIN){
+                    this.Y = context.c.GOALIE_Y_MIN;
                 }
-                if(this.X < context.c.GOALIE_XA_MIN){
-                    this.X = context.c.GOALIE_XA_MIN;
-                }
-            }
-            if(this.Y > context.c.GOALIE_Y_MAX){
-                this.Y = context.c.GOALIE_Y_MAX;
-            }
-            if(this.Y < context.c.GOALIE_Y_MIN){
-                this.Y = context.c.GOALIE_Y_MIN;
+                return;
             }
         }
-        else{
-            if(this.X > context.c.E_MAX_X){
-                this.X = context.c.E_MAX_X;
-            }
-            if(this.X < context.c.E_MIN_X){
-                this.X = context.c.E_MIN_X;
-            }
-            if(this.Y > context.c.E_MAX_Y){
-                this.Y = context.c.E_MAX_Y;
-            }
-            if(this.Y < context.c.E_MIN_Y){
-                this.Y = context.c.E_MIN_Y;
-            }
+        if(this.X > context.c.E_MAX_X){
+            this.X = context.c.E_MAX_X;
+        }
+        if(this.X < context.c.E_MIN_X){
+            this.X = context.c.E_MIN_X;
+        }
+        if(this.Y > context.c.E_MAX_Y){
+            this.Y = context.c.E_MAX_Y;
+        }
+        if(this.Y < context.c.E_MIN_Y){
+            this.Y = context.c.E_MIN_Y;
         }
 
     }

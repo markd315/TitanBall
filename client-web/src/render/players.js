@@ -19,7 +19,8 @@ export function drawPlayers(ctx, game, camX, camY) {
         
         // Skip rendering if stealthed and not on our team (simplified invisible check)
         const invisible = game.underControl && game.underControl.team !== t.team && 
-                          game.effectPool && game.effectPool.effects.some(e => e.effect === 'STEALTHED' && e.on && e.on.id === t.id);
+                          game.effectPool && game.effectPool.effects.some(e => e.effect === 'STEALTHED' && e.on && e.on.id === t.id) &&
+                          !game.effectPool.effects.some(e => e.effect === 'FLARE' && e.on && e.on.id === t.id);
         if (invisible) continue;
 
         let facing = (t.facing >= 90 && t.facing < 270) ? 'L' : 'R';

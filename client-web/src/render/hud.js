@@ -28,12 +28,13 @@ export const ABILITY_TOOLTIPS = {
     // Siege
     "siege.t1.siegedoctrine": { title: "Siege Doctrine", desc: "Unlock offensive breaching mechanics. Required for all Siege upgrades." },
     "siege.t2.overchargeminion": { title: "Overcharge Minion", desc: "Active (15g). Grants a permanent 1.5x stats multiplier to the next minion wave." },
-    "siege.t2.lowgravity": { title: "Low Gravity", desc: "Active (15g). Temporarily reduces ball gravity, extending lob trajectories." },
+    "siege.t2.lowgravity": { title: "Low Gravity", desc: "Active (15g). Temporarily reduces ball gravity for 3s, extending lob trajectories." },
     "siege.t2.energyrush": { title: "Energy Rush", desc: "Active (30g). Injects the FAST effect (+35% speed) to a random friendly hero." },
     "siege.t3.rushlane": { title: "Rush Lane", desc: "Passive. Spawns a conveyor zone that shoves all units forward along one lane." },
     "siege.t3.forwardmines": { title: "Forward Mines", desc: "Passive. Spawns a compact hazard zone in the opponent's third." },
     "siege.t3.ballportal": { title: "Ball Portal", desc: "Passive. Spawns two portals that teleport the ball between the enemy top and bottom lanes." },
     "siege.t3.vanguards": { title: "Vanguards", desc: "Passive. Spawns 1 extra minion per wave when your team crosses the midfield." },
+    "siege.t3.pullgoalie": { title: "Pull Goalie", desc: "Passive (10g). Sets all titan stats to 0.8 with 60 health, and permits the goalie to exit its bounding box." },
     "siege.t4.accumulators": { title: "Accumulators", desc: "Passive. Expands opponent goal size when friendly minions overlap them." },
     "siege.t4.parapet": { title: "Parapet", desc: "Passive. Spawns a high lane platform that roots units and prevents steal actions." },
     "siege.t5.saveprogress": { title: "Save Progress", desc: "Passive. Disables scoring decay, making banked sidegoal progress persistent." },
@@ -41,9 +42,9 @@ export const ABILITY_TOOLTIPS = {
     "siege.t5.forwardoutpost": { title: "Incendiary Mines", desc: "Passive. Expands Forward Mines hazard zone and continuously applies BURN damage to enemies." },
     "siege.t5.phalanx": { title: "Phalanx", desc: "Passive. Damage from other minions is reduced by 10% for each adjacent friendly minion." },
     "siege.t5.callsiegeminion": { title: "Call Siege Minion", desc: "Active (55g). Spawns a heavy minion wave at spawn locations." },
-    "siege.t5.anchor": { title: "Anchor", desc: "Active (70g). Tethers two opposing heroes, constraining their distance." },
+    "siege.t5.anchor": { title: "Anchor", desc: "Active (70g). Tethers two enemy heroes together, constraining their distance." },
     "siege.t5.shockgrenade": { title: "Shock Grenade", desc: "Active (40g). Instantly injects the STUN effect to a random enemy hero." },
-    "siege.t5.wallsdown": { title: "Walls Down", desc: "Active (60g). Disables collision and rendering on all enemy walls for 1000ms." },
+    "siege.t5.wallsdown": { title: "Walls Down", desc: "Active (120g). Disables collision on all enemy walls for 1000ms (rendered at 20% opacity)." },
     "siege.t6.forwardmedics": { title: "Forward Medics", desc: "Passive. Spawns a permanent zone in the enemy third that heals allied units." },
     "siege.t6.maximumpressure": { title: "Maximum Pressure", desc: "Passive. Doubles lane pressure speed boost when base pressure exceeds +5." },
     "siege.t6.multiball": { title: "Multiball", desc: "Passive. Spawns a second ball at the midline that can only be kicked, not picked up or thrown." },
@@ -60,7 +61,7 @@ export const ABILITY_TOOLTIPS = {
     "empowerment.t5.focusedtraining": { title: "Focused Training", desc: "Passive. Adds +2 points to your highest existing goalie mastery category." },
     "empowerment.t5.focusedtraining2": { title: "Focused Training II", desc: "Passive. Adds +2 points to your highest existing goalie mastery category." },
     "empowerment.t5.energysurge": { title: "Energy Surge", desc: "Active (50g). Instantly restores maximum fuel capacity for all friendly heroes." },
-    "empowerment.t5.secondwind": { title: "Second Wind", desc: "Active (50g). Immediately resets active Q and W ability cooldown timers." },
+    "empowerment.t5.secondwind": { title: "Second Wind", desc: "Active (50g). Reduces active Q and W ability cooldown timers by 50%." },
     "empowerment.t5.heistcamp": { title: "Heist Camp", desc: "Passive. Grants a permanent +20% increase to steal radius for all friendly heroes." },
     "empowerment.t5.clutchgene": { title: "Clutch Gene", desc: "Passive. Grants +30% defense (armor ratio) to friendly heroes when in possession of the ball." },
     "empowerment.t6.dragonsbreath": { title: "Dragon's Breath", desc: "Passive. Spawns a miniboss in bot lane; slaying it grants team permanent FAST." },
@@ -74,7 +75,7 @@ export const ABILITY_TOOLTIPS = {
     "cultivation.t3.tollcollector": { title: "Toll Collector", desc: "Passive. Gain +5 goalie mana whenever a friendly minion crosses the midfield line." },
     "cultivation.t4.manavines": { title: "Mana Vines", desc: "Passive (250m). Spawns a base hazard zone that slows and burns enemies, granting +30 mana when an enemy passes through." },
     "cultivation.t4.manafrenzy": { title: "Mana Frenzy", desc: "Passive (275m). Boosts friendly hero cooldown recovery speed by 1% per 30 current mana." },
-    "cultivation.t5.manasurge": { title: "Mana Surge", desc: "Active (40m). Injects an ultimate team burst, resetting Q/W cds and restoring health/fuel." },
+    "cultivation.t5.manasurge": { title: "Mana Surge", desc: "Active (40m). Injects a team burst, reducing Q/W cds by 50% and restoring 10% health and 25% boost." },
     "cultivation.t5.manasummon": { title: "Mana Summon", desc: "Active (50m). Spawns 2 heavy minions at your end of the field." },
     "cultivation.t5.manapollinate": { title: "Mana Pollinate", desc: "Passive (250m). Allows mana to purchase a single T5 upgrade from another tree (one-time benefit)." },
     "cultivation.t5.riskadjustedreturn": { title: "Risk-Adjusted Return", desc: "Passive (300m). Grants enemy 1 point; awards 1.5 points to your team after 150s." },
@@ -99,7 +100,7 @@ export const HARDCODED_COSTS = {
     "fortress.t5.repairdrone": { use: 50 },
     "fortress.t5.noflyzonetmp": { use: 60 },
     "fortress.t5.noflyzoneperm": { cost: 60 },
-    "fortress.t5.dilators": { cost: 400 },
+    "fortress.t5.dilators": { cost: 250 },
     "fortress.t5.icebarrage": { cost: 250 },
     "fortress.t5.firebarrage": { cost: 250 },
     "fortress.t6.impenetrable": { cost: 450 },
@@ -113,6 +114,7 @@ export const HARDCODED_COSTS = {
     "siege.t3.forwardmines": { cost: 125 },
     "siege.t3.ballportal": { cost: 150 },
     "siege.t3.vanguards": { cost: 125 },
+    "siege.t3.pullgoalie": { cost: 10 },
     "siege.t4.accumulators": { cost: 275 },
     "siege.t4.parapet": { cost: 325 },
     "siege.t5.saveprogress": { cost: 400 },
@@ -122,7 +124,7 @@ export const HARDCODED_COSTS = {
     "siege.t5.callsiegeminion": { use: 55 },
     "siege.t5.anchor": { use: 70 },
     "siege.t5.shockgrenade": { use: 40 },
-    "siege.t5.wallsdown": { use: 60 },
+    "siege.t5.wallsdown": { use: 120 },
     "siege.t6.forwardmedics": { cost: 400 },
     "siege.t6.maximumpressure": { cost: 450 },
     "siege.t6.multiball": { cost: 600 },
@@ -185,7 +187,7 @@ export const TREE_NODES = {
     GOALIE_TREE_SIEGE: [
         [234,16,290,85], [362,16,419,85], [486,16,543,85], [606,15,663,82], [710,15,767,82], [814,15,871,82], [918,15,974,82],
         [485,120,537,170],
-        [272,210,354,259], [397,210,492,259], [537,210,616,259], [670,212,746,259],
+        [272,210,354,259], [397,210,492,259], [537,210,616,259], [670,212,746,259], [785,175,945,290],
         [339,317,489,372], [537,317,685,372],
         [187,404,377,447], [420,389,610,451], [650,380,880,447],
         [147,478,399,548], [405,478,629,548], [653,478,870,548]
@@ -254,6 +256,7 @@ export const NODE_DEFS = {
         { tier: 't3', name: 'ballportal',          kind: 'cost' },
         { tier: 't3', name: 'rushlane',            kind: 'cost' },
         { tier: 't3', name: 'vanguards',           kind: 'cost' },
+        { tier: 't3', name: 'pullgoalie',          kind: 'cost' },
         // row 4
         { tier: 't4', name: 'accumulators',        kind: 'cost' },
         { tier: 't4', name: 'parapet',             kind: 'cost' },
@@ -449,7 +452,8 @@ export function drawHud(ctx, game, state) {
             if (e.entityClass === 'Fire' || e.entityClass === 'Portal' || e.entityClass === 'BallPortal' || e.entityClass === 'Parapet' || (e.entityClass === 'Trap' && (e.width === 80 || e.maxHealth >= 99999))) continue;
 
             const invisible = game.underControl && game.underControl.team !== e.team &&
-                              game.effectPool && game.effectPool.effects.some(ef => ef.effect === 'STEALTHED' && ef.on && ef.on.id === e.id);
+                              game.effectPool && game.effectPool.effects.some(ef => ef.effect === 'STEALTHED' && ef.on && ef.on.id === e.id) &&
+                              !game.effectPool.effects.some(ef => ef.effect === 'FLARE' && ef.on && ef.on.id === e.id);
             if (invisible) continue;
 
             if (e.entityClass === 'Dragon') {

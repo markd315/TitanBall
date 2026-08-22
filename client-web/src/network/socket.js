@@ -1,4 +1,5 @@
 import { gameState } from '../state.js';
+import { setBoostState, getControlledTitan } from '../input/mobile.js';
 
 let socket = null;
 let updateInterval = null;
@@ -30,12 +31,20 @@ export function connectGame(gameID) {
 
     updateInterval = setInterval(() => {
       if (socket && socket.readyState === WebSocket.OPEN) {
-        const isGoalie = gameState.game && gameState.game.underControl && gameState.game.underControl.type === 'GOALIE';
+        const myTitan = getControlledTitan(gameState.game);
+        const isGoalie = myTitan && myTitan.type === 'GOALIE';
         const posX = isGoalie ? Math.floor((gameState.mouseX || 0) / 0.9375) : (gameState.mouseX || 0);
         const posY = gameState.mouseY || 0;
         
-        if (gameState.game && gameState.game.underControl && gameState.game.underControl.possession !== 1) {
+        if (myTitan && myTitan.possession !== 1) {
           gameState.controlsHeld.artisanShot = 'SHOT';
+        }
+
+        // Auto-shutoff boost if out of fuel, dead, or holding ball as non-Dasher
+        if (gameState.controlsHeld.BOOST && myTitan) {
+          if (myTitan.fuel <= 0 || myTitan.fuel < 1.0 || myTitan.health <= 0 || (myTitan.possession === 1 && myTitan.type !== 'DASHER')) {
+            setBoostState(false);
+          }
         }
 
         const controls = {
@@ -55,6 +64,15 @@ export function connectGame(gameID) {
         } else {
           controls.buyGoalieTree = null;
           controls.buyGoalieNode = null;
+        }
+
+        if (gameState.pendingGoalieAttack) {
+          controls.goalieClickX = gameState.pendingGoalieAttack.x;
+          controls.goalieClickY = gameState.pendingGoalieAttack.y;
+          gameState.pendingGoalieAttack = null;
+        } else {
+          controls.goalieClickX = null;
+          controls.goalieClickY = null;
         }
 
         _diagSendCount++;
@@ -107,6 +125,13 @@ export function connectGame(gameID) {
     gameState.game = update;
     if (update.phase) {
       gameState.phase = update.phase;
+    }
+
+    if (gameState.controlsHeld.BOOST) {
+      const myTitan = getControlledTitan(update);
+      if (myTitan && (myTitan.fuel <= 0 || myTitan.fuel < 1.0 || myTitan.health <= 0 || (myTitan.possession === 1 && myTitan.type !== 'DASHER'))) {
+        setBoostState(false);
+      }
     }
 
     // Combo goal detection (local detection via score changes to bypass server sleep/ticks block)

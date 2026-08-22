@@ -107,7 +107,7 @@ public class GuardianAbilities implements Serializable {
         else if (nodeKey.endsWith(".overchargeminion")) {
             overchargedWavesQueued++;
         } else if (nodeKey.endsWith(".lowgravity")) {
-            lowGravityUntilMs = context.nowEpochMs + 15000;
+            lowGravityUntilMs = context.nowEpochMs + 3000;
         } else if (nodeKey.endsWith(".energyrush")) {
             applyEnergyRush(context);
         } else if (nodeKey.endsWith(".forwardmines")) {
@@ -133,6 +133,9 @@ public class GuardianAbilities implements Serializable {
             spawnForwardMedics(context, goalie);
         } else if (nodeKey.endsWith(".multiball")) {
             spawnSecondBall(context);
+        } else if (nodeKey.endsWith(".pullgoalie")) {
+            Titan realGoalie = (team == TeamAffiliation.HOME) ? context.players[0] : context.players[1];
+            applyPullGoalie(context, realGoalie);
         }
 
         // Empowerment Tree
@@ -695,7 +698,10 @@ public class GuardianAbilities implements Serializable {
         } else {
             sx = 1418 + rand.nextInt(282); // 1418 to 1700
         }
-        sy = 100 + rand.nextInt(900); // 100 to 1000
+        int trapHeight = 100;
+        int minY = context.c.MIN_Y;
+        int maxY = context.c.MAX_Y - trapHeight;
+        sy = minY + rand.nextInt(maxY - minY + 1);
         Trap t = new Trap(goalie, context, sx, sy);
         t.team = team;
         t.health = context.c.getD("guardian.snaretrap.permhealth");
@@ -706,8 +712,8 @@ public class GuardianAbilities implements Serializable {
     private void spawnBastionWalls(GameEngine context, Titan goalie) {
         Set<String> purchased = (team == TeamAffiliation.HOME) ? context.homeGoaliePurchasedUpgrades : context.awayGoaliePurchasedUpgrades;
         boolean hemmedIn = purchased.contains("fortress.t6.hemmedin");
-        int wWidth = hemmedIn ? 18 : 12;
-        int wHeight = hemmedIn ? 180 : 120;
+        int wWidth = hemmedIn ? 16 : 11;
+        int wHeight = hemmedIn ? 162 : 108;
         int hp = 999999;
 
         int topHoopCY = (int) (context.c.getI("goal.low.y") + context.c.getI("goal.low.height") / 2.0);
@@ -758,8 +764,8 @@ public class GuardianAbilities implements Serializable {
     }
 
     private void applyHemmedIn(GameEngine context, Titan goalie) {
-        int wWidth = 18;
-        int wHeight = 180;
+        int wWidth = 16;
+        int wHeight = 162;
         int hp = 999999;
         int topHoopCY = (int) (context.c.getI("goal.low.y") + context.c.getI("goal.low.height") / 2.0);
         int botHoopCY = (int) (context.c.getI("goal.low2.y") + context.c.getI("goal.low.height") / 2.0);
@@ -771,7 +777,7 @@ public class GuardianAbilities implements Serializable {
                 if (team == TeamAffiliation.HOME) {
                     if (Math.abs(e.X - (context.c.GOALIE_XH_MAX + 150)) <= 20) isBastion = true;
                 } else {
-                    if (Math.abs(e.X - (context.c.GOALIE_XA_MIN - 150 - 12)) <= 20 || Math.abs(e.X - (context.c.GOALIE_XA_MIN - 150 - 18)) <= 20) isBastion = true;
+                    if (Math.abs(e.X - (context.c.GOALIE_XA_MIN - 150)) <= 40) isBastion = true;
                 }
                 if (isBastion) {
                     e.width = wWidth;
@@ -975,16 +981,16 @@ public class GuardianAbilities implements Serializable {
     }
 
     private void applyAnchor(GameEngine context, Titan goalie) {
-        List<Titan> allies = new ArrayList<>();
         List<Titan> enemies = new ArrayList<>();
         for (Titan t : context.players) {
-            if (t.health > 0.0 && t.getType() != TitanType.GOALIE) {
-                if (t.team == team) allies.add(t); else enemies.add(t);
+            if (t.team != team && t.health > 0.0 && t.getType() != TitanType.GOALIE) {
+                enemies.add(t);
             }
         }
-        if (!allies.isEmpty() && !enemies.isEmpty()) {
-            tetherCaster = allies.get(new Random().nextInt(allies.size()));
-            tetherTarget = enemies.get(new Random().nextInt(enemies.size()));
+        if (enemies.size() >= 2) {
+            Collections.shuffle(enemies);
+            tetherCaster = enemies.get(0);
+            tetherTarget = enemies.get(1);
             tetherUntilMs = context.nowEpochMs + 8000;
         }
     }
@@ -998,7 +1004,7 @@ public class GuardianAbilities implements Serializable {
         }
         if (!enemies.isEmpty()) {
             Titan enemy = enemies.get(new Random().nextInt(enemies.size()));
-            context.effectPool.addUniqueEffect(new EmptyEffect(250, enemy, EffectId.STUN), context);
+            context.effectPool.addUniqueEffect(new EmptyEffect(150, enemy, EffectId.STUN), context);
         }
     }
 
@@ -1015,7 +1021,7 @@ public class GuardianAbilities implements Serializable {
             // Schedule resetting them
             context.effectPool.addUniqueEffect(new CallbackEffect(1000, goalieOfTeam(context, enemyGa.team), EffectId.COOLDOWN_STEAL, () -> {
                 for (Entity wall : context.entityPool) {
-                    if (wall instanceof Wall && wall.team == enemyGa.team && wall.maxHealth > 100.0) {
+                    if (wall instanceof Wall && wall.team == enemyGa.team && wall.health > 0.0) {
                         wall.solid = true;
                     }
                 }
@@ -1050,13 +1056,20 @@ public class GuardianAbilities implements Serializable {
     }
 
     private void resetCooldowns(GameEngine context) {
-        List<Effect> rm = new ArrayList<>();
+        Instant now = Instant.now();
+        List<Effect> toRemove = new ArrayList<>();
         for (Effect eff : context.effectPool.getEffects()) {
-            if (eff.on.team == team && (eff.getEffect() == EffectId.COOLDOWN_Q || eff.getEffect() == EffectId.COOLDOWN_W)) {
-                rm.add(eff);
+            if (eff.on != null && eff.on.team == team && (eff.getEffect() == EffectId.COOLDOWN_Q || eff.getEffect() == EffectId.COOLDOWN_W)) {
+                long remaining = eff.getEnd().getMillis() - now.getMillis();
+                if (remaining > 0) {
+                    long newRemaining = remaining / 2;
+                    eff.setEnd(now.plus(newRemaining));
+                } else {
+                    toRemove.add(eff);
+                }
             }
         }
-        for (Effect eff : rm) {
+        for (Effect eff : toRemove) {
             eff.cull(context);
             context.effectPool.getEffects().remove(eff);
         }
@@ -1064,10 +1077,11 @@ public class GuardianAbilities implements Serializable {
 
     private void manaSurge(GameEngine context) {
         resetCooldowns(context);
-        refillFuel(context);
+        double maxFuel = getMaxFuel(context);
         for (Titan t : context.players) {
             if (t.team == team && t.health > 0.0) {
-                t.health = t.maxHealth;
+                t.heal(t.maxHealth * 0.10);
+                t.fuel = Math.min(maxFuel, t.fuel + maxFuel * 0.25);
             }
         }
     }
@@ -1205,6 +1219,28 @@ public class GuardianAbilities implements Serializable {
                 t.stealRad = (int) ((t.baseStealRad * heistMult * Math.pow(context.c.getD("masteries.stealRadius.mult"), stealCount)) + stealBonus);
                 t.damageFactor = t.baseDamageFactor * Math.pow(context.c.getD("masteries.damage.mult"), damageCount);
             }
+        }
+    }
+
+    private void applyPullGoalie(GameEngine context, Titan goalie) {
+        if (goalie != null) {
+            goalie.maxHealth = 60.0;
+            goalie.baseMaxHealth = 60.0;
+            goalie.health = Math.min(goalie.health, 60.0);
+            goalie.throwPower = 0.8;
+            goalie.baseThrowPower = 0.8;
+            goalie.speed = 0.8;
+            goalie.baseSpeed = 0.8;
+            goalie.damageFactor = 0.8;
+            goalie.baseDamageFactor = 0.8;
+            goalie.cooldownFactor = 0.8;
+            goalie.baseCooldownFactor = 0.8;
+            goalie.durationsFactor = 0.8;
+            goalie.baseDurationsFactor = 0.8;
+            goalie.rangeFactor = 0.8;
+            goalie.baseRangeFactor = 0.8;
+            goalie.painReduction = 0.8;
+            goalie.basePainReduction = 0.8;
         }
     }
 

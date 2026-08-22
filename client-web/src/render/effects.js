@@ -18,6 +18,12 @@ export function drawEffectIcons(ctx, game, camX, camY) {
       continue;
     }
     
+    // Skip rendering if stealthed (and not on fire) and on enemy team
+    const invisible = game.underControl && game.underControl.team !== en.team &&
+                      game.effectPool.effects.some(ef => ef.effect === 'STEALTHED' && ef.on && ef.on.id === en.id) &&
+                      !game.effectPool.effects.some(ef => ef.effect === 'FLARE' && ef.on && ef.on.id === en.id);
+    if (invisible) continue;
+    
     const isCooldown = e.effect.startsWith('COOLDOWN');
     
     if (!offsetMap[en.id]) {
@@ -52,6 +58,11 @@ export function drawEffectIcons(ctx, game, camX, camY) {
   if (game.players) {
     for (const t of game.players) {
       if (t.isBoosting && t.health > 0) {
+        const invisible = game.underControl && game.underControl.team !== t.team &&
+                          game.effectPool.effects.some(ef => ef.effect === 'STEALTHED' && ef.on && ef.on.id === t.id) &&
+                          !game.effectPool.effects.some(ef => ef.effect === 'FLARE' && ef.on && ef.on.id === t.id);
+        if (invisible) continue;
+
         if (!offsetMap[t.id]) {
           offsetMap[t.id] = -22;
         }
