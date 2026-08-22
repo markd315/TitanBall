@@ -25,6 +25,10 @@ public class Const extends ConstOperations   {
     public final int GOALIE_XH_MAX = GOALIE_XH_MIN + getI("goalie.box.w");
     public final int GOALIE_XA_MIN = getI("goalie.box.xa");
     public final int GOALIE_XA_MAX = GOALIE_XA_MIN + getI("goalie.box.w");
+    public final int GOALIE_INTERCEPT_W = getI("goalie.hitbox.intercept.w");
+    public final int GOALIE_INTERCEPT_H = getI("goalie.hitbox.intercept.h");
+    public final int GOALIE_SOLID_W = getI("goalie.hitbox.solid.w");
+    public final int GOALIE_SOLID_H = getI("goalie.hitbox.solid.h");
     public int MAX_X = getI("max.x");
     public int E_MAX_X = getI("max.ex");
     public int MAX_Y = getI("max.y");

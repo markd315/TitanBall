@@ -30,6 +30,10 @@ public class Game   {
     public ClientPacket[] lastControlPacket = null;
     public final int SPRITE_X_EMPTY = c.getI("titan.hitbox.empty.x");
     public final int SPRITE_Y_EMPTY = c.getI("titan.hitbox.empty.y");
+    public final int GOALIE_INTERCEPT_W = c.GOALIE_INTERCEPT_W;
+    public final int GOALIE_INTERCEPT_H = c.GOALIE_INTERCEPT_H;
+    public final int GOALIE_SOLID_W = c.GOALIE_SOLID_W;
+    public final int GOALIE_SOLID_H = c.GOALIE_SOLID_H;
     public double secondsToStart = c.getD("server.startDelay");
     public long nowEpochMs;
     @JsonIgnore

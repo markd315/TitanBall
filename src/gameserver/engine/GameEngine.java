@@ -1536,11 +1536,16 @@ public class GameEngine extends Game {
     }
 
     public void intersectBall(int numSel, int valuePlayerX, int valuePlayerY) {
-        CollisionMath.Bounds r1 = new CollisionMath.Bounds(valuePlayerX + SPRITE_X_EMPTY / 2.0, valuePlayerY + SPRITE_Y_EMPTY / 2.0, 70 - SPRITE_X_EMPTY, 70 - SPRITE_Y_EMPTY);
+        Titan t = players[numSel - 1];
+        CollisionMath.Bounds r1 = new CollisionMath.Bounds(
+                valuePlayerX + SPRITE_X_EMPTY / 2.0,
+                valuePlayerY + SPRITE_Y_EMPTY / 2.0,
+                t.width - SPRITE_X_EMPTY,
+                t.height - SPRITE_Y_EMPTY
+        );
         r1 = goalieHitboxOverride(numSel, r1);
-        CollisionMath.Bounds r2 = new CollisionMath.Bounds((int) ball.X, (int) ball.Y, 30, 30);
+        CollisionMath.Bounds r2 = ball.asBounds();
         if ((r1.intersects(r2))) {
-            Titan t = players[numSel - 1];
             if (t.id.equals(players[numSel - 1].id) && !t.id.equals(lastPossessed)) {
                 Optional<Titan> tip = this.titanInPossession();
                 if (!tip.isPresent()) {
@@ -1578,18 +1583,15 @@ public class GameEngine extends Game {
         if (numSel > 2 || c.GOALIE_DISABLED) {
             return rect;
         }
-        if (numSel == 1) {
-            return new CollisionMath.Bounds((int) players[numSel - 1].X - 10,
-                    (int) players[numSel - 1].Y,
-                    90,
-                    70 - SPRITE_Y_EMPTY);
-
-        }
-        if (numSel == 2) {
-            return new CollisionMath.Bounds((int) players[numSel - 1].X - 10,
-                    (int) players[numSel - 1].Y,
-                    90,
-                    70 - SPRITE_Y_EMPTY);
+        if (numSel == 1 || numSel == 2) {
+            Titan t = players[numSel - 1];
+            double xOffset = (t.width - c.GOALIE_INTERCEPT_W) / 2.0;
+            return new CollisionMath.Bounds(
+                    (int) t.X + xOffset,
+                    (int) t.Y,
+                    c.GOALIE_INTERCEPT_W,
+                    c.GOALIE_INTERCEPT_H
+            );
         }
         return rect;
     }
@@ -2761,17 +2763,11 @@ protected void tickLaneMinions() {
             return;
         }
 
-        // Determine goalie lane using Y boundaries
-        int goalieLane;
-        double y = goalie.Y;
-
-        if (y < 468.5) {
-            goalieLane = 0; // TOP
-        } else if (y < 686.5) {
-            goalieLane = 1; // MID
-        } else {
-            goalieLane = 2; // BOT
-        }
+        // Goalie elliptical range check
+        double gx = goalie.X + goalie.width / 2.0;
+        double gy = goalie.Y + goalie.height / 2.0;
+        double rangeX = c.getI("titan.goalie.rangex") * goalie.rangeFactor;
+        double rangeY = c.getI("titan.goalie.rangey") * goalie.rangeFactor;
 
         Entity target = null;
         boolean isDragon = false;
@@ -2781,7 +2777,10 @@ protected void tickLaneMinions() {
             if (e instanceof LaneMinion) {
                 LaneMinion m = (LaneMinion) e;
                 if (m.getHealth() <= 0.0) continue;
-                if (m.laneIndex != goalieLane) continue;
+
+                double dx = m.X - gx;
+                double dy = m.Y - gy;
+                if ((dx * dx) / (rangeX * rangeX) + (dy * dy) / (rangeY * rangeY) > 1.0) continue;
 
                 double dist = util.Util.dist(m.X, m.Y, clickX, clickY);
                 if (dist < minDist) {
@@ -2792,13 +2791,16 @@ protected void tickLaneMinions() {
             } else if (e instanceof gameserver.entity.minions.Dragon) {
                 gameserver.entity.minions.Dragon d = (gameserver.entity.minions.Dragon) e;
                 if (d.getHealth() <= 0.0) continue;
-                if (goalieLane == 2) {
-                    double dist = util.Util.dist(d.X + d.width/2.0, d.Y + d.height/2.0, clickX, clickY);
-                    if (dist < minDist + 30.0) {
-                        minDist = dist;
-                        target = d;
-                        isDragon = true;
-                    }
+
+                double dx = (d.X + d.width / 2.0) - gx;
+                double dy = (d.Y + d.height / 2.0) - gy;
+                if ((dx * dx) / (rangeX * rangeX) + (dy * dy) / (rangeY * rangeY) > 1.0) continue;
+
+                double dist = util.Util.dist(d.X + d.width / 2.0, d.Y + d.height / 2.0, clickX, clickY);
+                if (dist < minDist + 30.0) {
+                    minDist = dist;
+                    target = d;
+                    isDragon = true;
                 }
             }
         }

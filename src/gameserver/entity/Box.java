@@ -45,7 +45,15 @@ public class Box extends Coordinates   {
 
     public Optional<Box> collidesSolidWhich(GameEngine context, Box[] solids, double yd, double xd) {
         gameserver.engine.CollisionMath.Bounds cmpBounds;
-        if (this instanceof Titan) {
+        if (this instanceof Titan t && t.getType() == TitanType.GOALIE) {
+            double xOffset = (this.width - context.GOALIE_SOLID_W) / 2.0;
+            cmpBounds = new gameserver.engine.CollisionMath.Bounds(
+                    this.X + xd + xOffset,
+                    this.Y + yd,
+                    context.GOALIE_SOLID_W,
+                    context.GOALIE_SOLID_H
+            );
+        } else if (this instanceof Titan) {
             cmpBounds = new gameserver.engine.CollisionMath.Bounds(
                     this.X + xd + context.SPRITE_X_EMPTY/2.0,
                     this.Y + yd + context.SPRITE_Y_EMPTY/2.0,
@@ -61,7 +69,15 @@ public class Box extends Coordinates   {
                     (!(collCheck instanceof Entity) || (((Entity) collCheck).health > 0))) {
                 
                 gameserver.engine.CollisionMath.Bounds checkBounds;
-                if (collCheck instanceof Titan) {
+                if (collCheck instanceof Titan tc && tc.getType() == TitanType.GOALIE) {
+                    double xOffset = (collCheck.width - context.GOALIE_SOLID_W) / 2.0;
+                    checkBounds = new gameserver.engine.CollisionMath.Bounds(
+                            (int)collCheck.X + xOffset,
+                            (int)collCheck.Y,
+                            context.GOALIE_SOLID_W,
+                            context.GOALIE_SOLID_H
+                    );
+                } else if (collCheck instanceof Titan) {
                     checkBounds = new gameserver.engine.CollisionMath.Bounds(
                             (int)collCheck.X + context.SPRITE_X_EMPTY/2.0,
                             (int)collCheck.Y + context.SPRITE_Y_EMPTY/2.0,

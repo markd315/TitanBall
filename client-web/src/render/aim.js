@@ -9,14 +9,27 @@ export function drawAimAndRangeIndicators(ctx, game, controlsHeld, camX, camY) {
     // 1. If player has possession of the ball, draw aiming lines and curves
     if (t.possession === 1 && game.ball) {
         const pow = t.throwPower || 0.1;
-        
-        // Cursor position in field space
-        const mx = controlsHeld.posX + camX;
-        const my = controlsHeld.posY + camY;
+        const isGoalie = t.type === 'GOALIE';
+        const ballRadius = (game.ball && game.ball.width) ? (game.ball.width / 2) : 15;
         
         // Ball center in field space
-        const bx = game.ball.X + game.ball.width / 2;
-        const by = game.ball.Y + game.ball.height / 2;
+        let bx, by;
+        if (isGoalie) {
+            const isHome = t.team === 'HOME' || t.team === 0;
+            const holdOffsetX = isHome ? 57 : -1;
+            const holdOffsetY = 20;
+            bx = t.X + holdOffsetX + ballRadius;
+            by = t.Y + holdOffsetY + ballRadius;
+        } else {
+            bx = game.ball.X + game.ball.width / 2;
+            by = game.ball.Y + game.ball.height / 2;
+        }
+
+        // Cursor position in field space
+        const cursorX = isGoalie ? ((controlsHeld.posX || 0) / 0.9375) : (controlsHeld.posX || 0);
+        const cursorY = controlsHeld.posY || 0;
+        const mx = cursorX + camX;
+        const my = cursorY + camY;
         
         // Angle from ball center to cursor
         const angle = Math.atan2(my - by, mx - bx);
@@ -142,21 +155,26 @@ export function drawAimAndRangeIndicators(ctx, game, controlsHeld, camX, camY) {
         ctx.stroke();
     }
 
-    // 3. Draw active range indicator circles from the server
+    // 3. Draw active range indicator circles/ellipses from the server
     if (t.rangeIndicators) {
         for (const ri of t.rangeIndicators) {
-            if (ri.radius > 0) {
+            const rx = (ri.radiusX || ri.radius) * (t.rangeFactor || 1.0);
+            const ry = (ri.radiusY || ri.radius) * (t.rangeFactor || 1.0);
+            if (rx > 0 && ry > 0) {
                 const color = ri.colorArray || [0.5, 0.5, 0.5, 1.0];
                 
                 // Don't show Artisan Suck circle if player has the ball
                 const isArtisanSuck = t.type === 'ARTISAN' && t.possession === 1 && color[1] > 0.98;
                 if (!isArtisanSuck) {
-                    const radius = ri.radius * (t.rangeFactor || 1.0);
                     const cx = t.X + t.width / 2 - camX;
                     const cy = t.Y + t.height / 2 - camY;
                     
                     ctx.beginPath();
-                    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+                    if (rx === ry) {
+                        ctx.arc(cx, cy, rx, 0, Math.PI * 2);
+                    } else {
+                        ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+                    }
                     ctx.strokeStyle = `rgba(${Math.floor(color[0]*255)}, ${Math.floor(color[1]*255)}, ${Math.floor(color[2]*255)}, ${color[3] * 0.45})`;
                     ctx.lineWidth = 3;
                     ctx.stroke();

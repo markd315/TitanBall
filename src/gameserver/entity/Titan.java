@@ -322,6 +322,7 @@ public class Titan extends Entity   {
         titanRange.put(TitanType.ARTISAN, artisan);
         titanRange.put(TitanType.HOUNDMASTER,  Collections.singleton(e(c.getI("titan.cage.range"))));
         titanRange.put(TitanType.GRENADIER, grenadier);
+        titanRange.put(TitanType.GOALIE, Collections.singleton(e(c.getI("titan.goalie.rangex"), c.getI("titan.goalie.rangey"))));
 
         titanText.put(TitanType.MAGE, "DAMAGE ignite enemies and warp players around the map with portals");
         titanText.put(TitanType.RANGER, "DAMAGE/DEFENSE take attacking enemies down from a distance");
@@ -368,6 +369,9 @@ public class Titan extends Entity   {
     }
     private static RangeCircle e(int x){
         return new RangeCircle(0.0, 1.0, 0.0, 1.0, x);
+    }
+    private static RangeCircle e(int x, int y){
+        return new RangeCircle(0.0, 1.0, 0.0, 1.0, x, y);
     }
     public RangeCircle getEnemyRadius(int x){
         return new RangeCircle(0.5, 0.0, 0.5, 1.0, x);
