@@ -42,6 +42,7 @@ public class GuardianAbilities implements Serializable {
     public long riskAdjustedReturnUntilMs = 0;
     public boolean riskAdjustedReturnPending = false;
     public double manaRateMultiplier = 1.0;
+    public int airSupportLane = -1;
     public transient Set<UUID> titansOnParapetLastTick = new HashSet<>();
     public transient Set<UUID> enemiesInVinesLastTick = new HashSet<>();
 
@@ -118,7 +119,7 @@ public class GuardianAbilities implements Serializable {
         } else if (nodeKey.endsWith(".ballportal")) {
             spawnBallPortal(context, goalie);
         } else if (nodeKey.endsWith(".rushlane")) {
-            spawnRushLane(context, goalie);
+            airSupportLane = context.getLaneFromY(goalie.Y);
         } else if (nodeKey.endsWith(".parapet")) {
             spawnParapet(context, goalie);
         } else if (nodeKey.endsWith(".callsiegeminion")) {
@@ -453,24 +454,6 @@ public class GuardianAbilities implements Serializable {
                 for (Entity mn : context.entityPool) {
                     if (mn instanceof LaneMinion && mn.team == team && mn.getHealth() > 0.0 && e.asBounds().intersects(mn.asBounds())) {
                         mn.heal(0.12);
-                    }
-                }
-            }
-
-            // Rush Lane (kinetic force zone pushing units along Y lane)
-            if (e instanceof Fire && e.team == team && e.height == 40) {
-                double shoveSpeed = context.c.getD("guardian.shove.speed");
-                if (shoveSpeed <= 0.0) shoveSpeed = 2.5;
-                double dx = (team == TeamAffiliation.HOME) ? shoveSpeed : -shoveSpeed;
-                
-                for (Titan t : context.players) {
-                    if (e.asBounds().intersects(t.asBounds())) {
-                        t.translateBounded(context, dx, 0.0);
-                    }
-                }
-                for (Entity mn : context.entityPool) {
-                    if (mn instanceof LaneMinion && mn.getHealth() > 0.0 && e.asBounds().intersects(mn.asBounds())) {
-                        mn.translateBounded(context, dx, 0.0);
                     }
                 }
             }
@@ -866,23 +849,6 @@ public class GuardianAbilities implements Serializable {
         context.entityPool.add(p2);
     }
 
-    private void spawnRushLane(GameEngine context, Titan goalie) {
-        int topHoopCY = (int) (context.c.getI("goal.low.y") + context.c.getI("goal.low.height") / 2.0);
-        int botHoopCY = (int) (context.c.getI("goal.low2.y") + context.c.getI("goal.low.height") / 2.0);
-        int midHoopCY = (int) (context.c.getI("goal.hi.y") + context.c.getI("goal.hi.height") / 2.0);
-        int lane = randIndex();
-        int targetCY = (lane == 0 ? topHoopCY : (lane == 1 ? midHoopCY : botHoopCY));
-        int rHeight = 40;
-        int ly = targetCY - rHeight / 2;
-        Fire rl = new Fire(goalie, 36, ly);
-        rl.team = team;
-        rl.width = 1976;
-        rl.height = rHeight;
-        rl.health = 99999;
-        rl.maxHealth = 99999;
-        context.entityPool.add(rl);
-    }
-
     private void spawnParapet(GameEngine context, Titan goalie) {
         int topHoopCY = (int) (context.c.getI("goal.low.y") + context.c.getI("goal.low.height") / 2.0);
         int px = (team == TeamAffiliation.HOME) ? 350 - 50 : 1690 - 50;
@@ -1211,12 +1177,13 @@ public class GuardianAbilities implements Serializable {
                 t.maxHealth = t.baseMaxHealth * Math.pow(context.c.getD("masteries.health.mult"), hpCount);
                 t.painReduction = t.basePainReduction * Math.pow(context.c.getD("masteries.painReduction.mult"), painCount);
                 
-                double heistMult = purchased.contains("empowerment.t5.heistcamp") ? 1.2 : 1.0;
+                double heistBonus = purchased.contains("empowerment.t5.heistcamp") ? context.c.getD("guardian.heistcamp.bonus") : 0.0;
                 double stealBonus = 0.0;
                 if (purchased.contains("empowerment.t4.forecheck") && t.X >= 680 && t.X <= 1368) {
                     stealBonus = context.c.getD("guardian.forecheck.bonus");
                 }
-                t.stealRad = (int) ((t.baseStealRad * heistMult * Math.pow(context.c.getD("masteries.stealRadius.mult"), stealCount)) + stealBonus);
+                double flatMasteryBonus = stealCount * context.c.getI("masteries.stealRadius.flat");
+                t.stealRad = (int) (t.baseStealRad + flatMasteryBonus + heistBonus + stealBonus);
                 t.damageFactor = t.baseDamageFactor * Math.pow(context.c.getD("masteries.damage.mult"), damageCount);
             }
         }
@@ -1425,9 +1392,6 @@ public class GuardianAbilities implements Serializable {
             }
         }
 
-        if (purchased.contains("siege.t3.rushlane")) {
-            spawnRushLane(context, goalie);
-        }
         if (purchased.contains("siege.t3.forwardmines") || purchased.contains("siege.t5.incendiarymines") || purchased.contains("siege.t5.forwardoutpost")) {
             spawnForwardMines(context, goalie);
         }

@@ -7,7 +7,7 @@ const MASTERY_KEYS = [
   { key: 'speed', name: 'Speed', desc: 'Increases movement speed (+4% per point)' },
   { key: 'cooldowns', name: 'Cooldowns', desc: 'Reduces ability cooldowns (+10% CD speed per point)' },
   { key: 'effectDuration', name: 'Effect Duration', desc: 'Increases status effect durations (+15% per point)' },
-  { key: 'stealRadius', name: 'Steal Range', desc: 'Increases ball stealing radius (+4% per point)' },
+  { key: 'stealRadius', name: 'Steal Range', desc: 'Increases ball stealing radius (+1px per point)' },
   { key: 'abilityRange', name: 'Ability Range', desc: 'Increases ability casting range (+4% per point)' },
   { key: 'abilityLag', name: 'Cast Speed', desc: 'Reduces ability casting lag (+20% cast speed per point)' },
   { key: 'painReduction', name: 'Pain Reduction', desc: 'Reduces damage taken from enemy goal zones (+25% per point)' }

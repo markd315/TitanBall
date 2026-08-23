@@ -41,7 +41,7 @@ public class Titan extends Entity   {
     public boolean programmed = false;
     public int marchingOrderX = 0;
     public int marchingOrderY = 0;
-    public int stealRad = 26;
+    public int stealRad = 11;
     public boolean typeAndMasteriesLocked = false;
     public double damageFactor = 1.0;
     public double cooldownFactor = 1.0;
@@ -56,7 +56,7 @@ public class Titan extends Entity   {
     public double baseDurationsFactor = 1.0;
     public double baseMaxHealth = 100.0;
     public double basePainReduction = 1.0;
-    public int baseStealRad = 26;
+    public int baseStealRad = 11;
     public double baseDamageFactor = 1.0;
 
     private TitanType type;

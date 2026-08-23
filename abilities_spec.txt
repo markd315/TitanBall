@@ -78,7 +78,7 @@ Siege Tree (Offense/Breaching)
 
         Ball Portal (Rough): Spawns a short-range portal entity that teleports the ball toward the attacking third.
 
-        Rush Lane: Spawns a telegraphed kinetic force entity that shoves units along one lane.
+        Air Support: Permanently empowers minions in the guardian's current lane (+40% damage) and grants +40% Guardian click damage in that lane.
 
         Vanguards: Modifies minion spawn logic to add 1 extra unit to waves whenever your team crosses the midline.
 

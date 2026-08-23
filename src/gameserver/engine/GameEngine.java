@@ -1258,6 +1258,7 @@ public class GameEngine extends Game {
                 homeGoalieAbilities.tick(this);
                 awayGoalieAbilities.tick(this);
                 tickGoalieMana();
+                tickGoalieGold();
                 checkDragonSpawning();
                 checkTurnovers();
                 boolean over = gameDurationRuleChanges();
@@ -2465,6 +2466,11 @@ public class GameEngine extends Game {
             m.armorRatio = 1.0;
         }
 
+        GuardianAbilities ga = (team == TeamAffiliation.HOME) ? homeGoalieAbilities : awayGoalieAbilities;
+        if (upgrades.contains("siege.t3.rushlane") && ga.airSupportLane == L) {
+            m.damageMultiplier *= 1.40;
+        }
+
         entityPool.add(m);
         teamCount++;
 
@@ -2774,8 +2780,17 @@ protected void tickLaneMinions() {
         }
     }
 
+    public int getLaneFromY(double y) {
+        double TOP_CENTER = c.getI("goal.low.y") + c.getI("goal.low.height") / 2.0;
+        double BOT_CENTER = c.getI("goal.low2.y") + c.getI("goal.low.height") / 2.0;
+        double MID_CENTER = c.getI("goal.hi.y") + c.getI("goal.hi.height") / 2.0;
+        double TOP_MID_DIV = (TOP_CENTER + MID_CENTER) / 2.0;
+        double MID_BOT_DIV = (MID_CENTER + BOT_CENTER) / 2.0;
+        if (y <= TOP_MID_DIV) return 0;
+        else if (y <= MID_BOT_DIV) return 1;
+        else return 2;
+    }
 
-        
     private Titan findNearestTitanInLane(
             double x, double y, TeamAffiliation team,
             double TOP_CENTER, double MID_CENTER, double BOT_CENTER,
@@ -2878,6 +2893,13 @@ protected void tickLaneMinions() {
             );
 
             double dmg = c.getD("goalie.click.damage");
+            GuardianAbilities ga = (goalieTeam == TeamAffiliation.HOME) ? homeGoalieAbilities : awayGoalieAbilities;
+            Set<String> goaliePurchased = (goalieTeam == TeamAffiliation.HOME) ? homeGoaliePurchasedUpgrades : awayGoaliePurchasedUpgrades;
+
+            int targetLane = isDragon ? 2 : ((LaneMinion) target).laneIndex;
+            if (goaliePurchased.contains("siege.t3.rushlane") && ga.airSupportLane == targetLane) {
+                dmg *= 1.40;
+            }
 
             if (isDragon) {
                 gameserver.entity.minions.Dragon d = (gameserver.entity.minions.Dragon) target;
@@ -2892,14 +2914,21 @@ protected void tickLaneMinions() {
                     m.health = 0.0;
                     if (m.team != goalieTeam) {
                         if (goalieTeam == TeamAffiliation.HOME) {
-                            homeGoalieCurrency += 10.0;
+                            homeGoalieCurrency += 5.0;
                         } else {
-                            awayGoalieCurrency += 10.0;
+                            awayGoalieCurrency += 5.0;
                         }
                     }
                 }
             }
         }
+    }
+
+    private void tickGoalieGold() {
+        double ticksPerSec = 1000.0 / Math.max(1, GAMETICK_MS);
+        double goldTrickleRate = 5.0 / (3.0 * ticksPerSec);
+        homeGoalieCurrency += goldTrickleRate;
+        awayGoalieCurrency += goldTrickleRate;
     }
 
     private void tickGoalieMana() {

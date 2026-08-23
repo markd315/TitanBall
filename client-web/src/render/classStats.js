@@ -100,11 +100,11 @@ export const CLASS_INFO = {
     rawHp: 135,
     rawSpeed: 5.40,
     rawThrow: 0.80,
-    rawSteal: 26,
+    rawSteal: 11,
     hp: '135 HP',
     speed: '5.40',
     throwPower: '0.80 (253px)',
-    stealRad: '26px',
+    stealRad: '11px',
     abilities: [
       { slot: 'E', name: 'Whirlwind Slash', label: 'Ability 1', cdKey: 'titan.slash.cdms', fallbackCd: 5000, desc: 'Performs a 360° spinning blade strike dealing damage to nearby enemies.' },
       { slot: 'R', name: 'Flash Dash', label: 'Ability 2', cdKey: 'titan.flash.warrior.cds', fallbackCd: 23, desc: 'Dashes forward in your movement direction to close distance or dodge attacks.' }
@@ -118,11 +118,11 @@ export const CLASS_INFO = {
     rawHp: 120,
     rawSpeed: 5.00,
     rawThrow: 0.84,
-    rawSteal: 24,
+    rawSteal: 9,
     hp: '120 HP',
     speed: '5.00',
     throwPower: '0.84 (265px)',
-    stealRad: '24px',
+    stealRad: '9px',
     abilities: [
       { slot: 'E', name: 'Precision Arrow', label: 'Ability 1', cdKey: 'titan.arrow.cdms', fallbackCd: 4000, desc: 'Fires a piercing arrow dealing damage to targets in its path.' },
       { slot: 'R', name: 'Sweeping Kick', label: 'Ability 2', cdKey: 'titan.kick.cdms', fallbackCd: 12000, desc: 'Kicks and knocks back nearby enemy champions away from you.' }
@@ -136,11 +136,11 @@ export const CLASS_INFO = {
     rawHp: 110,
     rawSpeed: 4.84,
     rawThrow: 0.84,
-    rawSteal: 26,
+    rawSteal: 11,
     hp: '110 HP',
     speed: '4.84',
     throwPower: '0.84 (265px)',
-    stealRad: '26px',
+    stealRad: '11px',
     abilities: [
       { slot: 'E', name: 'Warp Portal', label: 'Ability 1', cdKey: 'titan.portal.cdms', fallbackCd: 5500, desc: 'Places linked portal gateways on the field. Entering one instantly teleports titans to the other.' },
       { slot: 'R', name: 'Ignite', label: 'Ability 2', cdKey: 'titan.ignite.cds', fallbackCd: 20.0, desc: 'Ignites a targeted enemy with immediate fire damage and a lingering burn over time.' }
@@ -154,11 +154,11 @@ export const CLASS_INFO = {
     rawHp: 85,
     rawSpeed: 5.08,
     rawThrow: 1.50,
-    rawSteal: 24,
+    rawSteal: 9,
     hp: '85 HP',
     speed: '5.08',
     throwPower: '1.50 (474px)',
-    stealRad: '24px',
+    stealRad: '9px',
     abilities: [
       { slot: 'E', name: 'Frost Shot', label: 'Ability 1', cdKey: 'titan.slow.cdms', fallbackCd: 15000, desc: 'Fires a freezing projectile that inflicts a movement slow on the target enemy.' },
       { slot: 'R', name: 'Charge Shot', label: 'Ability 2', cdKey: 'titan.shoot.cdms', fallbackCd: 9000, desc: 'Empowers your next throws with significantly increased throw power and ball speed.' }
@@ -172,11 +172,11 @@ export const CLASS_INFO = {
     rawHp: 80,
     rawSpeed: 4.76,
     rawThrow: 1.09,
-    rawSteal: 30,
+    rawSteal: 15,
     hp: '80 HP',
     speed: '4.76',
     throwPower: '1.09 (344px)',
-    stealRad: '30px',
+    stealRad: '15px',
     abilities: [
       { slot: 'E', name: 'Cover Ball', label: 'Ability 1', cdKey: 'titan.hide.cdms', fallbackCd: 9000, desc: 'Hides the ball inside your body while carrying it, preventing enemies from stealing it.' },
       { slot: 'R', name: 'Flare', label: 'Ability 2', cdKey: 'titan.flare.cds', fallbackCd: 5.0, desc: 'Fires a flare at a targeted enemy, dealing immediate damage and applying a lingering burn.' }
@@ -190,11 +190,11 @@ export const CLASS_INFO = {
     rawHp: 200,
     rawSpeed: 4.60,
     rawThrow: 1.45,
-    rawSteal: 35,
+    rawSteal: 20,
     hp: '200 HP',
     speed: '4.60',
     throwPower: '1.45 (458px)',
-    stealRad: '35px',
+    stealRad: '20px',
     abilities: [
       { slot: 'E', name: 'Barrier Shield', label: 'Ability 1', cdKey: 'titan.shield.cdms', fallbackCd: 18000, desc: 'Activates fortified defensive armor that absorbs incoming damage.' },
       { slot: 'R', name: 'Shockwave Slam', label: 'Ability 2', cdKey: 'titan.scatter.cdms', fallbackCd: 12000, desc: 'Slams the ground to violently knock back nearby enemy champions.' }
@@ -208,11 +208,11 @@ export const CLASS_INFO = {
     rawHp: 90,
     rawSpeed: 4.80,
     rawThrow: 1.00,
-    rawSteal: 26,
+    rawSteal: 11,
     hp: '90 HP',
     speed: '4.80',
     throwPower: '1.00 (316px)',
-    stealRad: '26px',
+    stealRad: '11px',
     abilities: [
       { slot: 'E', name: 'Snare Trap', label: 'Ability 1', cdKey: 'titan.trap.cdms', fallbackCd: 15000, desc: 'Places an invisible ground trap that snares and immobilizes the enemy who steps on it.' },
       { slot: 'R', name: 'Barrier Wall', label: 'Ability 2', cdKey: 'titan.wall.cdms', fallbackCd: 3500, desc: 'Erects a solid wall on the pitch that deflects shots, passes, and blocks enemy pathing.' }
@@ -226,11 +226,11 @@ export const CLASS_INFO = {
     rawHp: 85,
     rawSpeed: 5.40,
     rawThrow: 0.80,
-    rawSteal: 28,
+    rawSteal: 13,
     hp: '85 HP',
     speed: '5.40',
     throwPower: '0.80 (253px)',
-    stealRad: '28px',
+    stealRad: '13px',
     abilities: [
       { slot: 'E', name: 'Shock Stun', label: 'Ability 1', cdKey: 'titan.stun.cdms', fallbackCd: 7000, desc: 'Emits a shockwave that stuns the nearest enemy champion.' },
       { slot: 'R', name: 'Healing Surge', label: 'Ability 2', cdKey: 'titan.heal.cdms', fallbackCd: 8000, desc: 'Casts a healing surge on a targeted ally (or self) to restore health over time.' }
@@ -244,11 +244,11 @@ export const CLASS_INFO = {
     rawHp: 90,
     rawSpeed: 5.24,
     rawThrow: 1.15,
-    rawSteal: 33,
+    rawSteal: 18,
     hp: '90 HP',
     speed: '5.24',
     throwPower: '1.15 (363px)',
-    stealRad: '33px',
+    stealRad: '18px',
     abilities: [
       { slot: 'E', name: 'Ball Vacuum / Spin Mode', label: 'Ability 1', cdKey: 'titan.suck.cdms', fallbackCd: 30000, desc: 'When loose: magnetically pulls the ball toward you. When holding ball: cycles curve shot spin direction.' },
       { slot: 'R', name: 'Ball Portal', label: 'Ability 2', cdKey: 'titan.bportal.cdms', fallbackCd: 7000, desc: 'Places linked portals on the field that teleport only the ball when shot or passed through.' }
@@ -262,11 +262,11 @@ export const CLASS_INFO = {
     rawHp: 80,
     rawSpeed: 4.88,
     rawThrow: 1.09,
-    rawSteal: 26,
+    rawSteal: 11,
     hp: '80 HP',
     speed: '4.88',
     throwPower: '1.09 (344px)',
-    stealRad: '26px',
+    stealRad: '11px',
     abilities: [
       { slot: 'E', name: 'Vanish', label: 'Ability 1', cdKey: 'titan.stealth.cdms', fallbackCd: 15000, desc: 'Grants invisibility from enemy vision and radar for a duration.' },
       { slot: 'R', name: 'Shadow Blink', label: 'Ability 2', cdKey: 'titan.flash.stealth.cds', fallbackCd: 21, desc: 'Teleports forward in your movement direction to bypass defenders.' }
@@ -280,11 +280,11 @@ export const CLASS_INFO = {
     rawHp: 110,
     rawSpeed: 4.84,
     rawThrow: 1.02,
-    rawSteal: 27,
+    rawSteal: 12,
     hp: '110 HP',
     speed: '4.84',
     throwPower: '1.02 (322px)',
-    stealRad: '27px',
+    stealRad: '12px',
     abilities: [
       { slot: 'E', name: 'Flashbang', label: 'Ability 1', cdKey: 'titan.flashbang.cdms', fallbackCd: 11000, desc: 'Hurls a blinding grenade that blinds the nearest enemy champion.' },
       { slot: 'R', name: 'Molotov', label: 'Ability 2', cdKey: 'titan.molotov.cdms', fallbackCd: 15000, desc: 'Throws an incendiary canister creating a persistent zone of fire.' }
@@ -298,11 +298,11 @@ export const CLASS_INFO = {
     rawHp: 120,
     rawSpeed: 5.08,
     rawThrow: 0.90,
-    rawSteal: 28,
+    rawSteal: 13,
     hp: '120 HP',
     speed: '5.08',
     throwPower: '0.90 (284px)',
-    stealRad: '28px',
+    stealRad: '13px',
     abilities: [
       { slot: 'E', name: 'Deploy Kennel', label: 'Ability 1', cdKey: 'titan.cage.cdms', fallbackCd: 10000, desc: 'Places a hound kennel cage on the pitch ready for release.' },
       { slot: 'R', name: 'Unleash Pack', label: 'Ability 2', cdKey: 'titan.wolf.cdms', fallbackCd: 20000, desc: 'Opens all deployed kennels simultaneously, releasing hounds to chase enemies.' }
@@ -316,11 +316,11 @@ export const CLASS_INFO = {
     rawHp: 200,
     rawSpeed: 3.86,
     rawThrow: 1.50,
-    rawSteal: 40,
+    rawSteal: 25,
     hp: '200 HP',
     speed: '3.86',
     throwPower: '1.50 (474px)',
-    stealRad: '40px',
+    stealRad: '25px',
     abilities: [
       { slot: 'CLICK', name: 'Lane Minion Strike', label: 'Click Lane', desc: 'Click in any lane on the pitch to strike enemy minions and neutral dragons directly from your net.' },
       { slot: 'TREE', name: 'Guardian Tech Tree', label: 'Upgrades', desc: 'Purchase and activate tactical upgrades: Reinforcements, Emergency Barriers, Wall Portals, Forward Medics, and Pull Goalie.' }
@@ -333,7 +333,7 @@ export const ROSTER_STATS = {
   hp: [80, 80, 85, 85, 90, 90, 110, 110, 120, 120, 135, 200, 200],
   speed: [3.86, 4.60, 4.76, 4.80, 4.84, 4.84, 4.88, 5.00, 5.08, 5.08, 5.24, 5.40, 5.40],
   throwPower: [0.80, 0.80, 0.84, 0.84, 0.90, 1.00, 1.02, 1.09, 1.09, 1.15, 1.45, 1.50, 1.50],
-  stealRad: [24, 24, 26, 26, 26, 26, 27, 28, 28, 30, 33, 35, 40]
+  stealRad: [9, 9, 11, 11, 11, 11, 12, 13, 13, 15, 18, 20, 25]
 };
 
 export function getTierColor(percentile) {
@@ -393,15 +393,23 @@ const STAT_MASTERY_CONFIG_MAP = {
 
 export function computeStatWithMastery(statType, baseVal, masteryPoints = 0) {
   const points = Number(masteryPoints) || 0;
-  const cfgKey = STAT_MASTERY_CONFIG_MAP[statType];
-  const stepMult = cfgKey ? getCfgNum(cfgKey, 1.04) : 1.04;
-  
-  // Apply the specific mastery multiplier from game.cfg
-  const mult = points > 0 ? (1 + points * (stepMult - 1.0)) : 1.0;
-  const totalVal = baseVal * mult;
+  let totalVal, bonusVal;
+
+  if (statType === 'stealRad') {
+    const flatBonus = getCfgNum('masteries.stealRadius.flat', 1);
+    bonusVal = points * flatBonus;
+    totalVal = baseVal + bonusVal;
+  } else {
+    const cfgKey = STAT_MASTERY_CONFIG_MAP[statType];
+    const stepMult = cfgKey ? getCfgNum(cfgKey, 1.04) : 1.04;
+    // Apply the specific mastery multiplier from game.cfg
+    const mult = points > 0 ? (1 + points * (stepMult - 1.0)) : 1.0;
+    totalVal = baseVal * mult;
+    bonusVal = totalVal - baseVal;
+  }
+
   const basePct = getStatPercentile(statType, baseVal);
   const totalPct = getStatPercentile(statType, totalVal);
-  const bonusVal = totalVal - baseVal;
   return {
     baseVal,
     totalVal,

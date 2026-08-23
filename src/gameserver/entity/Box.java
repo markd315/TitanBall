@@ -116,8 +116,8 @@ public class Box extends Coordinates   {
         double centerY = this.Y + this.height/2.0;
         double distSq = (centerX - x2) * (centerX - x2) +
                 (centerY - y2) * (centerY - y2);
-        //return True if the center of the circle is within the ellipse (wait, the code just checks center distance)
-        return distSq <= (r2 * r2);
+        double totalRadius = r2 + (this.width / 2.0);
+        return distSq <= (totalRadius * totalRadius);
     }
 
     public gameserver.engine.CollisionMath.Bounds asBounds() {

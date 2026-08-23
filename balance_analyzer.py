@@ -224,7 +224,7 @@ def load_titan_stats_from_cfg(
         base_hp = cfg.get(f"titan.{c_lower}.health", 100.0)
         base_spd = cfg.get(f"titan.{c_lower}.speed", 5.0)
         base_shoot = cfg.get(f"titan.{c_lower}.shoot", 1.0)
-        base_steal = cfg.get(f"titan.{c_lower}.stealrad", 26.0)
+        base_steal = cfg.get(f"titan.{c_lower}.stealrad", 11.0)
 
         eff_spd, duty, b_factor = compute_effective_boost_speed(base_spd, c_key, cfg, use_boost_speed)
 

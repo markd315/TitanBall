@@ -152,7 +152,7 @@ public class Masteries   {
             t.speed *= Math.pow(c.getD("masteries.speed.mult"), this.speed-1);
             t.throwPower *= Math.pow(c.getD("masteries.throw.mult"), this.shot-1);
             t.rangeFactor *= Math.pow(c.getD("masteries.range.mult"), this.abilityRange-1);
-            t.stealRad *= Math.pow(c.getD("masteries.stealRadius.mult"), this.stealRadius-1);
+            t.stealRad += (this.stealRadius - 1) * c.getI("masteries.stealRadius.flat");
             t.maxHealth *= Math.pow(c.getD("masteries.health.mult"), this.health-1);
             t.damageFactor *= Math.pow(c.getD("masteries.damage.mult"), this.damage-1);
             t.cooldownFactor /= Math.pow(c.getD("masteries.cooldowns.mult"), this.cooldowns-1);

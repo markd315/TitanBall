@@ -661,10 +661,10 @@ function drawIngame(ctx, dt) {
   ctx.restore();
   
   drawGoals(ctx, game, camX, camY);
-  drawAimAndRangeIndicators(ctx, game, gameState.controlsHeld, camX, camY);
   drawAllPseudotextures(ctx, game, camX, camY);
   drawPlayers(ctx, game, camX, camY);
   drawMinions(ctx, game, camX, camY);
+  drawAimAndRangeIndicators(ctx, game, gameState.controlsHeld, camX, camY);
   drawEffectIcons(ctx, game, camX, camY);
   drawBall(ctx, game, camX, camY);
   displayBallArrow(ctx, game, camX, camY);
