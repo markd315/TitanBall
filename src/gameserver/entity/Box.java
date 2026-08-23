@@ -64,6 +64,9 @@ public class Box extends Coordinates   {
             cmpBounds = new gameserver.engine.CollisionMath.Bounds(this.X + xd, this.Y + yd, this.width, this.height);
         }
         Optional<Box> ret = Optional.empty();
+        if (solids == null) {
+            return ret;
+        }
         for (Box collCheck : solids) {
             if (collCheck != null && collCheck.id != this.id &&
                     (!(collCheck instanceof Entity) || (((Entity) collCheck).health > 0))) {
@@ -122,11 +125,14 @@ public class Box extends Coordinates   {
     }
 
     public boolean ballNearestEdgeisX(Box ball) {
-        double x1 = Math.abs(ball.X - this.X);
-        double x2 = Math.abs((ball.X + ball.width ) - (this.X + this.width));
-        double y1 = Math.abs(ball.Y - this.Y);
-        double y2 = Math.abs((ball.Y + ball.height ) - (this.Y + this.height));
-        return (x1 < y1 && x1 < y2) || (x2 < y1 && x2 < y2);
+        return ballNearestEdgeisX(ball, 0, 0);
+    }
+
+    public boolean ballNearestEdgeisX(Box ball, double dx, double dy) {
+        gameserver.engine.CollisionMath.Bounds ballBounds = ball.asBounds();
+        gameserver.engine.CollisionMath.Bounds wallBounds = this.asBounds();
+        gameserver.engine.CollisionMath.CollisionSide side = gameserver.engine.CollisionMath.getCollisionSide(ballBounds, wallBounds, dx, dy);
+        return side == gameserver.engine.CollisionMath.CollisionSide.LEFT || side == gameserver.engine.CollisionMath.CollisionSide.RIGHT;
     }
 
     public gameserver.engine.CollisionMath.EllipseData ellipseData() {

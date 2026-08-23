@@ -81,9 +81,17 @@ public class ServerApplication {
         }
     }
 
+    private static long lastExpiryCheckMs = 0;
+
     public static void delegatePacket(networking.WebSocketPlayerConnection connection, ClientPacket packet) {
-        instantiateSpringContext();
-        checkGameExpiry();
+        if (persistenceManager == null || matchmaker == null) {
+            instantiateSpringContext();
+        }
+        long now = System.currentTimeMillis();
+        if (now - lastExpiryCheckMs > 1000) {
+            lastExpiryCheckMs = now;
+            checkGameExpiry();
+        }
         try {
             if (states.containsKey(packet.gameID)) {
                 ManagedGame state = states.get(packet.gameID);
@@ -112,8 +120,12 @@ public class ServerApplication {
     }
 
     private static void instantiateSpringContext() {
-        persistenceManager = SpringContextBridge.services().getPersistenceManager();
-        matchmaker = SpringContextBridge.services().getMatchmaker();
+        if (persistenceManager == null || matchmaker == null) {
+            try {
+                persistenceManager = SpringContextBridge.services().getPersistenceManager();
+                matchmaker = SpringContextBridge.services().getMatchmaker();
+            } catch (Exception ignored) {}
+        }
     }
 
     private static Set<String> rm = new HashSet<>();

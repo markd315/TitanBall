@@ -378,7 +378,7 @@ public class ManagedGame {
         state.secondsToStart = c.getD("server.startDelay") / 1000.0;
         state.kickoff();
 
-        exec = Executors.newScheduledThreadPool(gameIncludedClients.size());
+        exec = Executors.newScheduledThreadPool(Math.max(1, gameIncludedClients.size()));
         clients = gameIncludedClients;
 
         Runnable updateClients = () -> {
@@ -386,63 +386,79 @@ public class ManagedGame {
             Game snapshot = stateRef.get();
             if (snapshot == null) return;
 
-            // One deep-clone under lock to produce a stable, mutable base snapshot.
-            Game baseClone = (Game) deepClone(snapshot);
-            if (baseClone == null) return;
-
-            // Determine once per broadcast cycle whether any censoring is needed.
-            // If no player is BLIND or STEALTHED we can share a single serialised
-            // base JSON and only patch the per-client fields, saving N-1 full
-            // Jackson reflection passes per tick.
-            boolean anyCensoringNeeded = censoringRequired(baseClone);
-
-            // Serialize the base JSON string once (when censoring isn't needed).
-            final String baseJson;
-            if (!anyCensoringNeeded) {
-                String tmp = null;
-                try {
-                    tmp = mapper.writeValueAsString(baseClone);
-                } catch (Exception ex) {
-                    ex.printStackTrace();
-                }
-                baseJson = tmp;
-            } else {
-                baseJson = null;
-            }
-
-            final Game finalBaseClone = baseClone;
             final long nowMs = System.currentTimeMillis();
+            boolean anyCensoringNeeded = censoringRequired(snapshot);
 
-            clients.parallelStream().forEach(client -> {
+            if (!anyCensoringNeeded) {
+                // Fast path: snapshot serialized directly once under brief lock (~0.1ms)
+                String baseJson = null;
+                snapshot.lock();
                 try {
-                    PlayerDivider pd = dividerFromConn(client);
-                    if (!client.isConnected()) return;
-
-                    if (!anyCensoringNeeded && baseJson != null) {
-                        // Fast path: patch underControl and nowEpochMs via JsonNode —
-                        // much cheaper than a full convertValue deep-clone.
-                        Titan controlled = state.titanSelected(pd);
-                        com.fasterxml.jackson.databind.node.ObjectNode node =
-                                (com.fasterxml.jackson.databind.node.ObjectNode) mapper.readTree(baseJson);
-                        node.put("nowEpochMs", nowMs);
-                        if (controlled != null) {
-                            node.set("underControl", mapper.valueToTree(controlled));
-                        } else {
-                            node.putNull("underControl");
-                        }
-                        client.sendJson(mapper.writeValueAsString(node));
-                    } else {
-                        // Slow path: full per-client clone + anticheat censoring.
-                        Game update = mapper.convertValue(finalBaseClone, Game.class);
-                        if (update == null) return;
-                        update.underControl = state.titanSelected(pd);
-                        update.nowEpochMs = nowMs;
-                        client.sendJson(mapper.writeValueAsString(anticheat(update)));
-                    }
+                    snapshot.nowEpochMs = nowMs;
+                    snapshot.underControl = null;
+                    baseJson = mapper.writeValueAsString(snapshot);
                 } catch (Exception ex) {
                     ex.printStackTrace();
+                } finally {
+                    snapshot.unlock();
                 }
-            });
+
+                if (baseJson == null) return;
+
+                final String finalBaseJson = baseJson;
+                final Map<UUID, String> titanJsonCache = new HashMap<>();
+
+                clients.forEach(client -> {
+                    try {
+                        PlayerDivider pd = dividerFromConn(client);
+                        if (!client.isConnected()) return;
+
+                        Titan controlled = (pd != null && state != null) ? state.titanSelected(pd) : null;
+                        if (controlled != null) {
+                            String titanJson = titanJsonCache.computeIfAbsent(controlled.id, id -> {
+                                try {
+                                    return mapper.writeValueAsString(controlled);
+                                } catch (Exception ex) {
+                                    return "null";
+                                }
+                            });
+                            String clientJson = finalBaseJson.replace("\"underControl\":null", "\"underControl\":" + titanJson);
+                            client.sendJson(clientJson);
+                        } else {
+                            client.sendJson(finalBaseJson);
+                        }
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
+                });
+            } else {
+                // Anticheat path (BLIND / STEALTHED active)
+                snapshot.lock();
+                try {
+                    snapshot.nowEpochMs = nowMs;
+                    Game baseClone = mapper.convertValue(snapshot, Game.class);
+                    if (baseClone == null) return;
+
+                    clients.forEach(client -> {
+                        try {
+                            PlayerDivider pd = dividerFromConn(client);
+                            if (!client.isConnected()) return;
+
+                            Game update = mapper.convertValue(baseClone, Game.class);
+                            if (update == null) return;
+                            update.underControl = state.titanSelected(pd);
+                            update.nowEpochMs = nowMs;
+                            client.sendJson(mapper.writeValueAsString(anticheat(update)));
+                        } catch (Exception ex) {
+                            ex.printStackTrace();
+                        }
+                    });
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                } finally {
+                    snapshot.unlock();
+                }
+            }
         };
         exec.scheduleWithFixedDelay(updateClients, 1, c.getI("server.clients.updateinterval.ms"), TimeUnit.MILLISECONDS);
     }
@@ -555,17 +571,15 @@ public class ManagedGame {
         
         snapshot.phase = GamePhase.ENDED;
         CompletableFuture.runAsync(() -> {
-            clients.parallelStream().forEach(client -> {
+            clients.forEach(client -> {
                 try {
                     PlayerDivider pd = dividerFromConn(client);
-                    Game update = (Game) deepClone(snapshot);
-                    if (update == null) return;
-                    
-                    update.underControl = state.titanSelected(pd);
-                    update.nowEpochMs = System.currentTimeMillis();
+                    Titan controlled = (pd != null && state != null) ? state.titanSelected(pd) : null;
+                    snapshot.underControl = controlled;
+                    snapshot.nowEpochMs = System.currentTimeMillis();
                     
                     if (client.isConnected()) {
-                        client.sendJson(mapper.writeValueAsString(update));
+                        client.sendJson(mapper.writeValueAsString(snapshot));
                         Thread.sleep(1200);
                         client.close();
                     }
@@ -577,24 +591,12 @@ public class ManagedGame {
     }
 
     public static Object deepClone(Object object) {
-        boolean isGameEngine = object instanceof GameEngine;
-        if (isGameEngine) {
-            ((GameEngine) object).lock();
-        }
+        if (object == null) return null;
         try {
-            if (object instanceof GameEngine) {
-                return mapper.convertValue(object, GameEngine.class);
-            } else if (object instanceof Game) {
-                return mapper.convertValue(object, Game.class);
-            }
             return mapper.convertValue(object, object.getClass());
         } catch (Exception e) {
             e.printStackTrace();
             return null;
-        } finally {
-            if (isGameEngine) {
-                ((GameEngine) object).unlock();
-            }
         }
     }
 }

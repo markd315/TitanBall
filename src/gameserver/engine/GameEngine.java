@@ -217,26 +217,6 @@ public class GameEngine extends Game {
         super();
     }
 
-    public void lock() {
-        synchronized (locked) {
-            while (locked.get()) {
-                try {
-                    locked.wait();
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-            }
-            locked.set(true);
-        }
-    }
-
-    public void unlock() {
-        synchronized (locked) {
-            locked.set(false);
-            locked.notifyAll();
-        }
-    }
-
     protected void doHealthModification() {
         for (Entity e : allSolids) {
             double factor = (1000.0 / GAMETICK_MS);
@@ -672,54 +652,57 @@ public class GameEngine extends Game {
             return;
         }
         lock();
-        if (from != null) {
-            if(logs){
-                System.out.println(from + " packet");
-                try {
-                    System.out.println(MAPPER.writeValueAsString(request));
-                } catch (JsonProcessingException e) {
-                    e.printStackTrace();
+        try {
+            if (from != null) {
+                if(logs){
+                    System.out.println(from + " packet");
+                    try {
+                        System.out.println(MAPPER.writeValueAsString(request));
+                    } catch (JsonProcessingException e) {
+                        e.printStackTrace();
+                    }
                 }
-            }
-            Titan t = titanFromPacket(from);
-            if (t == null) {
-                System.out.println("got passed a bad titan index! Possibly from another game?");
-                return;
-            }
-            int btn = getBtn(request, t);
-            if (request.posX != -1 && request.posY != -1 && btn != 0) {
-                this.serverMouseRoutine(t, request.posX, request.posY, btn, request.camX, request.camY);
-            }
-            this.processProgramming(t, request);
-            this.processKeys(request, from);
-            for (PlayerDivider client : clients) {
-                if (client.id == from.id) {
-                    from.ready = true;
-                    int classSelIndex = client.possibleSelection.get(0) - 1;
-                    Titan classTitan = players[classSelIndex];
-                    if (request.classSelection != null) {
-                        if (request.classSelection == TitanType.GOALIE) {
-                            if (classSelIndex == 0 || classSelIndex == 1) {
-                                classTitan.setType(TitanType.GOALIE);
+                Titan t = titanFromPacket(from);
+                if (t == null) {
+                    System.out.println("got passed a bad titan index! Possibly from another game?");
+                    return;
+                }
+                int btn = getBtn(request, t);
+                if (request.posX != -1 && request.posY != -1 && btn != 0) {
+                    this.serverMouseRoutine(t, request.posX, request.posY, btn, request.camX, request.camY);
+                }
+                this.processProgramming(t, request);
+                this.processKeys(request, from);
+                for (PlayerDivider client : clients) {
+                    if (client.id == from.id) {
+                        from.ready = true;
+                        int classSelIndex = client.possibleSelection.get(0) - 1;
+                        Titan classTitan = players[classSelIndex];
+                        if (request.classSelection != null) {
+                            if (request.classSelection == TitanType.GOALIE) {
+                                if (classSelIndex == 0 || classSelIndex == 1) {
+                                    classTitan.setType(TitanType.GOALIE);
+                                } else {
+                                    //System.out.println("[DIAG] Blocking non-goalie slot from setting type to GOALIE");
+                                }
                             } else {
-                                //System.out.println("[DIAG] Blocking non-goalie slot from setting type to GOALIE");
-                            }
-                        } else {
-                            if (classSelIndex == 0 || classSelIndex == 1) {
-                                //System.out.println("[DIAG] Blocking goalie slot from changing class");
-                            } else {
-                                classTitan.setType(request.classSelection);
+                                if (classSelIndex == 0 || classSelIndex == 1) {
+                                    //System.out.println("[DIAG] Blocking goalie slot from changing class");
+                                } else {
+                                    classTitan.setType(request.classSelection);
+                                }
                             }
                         }
-                    }
-                    if (request.masteries != null) {
-                        request.masteries.applyMasteries(classTitan);
+                        if (request.masteries != null) {
+                            request.masteries.applyMasteries(classTitan);
+                        }
                     }
                 }
+                kickoff();
             }
-            kickoff();
+        } finally {
+            unlock();
         }
-        unlock();
     }
 
     private static int getBtn(ClientPacket request, Titan t) {
@@ -1934,23 +1917,25 @@ public class GameEngine extends Game {
             setBallFromTip();
             double D = 316.0 * t.throwPower;
             double v_tick = (D * (20 - t.actionFrame)) / 190.0;
-            // Use 200 steps instead of 800 — stepFactor is scaled ×4 so total
-            // distance per action-frame is identical; step size stays sub-pixel.
-            double stepFactor = (v_tick * 4.0) / 200.0;
+            double stepFactor = (v_tick * 4.0) / 800.0;
             // Snapshot once — entityPool doesn't change during ball travel (no entity removal inside the loop)
             Entity[] wallSnap = entityPool.toArray(new Entity[0]);
             double speedMult = (homeGoaliePurchasedUpgrades.contains("fortress.t5.dilators") || awayGoaliePurchasedUpgrades.contains("fortress.t5.dilators")) ? c.getD("guardian.dilators.speedmult") : 1.0;
             double dxPerStep = stepFactor * xKickPow * speedMult;
             double dyPerStep = -stepFactor * yKickPow * speedMult;
-            for (int i = 0; i < 200; i++) {
+            double[] vel = new double[]{ dxPerStep, dyPerStep };
+            for (int i = 0; i < 800; i++) {
                 if (this.phase == GamePhase.SCORE_FREEZE || !ballVisible) {
                     break;
                 }
-                ball.X += dxPerStep;
-                ball.Y += dyPerStep;
+                if (vel[0] == 0 && vel[1] == 0) {
+                    break;
+                }
+                ball.X += vel[0];
+                ball.Y += vel[1];
                 intersectAll();
                 detectGoals();
-                bounceWalls(wallSnap);
+                bounceWalls(wallSnap, vel);
             }
         }
         if (t.actionFrame == t.kickingFrames) {
@@ -2007,24 +1992,26 @@ public class GameEngine extends Game {
             }
             double D = 230.0 * t.throwPower * gravityMult * noFlyMult * parapetMult;
             double v_tick = (D * (20 - t.actionFrame)) / 190.0;
-            // Use 200 steps instead of 800 — stepFactor is scaled ×4 so total
-            // distance per action-frame is identical; step size stays sub-pixel.
-            double stepFactor = (v_tick * 4.0) / 200.0;
+            double stepFactor = (v_tick * 4.0) / 800.0;
 
             // Snapshot once — entityPool doesn't change during ball travel (no entity removal inside the loop)
             Entity[] wallSnap = entityPool.toArray(new Entity[0]);
             double speedMult = (homeGoaliePurchasedUpgrades.contains("fortress.t5.dilators") || awayGoaliePurchasedUpgrades.contains("fortress.t5.dilators")) ? c.getD("guardian.dilators.speedmult") : 1.0;
             double dxPerStep = stepFactor * xKickPow * speedMult;
             double dyPerStep = -stepFactor * yKickPow * speedMult;
-            for (int i = 0; i < 200; i++) {
+            double[] vel = new double[]{ dxPerStep, dyPerStep };
+            for (int i = 0; i < 800; i++) {
                 if (this.phase == GamePhase.SCORE_FREEZE || !ballVisible) {
                     break;
                 }
-                ball.X += dxPerStep;
-                ball.Y += dyPerStep;
+                if (vel[0] == 0 && vel[1] == 0) {
+                    break;
+                }
+                ball.X += vel[0];
+                ball.Y += vel[1];
                 intersectAll();
                 detectGoals();
-                bounceWalls(wallSnap);
+                bounceWalls(wallSnap, vel);
             }
         }
         if (t.actionFrame == t.kickingFrames) {
@@ -2046,90 +2033,170 @@ public class GameEngine extends Game {
 
     /** Public entry-point used for one-off bounces (post-shot, etc.). Takes its own snapshot. */
     public void bounceWalls() {
-        bounceWalls(entityPool.toArray(new Entity[0]));
+        bounceWalls(entityPool.toArray(new Entity[0]), null);
+    }
+
+    public void bounceWalls(Entity[] wallEntities) {
+        bounceWalls(wallEntities, null);
     }
 
     /**
-     * Core wall-bounce logic.  Accepts a pre-computed entity snapshot so callers
-     * inside tight loops (the 800-step ball-travel loop) can snapshot once and
-     * reuse it, instead of allocating a new array on every iteration.
+     * Core wall-bounce logic. Accepts a pre-computed entity snapshot and optional step velocity array [dx, dy]
+     * so callers inside tight loops (the 800-step ball-travel loop) can snapshot once and update velocity dynamically
+     * upon bounce.
      */
-    private void bounceWalls(Entity[] wallEntities) {
-        Optional<Box> coll = ball.collidesSolidWhich(this, wallEntities);
-        if(coll.isPresent() && !contactExemptBall()){
-            if(coll.get().ballNearestEdgeisX(ball)){
-                //System.out.println("wall");
-                xKickPow = -xKickPow;
-            }
-            else{
-                yKickPow = -yKickPow;
-            }
-        }
+    public void bounceWalls(Entity[] wallEntities, double[] vel) {
         boolean homeDead = homeGoaliePurchasedUpgrades.contains("fortress.t4.deadwalls");
         boolean awayDead = awayGoaliePurchasedUpgrades.contains("fortress.t4.deadwalls");
         boolean homePortals = homeGoaliePurchasedUpgrades.contains("cultivation.t6.wallportals");
         boolean awayPortals = awayGoaliePurchasedUpgrades.contains("cultivation.t6.wallportals");
-        
+
+        // 1. Check solid obstacle entities (Builder walls, Bastion walls, etc.)
+        Optional<Box> coll = ball.collidesSolidWhich(this, wallEntities);
+        if (coll.isPresent() && !contactExemptBall()) {
+            Box obstacle = coll.get();
+            double curDx = (vel != null) ? vel[0] : (xKickPow != 0 ? xKickPow : 0);
+            double curDy = (vel != null) ? vel[1] : (-yKickPow);
+            CollisionMath.Bounds bBounds = ball.asBounds();
+            CollisionMath.Bounds oBounds = obstacle.asBounds();
+            CollisionMath.CollisionSide side = CollisionMath.getCollisionSide(bBounds, oBounds, curDx, curDy);
+
+            boolean isDeadWall = (obstacle instanceof Entity ent) &&
+                    ((ent.team == TeamAffiliation.HOME && homeDead) || (ent.team == TeamAffiliation.AWAY && awayDead));
+
+            if (isDeadWall) {
+                xKickPow = 0;
+                yKickPow = 0;
+                if (vel != null) {
+                    vel[0] = 0;
+                    vel[1] = 0;
+                }
+                if (side == CollisionMath.CollisionSide.LEFT) {
+                    ball.X = oBounds.minX() - ball.width;
+                } else if (side == CollisionMath.CollisionSide.RIGHT) {
+                    ball.X = oBounds.minX() + oBounds.width();
+                } else if (side == CollisionMath.CollisionSide.TOP) {
+                    ball.Y = oBounds.minY() - ball.height;
+                } else if (side == CollisionMath.CollisionSide.BOTTOM) {
+                    ball.Y = oBounds.minY() + oBounds.height();
+                }
+                return;
+            }
+
+            if (side == CollisionMath.CollisionSide.LEFT) {
+                ball.X = oBounds.minX() - ball.width;
+                xKickPow = -Math.abs(xKickPow != 0 ? xKickPow : 0.25);
+                if (vel != null) vel[0] = -Math.abs(vel[0]);
+            } else if (side == CollisionMath.CollisionSide.RIGHT) {
+                ball.X = oBounds.minX() + oBounds.width();
+                xKickPow = Math.abs(xKickPow != 0 ? xKickPow : 0.25);
+                if (vel != null) vel[0] = Math.abs(vel[0]);
+            } else if (side == CollisionMath.CollisionSide.TOP) {
+                ball.Y = oBounds.minY() - ball.height;
+                yKickPow = Math.abs(yKickPow != 0 ? yKickPow : 0.25);
+                if (vel != null) vel[1] = -Math.abs(vel[1]);
+            } else if (side == CollisionMath.CollisionSide.BOTTOM) {
+                ball.Y = oBounds.minY() + oBounds.height();
+                yKickPow = -Math.abs(yKickPow != 0 ? yKickPow : 0.25);
+                if (vel != null) vel[1] = Math.abs(vel[1]);
+            } else {
+                if (obstacle.ballNearestEdgeisX(ball, curDx, curDy)) {
+                    xKickPow = -xKickPow;
+                    if (vel != null) vel[0] = -vel[0];
+                } else {
+                    yKickPow = -yKickPow;
+                    if (vel != null) vel[1] = -vel[1];
+                }
+            }
+        }
+
+        // 2. Check field boundaries
         if (ball.X > c.MAX_X) {
             if (homePortals) {
                 ball.X = 1040;
                 ball.Y = 609;
+                if (vel != null) { vel[0] = 0; vel[1] = 0; }
                 return;
             }
             if (awayDead) {
                 xKickPow = 0;
+                yKickPow = 0;
                 ball.X = c.MAX_X;
+                if (vel != null) { vel[0] = 0; vel[1] = 0; }
+                return;
             } else {
-                xKickPow = -xKickPow;
+                ball.X = c.MAX_X;
+                xKickPow = -Math.abs(xKickPow != 0 ? xKickPow : 0.25);
+                if (vel != null) vel[0] = -Math.abs(vel[0]);
             }
         }
         if (ball.X < c.MIN_X) {
             if (awayPortals) {
                 ball.X = 1040;
                 ball.Y = 609;
+                if (vel != null) { vel[0] = 0; vel[1] = 0; }
                 return;
             }
             if (homeDead) {
                 xKickPow = 0;
+                yKickPow = 0;
                 ball.X = c.MIN_X;
+                if (vel != null) { vel[0] = 0; vel[1] = 0; }
+                return;
             } else {
-                xKickPow = -xKickPow;
+                ball.X = c.MIN_X;
+                xKickPow = Math.abs(xKickPow != 0 ? xKickPow : 0.25);
+                if (vel != null) vel[0] = Math.abs(vel[0]);
             }
         }
         if (ball.Y < c.MIN_Y) {
             if (ball.X <= 1024 && awayPortals) {
                 ball.X = 1040;
                 ball.Y = 609;
+                if (vel != null) { vel[0] = 0; vel[1] = 0; }
                 return;
             }
             if (ball.X > 1024 && homePortals) {
                 ball.X = 1040;
                 ball.Y = 609;
+                if (vel != null) { vel[0] = 0; vel[1] = 0; }
                 return;
             }
             if ((ball.X <= 1024 && homeDead) || (ball.X > 1024 && awayDead)) {
                 yKickPow = 0;
+                xKickPow = 0;
                 ball.Y = c.MIN_Y;
+                if (vel != null) { vel[0] = 0; vel[1] = 0; }
+                return;
             } else {
-                yKickPow = -yKickPow;
+                ball.Y = c.MIN_Y;
+                yKickPow = -Math.abs(yKickPow != 0 ? yKickPow : 0.25);
+                if (vel != null) vel[1] = Math.abs(vel[1]);
             }
         }
         if (ball.Y > c.MAX_Y) {
             if (ball.X <= 1024 && awayPortals) {
                 ball.X = 1040;
                 ball.Y = 609;
+                if (vel != null) { vel[0] = 0; vel[1] = 0; }
                 return;
             }
             if (ball.X > 1024 && homePortals) {
                 ball.X = 1040;
                 ball.Y = 609;
+                if (vel != null) { vel[0] = 0; vel[1] = 0; }
                 return;
             }
             if ((ball.X <= 1024 && homeDead) || (ball.X > 1024 && awayDead)) {
                 yKickPow = 0;
+                xKickPow = 0;
                 ball.Y = c.MAX_Y;
+                if (vel != null) { vel[0] = 0; vel[1] = 0; }
+                return;
             } else {
-                yKickPow = -yKickPow;
+                ball.Y = c.MAX_Y;
+                yKickPow = Math.abs(yKickPow != 0 ? yKickPow : 0.25);
+                if (vel != null) vel[1] = -Math.abs(vel[1]);
             }
         }
     }
@@ -2161,15 +2228,21 @@ public class GameEngine extends Game {
             double tempYPow = Math.sin(Math.toRadians(angle));
             // Snapshot once — entityPool doesn't change during ball travel (no entity removal inside the loop)
             Entity[] wallSnap = entityPool.toArray(new Entity[0]);
-            // Use 200 steps instead of 800: constant scaled ×4 so total displacement is identical.
-            double curveDx = 0.118 * tempXPow * t.throwPower;
-            double curveDy = -0.118 * tempYPow * t.throwPower;
-            for (int i = 0; i < 200; i++) {
-                ball.X += curveDx;
-                ball.Y += curveDy;
+            double curveDx = 0.0295 * tempXPow * t.throwPower;
+            double curveDy = -0.0295 * tempYPow * t.throwPower;
+            double[] vel = new double[]{ curveDx, curveDy };
+            for (int i = 0; i < 800; i++) {
+                if (this.phase == GamePhase.SCORE_FREEZE || !ballVisible) {
+                    break;
+                }
+                if (vel[0] == 0 && vel[1] == 0) {
+                    break;
+                }
+                ball.X += vel[0];
+                ball.Y += vel[1];
                 intersectAll();
                 detectGoals();
-                bounceWalls(wallSnap);
+                bounceWalls(wallSnap, vel);
             }
         }
         if (t.actionFrame == t.kickingFrames) {

@@ -81,7 +81,7 @@ export function connectGame(gameID) {
         }
         socket.send(JSON.stringify(controls));
       }
-    }, 15);
+    }, 25);
 
     // Start periodic ping loop for latency tracking
     //pingInterval = setInterval(() => {

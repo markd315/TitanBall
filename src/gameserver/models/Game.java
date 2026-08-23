@@ -36,9 +36,21 @@ public class Game   {
     public final int GOALIE_SOLID_H = c.GOALIE_SOLID_H;
     public double secondsToStart = c.getD("server.startDelay");
     public long nowEpochMs;
+    public List<ShapePayload> colliders;
     @JsonIgnore
     protected AtomicBoolean locked = new AtomicBoolean(false);
-    public List<ShapePayload> colliders;
+    @JsonIgnore
+    protected final transient java.util.concurrent.locks.ReentrantLock engineLock = new java.util.concurrent.locks.ReentrantLock();
+
+    public void lock() {
+        engineLock.lock();
+    }
+
+    public void unlock() {
+        if (engineLock.isHeldByCurrentThread()) {
+            engineLock.unlock();
+        }
+    }
     public Entity[] allSolids;
     protected int curveFactor;
     public Titan underControl = null; //Only set by the gameserver right before pushing an update

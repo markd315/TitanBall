@@ -68,12 +68,27 @@ public class SecondBall extends Entity implements Tickable, Collidable, Serializ
         for (Entity e : context.entityPool) {
             if (e != this && e.solid && e.getHealth() > 0.0) {
                 if (this.asBounds().intersects(e.asBounds())) {
-                    if (e.ballNearestEdgeisX(this)) {
-                        vx = -vx;
-                        this.X += vx; // step away
+                    gameserver.engine.CollisionMath.CollisionSide side = gameserver.engine.CollisionMath.getCollisionSide(this.asBounds(), e.asBounds(), vx, vy);
+                    if (side == gameserver.engine.CollisionMath.CollisionSide.LEFT) {
+                        this.X = e.X - this.width;
+                        vx = -Math.abs(vx);
+                    } else if (side == gameserver.engine.CollisionMath.CollisionSide.RIGHT) {
+                        this.X = e.X + e.width;
+                        vx = Math.abs(vx);
+                    } else if (side == gameserver.engine.CollisionMath.CollisionSide.TOP) {
+                        this.Y = e.Y - this.height;
+                        vy = -Math.abs(vy);
+                    } else if (side == gameserver.engine.CollisionMath.CollisionSide.BOTTOM) {
+                        this.Y = e.Y + e.height;
+                        vy = Math.abs(vy);
                     } else {
-                        vy = -vy;
-                        this.Y += vy;
+                        if (e.ballNearestEdgeisX(this, vx, vy)) {
+                            vx = -vx;
+                            this.X += vx;
+                        } else {
+                            vy = -vy;
+                            this.Y += vy;
+                        }
                     }
                 }
             }

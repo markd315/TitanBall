@@ -1,13 +1,7 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Pilot Light Server Stack for Titanball - Autostarts server on hit, stops after 2 hours'
+Description: 'Pilot Light Server Stack for Titanball - ECS Fargate 2-Container Server with Autostart and 4-Hour Reaper'
 
 Parameters:
-  DeploymentType:
-    Type: String
-    Default: ECS
-    AllowedValues: [ECS, EC2]
-    Description: Host the game server on ECS Fargate or a standalone EC2 Instance.
-  
   CloudFrontDistributionId:
     Type: String
     Default: E250EEB1SQKL1Z
@@ -24,29 +18,14 @@ Parameters:
     Default: 'devpassword'
     Description: Root password for the MySQL Database container.
 
-  EC2InstanceType:
+  ExpirationHours:
     Type: String
-    Default: t3.micro
-    Description: The EC2 Instance type (used only if DeploymentType is EC2).
-
-  EC2KeyName:
-    Type: String
-    Default: ''
-    Description: Optional EC2 KeyPair name for SSH access (used only if DeploymentType is EC2).
-
-  LatestAMIPointer:
-    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
-    Default: '/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64'
-    Description: The SSM parameter path to resolve the latest AL2023 AMI.
-
-Conditions:
-  DeployECS: !Equals [!Ref DeploymentType, 'ECS']
-  DeployEC2: !Equals [!Ref DeploymentType, 'EC2']
-  HasKeyName: !Not [!Equals [!Ref EC2KeyName, '']]
+    Default: '4'
+    Description: Hours of inactivity before the server is automatically scaled down.
 
 Resources:
   # ==========================================
-  # SELF-CONTAINED NETWORKING RESOURCES
+  # NETWORKING RESOURCES
   # ==========================================
   GameVPC:
     Type: AWS::EC2::VPC
@@ -103,42 +82,33 @@ Resources:
   ServerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Enable HTTP/WS access on ports 80, 8080, and 22, and database access
+      GroupDescription: Enable HTTP/WS access on ports 8080 and database access
       VpcId: !Ref GameVPC
       SecurityGroupIngress:
-        # HTTP Server Port
-        - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
-          CidrIp: 0.0.0.0/0
-        # Game Server Port
+        # HTTP/WebSocket Game Server Port
         - IpProtocol: tcp
           FromPort: 8080
           ToPort: 8080
           CidrIp: 0.0.0.0/0
-        # SSH Access (Conditional/Optional)
-        - IpProtocol: tcp
-          FromPort: 22
-          ToPort: 22
-          CidrIp: 0.0.0.0/0
-        # DB Port (Internal subnet only)
+        # DB Port (Internal VPC access)
         - IpProtocol: tcp
           FromPort: 3306
           ToPort: 3306
           CidrIp: 0.0.0.0/0
 
   # ==========================================
-  # ECS FARGATE CONFIGURATION (Conditional)
+  # ECS FARGATE CONFIGURATION
   # ==========================================
   GameCluster:
     Type: AWS::ECS::Cluster
-    Condition: DeployECS
     Properties:
       ClusterName: TitanballCluster
+      ClusterSettings:
+        - Name: containerInsights
+          Value: enabled
 
   EcsExecutionRole:
     Type: AWS::IAM::Role
-    Condition: DeployECS
     Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -151,28 +121,27 @@ Resources:
         - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
 
   EcsTaskRole:
-      Type: AWS::IAM::Role
-      Condition: DeployECS
-      Properties:
-        AssumeRolePolicyDocument:
-          Version: '2012-10-17'
-          Statement:
-            - Effect: Allow
-              Principal:
-                Service: [ecs-tasks.amazonaws.com]
-              Action: ['sts:AssumeRole']
-        Policies:
-          - PolicyName: ECSExecPolicy
-            PolicyDocument:
-              Version: '2012-10-17'
-              Statement:
-                - Effect: Allow
-                  Action:
-                    - 'ssmmessages:CreateControlChannel'
-                    - 'ssmmessages:CreateDataChannel'
-                    - 'ssmmessages:OpenControlChannel'
-                    - 'ssmmessages:OpenDataChannel'
-                  Resource: '*'
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: [ecs-tasks.amazonaws.com]
+            Action: ['sts:AssumeRole']
+      Policies:
+        - PolicyName: ECSExecPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'ssmmessages:CreateControlChannel'
+                  - 'ssmmessages:CreateDataChannel'
+                  - 'ssmmessages:OpenControlChannel'
+                  - 'ssmmessages:OpenDataChannel'
+                Resource: '*'
 
   GameLogGroup:
     Type: AWS::Logs::LogGroup
@@ -182,7 +151,6 @@ Resources:
 
   GameTask:
     Type: AWS::ECS::TaskDefinition
-    Condition: DeployECS
     Properties:
       Family: TitanballTask
       Cpu: '4096'
@@ -249,7 +217,6 @@ Resources:
 
   GameService:
     Type: AWS::ECS::Service
-    Condition: DeployECS
     DependsOn: PublicRoute
     Properties:
       ServiceName: TitanballService
@@ -265,98 +232,6 @@ Resources:
           SecurityGroups:
             - !Ref ServerSecurityGroup
           AssignPublicIp: ENABLED
-
-  # ==========================================
-  # EC2 INSTANCE CONFIGURATION (Conditional)
-  # ==========================================
-  GameInstanceRole:
-    Type: AWS::IAM::Role
-    Condition: DeployEC2
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: [ec2.amazonaws.com]
-            Action: ['sts:AssumeRole']
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
-
-  GameInstanceProfile:
-    Type: AWS::IAM::InstanceProfile
-    Condition: DeployEC2
-    Properties:
-      Roles:
-        - !Ref GameInstanceRole
-
-  GameInstance:
-    Type: AWS::EC2::Instance
-    Condition: DeployEC2
-    DependsOn: PublicRoute
-    Properties:
-      InstanceType: !Ref EC2InstanceType
-      ImageId: !Ref LatestAMIPointer
-      KeyName: !If [HasKeyName, !Ref EC2KeyName, !Ref 'AWS::NoValue']
-      SubnetId: !Ref PublicSubnet
-      SecurityGroupIds:
-        - !Ref ServerSecurityGroup
-      IamInstanceProfile: !Ref GameInstanceProfile
-      UserData:
-        Fn::Base64: !Sub |
-          #!/bin/bash
-          yum update -y
-          yum install -y docker
-          service docker start
-          systemctl enable docker
-          usermod -a -G docker ec2-user
-          
-          # Install Docker Compose
-          curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-          chmod +x /usr/local/bin/docker-compose
-          ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
-          
-          # Create deployment structure
-          mkdir -p /app
-          cd /app
-          
-          # Create docker-compose.yml
-          cat << 'EOF' > docker-compose.yml
-          version: '3.8'
-          services:
-            db:
-              image: mysql:8.0
-              environment:
-                MYSQL_ROOT_PASSWORD: ${DatabaseRootPassword}
-                MYSQL_DATABASE: titanball
-              ports:
-                - "3306:3306"
-              healthcheck:
-                test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${DatabaseRootPassword}"]
-                interval: 10s
-                timeout: 5s
-                retries: 5
-            server:
-              image: ${ECRImageUri}
-              ports:
-                - "8080:8080"
-              environment:
-                DB_URL: jdbc:mysql://db:3306/titanball?allowPublicKeyRetrieval=true&useSSL=false
-                DB_USER: root
-                DB_PASSWORD: ${DatabaseRootPassword}
-                JWT_SECRET: DevJWTSecretKey12345_DevJWTSecretKey12345
-              depends_on:
-                db:
-                  condition: service_healthy
-          EOF
-          
-          # Start containers
-          docker-compose up -d
-      Tags:
-        - Key: Name
-          Value: TitanballGameServer
-        - Key: ExpirationTime
-          Value: '1970-01-01T00:00:00Z'
 
   # ==========================================
   # WARMING / REAPING LAMBDA & PERMISSIONS
@@ -385,14 +260,13 @@ Resources:
                   - ecs:ListTagsForResource
                   - ecs:ListTasks
                   - ecs:DescribeTasks
+                  - ecs:CreateCluster
+                  - ecs:CreateService
+                  - ecs:ListTaskDefinitions
                 Resource: '*'
-              # EC2 Operations
+              # ENI network interface resolution for Public IP
               - Effect: Allow
                 Action:
-                  - ec2:StartInstances
-                  - ec2:StopInstances
-                  - ec2:DescribeInstances
-                  - ec2:CreateTags
                   - ec2:DescribeNetworkInterfaces
                 Resource: '*'
               # Route 53 Operations (Automated subdomain records)
@@ -403,6 +277,14 @@ Resources:
                   - route53:ListHostedZonesByName
                   - route53:ListResourceRecordSets
                 Resource: '*'
+              # IAM PassRole for ECS tasks
+              - Effect: Allow
+                Action:
+                  - iam:PassRole
+                Resource: '*'
+                Condition:
+                  StringEquals:
+                    iam:PassedToService: ecs-tasks.amazonaws.com
               # CloudFront Configuration Custom Resource permissions
               - Effect: Allow
                 Action:
@@ -423,124 +305,108 @@ Resources:
       MemorySize: 256
       Environment:
         Variables:
-          DEPLOYMENT_TYPE: !Ref DeploymentType
-          EXPIRATION_HOURS: '2'
-          ECS_CLUSTER: !If [DeployECS, !Ref GameCluster, '']
-          ECS_SERVICE: !If [DeployECS, !Ref GameService, '']
-          EC2_INSTANCE_ID: !If [DeployEC2, !Ref GameInstance, '']
+          EXPIRATION_HOURS: !Ref ExpirationHours
+          ECS_CLUSTER: !Ref GameCluster
+          ECS_SERVICE: TitanballService
+          ECS_TASK_FAMILY: TitanballTask
+          ECS_SUBNET: !Ref PublicSubnet
+          ECS_SECURITY_GROUP: !Ref ServerSecurityGroup
       Code:
         ZipFile: |
           import os,json,datetime,urllib.request,boto3,time
+          from botocore.exceptions import ClientError
           ecs,ec2,cloudfront,route53=boto3.client('ecs'),boto3.client('ec2'),boto3.client('cloudfront'),boto3.client('route53')
           def handler(event,context):
            if "RequestType" in event:return handle_cfn_router(event,context)
            elif event.get("source")=="aws.events":return handle_reap(event,context)
            return handle_warm(event,context)
           def handle_warm(event,context):
-           dtype=os.environ.get("DEPLOYMENT_TYPE","ECS")
-           exp=(datetime.datetime.now(datetime.timezone.utc)+datetime.timedelta(hours=int(os.environ.get("EXPIRATION_HOURS","2")))).isoformat()
-           status,msg="unknown",""
-           public_ip=None
+           cluster=os.environ.get("ECS_CLUSTER","TitanballCluster").split('/')[-1]
+           service=os.environ.get("ECS_SERVICE","TitanballService").split('/')[-1]
+           hours=int(os.environ.get("EXPIRATION_HOURS","4"))
+           exp=(datetime.datetime.now(datetime.timezone.utc)+datetime.timedelta(hours=hours)).isoformat()
+           status,msg,public_ip="unknown","",None
            try:
-            if dtype=="ECS":
-             cluster,service=os.environ.get("ECS_CLUSTER"),os.environ.get("ECS_SERVICE")
+            try:
              desc=ecs.describe_services(cluster=cluster,services=[service])
-             if not desc['services']:raise Exception("Service not found")
-             svc=desc['services'][0]
-             if svc['desiredCount']!=1:
+             active=[s for s in desc.get('services',[]) if s.get('status')=='ACTIVE']
+            except ClientError as ce:
+             if ce.response['Error']['Code'] in ['ClusterNotFoundException','ServiceNotFoundException','InvalidParameterException']:active=[]
+             else:raise
+            if not active:
+             ecs.create_cluster(clusterName=cluster,settings=[{'name':'containerInsights','value':'enabled'}])
+             family,subnet,sg=os.environ.get('ECS_TASK_FAMILY','TitanballTask'),os.environ.get('ECS_SUBNET'),os.environ.get('ECS_SECURITY_GROUP')
+             task_arns=ecs.list_task_definitions(familyPrefix=family,status='ACTIVE',sort='DESC',maxResults=1).get('taskDefinitionArns',[])
+             if not task_arns:task_arns=ecs.list_task_definitions(familyPrefix=family,sort='DESC',maxResults=1).get('taskDefinitionArns',[])
+             if not task_arns:raise Exception(f"No task definition found for family {family}")
+             try:
+              ecs.create_service(cluster=cluster,serviceName=service,taskDefinition=task_arns[0],desiredCount=1,launchType='FARGATE',enableExecuteCommand=True,networkConfiguration={'awsvpcConfiguration':{'subnets':[subnet],'securityGroups':[sg],'assignPublicIp':'ENABLED'}})
+             except ClientError as e:
+              if 'already exists' not in str(e).lower() and 'not idempotent' not in str(e).lower():raise
+             desc=ecs.describe_services(cluster=cluster,services=[service])
+             active=[s for s in desc.get('services',[]) if s.get('status')=='ACTIVE']
+            if not active:
+             status,msg="starting","ECS service creation in progress"
+            else:
+             svc=active[0]
+             if svc.get('desiredCount',0)!=1:
               ecs.update_service(cluster=cluster,service=service,desiredCount=1)
-              status,msg="starting","ECS service starting"
-             else:status,msg="running","ECS service running"
-             ecs.tag_resource(resourceArn=svc['serviceArn'],tags=[{'key':'ExpirationTime','value':exp}])
-             # Wait for Public IP assignment
-             for _ in range(12):
-              tasks=ecs.list_tasks(cluster=cluster,serviceName=service)['taskArns']
-              if not tasks:
-               tasks=ecs.list_tasks(cluster=cluster,serviceName=service,desiredStatus='PENDING')['taskArns']
+              status,msg="starting","ECS service scaling to 1 initiated"
+             else:
+              status,msg="running","ECS service is running"
+             try:ecs.tag_resource(resourceArn=svc['serviceArn'],tags=[{'key':'ExpirationTime','value':exp}])
+             except Exception:pass
+             for _ in range(15):
+              tasks=ecs.list_tasks(cluster=cluster,serviceName=service,desiredStatus='RUNNING').get('taskArns',[])
               if tasks:
-               task_desc=ecs.describe_tasks(cluster=cluster,tasks=[tasks[0]])['tasks'][0]
-               attachments=task_desc.get('attachments',[])
+               tdesc=ecs.describe_tasks(cluster=cluster,tasks=[tasks[0]]).get('tasks',[{}])[0]
                eni_id=None
-               for att in attachments:
-                if att['type']=='ElasticNetworkInterface':
-                 for detail in att['details']:
-                  if detail['name']=='networkInterfaceId':eni_id=detail['value']
+               for att in tdesc.get('attachments',[]):
+                if att.get('type') in ['ElasticNetworkInterface','eni']:
+                 for d in att.get('details',[]):
+                  if d.get('name')=='networkInterfaceId':eni_id=d.get('value');break
                if eni_id:
-                eni_desc=ec2.describe_network_interfaces(NetworkInterfaceIds=[eni_id])
-                assoc=eni_desc['NetworkInterfaces'][0].get('Association',{})
-                public_ip=assoc.get('PublicIp')
-                if public_ip:break
+                nis=ec2.describe_network_interfaces(NetworkInterfaceIds=[eni_id]).get('NetworkInterfaces',[])
+                if nis:
+                 public_ip=nis[0].get('Association',{}).get('PublicIp')
+                 if public_ip:break
               time.sleep(1.5)
-            elif dtype=="EC2":
-             iid=os.environ.get("EC2_INSTANCE_ID")
-             desc=ec2.describe_instances(InstanceIds=[iid])
-             inst=desc['Reservations'][0]['Instances'][0]
-             state=inst['State']['Name']
-             if state in ["stopped","stopping"]:
-              ec2.start_instances(InstanceIds=[iid])
-              status,msg="starting","EC2 starting"
-             elif state=="running":status,msg="running","EC2 running"
-             else:status,msg=state,f"EC2 in {state}"
-             ec2.create_tags(Resources=[iid],Tags=[{'Key':'ExpirationTime','Value':exp}])
-             # Wait for Public IP assignment
-             for _ in range(10):
-              desc=ec2.describe_instances(InstanceIds=[iid])
-              inst=desc['Reservations'][0]['Instances'][0]
-              public_ip=inst.get('PublicIpAddress')
-              if public_ip:break
-              time.sleep(1.5)
-            
-            # Upsert Route 53 A record if Public IP is resolved
             if public_ip:
+             status,msg="running","ECS service running and DNS mapped"
              zones=route53.list_hosted_zones_by_name(DNSName='blockforger.net.')['HostedZones']
-             if not zones:raise Exception("Hosted zone for blockforger.net not found")
-             zone_id=zones[0]['Id'].split('/')[-1]
-             route53.change_resource_record_sets(
-              HostedZoneId=zone_id,
-              ChangeBatch={
-               'Changes': [{
-                'Action': 'UPSERT',
-                'ResourceRecordSet': {
-                 'Name': 'titanball-server.blockforger.net.',
-                 'Type': 'A',
-                 'TTL': 10,
-                 'ResourceRecords': [{'Value': public_ip}]
-                }
-               }]
-              }
-             )
+             if zones:
+              tzone=next((z for z in zones if z['Name'].rstrip('.')=='blockforger.net'),zones[0])
+              route53.change_resource_record_sets(
+               HostedZoneId=tzone['Id'].split('/')[-1],
+               ChangeBatch={'Changes':[{'Action':'UPSERT','ResourceRecordSet':{'Name':'titanball-server.blockforger.net.','Type':'A','TTL':10,'ResourceRecords':[{'Value':public_ip}]}}]}
+              )
            except Exception as e:
-            return {"statusCode":200,"headers":{"Access-Control-Allow-Origin":"*"},"body": json.dumps({"status":"error","error":str(e)})}
-           
-           res_data={"status":status,"message":msg,"expirationTime":exp}
-           if public_ip:
-            res_data["serverUrl"]=f"https://blockforger.net"
-            res_data["wsUrl"]=f"wss://blockforger.net"
-           return {"statusCode":200,"headers":{"Access-Control-Allow-Origin":"*"},"body":json.dumps(res_data)}
+            return {"statusCode":200,"headers":{"Access-Control-Allow-Origin":"*"},"body":json.dumps({"status":"error","error":str(e)})}
+           res={"status":status,"message":msg,"expirationTime":exp}
+           if public_ip:res["serverUrl"],res["wsUrl"],res["publicIp"]="https://blockforger.net","wss://blockforger.net",public_ip
+           return {"statusCode":200,"headers":{"Access-Control-Allow-Origin":"*"},"body":json.dumps(res)}
           def handle_reap(event,context):
-           dtype=os.environ.get("DEPLOYMENT_TYPE","ECS")
+           cluster=os.environ.get("ECS_CLUSTER","TitanballCluster").split('/')[-1]
+           service=os.environ.get("ECS_SERVICE","TitanballService").split('/')[-1]
            now=datetime.datetime.now(datetime.timezone.utc)
            try:
-            if dtype=="ECS":
-             cluster,service=os.environ.get("ECS_CLUSTER"),os.environ.get("ECS_SERVICE")
+            try:
              desc=ecs.describe_services(cluster=cluster,services=[service],include=['TAGS'])
-             if desc['services'] and desc['services'][0]['desiredCount']>0:
-              tag=next((t for t in desc['services'][0].get('tags',[]) if t['key']=='ExpirationTime'),None)
-              if tag and now>datetime.datetime.fromisoformat(tag['value']):ecs.update_service(cluster=cluster,service=service,desiredCount=0)
-            elif dtype=="EC2":
-             iid=os.environ.get("EC2_INSTANCE_ID")
-             desc=ec2.describe_instances(InstanceIds=[iid])
-             inst=desc['Reservations'][0]['Instances'][0]
-             if inst['State']['Name'] in ["running","pending"]:
-              tag=next((t for t in inst.get('Tags',[]) if t['Key']=='ExpirationTime'),None)
-              if tag and now>datetime.datetime.fromisoformat(tag['Value']):ec2.stop_instances(InstanceIds=[iid])
+             svcs=desc.get('services',[])
+             if svcs and svcs[0].get('desiredCount',0)>0:
+              tag=next((t for t in svcs[0].get('tags',[]) if t.get('key')=='ExpirationTime'),None)
+              if tag and now>datetime.datetime.fromisoformat(tag['value']):
+               ecs.update_service(cluster=cluster,service=service,desiredCount=0)
+            except ClientError as ce:
+             if ce.response['Error']['Code'] not in ['ClusterNotFoundException','ServiceNotFoundException']:raise
            except Exception as e:print("Reap err:",e)
           def handle_cfn_router(event,context):
-           req_type,props=event["RequestType"],event["ResourceProperties"]
+           req_type,props=event.get("RequestType"),event.get("ResourceProperties",{})
            dist_id,warm_url=props.get("CloudFrontDistributionId"),props.get("WarmLambdaUrl")
-           if not dist_id or not warm_url:return send_cfn(event,context,"FAILED",{"Message":"Missing params"},"Missing params")
+           phys_id=event.get("PhysicalResourceId") or "TitanballCloudFrontRouter"
+           if not dist_id or not warm_url:return send_cfn(event,context,"FAILED",{"Message":"Missing params"},phys_id)
            domain=warm_url.replace("https://","").replace("/","")
-           orig_id="PilotLightLambdaUrlOrigin"
+           l_id,s_id="PilotLightLambdaUrlOrigin","TitanballGameServerOrigin"
            try:
             res=cloudfront.get_distribution_config(Id=dist_id)
             config,etag=res['DistributionConfig'],res['ETag']
@@ -548,124 +414,67 @@ Resources:
             if req_type in ["Create","Update"]:
              origins=config.get('Origins',{})
              items=origins.get('Items',[])
-             orig_lambda={
-              'Id':orig_id,'DomainName':domain,'OriginPath':'',
-              'CustomHeaders':{'Quantity':0,'Items':[]},
-              'CustomOriginConfig':{
-               'HTTPPort':80,'HTTPSPort':443,'OriginProtocolPolicy':'https-only',
-               'OriginSslProtocols':{'Quantity':1,'Items':['TLSv1.2']},
-               'OriginReadTimeout':30,'OriginKeepaliveTimeout':5
-              },
-              'ConnectionAttempts':3,'ConnectionTimeout':10,'OriginShield':{'Enabled':False}
-             }
-             orig_server={
-              'Id':'TitanballGameServerOrigin','DomainName':'titanball-server.blockforger.net','OriginPath':'',
-              'CustomHeaders':{'Quantity':0,'Items':[]},
-              'CustomOriginConfig':{
-               'HTTPPort':8080,'HTTPSPort':443,'OriginProtocolPolicy':'http-only',
-               'OriginSslProtocols':{'Quantity':1,'Items':['TLSv1.2']},
-               'OriginReadTimeout':30,'OriginKeepaliveTimeout':5
-              },
-              'ConnectionAttempts':3,'ConnectionTimeout':10,'OriginShield':{'Enabled':False}
-             }
-             # Upsert origins
-             for new_o in [orig_lambda, orig_server]:
+             o_lambda={'Id':l_id,'DomainName':domain,'OriginPath':'','CustomHeaders':{'Quantity':0,'Items':[]},'CustomOriginConfig':{'HTTPPort':80,'HTTPSPort':443,'OriginProtocolPolicy':'https-only','OriginSslProtocols':{'Quantity':1,'Items':['TLSv1.2']},'OriginReadTimeout':30,'OriginKeepaliveTimeout':5},'ConnectionAttempts':3,'ConnectionTimeout':10,'OriginShield':{'Enabled':False}}
+             o_server={'Id':s_id,'DomainName':'titanball-server.blockforger.net','OriginPath':'','CustomHeaders':{'Quantity':0,'Items':[]},'CustomOriginConfig':{'HTTPPort':8080,'HTTPSPort':443,'OriginProtocolPolicy':'http-only','OriginSslProtocols':{'Quantity':1,'Items':['TLSv1.2']},'OriginReadTimeout':30,'OriginKeepaliveTimeout':5},'ConnectionAttempts':3,'ConnectionTimeout':10,'OriginShield':{'Enabled':False}}
+             for new_o in [o_lambda,o_server]:
               idx=next((i for i,o in enumerate(items) if o['Id']==new_o['Id']),-1)
               if idx>=0:
                if items[idx]['DomainName']!=new_o['DomainName']:items[idx],updated=new_o,True
               else:items.append(new_o);updated=True
              origins['Items'],origins['Quantity']=items,len(items)
              config['Origins']=origins
-             
-             # Configure Behaviors
              behaviors=config.get('CacheBehaviors',{})
              b_items=behaviors.get('Items',[])
-             base_b=dict(config['DefaultCacheBehavior'])
-             base_b['ViewerProtocolPolicy']='redirect-to-https'
-             base_b.pop('CachePolicyId',None)
-             base_b.pop('OriginRequestPolicyId',None)
-             base_b['AllowedMethods']={
-              'Quantity':7,'Items':['GET','HEAD','POST','PUT','PATCH','OPTIONS','DELETE'],
-              'CachedMethods':{'Quantity':2,'Items':['GET','HEAD']}
-             }
-             base_b['ForwardedValues']={
-              'QueryString':True,
-              'Cookies':{'Forward':'all'},
-              'Headers':{
-               'Quantity':8,
-               'Items':['Authorization','Origin','Access-Control-Request-Headers','Access-Control-Request-Method','Content-Type','Accept','Referer','User-Agent']
-              },
-              'QueryStringCacheKeys':{'Quantity':0}
-             }
-             base_b['MinTTL']=0
-             base_b['DefaultTTL']=0
-             base_b['MaxTTL']=0
-             
-             b_warm=dict(base_b)
-             b_warm['PathPattern']='/pages/titanball/api/warm'
-             b_warm['TargetOriginId']='PilotLightLambdaUrlOrigin'
-             
-             b_api=dict(base_b)
-             b_api['PathPattern']='/pages/titanball/api/*'
-             b_api['TargetOriginId']='TitanballGameServerOrigin'
-             
-             b_game=dict(base_b)
-             b_game['PathPattern']='/pages/titanball/game'
-             b_game['TargetOriginId']='TitanballGameServerOrigin'
-             
-             # Rebuild Behaviors list to ensure index 0 priority
+             default_b=config.get('DefaultCacheBehavior',{})
+             has_cp='CachePolicyId' in default_b
+             def make_b(path,tid):
+              b={'PathPattern':path,'TargetOriginId':tid,'ViewerProtocolPolicy':'redirect-to-https','AllowedMethods':{'Quantity':7,'Items':['GET','HEAD','POST','PUT','PATCH','OPTIONS','DELETE'],'CachedMethods':{'Quantity':2,'Items':['GET','HEAD']}},'SmoothStreaming':False,'Compress':True,'LambdaFunctionAssociations':{'Quantity':0,'Items':[]},'FieldLevelEncryptionId':''}
+              if has_cp:
+               b['CachePolicyId']='4135ea2d-6df8-44a3-9df3-4b5a84be39ad'
+               b['OriginRequestPolicyId']='b689b0a8-53d0-40dd-86a5-5ec57a859476'
+              else:
+               b['ForwardedValues']={'QueryString':True,'Cookies':{'Forward':'all'},'Headers':{'Quantity':8,'Items':['Authorization','Origin','Access-Control-Request-Headers','Access-Control-Request-Method','Content-Type','Accept','Referer','User-Agent']},'QueryStringCacheKeys':{'Quantity':0}}
+               b['MinTTL']=0;b['DefaultTTL']=0;b['MaxTTL']=0
+              return b
              b_items=[b for b in b_items if b['PathPattern'] not in ['/pages/titanball/api/warm','/pages/titanball/api/*','/pages/titanball/game']]
-             b_items.insert(0, b_game)
-             b_items.insert(0, b_api)
-             b_items.insert(0, b_warm)
-             updated=True
-             
+             b_items.insert(0,make_b('/pages/titanball/game',s_id))
+             b_items.insert(0,make_b('/pages/titanball/api/*',s_id))
+             b_items.insert(0,make_b('/pages/titanball/api/warm',l_id))
              behaviors['Items'],behaviors['Quantity']=b_items,len(b_items)
              config['CacheBehaviors']=behaviors
+             updated=True
             elif req_type=="Delete":
              behaviors=config.get('CacheBehaviors',{})
              b_items=behaviors.get('Items',[])
-             original_len=len(b_items)
+             orig_len=len(b_items)
              b_items=[b for b in b_items if b['PathPattern'] not in ['/pages/titanball/api/warm','/pages/titanball/api/*','/pages/titanball/game']]
-             if len(b_items)!=original_len:updated=True
+             if len(b_items)!=orig_len:updated=True
              behaviors['Items'],behaviors['Quantity']=b_items,len(b_items)
              config['CacheBehaviors']=behaviors
-             
              origins=config.get('Origins',{})
              items=origins.get('Items',[])
              orig_len_o=len(items)
-             items=[o for o in items if o['Id'] not in ['PilotLightLambdaUrlOrigin','TitanballGameServerOrigin']]
+             items=[o for o in items if o['Id'] not in [l_id,s_id]]
              if len(items)!=orig_len_o:updated=True
              origins['Items'],origins['Quantity']=items,len(items)
              config['Origins']=origins
-             
-             # Route 53 Cleanup on deletion
              try:
               zones=route53.list_hosted_zones_by_name(DNSName='blockforger.net.')['HostedZones']
               if zones:
-               zone_id=zones[0]['Id'].split('/')[-1]
-               res_dns=route53.list_resource_record_sets(HostedZoneId=zone_id, StartRecordName='titanball-server.blockforger.net.', StartRecordType='A', MaxItems=1)
-               for rset in res_dns.get('ResourceRecordSets', []):
+               zid=zones[0]['Id'].split('/')[-1]
+               rsets=route53.list_resource_record_sets(HostedZoneId=zid,StartRecordName='titanball-server.blockforger.net.',StartRecordType='A',MaxItems=1)
+               for rset in rsets.get('ResourceRecordSets',[]):
                 if rset['Name']=='titanball-server.blockforger.net.':
-                 route53.change_resource_record_sets(
-                  HostedZoneId=zone_id,
-                  ChangeBatch={'Changes': [{'Action': 'DELETE', 'ResourceRecordSet': rset}]}
-                 )
-             except Exception as dns_err:print("Route53 delete clean err:",dns_err)
-            
+                 route53.change_resource_record_sets(HostedZoneId=zid,ChangeBatch={'Changes':[{'Action':'DELETE','ResourceRecordSet':rset}]})
+             except Exception as de:print("Route53 clean err:",de)
             if updated:cloudfront.update_distribution(Id=dist_id,DistributionConfig=config,IfMatch=etag)
-            send_cfn(event,context,"SUCCESS",{"Message":"Done"})
+            send_cfn(event,context,"SUCCESS",{"Message":"Done"},phys_id)
            except Exception as e:
-            print("Router exception:",e)
-            send_cfn(event,context,"FAILED",{"Message":str(e)},f"Exception: {str(e)[:180]} (Logs: {context.log_stream_name})")
-          def send_cfn(event,context,status,data,reason=None):
-           body=json.dumps({
-            "Status":status,"Reason":reason or f"Logs: {context.log_stream_name}",
-            "PhysicalResourceId":context.log_stream_name or "cfn_router",
-            "StackId":event["StackId"],"RequestId":event["RequestId"],
-            "LogicalResourceId":event["LogicalResourceId"],"Data":data
-           }).encode('utf-8')
-           req=urllib.request.Request(event["ResponseURL"],data=body,headers={"content-type":""},method="PUT")
+            print("Router err:",e)
+            send_cfn(event,context,"FAILED",{"Message":str(e)},phys_id,reason=f"Err: {str(e)[:180]}")
+          def send_cfn(event,context,status,data,phys_id,reason=None):
+           body=json.dumps({"Status":status,"Reason":reason or f"Logs: {getattr(context,'log_stream_name','none')}","PhysicalResourceId":phys_id,"StackId":event.get("StackId"),"RequestId":event.get("RequestId"),"LogicalResourceId":event.get("LogicalResourceId"),"Data":data}).encode('utf-8')
+           req=urllib.request.Request(event["ResponseURL"],data=body,headers={"content-type":"","content-length":str(len(body))},method="PUT")
            try:
             with urllib.request.urlopen(req) as f:pass
            except Exception as e:print("CFN send fail:",e)
