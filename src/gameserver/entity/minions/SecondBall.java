@@ -147,6 +147,7 @@ public class SecondBall extends Entity implements Tickable, Collidable, Serializ
                 
                 us.hasBall = true;
                 enemy.hasBall = false;
+                context.lastScoredTeam = us.which;
                 context.ballVisible = false;
                 context.inGame = false;
                 context.goalVisible = true;

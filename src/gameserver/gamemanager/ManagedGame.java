@@ -106,174 +106,114 @@ public class ManagedGame {
                     index++;
                 }
             } else {
-                List<String> playerList = new ArrayList<>(gameFor);
                 List<String> teamHome = new ArrayList<>();
                 List<String> teamAway = new ArrayList<>();
                 
-                partitionTeams(playerList, teamHome, teamAway, teamSize);
+                partitionTeams(new ArrayList<>(gameFor), teamHome, teamAway, teamSize);
                 
-                authserver.matchmaking.Matchmaker mm = authserver.SpringContextBridge.services().getMatchmaker();
-                
-                // Assign slots for Home Team
-                String homeGoalie = null;
-                for (String email : teamHome) {
-                    String chosenClass = mm.playerClasses.getOrDefault(email, "WARRIOR");
-                    if ("GOALIE".equalsIgnoreCase(chosenClass)) {
-                        homeGoalie = email;
-                        break;
-                    }
+                authserver.matchmaking.Matchmaker mm = null;
+                try {
+                    mm = authserver.SpringContextBridge.services().getMatchmaker();
+                } catch (Exception ignored) {}
+
+                assignTeamSlots(teamHome, 1, 3, mm);
+                assignTeamSlots(teamAway, 2, 3 + teamSize, mm);
+            }
+        }
+    }
+
+    private void assignTeamSlots(List<String> team, int goalieSlot, int fieldSlotStart, authserver.matchmaking.Matchmaker mm) {
+        String goalie = null;
+        if (mm != null) {
+            for (String email : team) {
+                if ("GOALIE".equalsIgnoreCase(mm.playerClasses.getOrDefault(email, "WARRIOR"))) {
+                    goalie = email;
+                    break;
                 }
-                if (homeGoalie == null && !teamHome.isEmpty()) {
-                    homeGoalie = teamHome.get(0); // fallback
-                }
-                if (homeGoalie != null) {
-                    preAssignedSlots.put(homeGoalie, 1);
-                }
-                
-                int homeFieldIndex = 0;
-                for (String email : teamHome) {
-                    if (email.equals(homeGoalie)) continue;
-                    int slot = 3 + homeFieldIndex;
-                    preAssignedSlots.put(email, slot);
-                    homeFieldIndex++;
-                }
-                
-                // Assign slots for Away Team
-                String awayGoalie = null;
-                for (String email : teamAway) {
-                    String chosenClass = mm.playerClasses.getOrDefault(email, "WARRIOR");
-                    if ("GOALIE".equalsIgnoreCase(chosenClass)) {
-                        awayGoalie = email;
-                        break;
-                    }
-                }
-                if (awayGoalie == null && !teamAway.isEmpty()) {
-                    awayGoalie = teamAway.get(0); // fallback
-                }
-                if (awayGoalie != null) {
-                    preAssignedSlots.put(awayGoalie, 2);
-                }
-                
-                int awayFieldIndex = 0;
-                for (String email : teamAway) {
-                    if (email.equals(awayGoalie)) continue;
-                    int slot = 3 + teamSize + awayFieldIndex;
-                    preAssignedSlots.put(email, slot);
-                    awayFieldIndex++;
-                }
+            }
+        }
+        if (goalie == null && !team.isEmpty()) {
+            goalie = team.get(0);
+        }
+        if (goalie != null) {
+            preAssignedSlots.put(goalie, goalieSlot);
+        }
+        int fieldIdx = 0;
+        for (String email : team) {
+            if (!email.equals(goalie)) {
+                preAssignedSlots.put(email, fieldSlotStart + fieldIdx++);
             }
         }
     }
 
     private void partitionTeams(List<String> selectedPlayers, List<String> teamHome, List<String> teamAway, int teamSize) {
-        authserver.matchmaking.Matchmaker mm = null;
-        try {
-            mm = authserver.SpringContextBridge.services().getMatchmaker();
-        } catch (Exception e) {
-            // Spring context might not be initialized
-        }
-        
-        if (mm == null) {
-            int mid = selectedPlayers.size() / 2;
-            for (int i = 0; i < selectedPlayers.size(); i++) {
-                if (i < mid) {
-                    teamHome.add(selectedPlayers.get(i));
-                } else {
-                    teamAway.add(selectedPlayers.get(i));
-                }
-            }
+        int n = selectedPlayers.size();
+        if (n <= 1) {
+            teamHome.addAll(selectedPlayers);
             return;
         }
 
-        final authserver.matchmaking.Matchmaker finalMm = mm;
+        authserver.matchmaking.Matchmaker mm = null;
+        try {
+            mm = authserver.SpringContextBridge.services().getMatchmaker();
+        } catch (Exception ignored) {}
 
-        // Find all connected components of partner groups based on mutual partner requests
-        List<List<String>> mutualComponents = new ArrayList<>();
-        Set<String> visited = new HashSet<>();
-        
-        for (String player : selectedPlayers) {
-            if (!visited.contains(player)) {
-                List<String> component = new ArrayList<>();
-                Queue<String> queue = new LinkedList<>();
-                queue.add(player);
-                visited.add(player);
-                
-                while (!queue.isEmpty()) {
-                    String curr = queue.poll();
-                    component.add(curr);
-                    for (String other : selectedPlayers) {
-                        if (!visited.contains(other) && areMutualPartners(curr, other)) {
-                            visited.add(other);
-                            queue.add(other);
-                        }
-                    }
-                }
-                mutualComponents.add(component);
-            }
-        }
-        
-        // Identify components that have exactly one goalie choice
-        List<List<String>> mustKeepTogether = new ArrayList<>();
-        for (List<String> comp : mutualComponents) {
-            if (comp.size() >= 2) {
-                int goalieCount = 0;
-                for (String email : comp) {
-                    String chosenClass = finalMm.playerClasses.getOrDefault(email, "WARRIOR");
-                    if ("GOALIE".equalsIgnoreCase(chosenClass)) {
-                        goalieCount++;
-                    }
-                }
-                if (goalieCount == 1) {
-                    mustKeepTogether.add(comp);
-                }
-            }
-        }
-        
-        // Exhaustive search over all possible team partitions to find the one with the minimum penalty.
-        // A partition splits selectedPlayers into teamHome and teamAway (each of size teamSize).
-        // To avoid symmetry, we fix selectedPlayers.get(0) to always be in teamHome.
-        int n = selectedPlayers.size();
-        List<Integer> bestHomeIndices = null;
-        long bestPenalty = Long.MAX_VALUE;
-        
         List<List<Integer>> combinations = new ArrayList<>();
         generateCombinations(combinations, new ArrayList<>(), 1, n - 1, teamSize - 1);
-        
+
+        List<Integer> bestHome = null;
+        int bestBrokenMutual = Integer.MAX_VALUE;
+        int bestClassMismatch = Integer.MAX_VALUE;
+        double bestEloDiff = Double.MAX_VALUE;
+
         for (List<Integer> comb : combinations) {
             List<Integer> homeIdx = new ArrayList<>();
             homeIdx.add(0);
             homeIdx.addAll(comb);
-            
+
             List<Integer> awayIdx = new ArrayList<>();
             for (int i = 0; i < n; i++) {
-                if (!homeIdx.contains(i)) {
-                    awayIdx.add(i);
+                if (!homeIdx.contains(i)) awayIdx.add(i);
+            }
+
+            // Priority 1: Fewest broken mutual partner pairs
+            int brokenMutual = 0;
+            for (int i = 0; i < n; i++) {
+                for (int j = i + 1; j < n; j++) {
+                    if (areMutualPartners(selectedPlayers.get(i), selectedPlayers.get(j), mm)) {
+                        boolean same = (homeIdx.contains(i) && homeIdx.contains(j)) || (awayIdx.contains(i) && awayIdx.contains(j));
+                        if (!same) brokenMutual++;
+                    }
                 }
             }
-            
-            long penalty = calculatePartitionPenalty(selectedPlayers, homeIdx, awayIdx, mustKeepTogether, finalMm);
-            if (penalty < bestPenalty) {
-                bestPenalty = penalty;
-                bestHomeIndices = homeIdx;
+
+            // Priority 2: Fewest class preference mismatches
+            int classMismatch = getTeamClassMismatch(selectedPlayers, homeIdx, mm) + getTeamClassMismatch(selectedPlayers, awayIdx, mm);
+
+            // Priority 3: Smallest team average ELO difference
+            double homeElo = 0, awayElo = 0;
+            for (int idx : homeIdx) homeElo += getPlayerElo(selectedPlayers.get(idx));
+            for (int idx : awayIdx) awayElo += getPlayerElo(selectedPlayers.get(idx));
+            double eloDiff = Math.abs((homeElo / homeIdx.size()) - (awayElo / awayIdx.size()));
+
+            boolean isBetter = bestHome == null
+                    || brokenMutual < bestBrokenMutual
+                    || (brokenMutual == bestBrokenMutual && classMismatch < bestClassMismatch)
+                    || (brokenMutual == bestBrokenMutual && classMismatch == bestClassMismatch && eloDiff < bestEloDiff);
+
+            if (isBetter) {
+                bestHome = homeIdx;
+                bestBrokenMutual = brokenMutual;
+                bestClassMismatch = classMismatch;
+                bestEloDiff = eloDiff;
             }
         }
-        
-        if (bestHomeIndices != null) {
-            for (int i = 0; i < n; i++) {
-                if (bestHomeIndices.contains(i)) {
-                    teamHome.add(selectedPlayers.get(i));
-                } else {
-                    teamAway.add(selectedPlayers.get(i));
-                }
-            }
-        } else {
-            int mid = n / 2;
-            for (int i = 0; i < n; i++) {
-                if (i < mid) {
-                    teamHome.add(selectedPlayers.get(i));
-                } else {
-                    teamAway.add(selectedPlayers.get(i));
-                }
+
+        for (int i = 0; i < n; i++) {
+            if (bestHome != null && bestHome.contains(i)) {
+                teamHome.add(selectedPlayers.get(i));
+            } else {
+                teamAway.add(selectedPlayers.get(i));
             }
         }
     }
@@ -290,47 +230,8 @@ public class ManagedGame {
         }
     }
 
-    private long calculatePartitionPenalty(List<String> selectedPlayers, List<Integer> homeIdx, List<Integer> awayIdx,
-                                           List<List<String>> mustKeepTogether, authserver.matchmaking.Matchmaker mm) {
-        long penalty = 0;
-        
-        // 1. Must-Keep-Together components split penalty: 100,000 per split component
-        for (List<String> comp : mustKeepTogether) {
-            int inHome = 0;
-            int inAway = 0;
-            for (String email : comp) {
-                int idx = selectedPlayers.indexOf(email);
-                if (homeIdx.contains(idx)) {
-                    inHome++;
-                } else {
-                    inAway++;
-                }
-            }
-            if (inHome > 0 && inAway > 0) {
-                penalty += 100000;
-            }
-        }
-        
-        // 2. Class reassignment penalty: 1,000 per reassigned player
-        penalty += getTeamReassignmentCost(selectedPlayers, homeIdx, mm) * 1000;
-        penalty += getTeamReassignmentCost(selectedPlayers, awayIdx, mm) * 1000;
-        
-        // 3. Other partner splits penalty: 1 per split partner pair (one-way or mutual)
-        for (int i = 0; i < selectedPlayers.size(); i++) {
-            for (int j = i + 1; j < selectedPlayers.size(); j++) {
-                if (arePartners(selectedPlayers.get(i), selectedPlayers.get(j))) {
-                    boolean sameTeam = (homeIdx.contains(i) && homeIdx.contains(j)) || (awayIdx.contains(i) && awayIdx.contains(j));
-                    if (!sameTeam) {
-                        penalty += 1;
-                    }
-                }
-            }
-        }
-        
-        return penalty;
-    }
-
-    private int getTeamReassignmentCost(List<String> selectedPlayers, List<Integer> teamIndices, authserver.matchmaking.Matchmaker mm) {
+    private int getTeamClassMismatch(List<String> selectedPlayers, List<Integer> teamIndices, authserver.matchmaking.Matchmaker mm) {
+        if (mm == null) return 0;
         int goalieChoices = 0;
         for (int idx : teamIndices) {
             String p = selectedPlayers.get(idx);
@@ -338,48 +239,27 @@ public class ManagedGame {
                 goalieChoices++;
             }
         }
-        if (goalieChoices > 0) {
-            return goalieChoices - 1;
-        } else {
-            return 1;
-        }
+        return goalieChoices > 0 ? (goalieChoices - 1) : 1;
     }
 
-    private boolean areMutualPartners(String email1, String email2) {
+    private double getPlayerElo(String email) {
         try {
-            authserver.matchmaking.Matchmaker mm = authserver.SpringContextBridge.services().getMatchmaker();
-            Set<String> s1 = mm.partnerPool.get(email1);
-            Set<String> s2 = mm.partnerPool.get(email2);
-            if (s1 == null || s2 == null) return false;
-            
-            String name1 = email1.split("@")[0];
-            String name2 = email2.split("@")[0];
-            
-            boolean aWantsB = s1.contains(name2) || s1.contains(email2);
-            boolean bWantsA = s2.contains(name1) || s2.contains(email1);
-            
-            return aWantsB && bWantsA;
-        } catch (Exception e) {
-            return false;
-        }
+            authserver.users.PersistenceManager pm = authserver.SpringContextBridge.services().getPersistenceManager();
+            if (pm != null && pm.userService != null) {
+                authserver.models.User u = pm.userService.findUserByEmail(email);
+                if (u != null) {
+                    Double r = (options != null && (options.playerIndex == 4 || "/1/1/1/5/2/9999/10/12".equals(options.toStringSrv())))
+                            ? u.getRating_1v1()
+                            : u.getRating();
+                    if (r != null) return r;
+                }
+            }
+        } catch (Exception ignored) {}
+        return 1000.0;
     }
 
-    private boolean arePartners(String email1, String email2) {
-        try {
-            authserver.matchmaking.Matchmaker mm = authserver.SpringContextBridge.services().getMatchmaker();
-            Set<String> s1 = mm.partnerPool.get(email1);
-            Set<String> s2 = mm.partnerPool.get(email2);
-            
-            String name1 = email1.split("@")[0];
-            String name2 = email2.split("@")[0];
-            
-            boolean aWantsB = (s1 != null && (s1.contains(name2) || s1.contains(email2)));
-            boolean bWantsA = (s2 != null && (s2.contains(name1) || s2.contains(email1)));
-            
-            return aWantsB || bWantsA;
-        } catch (Exception e) {
-            return false;
-        }
+    private boolean areMutualPartners(String email1, String email2, authserver.matchmaking.Matchmaker mm) {
+        return mm != null && mm.areMutualPartners(email1, email2);
     }
 
     public void delegatePacket(WebSocketPlayerConnection connection, ClientPacket request) {
@@ -497,30 +377,66 @@ public class ManagedGame {
         state.initializeServer();
         state.secondsToStart = c.getD("server.startDelay") / 1000.0;
         state.kickoff();
-        
+
         exec = Executors.newScheduledThreadPool(gameIncludedClients.size());
         clients = gameIncludedClients;
-        
+
         Runnable updateClients = () -> {
             stateRef.set(state);
             Game snapshot = stateRef.get();
             if (snapshot == null) return;
-            
+
+            // One deep-clone under lock to produce a stable, mutable base snapshot.
             Game baseClone = (Game) deepClone(snapshot);
             if (baseClone == null) return;
-            
+
+            // Determine once per broadcast cycle whether any censoring is needed.
+            // If no player is BLIND or STEALTHED we can share a single serialised
+            // base JSON and only patch the per-client fields, saving N-1 full
+            // Jackson reflection passes per tick.
+            boolean anyCensoringNeeded = censoringRequired(baseClone);
+
+            // Serialize the base JSON string once (when censoring isn't needed).
+            final String baseJson;
+            if (!anyCensoringNeeded) {
+                String tmp = null;
+                try {
+                    tmp = mapper.writeValueAsString(baseClone);
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+                baseJson = tmp;
+            } else {
+                baseJson = null;
+            }
+
             final Game finalBaseClone = baseClone;
-            
+            final long nowMs = System.currentTimeMillis();
+
             clients.parallelStream().forEach(client -> {
                 try {
                     PlayerDivider pd = dividerFromConn(client);
-                    Game update = mapper.convertValue(finalBaseClone, Game.class);
-                    if (update == null) return;
-                    
-                    update.underControl = state.titanSelected(pd);
-                    update.nowEpochMs = System.currentTimeMillis();
-                    
-                    if (client.isConnected()) {
+                    if (!client.isConnected()) return;
+
+                    if (!anyCensoringNeeded && baseJson != null) {
+                        // Fast path: patch underControl and nowEpochMs via JsonNode —
+                        // much cheaper than a full convertValue deep-clone.
+                        Titan controlled = state.titanSelected(pd);
+                        com.fasterxml.jackson.databind.node.ObjectNode node =
+                                (com.fasterxml.jackson.databind.node.ObjectNode) mapper.readTree(baseJson);
+                        node.put("nowEpochMs", nowMs);
+                        if (controlled != null) {
+                            node.set("underControl", mapper.valueToTree(controlled));
+                        } else {
+                            node.putNull("underControl");
+                        }
+                        client.sendJson(mapper.writeValueAsString(node));
+                    } else {
+                        // Slow path: full per-client clone + anticheat censoring.
+                        Game update = mapper.convertValue(finalBaseClone, Game.class);
+                        if (update == null) return;
+                        update.underControl = state.titanSelected(pd);
+                        update.nowEpochMs = nowMs;
                         client.sendJson(mapper.writeValueAsString(anticheat(update)));
                     }
                 } catch (Exception ex) {
@@ -529,6 +445,25 @@ public class ManagedGame {
             });
         };
         exec.scheduleWithFixedDelay(updateClients, 1, c.getI("server.clients.updateinterval.ms"), TimeUnit.MILLISECONDS);
+    }
+
+    /**
+     * Returns true if any active anticheat censoring (BLIND or STEALTHED effect) is
+     * present in the game state, meaning per-client game snapshots must differ.
+     * When false, all clients receive the same base JSON (with only underControl /
+     * nowEpochMs patched), saving N-1 full Jackson deep-clone passes per tick.
+     */
+    private boolean censoringRequired(Game game) {
+        if (game == null || game.effectPool == null) return false;
+        List<gameserver.effects.effects.Effect> effects = game.effectPool.getEffects();
+        if (effects == null) return false;
+        for (gameserver.effects.effects.Effect eff : effects) {
+            EffectId id = eff.getEffect();
+            if (id == EffectId.BLIND || id == EffectId.STEALTHED) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private Game anticheat(Game update) {

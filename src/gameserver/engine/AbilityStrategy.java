@@ -360,10 +360,8 @@ public class AbilityStrategy    {
     }
 
     public void spawnCage() {
-        int range = (int) (c.getI("titan.cage.range") * caster.rangeFactor);
         shape = new CollisionMath.Bounds(0, 0, 70, 70);
-        sel = new Selector(shape, SelectorOffset.MOUSE_CENTER,
-                range);
+        sel = new Selector(shape, SelectorOffset.MOUSE_CENTER, c.FAR_RANGE);
         //To update the region to caster loc
         sel.select(Collections.EMPTY_SET, x, y, caster);
         corners = sel.getLatestColliderBounds();

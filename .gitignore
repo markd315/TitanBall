@@ -12,3 +12,5 @@ gradlew.bat
 settings.gradle
 *.class
 /target/*
+__pycache__/
+*.py[cod]

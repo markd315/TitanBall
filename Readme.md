@@ -56,7 +56,7 @@ DEBUGGING:
 It is POSSIBLE that on Mac, your keylisteners will still get stuck down occasionally. Symptoms of this include working mouse keybinds, but no working keyboard keybinds.
 Run `defaults write -g ApplePressAndHoldEnabled -bool false` in a command-line to fix it permanently.
 
-## Web client (browser) development
+## Local Development (Web Client & Server)
 
 From the repo root, start the backend stack:
 
@@ -68,10 +68,61 @@ In a separate terminal, start the Vite dev server:
 
 ```bash
 cd client-web
+npm run build   # catches compile-time issues
 npm run dev
 ```
 
 Open http://localhost:5173. The dev server proxies `/api` and `/game` (WebSocket) to the Docker server on port 3030.
 
 Server logs (`docker-compose logs -f server`) and browser console (`[DIAG]` prefix) include titan type / class-selection diagnostics.
+
+---
+
+## Deployment
+
+### 1. Frontend Deployment (S3 & CloudFront)
+
+Build the web client, copy `home.html`, sync to S3 (`s3://public-720291373173-prod/pages/titanball/`), and invalidate the CloudFront distribution cache:
+
+**Linux / macOS / Git Bash:**
+```bash
+./operations/deploy-frontend.sh
+```
+
+**PowerShell (Windows):**
+```powershell
+./operations/deploy-frontend.ps1
+```
+
+Once deployed, the frontend is live at `https://blockforger.net/pages/titanball/home.html`.
+
+### 2. Backend Server Deployment (Docker & Amazon ECR)
+
+Authenticate with Amazon ECR, build the server Docker image, tag it, and push it to ECR:
+
+```bash
+aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 720291373173.dkr.ecr.us-east-1.amazonaws.com
+docker build -t titanball .
+docker tag titanball 720291373173.dkr.ecr.us-east-1.amazonaws.com/titanball
+docker push 720291373173.dkr.ecr.us-east-1.amazonaws.com/titanball
+```
+
+### 3. CloudFormation Pilot Light Stack (Optional / Infrastructure)
+
+To deploy or update the server infrastructure stack:
+
+```bash
+aws cloudformation deploy \
+  --template-file operations/pilot-light-stack.yaml \
+  --stack-name titanball-pilot-light \
+  --capabilities CAPABILITY_IAM \
+  --parameter-overrides \
+    DeploymentType=ECS \
+    CloudFrontDistributionId=E250EEB1SQKL1Z \
+    ECRImageUri=720291373173.dkr.ecr.us-east-1.amazonaws.com/titanball:latest \
+    DatabaseRootPassword=yoursecurepassword
+```
+
+For more detailed pilot-light architecture information, see [PILOT_LIGHT_GUIDE.md](file:///operations/PILOT_LIGHT_GUIDE.md).
+
 

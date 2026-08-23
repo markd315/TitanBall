@@ -12,11 +12,13 @@ public class Team   {
     public double score;
     public boolean hasBall;
     public TeamAffiliation which;
+    public TeamAffiliation team;
     List<GoalHoop> toScore = new ArrayList<>();
     List<Titan> players = new ArrayList<>();
     public Team(TeamAffiliation which, double score, Object... playersAndHoops){
         this.score = score;
         this.which = which;
+        this.team = which;
         for(Object g : playersAndHoops){
             if(g instanceof GoalHoop){
                 toScore.add((GoalHoop) g);

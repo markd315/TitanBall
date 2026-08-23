@@ -27,9 +27,6 @@ public class Matchmaker {
 
     private Map<String, String> teamMemberWaitingPool = new HashMap<>();//user emails -> teamN
     private Map<String, String> teamWaitingPool = new HashMap<>();//teamN -> tournament code
-    private Map<String, String> teamGameMap = new HashMap<>();//user emails -> game id
-
-    private int desperation = 0; //TODO increase to eventually sacrifice match quality
 
     public synchronized String findGame(Authentication login) {
         String email = (login.getPrincipal() instanceof authserver.models.User)
@@ -44,19 +41,33 @@ public class Matchmaker {
         return "NOT QUEUED";
     }
 
+    public boolean areMutualPartners(String email1, String email2) {
+        if (email1 == null || email2 == null || email1.equalsIgnoreCase(email2)) return false;
+        Set<String> s1 = partnerPool.get(email1);
+        Set<String> s2 = partnerPool.get(email2);
+        if (s1 == null || s2 == null) return false;
+        
+        return wantsPartner(s1, email2) && wantsPartner(s2, email1);
+    }
+
+    private boolean wantsPartner(Set<String> partnerSet, String targetEmail) {
+        if (partnerSet == null || targetEmail == null) return false;
+        String targetName = targetEmail.split("@")[0];
+        for (String p : partnerSet) {
+            if (p.equalsIgnoreCase(targetEmail) || p.equalsIgnoreCase(targetName)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private void makeMatches() {
         Set<String> gameFor = new HashSet<>();
-        GameOptions op = null;
-        for (String val : waitingPool.values()) {
-            int count = 0;
-            //detect if max people queued for same tournament code (or open matchmaking)
-            for (String user : waitingPool.keySet()) {
-                String cmpVal = waitingPool.get(user);
-                if (val.equals(cmpVal) && !gameFor.contains(user)) {
-                    count++;
-                }
-            }
+        Set<String> uniqueCodes = new HashSet<>(waitingPool.values());
+
+        for (String val : uniqueCodes) {
             int players = 8;
+            GameOptions op = null;
             try {
                 op = new GameOptions(val);
                 int[] vals = GameOptions.getPlayersVal();
@@ -71,21 +82,47 @@ public class Matchmaker {
             } catch (Exception ex1) {
                 System.out.println("catch");
             }
-            if (count >= players) {
-                int addedCount = 0;
+
+            List<String> pool = new ArrayList<>();
+            for (Map.Entry<String, String> entry : waitingPool.entrySet()) {
+                if (entry.getValue().equals(val) && !gameFor.contains(entry.getKey())) {
+                    pool.add(entry.getKey());
+                }
+            }
+
+            while (pool.size() >= players) {
                 List<String> selectedPlayers = new ArrayList<>();
-                for (String email : waitingPool.keySet()) {
-                    if (waitingPool.get(email).equals(val) && !gameFor.contains(email)) {
-                        selectedPlayers.add(email);
-                        addedCount++;
-                        if (addedCount == players) {
-                            break;
+                // Form match prioritizing grouping mutual partners
+                for (String candidate : pool) {
+                    if (selectedPlayers.contains(candidate)) continue;
+                    
+                    // Collect candidate and any unselected mutual partners in the pool
+                    List<String> cluster = new ArrayList<>();
+                    cluster.add(candidate);
+                    for (String other : pool) {
+                        if (!other.equals(candidate) && !selectedPlayers.contains(other) && areMutualPartners(candidate, other)) {
+                            cluster.add(other);
                         }
                     }
+
+                    if (selectedPlayers.size() + cluster.size() <= players) {
+                        selectedPlayers.addAll(cluster);
+                    } else if (selectedPlayers.size() < players) {
+                        // Take candidate individually if full cluster doesn't fit
+                        selectedPlayers.add(candidate);
+                    }
+
+                    if (selectedPlayers.size() == players) {
+                        break;
+                    }
                 }
-                if (addedCount == players) {
+
+                if (selectedPlayers.size() == players) {
                     gameFor.addAll(selectedPlayers);
+                    pool.removeAll(selectedPlayers);
                     spawnGame(selectedPlayers, op);
+                } else {
+                    break;
                 }
             }
         }

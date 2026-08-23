@@ -69,29 +69,6 @@ public class Util {
         }
     }
 
-    public static void writeLog(String jwtExtractEmail) {
-        File file = new File("log.out");
-        if(!file.isFile()){
-            try {
-                file.createNewFile();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-        OutputStream f = null;
-        try {
-            f = new FileOutputStream(file);
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        }
-        try {
-            f.write(Util.jwtExtractEmail(jwtExtractEmail).getBytes());
-            f.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
     public static String randomKey(){
         Random rng = new Random();
         String s = "";
@@ -112,9 +89,5 @@ public class Util {
                 + 6.92514;
         //0 at 710 distance
         //https://www.wolframalpha.com/input/?i=model+cubic&assumption=%7B%22F%22%2C+%22CubicFitCalculator%22%2C+%22data2%22%7D+-%3E%22%7B%7B1000%2C+-5%7D%2C+%7B400%2C1%7D%2C+%7B200%2C+2.5%7D%2C+%7B30%2C+6%7D%7D%22
-    }
-
-    public static void gameIsOver() {
-
     }
 }

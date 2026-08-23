@@ -78,10 +78,6 @@ public class PlayerDivider {
         // No-op for strict total mapping.
     }
 
-    private boolean isClaimedByOther(GameEngine context, int candidateId) {
-        return false; // Total mapping guarantees no overlaps.
-    }
-
     public void setEmail(String jwtExtractEmail) {
         this.email = jwtExtractEmail;
     }

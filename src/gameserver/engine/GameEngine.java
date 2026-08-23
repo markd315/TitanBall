@@ -37,6 +37,7 @@ public class GameEngine extends Game {
     public GuardianAbilities homeGoalieAbilities = new GuardianAbilities(TeamAffiliation.HOME);
     public GuardianAbilities awayGoalieAbilities = new GuardianAbilities(TeamAffiliation.AWAY);
     public TeamAffiliation lastPossessionTeam = TeamAffiliation.UNAFFILIATED;
+    public TeamAffiliation lastScoredTeam = TeamAffiliation.UNAFFILIATED;
     // Tracks the titan currently executing a lob so that the uncatchable window
     // (frames 3–8) can be scoped to that thrower alone, not all players globally.
     @com.fasterxml.jackson.annotation.JsonIgnore
@@ -357,6 +358,7 @@ public class GameEngine extends Game {
                 }
                 us.hasBall = true;
                 enemy.hasBall = false;
+                lastScoredTeam = us.which;
                 ballVisible = false;
                 inGame = false;
                 goalVisible = true;
@@ -409,6 +411,7 @@ public class GameEngine extends Game {
         }
         home.score = 0;
         away.score = 0;
+        lastScoredTeam = TeamAffiliation.UNAFFILIATED;
         ball.X = c.BALL_X;
         ball.Y = c.BALL_Y;
         for (Titan p : players) {
@@ -452,11 +455,10 @@ public class GameEngine extends Game {
             players[i].team = TeamAffiliation.HOME; //unmap sometimes breaks this
             //System.out.println("setting" + players[i].team + players[i].getType() + teamIndex);
             setPosition(players[i], teamIndex, nonGoaliePerTeam);
-            if (away.score > home.score) {
-                players[i].X += 65;//possession bonus for losing
-            }
-            if (away.score < home.score) {
-                players[i].X -= 65;//possession bonus for losing
+            if (lastScoredTeam == TeamAffiliation.AWAY) {
+                players[i].X += 35;//possession bonus for conceding (closer to ball)
+            } else if (lastScoredTeam == TeamAffiliation.HOME) {
+                players[i].X -= 35;//possession penalty for scoring (further from ball)
             }
             teamIndex++;
         }
@@ -465,12 +467,11 @@ public class GameEngine extends Game {
             players[i].team = TeamAffiliation.AWAY; //unmap sometimes breaks this
             setPosition(players[i], teamIndex, nonGoaliePerTeam);
             //System.out.println("setting" + players[i].team + players[i].getType() + teamIndex);
-            players[i].X = FIELD_LENGTH - players[i].X - 4; //reflect across X mid (with pixel adjustment idk why)
-            if (away.score > home.score) {
-                players[i].X += 65;//possession bonus for losing
-            }
-            if (away.score < home.score) {
-                players[i].X -= 65;//possession bonus for losing
+            players[i].X = 2040 - players[i].X; //reflect across center to match ball center exactly
+            if (lastScoredTeam == TeamAffiliation.HOME) {
+                players[i].X -= 35;//possession bonus for conceding (closer to ball)
+            } else if (lastScoredTeam == TeamAffiliation.AWAY) {
+                players[i].X += 35;//possession penalty for scoring (further from ball)
             }
             teamIndex++;
         }
@@ -717,13 +718,6 @@ public class GameEngine extends Game {
                 }
             }
             kickoff();
-            intersectAll();
-            try {
-                detectGoals();
-            } catch (Exception e) {
-                unlock();
-                e.printStackTrace();
-            }
         }
         unlock();
     }
@@ -1841,23 +1835,20 @@ public class GameEngine extends Game {
     // Movement methods with player selection
     public void runUpCtrl(Titan t) {
         if (phase == GamePhase.INGAME || phase == GamePhase.TUTORIAL) {
-            for (int p = 0; p < players.length; p++) {
-                if (t.id.equals(players[p].id) && !effectPool.isRooted(t)
-                    /*&& t.actionState == Titan.TitanState.IDLE*/) {
-                    if (!t.collidesSolid(this, allSolids, (int) -t.speed, 0)) {
-                        if (t.X <= ball.X) t.dirToBall = 1;
-                        if (t.X > ball.X) t.dirToBall = 2;
-                        if (t.diagonalRunDir == 1) t.dirToBall = 1;
-                        if (t.diagonalRunDir == 2) t.dirToBall = 2;
-                        if (!t.programmed) {
-                            t.translateBounded(this, 0.0, -t.actualSpeed(this));
-                        }
-                        t.runningFrameCounter += 1;
-                        if (t.runningFrameCounter == 5) t.runningFrame = 1;
-                        if (t.runningFrameCounter == 10) {
-                            t.runningFrame = 2;
-                            t.runningFrameCounter = 0;
-                        }
+            if (!effectPool.isRooted(t)) {
+                if (!t.collidesSolid(this, allSolids, (int) -t.speed, 0)) {
+                    if (t.X <= ball.X) t.dirToBall = 1;
+                    if (t.X > ball.X) t.dirToBall = 2;
+                    if (t.diagonalRunDir == 1) t.dirToBall = 1;
+                    if (t.diagonalRunDir == 2) t.dirToBall = 2;
+                    if (!t.programmed) {
+                        t.translateBounded(this, 0.0, -t.actualSpeed(this));
+                    }
+                    t.runningFrameCounter += 1;
+                    if (t.runningFrameCounter == 5) t.runningFrame = 1;
+                    if (t.runningFrameCounter == 10) {
+                        t.runningFrame = 2;
+                        t.runningFrameCounter = 0;
                     }
                 }
             }
@@ -1866,23 +1857,20 @@ public class GameEngine extends Game {
 
     public void runDownCtrl(Titan t) {
         if (phase == GamePhase.INGAME || phase == GamePhase.TUTORIAL) {
-            for (int p = 0; p < players.length; p++) {
-                if (t.id.equals(players[p].id) && !effectPool.isRooted(t)
-                    /*&& t.actionState == Titan.TitanState.IDLE*/) {
-                    if (!t.collidesSolid(this, allSolids, (int) t.speed, 0)) {
-                        if (t.X <= ball.X) t.dirToBall = 1;
-                        if (t.X > ball.X) t.dirToBall = 2;
-                        if (t.diagonalRunDir == 1) t.dirToBall = 1;
-                        if (t.diagonalRunDir == 2) t.dirToBall = 2;
-                        if (!t.programmed) {
-                            t.translateBounded(this, 0.0, t.actualSpeed(this));
-                        }
-                        t.runningFrameCounter += 1;
-                        if (t.runningFrameCounter == 5) t.runningFrame = 1;
-                        if (t.runningFrameCounter == 10) {
-                            t.runningFrame = 2;
-                            t.runningFrameCounter = 0;
-                        }
+            if (!effectPool.isRooted(t)) {
+                if (!t.collidesSolid(this, allSolids, (int) t.speed, 0)) {
+                    if (t.X <= ball.X) t.dirToBall = 1;
+                    if (t.X > ball.X) t.dirToBall = 2;
+                    if (t.diagonalRunDir == 1) t.dirToBall = 1;
+                    if (t.diagonalRunDir == 2) t.dirToBall = 2;
+                    if (!t.programmed) {
+                        t.translateBounded(this, 0.0, t.actualSpeed(this));
+                    }
+                    t.runningFrameCounter += 1;
+                    if (t.runningFrameCounter == 5) t.runningFrame = 1;
+                    if (t.runningFrameCounter == 10) {
+                        t.runningFrame = 2;
+                        t.runningFrameCounter = 0;
                     }
                 }
             }
@@ -1891,20 +1879,17 @@ public class GameEngine extends Game {
 
     public void runRightCtrl(Titan t) {
         if (phase == GamePhase.INGAME || phase == GamePhase.TUTORIAL) {
-            for (int p = 0; p < players.length; p++) {
-                if (t.id.equals(players[p].id) && !effectPool.isRooted(t)
-                        /*&& t.actionState == Titan.TitanState.IDLE*/) {
-                    if (!t.collidesSolid(this, allSolids, 0, (int) t.speed)) {
-                        if (!t.programmed) {
-                            t.translateBounded(this, t.actualSpeed(this), 0.0);
-                        }
-                        t.diagonalRunDir = 1;
-                        t.runningFrameCounter += 1;
-                        if (t.runningFrameCounter == 5) t.runningFrame = 1;
-                        if (t.runningFrameCounter == 10) {
-                            t.runningFrame = 2;
-                            t.runningFrameCounter = 0;
-                        }
+            if (!effectPool.isRooted(t)) {
+                if (!t.collidesSolid(this, allSolids, 0, (int) t.speed)) {
+                    if (!t.programmed) {
+                        t.translateBounded(this, t.actualSpeed(this), 0.0);
+                    }
+                    t.diagonalRunDir = 1;
+                    t.runningFrameCounter += 1;
+                    if (t.runningFrameCounter == 5) t.runningFrame = 1;
+                    if (t.runningFrameCounter == 10) {
+                        t.runningFrame = 2;
+                        t.runningFrameCounter = 0;
                     }
                 }
             }
@@ -1913,20 +1898,17 @@ public class GameEngine extends Game {
 
     public void runLeftCtrl(Titan t) {
         if (phase == GamePhase.INGAME || phase == GamePhase.TUTORIAL) {
-            for (int p = 0; p < players.length; p++) {
-                if (t.id.equals(players[p].id) && !effectPool.isRooted(t)
-                    /*&& t.actionState == Titan.TitanState.IDLE*/) {
-                    t.diagonalRunDir = 2;
-                    if (!t.collidesSolid(this, allSolids, 0, (int) -t.speed)) {
-                        if (!t.programmed) {
-                            t.translateBounded(this, -t.actualSpeed(this), 0.0);
-                        }
-                        t.runningFrameCounter += 1;
-                        if (t.runningFrameCounter == 5) t.runningFrame = 1;
-                        if (t.runningFrameCounter == 10) {
-                            t.runningFrame = 2;
-                            t.runningFrameCounter = 0;
-                        }
+            if (!effectPool.isRooted(t)) {
+                t.diagonalRunDir = 2;
+                if (!t.collidesSolid(this, allSolids, 0, (int) -t.speed)) {
+                    if (!t.programmed) {
+                        t.translateBounded(this, -t.actualSpeed(this), 0.0);
+                    }
+                    t.runningFrameCounter += 1;
+                    if (t.runningFrameCounter == 5) t.runningFrame = 1;
+                    if (t.runningFrameCounter == 10) {
+                        t.runningFrame = 2;
+                        t.runningFrameCounter = 0;
                     }
                 }
             }
@@ -1952,16 +1934,20 @@ public class GameEngine extends Game {
             setBallFromTip();
             double D = 316.0 * t.throwPower;
             double v_tick = (D * (20 - t.actionFrame)) / 190.0;
-            double stepFactor = (v_tick * 4.0) / 800.0;
+            // Use 200 steps instead of 800 — stepFactor is scaled ×4 so total
+            // distance per action-frame is identical; step size stays sub-pixel.
+            double stepFactor = (v_tick * 4.0) / 200.0;
             // Snapshot once — entityPool doesn't change during ball travel (no entity removal inside the loop)
             Entity[] wallSnap = entityPool.toArray(new Entity[0]);
-            for (int i = 0; i < 800; i++) {
+            double speedMult = (homeGoaliePurchasedUpgrades.contains("fortress.t5.dilators") || awayGoaliePurchasedUpgrades.contains("fortress.t5.dilators")) ? c.getD("guardian.dilators.speedmult") : 1.0;
+            double dxPerStep = stepFactor * xKickPow * speedMult;
+            double dyPerStep = -stepFactor * yKickPow * speedMult;
+            for (int i = 0; i < 200; i++) {
                 if (this.phase == GamePhase.SCORE_FREEZE || !ballVisible) {
                     break;
                 }
-                double speedMult = (homeGoaliePurchasedUpgrades.contains("fortress.t5.dilators") || awayGoaliePurchasedUpgrades.contains("fortress.t5.dilators")) ? c.getD("guardian.dilators.speedmult") : 1.0;
-                ball.X += stepFactor * xKickPow * speedMult;
-                ball.Y -= stepFactor * yKickPow * speedMult;
+                ball.X += dxPerStep;
+                ball.Y += dyPerStep;
                 intersectAll();
                 detectGoals();
                 bounceWalls(wallSnap);
@@ -2021,17 +2007,21 @@ public class GameEngine extends Game {
             }
             double D = 230.0 * t.throwPower * gravityMult * noFlyMult * parapetMult;
             double v_tick = (D * (20 - t.actionFrame)) / 190.0;
-            double stepFactor = (v_tick * 4.0) / 800.0;
-            
+            // Use 200 steps instead of 800 — stepFactor is scaled ×4 so total
+            // distance per action-frame is identical; step size stays sub-pixel.
+            double stepFactor = (v_tick * 4.0) / 200.0;
+
             // Snapshot once — entityPool doesn't change during ball travel (no entity removal inside the loop)
             Entity[] wallSnap = entityPool.toArray(new Entity[0]);
-            for (int i = 0; i < 800; i++) {
+            double speedMult = (homeGoaliePurchasedUpgrades.contains("fortress.t5.dilators") || awayGoaliePurchasedUpgrades.contains("fortress.t5.dilators")) ? c.getD("guardian.dilators.speedmult") : 1.0;
+            double dxPerStep = stepFactor * xKickPow * speedMult;
+            double dyPerStep = -stepFactor * yKickPow * speedMult;
+            for (int i = 0; i < 200; i++) {
                 if (this.phase == GamePhase.SCORE_FREEZE || !ballVisible) {
                     break;
                 }
-                double speedMult = (homeGoaliePurchasedUpgrades.contains("fortress.t5.dilators") || awayGoaliePurchasedUpgrades.contains("fortress.t5.dilators")) ? c.getD("guardian.dilators.speedmult") : 1.0;
-                ball.X += stepFactor * xKickPow * speedMult;
-                ball.Y -= stepFactor * yKickPow * speedMult;
+                ball.X += dxPerStep;
+                ball.Y += dyPerStep;
                 intersectAll();
                 detectGoals();
                 bounceWalls(wallSnap);
@@ -2171,9 +2161,12 @@ public class GameEngine extends Game {
             double tempYPow = Math.sin(Math.toRadians(angle));
             // Snapshot once — entityPool doesn't change during ball travel (no entity removal inside the loop)
             Entity[] wallSnap = entityPool.toArray(new Entity[0]);
-            for (int i = 0; i < 800; i++) {
-                ball.X += .0295 * tempXPow * t.throwPower;
-                ball.Y -= .0295 * tempYPow * t.throwPower;
+            // Use 200 steps instead of 800: constant scaled ×4 so total displacement is identical.
+            double curveDx = 0.118 * tempXPow * t.throwPower;
+            double curveDy = -0.118 * tempYPow * t.throwPower;
+            for (int i = 0; i < 200; i++) {
+                ball.X += curveDx;
+                ball.Y += curveDy;
                 intersectAll();
                 detectGoals();
                 bounceWalls(wallSnap);
