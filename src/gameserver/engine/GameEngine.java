@@ -1388,15 +1388,14 @@ public class GameEngine extends Game {
     }
 
     private void unhideBallIfHidden(Titan t) {
-        if(t != null && effectPool != null && t.getType() != null
-                && t.getType().equals(TitanType.DASHER) && effectPool.hasEffect(t, EffectId.HIDE_BALL) &&
+        if(t != null && effectPool != null && effectPool.hasEffect(t, EffectId.HIDE_BALL) &&
                 (t.actionState == Titan.TitanState.SHOOT ||
                         t.actionState == Titan.TitanState.LOB ||
                         t.actionState == Titan.TitanState.CURVE_LEFT ||
                         t.actionState == Titan.TitanState.CURVE_RIGHT)){
             ballVisible = true;
             lastPossessed = t.id;
-            effectPool.getEffects().removeIf(ef -> ef.on.id.equals(t.id) && ef.effect.equals(EffectId.HIDE_BALL));
+            effectPool.cullEffectOn(this, t, EffectId.HIDE_BALL);
         }
     }
 
@@ -1600,12 +1599,12 @@ public class GameEngine extends Game {
             } else if (phase == GamePhase.INGAME && btn == 4) {
                 if(!effectPool.hasEffect(t, EffectId.COOLDOWN_CURVE)){
                     t.actionState = Titan.TitanState.CURVE_LEFT;
-                    effectPool.addUniqueEffect(new CooldownCurve(5000, t), this);
+                    effectPool.addUniqueEffect(new CooldownCurve((int) (t.cooldownFactor * 5000), t), this);
                 }
             } else if (phase == GamePhase.INGAME && btn == 5) {
                 if(!effectPool.hasEffect(t, EffectId.COOLDOWN_CURVE)){
                     t.actionState = Titan.TitanState.CURVE_RIGHT;
-                    effectPool.addUniqueEffect(new CooldownCurve(5000, t), this);
+                    effectPool.addUniqueEffect(new CooldownCurve((int) (t.cooldownFactor * 5000), t), this);
                 }
             }
             int xClick = (int) ((clickX - ball.X) + camX - ball.centerDist); //mid sprite, plus account for locations
@@ -1902,11 +1901,12 @@ public class GameEngine extends Game {
     // Effect of the kicked ball
     public void shootingBall(Titan t) throws Exception {
         //System.out.println("pow " + xKickPow + " " + yKickPow)
-        if (t.actionFrame == 0 &&
-                t.getType() != null &&
-                !t.getType().equals(TitanType.GOALIE)) {
-            t.pushMove();
-            centerBall(t);
+        if (t.actionFrame == 0) {
+            ballVisible = true;
+            if (t.getType() != null && !t.getType().equals(TitanType.GOALIE)) {
+                t.pushMove();
+                centerBall(t);
+            }
         }
         t.actionFrame += 1;
         t.kickingFrames = 20;
@@ -1915,6 +1915,7 @@ public class GameEngine extends Game {
         }
         if (t.actionFrame < t.kickingFrames) {
             t.possession = 0;
+            ballVisible = true;
             setBallFromTip();
             double D = 316.0 * t.throwPower;
             double v_tick = (D * (20 - t.actionFrame)) / 190.0;
@@ -1926,7 +1927,7 @@ public class GameEngine extends Game {
             double dyPerStep = -stepFactor * yKickPow * speedMult;
             double[] vel = new double[]{ dxPerStep, dyPerStep };
             for (int i = 0; i < 800; i++) {
-                if (this.phase == GamePhase.SCORE_FREEZE || !ballVisible) {
+                if (this.phase == GamePhase.SCORE_FREEZE) {
                     break;
                 }
                 if (vel[0] == 0 && vel[1] == 0) {
@@ -1954,6 +1955,7 @@ public class GameEngine extends Game {
         //System.out.println("pow " + xKickPow + " " + yKickPow);
         activeLobThrower = t;
         if (t.actionFrame == 0) {
+            ballVisible = true;
             t.pushMove();
             centerBall(t);
         }
@@ -1965,6 +1967,7 @@ public class GameEngine extends Game {
         }
         if (t.actionFrame < t.kickingFrames) {
             t.possession = 0;
+            ballVisible = true;
             setBallFromTip();
             
             double gravityMult = 1.0;
@@ -1984,14 +1987,7 @@ public class GameEngine extends Game {
                     noFlyMult = 0.5;
                 }
             }
-            double parapetMult = 1.0;
-            for (Entity e : entityPool) {
-                if (e instanceof Parapet && e.asBounds().intersects(t.asBounds())) {
-                    parapetMult = 1.5;
-                    break;
-                }
-            }
-            double D = 230.0 * t.throwPower * gravityMult * noFlyMult * parapetMult;
+            double D = 230.0 * t.throwPower * gravityMult * noFlyMult;
             double v_tick = (D * (20 - t.actionFrame)) / 190.0;
             double stepFactor = (v_tick * 4.0) / 800.0;
 
@@ -2002,7 +1998,7 @@ public class GameEngine extends Game {
             double dyPerStep = -stepFactor * yKickPow * speedMult;
             double[] vel = new double[]{ dxPerStep, dyPerStep };
             for (int i = 0; i < 800; i++) {
-                if (this.phase == GamePhase.SCORE_FREEZE || !ballVisible) {
+                if (this.phase == GamePhase.SCORE_FREEZE) {
                     break;
                 }
                 if (vel[0] == 0 && vel[1] == 0) {
@@ -2049,8 +2045,6 @@ public class GameEngine extends Game {
     public void bounceWalls(Entity[] wallEntities, double[] vel) {
         boolean homeDead = homeGoaliePurchasedUpgrades.contains("fortress.t4.deadwalls");
         boolean awayDead = awayGoaliePurchasedUpgrades.contains("fortress.t4.deadwalls");
-        boolean homePortals = homeGoaliePurchasedUpgrades.contains("cultivation.t6.wallportals");
-        boolean awayPortals = awayGoaliePurchasedUpgrades.contains("cultivation.t6.wallportals");
 
         // 1. Check solid obstacle entities (Builder walls, Bastion walls, etc.)
         Optional<Box> coll = ball.collidesSolidWhich(this, wallEntities);
@@ -2113,12 +2107,6 @@ public class GameEngine extends Game {
 
         // 2. Check field boundaries
         if (ball.X > c.MAX_X) {
-            if (homePortals) {
-                ball.X = 1040;
-                ball.Y = 609;
-                if (vel != null) { vel[0] = 0; vel[1] = 0; }
-                return;
-            }
             if (awayDead) {
                 xKickPow = 0;
                 yKickPow = 0;
@@ -2132,12 +2120,6 @@ public class GameEngine extends Game {
             }
         }
         if (ball.X < c.MIN_X) {
-            if (awayPortals) {
-                ball.X = 1040;
-                ball.Y = 609;
-                if (vel != null) { vel[0] = 0; vel[1] = 0; }
-                return;
-            }
             if (homeDead) {
                 xKickPow = 0;
                 yKickPow = 0;
@@ -2151,18 +2133,6 @@ public class GameEngine extends Game {
             }
         }
         if (ball.Y < c.MIN_Y) {
-            if (ball.X <= 1024 && awayPortals) {
-                ball.X = 1040;
-                ball.Y = 609;
-                if (vel != null) { vel[0] = 0; vel[1] = 0; }
-                return;
-            }
-            if (ball.X > 1024 && homePortals) {
-                ball.X = 1040;
-                ball.Y = 609;
-                if (vel != null) { vel[0] = 0; vel[1] = 0; }
-                return;
-            }
             if ((ball.X <= 1024 && homeDead) || (ball.X > 1024 && awayDead)) {
                 yKickPow = 0;
                 xKickPow = 0;
@@ -2176,18 +2146,6 @@ public class GameEngine extends Game {
             }
         }
         if (ball.Y > c.MAX_Y) {
-            if (ball.X <= 1024 && awayPortals) {
-                ball.X = 1040;
-                ball.Y = 609;
-                if (vel != null) { vel[0] = 0; vel[1] = 0; }
-                return;
-            }
-            if (ball.X > 1024 && homePortals) {
-                ball.X = 1040;
-                ball.Y = 609;
-                if (vel != null) { vel[0] = 0; vel[1] = 0; }
-                return;
-            }
             if ((ball.X <= 1024 && homeDead) || (ball.X > 1024 && awayDead)) {
                 yKickPow = 0;
                 xKickPow = 0;
@@ -2203,35 +2161,58 @@ public class GameEngine extends Game {
     }
 
     protected void curve(Titan t, int sign) throws Exception {
-        //System.out.println("pow " + xKickPow + " " + yKickPow);
-        if (t.actionFrame == 0) {
-            centerBall(t);
+        if (t.actionFrame == 0 &&
+                t.getType() != null &&
+                !t.getType().equals(TitanType.GOALIE)) {
             t.pushMove();
+            centerBall(t);
         }
         t.actionFrame += 1;
-        //System.out.println(t.actionState.toString() + t.actionFrame);
-        t.kickingFrames = 17;
+        t.kickingFrames = 20;
         if(t.actionFrame == (int) (t.kickingFrames*c.SHOT_FREEZE_RATIO)){
             t.popMove();
         }
         if (t.actionFrame < t.kickingFrames) {
             t.possession = 0;
             setBallFromTip();
-            curveFactor = sign * 18 - (sign * 2 * t.actionFrame);
-            double angle = Util.degreesFromCoords(xKickPow, yKickPow);
-            if (sign == 1) {
-                angle -= 7;
-            } else if (sign == -1) {
-                angle += 7;
-            }
-            angle += curveFactor * 6.8;
-            double tempXPow = Math.cos(Math.toRadians(angle));
-            double tempYPow = Math.sin(Math.toRadians(angle));
+
+            // Unit vectors in world coordinates (+X right, +Y down)
+            double uParX = 4.0 * xKickPow;
+            double uParY = -4.0 * yKickPow;
+            double uPerpX = sign * (-4.0 * yKickPow);
+            double uPerpY = sign * (-4.0 * xKickPow);
+
+            // Control points matching client-side quadratic Bezier curve
+            // P0 = (0, 0)
+            // P1 = Q_CURVE_A * throwPower * [cos(delta)*uPar + sin(delta)*uPerp]
+            // P2 = Q_CURVE_B * throwPower * uPar
+            double qCurveA = 310.0 * t.throwPower;
+            double qCurveB = 316.0 * t.throwPower;
+            double delta = 0.97; // radians (~55.58 deg)
+
+            double p1x = qCurveA * (Math.cos(delta) * uParX + Math.sin(delta) * uPerpX);
+            double p1y = qCurveA * (Math.cos(delta) * uParY + Math.sin(delta) * uPerpY);
+
+            double p2x = qCurveB * uParX;
+            double p2y = qCurveB * uParY;
+
+            // Frame displacement along the Bezier curve B(u) = 2u(1-u)P1 + u^2 P2
+            // Weighting w_k = (20 - k) / 190.0
+            int k = t.actionFrame;
+            double u1 = (double) ((k - 1) * (40 - k)) / 380.0;
+            double u2 = (double) (k * (39 - k)) / 380.0;
+            double du = u2 - u1;
+            double uBar = u1 + u2;
+
+            double dxTick = 2.0 * du * (1.0 - uBar) * p1x + du * uBar * p2x;
+            double dyTick = 2.0 * du * (1.0 - uBar) * p1y + du * uBar * p2y;
+
             // Snapshot once — entityPool doesn't change during ball travel (no entity removal inside the loop)
             Entity[] wallSnap = entityPool.toArray(new Entity[0]);
-            double curveDx = 0.0295 * tempXPow * t.throwPower;
-            double curveDy = -0.0295 * tempYPow * t.throwPower;
-            double[] vel = new double[]{ curveDx, curveDy };
+            double speedMult = (homeGoaliePurchasedUpgrades.contains("fortress.t5.dilators") || awayGoaliePurchasedUpgrades.contains("fortress.t5.dilators")) ? c.getD("guardian.dilators.speedmult") : 1.0;
+            double dxPerStep = (dxTick / 800.0) * speedMult;
+            double dyPerStep = (dyTick / 800.0) * speedMult;
+            double[] vel = new double[]{ dxPerStep, dyPerStep };
             for (int i = 0; i < 800; i++) {
                 if (this.phase == GamePhase.SCORE_FREEZE || !ballVisible) {
                     break;

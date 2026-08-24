@@ -159,6 +159,16 @@ public class EffectPool  {
         }
     }
 
+    public void cullEffectOn(GameEngine context, Entity on, EffectId id) {
+        for (int i = 0; i < pool.size(); i++) {
+            Effect e = pool.get(i);
+            Entity t = targetPool.get(i);
+            if (e.getEffect() == id && t != null && t.id.equals(on.id) && e.active) {
+                e.cull(context);
+            }
+        }
+    }
+
     public boolean addStackingEffect(Titan caster, Effect eff) {
         pool.add(eff);
         targetPool.add(eff.on);

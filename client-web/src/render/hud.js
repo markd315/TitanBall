@@ -36,7 +36,7 @@ export const ABILITY_TOOLTIPS = {
     "siege.t3.vanguards": { title: "Vanguards", desc: "Passive. Spawns 1 extra minion per wave when your team crosses the midfield." },
     "siege.t3.pullgoalie": { title: "Pull Goalie", desc: "Passive (10g). Sets all titan stats to 0.8 with 60 health, and permits the goalie to exit its bounding box." },
     "siege.t4.accumulators": { title: "Accumulators", desc: "Passive. Expands opponent goal size when friendly minions overlap them." },
-    "siege.t4.parapet": { title: "Parapet", desc: "Passive. Spawns a high lane platform that roots units and prevents steal actions." },
+    "siege.t4.parapet": { title: "Parapet", desc: "Passive. Spawns an elevated battlement in the enemy top lane near the blueline (solid for enemies). Friendly heroes enter with a 1s root, teleporting to center for +20% Defense, +20% Shot/Lob Power, and Steal Protection. Moving roots 1s and teleports you back outside." },
     "siege.t5.saveprogress": { title: "Save Progress", desc: "Passive. Disables scoring decay, making banked sidegoal progress persistent." },
     "siege.t5.incendiarymines": { title: "Incendiary Mines", desc: "Passive. Expands Forward Mines hazard zone and continuously applies BURN damage to enemies." },
     "siege.t5.forwardoutpost": { title: "Incendiary Mines", desc: "Passive. Expands Forward Mines hazard zone and continuously applies BURN damage to enemies." },

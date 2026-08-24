@@ -4,6 +4,7 @@ package gameserver.effects.effects;
 import gameserver.engine.GameEngine;
 import gameserver.effects.EffectId;
 import gameserver.entity.Entity;
+import gameserver.entity.Titan;
 
 import com.fasterxml.jackson.annotation.*;
 
@@ -15,12 +16,14 @@ public class HideBallEffect extends Effect  {
 
     @Override
     public void onActivate(GameEngine context) {
-        context.ballVisible = false;
+        if (on instanceof Titan t && t.possession == 1 && t.actionState == Titan.TitanState.IDLE) {
+            context.ballVisible = false;
+        }
     }
 
     @Override
     public void onCease(GameEngine context) {
-        if(!ceased){
+        if (!ceased) {
             context.ballVisible = true;
             context.lastPossessed = null;
             ceased = true;
@@ -29,7 +32,11 @@ public class HideBallEffect extends Effect  {
 
     @Override
     public void onTick(GameEngine context) {
-        context.ballVisible = false;
+        if (on instanceof Titan t && t.possession == 1 && t.actionState == Titan.TitanState.IDLE) {
+            context.ballVisible = false;
+        } else {
+            context.ballVisible = true;
+        }
     }
 
     public HideBallEffect(){}

@@ -75,27 +75,7 @@ export function drawAimAndRangeIndicators(ctx, game, controlsHeld, camX, camY) {
             }
         }
 
-        let parapetMult = 1.0;
-        if (game.entityPool) {
-            for (const e of game.entityPool) {
-                if (e.entityClass === 'Parapet') {
-                    const px = t.X;
-                    const py = t.Y;
-                    const pw = t.width || 70;
-                    const ph = t.height || 70;
-                    const ex = e.X;
-                    const ey = e.Y;
-                    const ew = e.width || 100;
-                    const eh = e.height || 100;
-                    if (px < ex + ew && px + pw > ex && py < ey + eh && py + ph > ey) {
-                        parapetMult = 1.5;
-                        break;
-                    }
-                }
-            }
-        }
-
-        const lobDistVal = LOB_DIST * pow * gravityMult * noFlyMult * parapetMult;
+        const lobDistVal = LOB_DIST * pow * gravityMult * noFlyMult;
         
         // Yellow lob block: 0 to 0.2 * lobDistVal + BALL_HALF
         drawLineSegment(0, 0.2 * lobDistVal + BALL_HALF, 'rgba(255, 230, 0, 0.65)');
@@ -117,7 +97,7 @@ export function drawAimAndRangeIndicators(ctx, game, controlsHeld, camX, camY) {
         // Artisan QuadCurves
         if (isArtisan) {
             const Q_CURVE_A = 310;
-            const Q_CURVE_B = 186;
+            const Q_CURVE_B = 316;
             const qCurveAVal = Q_CURVE_A * pow;
             const qCurveBVal = Q_CURVE_B * pow;
             

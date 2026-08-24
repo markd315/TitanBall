@@ -20,8 +20,23 @@ public class BallPortal extends Entity implements Collidable, Serializable {
     private UUID createdById;
     private Instant createdAt;//only used serverside so clock skew is irrelevant
     private Instant cdUntil;
+    public UUID destinationId;
     public Integer destinationX;
     public Integer destinationY;
+
+    public BallPortal(TeamAffiliation team, int x, int y, int width, int height, int cdMs) {
+        super(team);
+        this.COOLDOWN_MS = cdMs;
+        this.MAX_RANGE = 999999;
+        this.setX(x);
+        this.setY(y);
+        this.width = width;
+        this.height = height;
+        this.health = 99999;
+        this.maxHealth = 99999;
+        this.solid = false;
+        this.createdAt = Instant.now();
+    }
 
     public BallPortal(TeamAffiliation team, Titan pl, List<Entity> pool, int x, int y, GameEngine context) {
         super(team);
@@ -113,12 +128,12 @@ public class BallPortal extends Entity implements Collidable, Serializable {
             if (destinationX != null && destinationY != null) {
                 this.triggerCd(new Instant(context.nowEpochMs));
                 for (Entity other : context.entityPool) {
-                    if (other instanceof BallPortal && other.X == destinationX && other.Y == destinationY) {
+                    if (other instanceof BallPortal && ((destinationId != null && other.id.equals(destinationId)) || (Math.abs(other.X - destinationX) < 5 && Math.abs(other.Y - destinationY) < 5))) {
                         ((BallPortal) other).triggerCd(new Instant(context.nowEpochMs));
                     }
                 }
-                int tx = destinationX + 25 - context.ball.centerDist;
-                int ty = destinationY + 25 - context.ball.centerDist;
+                int tx = destinationX + this.width / 2 - context.ball.centerDist;
+                int ty = destinationY + this.height / 2 - context.ball.centerDist;
                 entity.setX(tx);
                 entity.setY(ty);
                 return;
@@ -149,6 +164,10 @@ public class BallPortal extends Entity implements Collidable, Serializable {
 
     public long getCdUntilEpochMs() {
         return cdUntil != null ? cdUntil.getMillis() : 0;
+    }
+
+    public int getCooldownMs() {
+        return COOLDOWN_MS;
     }
 
     public BallPortal() {

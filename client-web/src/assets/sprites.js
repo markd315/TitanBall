@@ -58,6 +58,8 @@ export function initAssets() {
 
     // Minions
     AssetManager.loadSprite('wall', 'res/Court/wall.png');
+    AssetManager.loadSprite('parapet_home', 'res/Court/parapet_home.png');
+    AssetManager.loadSprite('parapet_away', 'res/Court/parapet_away.png');
     AssetManager.loadSprite('trap1', 'res/Court/trap.png');
     AssetManager.loadSprite('trap2', 'res/Court/trap2.png');
     AssetManager.loadSprite('vines', 'res/Court/vines.png');
@@ -67,8 +69,10 @@ export function initAssets() {
     AssetManager.loadSprite('bportal1', 'res/Court/ballp.png');
     AssetManager.loadSprite('bportal2', 'res/Court/ballp2.png');
     AssetManager.loadSprite('bportalcd', 'res/Court/ballpcd.png');
-    AssetManager.loadSprite('fire1', 'res/Court/fireA.png');
-    AssetManager.loadSprite('fire2', 'res/Court/fireB.png');
+    AssetManager.loadSprite('fireH1', 'res/Court/fireH.png');
+    AssetManager.loadSprite('fireH2', 'res/Court/fireH2.png');
+    AssetManager.loadSprite('fireA1', 'res/Court/fireA.png');
+    AssetManager.loadSprite('fireA2', 'res/Court/fireA2.png');
     AssetManager.loadSprite('cage', 'res/Court/caged.png');
     AssetManager.loadSprite('dragon', 'res/Court/dragon.png');
     AssetManager.loadSprite('wolf1L', 'res/Wolf/wolfL.png');

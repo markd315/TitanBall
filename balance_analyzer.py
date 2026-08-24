@@ -29,24 +29,24 @@ from typing import Dict, List, Tuple, Any, Optional
 # in terms of raw un-discounted impact.
 ABILITY_ORDER = [
     "dasher_flare",           # Flare [DASHER] (W/R)
-    "builder_trap",           # Snare Trap [BUILDER] (Q/E)
-    "golem_shield",           # Barrier Shield [GOLEM] (Q/E)
     "marksman_slow",          # Frost Shot [MARKSMAN] (Q/E)
+    "golem_shield",           # Barrier Shield [GOLEM] (Q/E)
     "artisan_suck",           # Ball Vacuum [ARTISAN] (Q/E)
+    "builder_trap",           # Snare Trap [BUILDER] (Q/E)
     "marksman_shoot",         # Charge Shot [MARKSMAN] (W/R)
-    "ranger_kick",            # Sweeping Kick [RANGER] (W/R)
     "mage_portal",            # Warp Portal [MAGE] (Q/E)
     "grenadier_flashbang",    # Flashbang [GRENADIER] (Q/E)
-    "houndmaster_cage",       # Deploy Kennel [HOUNDMASTER] (Q/E)
-    "houndmaster_wolf",       # Unleash Pack [HOUNDMASTER] (W/R)
-    "warrior_slash",          # Whirlwind Slash [WARRIOR] (Q/E)
+    "ranger_kick",            # Sweeping Kick [RANGER] (W/R)
     "ranger_arrow",           # Precision Arrow [RANGER] (Q/E)
-    "mage_ignite",            # Ignite [MAGE] (W/R)
+    "warrior_slash",          # Whirlwind Slash [WARRIOR] (Q/E)
     "support_heal",           # Healing Surge [SUPPORT] (W/R)
     "dasher_hide",            # Cover Ball [DASHER] (Q/E)
     "builder_wall",           # Barrier Wall [BUILDER] (W/R)
-    "artisan_bportal",        # Ball Portal [ARTISAN] (W/R)
+    "houndmaster_cage",       # Deploy Kennel [HOUNDMASTER] (Q/E)
+    "houndmaster_wolf",       # Unleash Pack [HOUNDMASTER] (W/R)
     "grenadier_molotov",      # Molotov [GRENADIER] (W/R)
+    "artisan_bportal",        # Ball Portal [ARTISAN] (W/R)
+    "mage_ignite",            # Ignite [MAGE] (W/R)
     "stealth_flash",          # Shadow Blink [STEALTH] (W/R)
     "warrior_flash",          # Flash Dash [WARRIOR] (W/R)
     "support_stun",           # Shock Stun [SUPPORT] (Q/E)
@@ -290,10 +290,11 @@ def compute_ability_scores(
     cooldowns: Dict[str, float]
 ) -> Dict[str, Dict[str, Any]]:
     """
-    Computes continuous cooldown-discounted ability power without re-percentiling:
-    1. Raw power percentile (0-100) based on sorted power rank (1 to M).
-    2. Cooldown-discounted continuous power = raw_pct * (avg_cooldown / cooldown_seconds).
-       This preserves exact absolute fidelity without squashing into discrete ordinal percentiles.
+    Computes continuous ability power with a blend of CD-adjusted and absolute strength:
+    1. Raw power percentile / absolute strength (0-100) based on sorted power rank (1 to M).
+    2. Cooldown-adjusted continuous power = raw_pct * (avg_cooldown / cooldown_seconds).
+    3. Final scaled power = 75% CD-adjusted ability strength + 25% absolute strength
+       (as cooldowns are reset at start of game and after centergoals).
     """
     m = len(ordered_ability_ids)
     results = {}
@@ -323,8 +324,12 @@ def compute_ability_scores(
         # Continuous efficiency (Power per second)
         efficiency = raw_pct / cd
 
-        # Continuous scaled power (anchored to average roster cooldown scale)
-        scaled_power = raw_pct * (avg_cd / cd)
+        # CD-adjusted continuous scaled power (anchored to average roster cooldown scale)
+        cd_scaled_power = raw_pct * (avg_cd / cd)
+
+        # Blended power score: 75% CD-adjusted + 25% absolute strength
+        # (as cooldowns are reset at start of game and after centergoals)
+        scaled_power = 0.75 * cd_scaled_power + 0.25 * raw_pct
 
         results[ab_id] = {
             "id": ab_id,
@@ -335,6 +340,7 @@ def compute_ability_scores(
             "raw_pct": raw_pct,
             "cooldown_s": cd,
             "discounted_efficiency": round(efficiency, 4),
+            "cd_scaled_power": round(cd_scaled_power, 2),
             "scaled_power": round(scaled_power, 2),
         }
 
@@ -351,7 +357,7 @@ def analyze_balance(
     """
     Executes complete balance evaluation:
     - Applies custom 1-100 weights per stat and ability.
-    - Uses continuous cooldown-discounted ability power directly (no re-percentiling).
+    - Uses blended ability power (75% CD-adjusted + 25% absolute strength).
     - Generates sorted map of relative strength for each Titan class.
     """
     s_weights = dict(STAT_WEIGHTS)
@@ -388,7 +394,7 @@ def analyze_balance(
 
         avg_stat_pct = stat_weighted_pct_sum / stat_w_sum if stat_w_sum > 0 else 50.0
 
-        # 2. Weighted Ability Power (Continuous Cooldown-Discounted Power)
+        # 2. Weighted Ability Power (Blended: 75% CD-Adjusted + 25% Absolute)
         abs_for_class = class_abilities.get(c, [])
         ab_w_sum = 0.0
         ab_weighted_sum = 0.0
@@ -411,7 +417,7 @@ def analyze_balance(
             "stat_percentiles": s_pct,
             "avg_stat_pct": round(avg_stat_pct, 2),
             "abilities": abs_for_class,
-            "avg_ability_pct": round(avg_ability_power, 2),  # Continuous ability power
+            "avg_ability_pct": round(avg_ability_power, 2),  # Blended ability power
             "overall_strength": round(overall_score, 2),
             "relative_delta": round(overall_score - 50.0, 2),
         }
@@ -470,7 +476,7 @@ def print_balance_report(analysis: Dict[str, Any], cfg_source: str):
         w_summary = f"Custom (HP:{s_weights['hp']:.0f}, Spd:{s_weights['speed']:.0f}, Throw:{s_weights['shoot']:.0f}, Steal:{s_weights['stealrad']:.0f})"
         print(f"Weighting Model: {w_summary:<75}")
     else:
-        print("Weighting Model: Equal 1/n per Stat (50/50) + Equal 1/n per Cooldown-Discounted Ability")
+        print("Weighting Model: Equal 1/n per Stat (50/50) + Equal 1/n per Ability (75% CD-Adj / 25% Absolute)")
 
     if has_boost:
         print("Speed Model:     Average effective speed assuming optimal boost uptime")
@@ -523,7 +529,7 @@ def print_balance_report(analysis: Dict[str, Any], cfg_source: str):
 
     # 3. ABILITY BREAKDOWN & COOLDOWN DISCOUNTING
     print("\n" + "=" * 98)
-    print("               ABILITY POWER & CONTINUOUS COOLDOWN-SCALED RANKINGS")
+    print("          ABILITY POWER RANKINGS (75% CD-Adjusted / 25% Absolute Strength)")
     print("=" * 98)
     ab_header = (
         f"{'Rank':<5} {'Ability Name':<20} {'Class':<12} {'Slot':<6} "

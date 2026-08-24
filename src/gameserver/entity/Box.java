@@ -86,6 +86,12 @@ public class Box extends Coordinates   {
                             (int)collCheck.Y + context.SPRITE_Y_EMPTY/2.0,
                             collCheck.width - context.SPRITE_X_EMPTY,
                             collCheck.height - context.SPRITE_Y_EMPTY);
+                } else if (collCheck instanceof gameserver.entity.minions.Parapet p) {
+                    if (this instanceof Titan t && t.team != p.team) {
+                        checkBounds = p.getEnemySolidBounds();
+                    } else {
+                        checkBounds = new gameserver.engine.CollisionMath.Bounds((int)collCheck.X, (int)collCheck.Y, collCheck.width, collCheck.height);
+                    }
                 } else {
                     checkBounds = new gameserver.engine.CollisionMath.Bounds((int)collCheck.X, (int)collCheck.Y, collCheck.width, collCheck.height);
                 }
@@ -104,6 +110,12 @@ public class Box extends Coordinates   {
         if (collCheck instanceof Collidable) {
             Collidable c = (Collidable) collCheck;
             c.triggerCollide(context, this);
+        }
+        if (collCheck instanceof gameserver.entity.minions.Parapet p) {
+            if (this instanceof Titan t && t.team != p.team) {
+                return true;
+            }
+            return false;
         }
         if(collCheck.solid) {
             return true;

@@ -75,6 +75,9 @@ export function drawMinions(ctx, game, camX, camY) {
         const isCooldown = e.cdUntilEpochMs && game.nowEpochMs < e.cdUntilEpochMs;
 
         if (e.entityClass === 'Wall') imgKey = 'wall';
+        else if (e.entityClass === 'Parapet') {
+            imgKey = (e.team === 'HOME' || e.team === 0) ? 'parapet_home' : 'parapet_away';
+        }
         else if (e.entityClass === 'Trap') {
             const isVines = (e.width === 80 && e.height === 200) || e.width === 80;
             imgKey = isVines ? 'vines' : (isAltFrame ? 'trap2' : 'trap1');
@@ -84,7 +87,9 @@ export function drawMinions(ctx, game, camX, camY) {
         else if (e.entityClass === 'Fire') {
             const isBarrage = (e.height === 252 || e.height === 260 || (e.width === 150 && e.height === 280));
             if (!isBarrage) {
-                imgKey = isAltFrame ? 'fire2' : 'fire1';
+                const isHome = (e.team === 'HOME' || e.team === 0);
+                const prefix = isHome ? 'fireH' : 'fireA';
+                imgKey = isAltFrame ? `${prefix}2` : `${prefix}1`;
             }
         }
         else if (e.entityClass === 'Cage') imgKey = 'cage';
@@ -145,14 +150,16 @@ export function drawMinions(ctx, game, camX, camY) {
                 ctx.save();
                 ctx.globalAlpha = 0.20;
             }
-            ctx.drawImage(AssetManager.images[imgKey], Math.floor(e.X - camX), Math.floor(e.Y - camY), e.width || 70, e.height || 70);
+            const drawW = (e.entityClass === 'Parapet') ? 100 : (e.width || 70);
+            const drawH = (e.entityClass === 'Parapet') ? 100 : (e.height || 70);
+            ctx.drawImage(AssetManager.images[imgKey], Math.floor(e.X - camX), Math.floor(e.Y - camY), drawW, drawH);
             if (isPhasedWall) {
                 ctx.restore();
             }
 
             // Draw cooldown progress bar for portals
             if ((e.entityClass === 'Portal' || e.entityClass === 'BallPortal') && isCooldown) {
-                const totalCd = e.entityClass === 'Portal' ? 10000 : 6000;
+                const totalCd = e.cooldownMs || (e.entityClass === 'Portal' ? 10000 : 2000);
                 const msLeft = e.cdUntilEpochMs - game.nowEpochMs;
                 const percent = Math.max(0, Math.min(100, (msLeft / totalCd) * 100));
 
@@ -256,7 +263,9 @@ export function drawMinions(ctx, game, camX, camY) {
 
         // Display a small, scaled down fire sprite behind the number if abs(net) > 10
         if (Math.abs(net) > 10) {
-            const fireImg = AssetManager.images[isAltFrame ? 'fire2' : 'fire1'];
+            const isHomeDominating = playerTeam === 'AWAY' ? (net < 0) : (net > 0);
+            const prefix = isHomeDominating ? 'fireH' : 'fireA';
+            const fireImg = AssetManager.images[isAltFrame ? `${prefix}2` : `${prefix}1`];
             if (fireImg) {
                 ctx.save();
                 ctx.globalAlpha = 0.55;

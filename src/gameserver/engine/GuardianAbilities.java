@@ -496,23 +496,6 @@ public class GuardianAbilities implements Serializable {
                 enemiesInVinesLastTick.addAll(currentVinesOverlaps);
             }
 
-            // Parapet elevated platform
-            if (e instanceof Parapet) {
-                if (titansOnParapetLastTick == null) {
-                    titansOnParapetLastTick = new HashSet<>();
-                }
-                Set<UUID> currentOverlaps = new HashSet<>();
-                for (Titan t : context.players) {
-                    if (t.health > 0.0 && e.asBounds().intersects(t.asBounds())) {
-                        currentOverlaps.add(t.id);
-                        if (!titansOnParapetLastTick.contains(t.id)) {
-                            context.effectPool.addUniqueEffect(new EmptyEffect(1000, t, EffectId.ROOT), context);
-                        }
-                    }
-                }
-                titansOnParapetLastTick.clear();
-                titansOnParapetLastTick.addAll(currentOverlaps);
-            }
         }
 
 
@@ -851,7 +834,9 @@ public class GuardianAbilities implements Serializable {
 
     private void spawnParapet(GameEngine context, Titan goalie) {
         int topHoopCY = (int) (context.c.getI("goal.low.y") + context.c.getI("goal.low.height") / 2.0);
-        int px = (team == TeamAffiliation.HOME) ? 350 - 50 : 1690 - 50;
+        // Positioned in top lane, slightly closer to the goal than the blueline, just in front of ball portals
+        int cx = (team == TeamAffiliation.HOME) ? (context.c.ATTACKING_THIRD_X + 60) : (context.c.DEFENSIVE_THIRD_X - 60);
+        int px = cx - 50;
         int py = topHoopCY - 50;
         Parapet platform = new Parapet(team, goalie, px, py);
         context.entityPool.add(platform);
@@ -1159,7 +1144,7 @@ public class GuardianAbilities implements Serializable {
                 boolean hasSharpshooter = context.effectPool.hasEffect(t, EffectId.FLARE);
                 boolean hasShoot = context.effectPool.hasEffect(t, EffectId.SHOOT);
                 double sharpMult = hasSharpshooter ? 1.20 : 1.0;
-                double shootMult = hasShoot ? 1.50 : 1.0;
+                double shootMult = hasShoot ? 1.20 : 1.0;
 
                 t.throwPower = t.baseThrowPower * Math.pow(context.c.getD("masteries.throw.mult"), throwCount) * sharpMult * shootMult;
                 t.rangeFactor = t.baseRangeFactor * Math.pow(context.c.getD("masteries.range.mult"), rangeCount) * sharpMult;
@@ -1276,101 +1261,105 @@ public class GuardianAbilities implements Serializable {
 
     private void spawnWallPortals(GameEngine context, Titan goalie) {
         int cd = context.c.getI("guardian.wallportals.cooldown");
-        int count = 15;
-        
+        if (cd <= 0) cd = 2000;
+        int count = 10;
+        int pSize = 40;
+
+        // Remove existing wall portals for this team to avoid duplication
+        context.entityPool.removeIf(e -> e instanceof BallPortal && e.team == team && e.health >= 99999 && ((BallPortal) e).destinationX != null);
+
+        int topY = context.c.MIN_Y; // 232
+        int botY = context.c.MAX_Y - pSize; // 988 - 40 = 948
+        int startY = context.c.MIN_Y; // 232
+        int endY = context.c.MAX_Y - pSize; // 948
+
         if (team == TeamAffiliation.HOME) {
-            // HOME goalie purchased upgrade (opponent is AWAY)
-            // Top-to-Bottom Pairing (15 sets = 30 portals total)
-            double startX = 1100.0;
-            double endX = 2012.0;
-            double topY = 36.0;
-            double botY = 1182.0;
+            // HOME goalie purchased upgrade -> Affects opponent side (AWAY half)
+            int startX = 1040;
+            int endX = 1970;
+            int backX = 1970;
+            int midX = 1024;
+
+            // 1. Top-to-Bottom Pairing (10 sets = 20 portals)
             for (int i = 0; i < count; i++) {
                 int xVal = (int) (startX + i * (endX - startX) / (count - 1.0));
-                
-                BallPortal pTop = new BallPortal(team, goalie, context.entityPool, xVal, (int)topY, context);
-                pTop.team = team; pTop.health = 99999; pTop.maxHealth = 99999;
-                pTop.width = 40; pTop.height = 40;
-                pTop.destinationX = xVal;
-                pTop.destinationY = (int)botY;
-                context.entityPool.add(pTop);
 
-                BallPortal pBot = new BallPortal(team, goalie, context.entityPool, xVal, (int)botY, context);
-                pBot.team = team; pBot.health = 99999; pBot.maxHealth = 99999;
-                pBot.width = 40; pBot.height = 40;
-                pBot.destinationX = xVal;
-                pBot.destinationY = (int)topY;
+                BallPortal pTop = new BallPortal(team, xVal, topY, pSize, pSize, cd);
+                BallPortal pBot = new BallPortal(team, xVal, botY, pSize, pSize, cd);
+
+                pTop.destinationId = pBot.id;
+                pTop.destinationX = (int) pBot.X;
+                pTop.destinationY = (int) pBot.Y;
+
+                pBot.destinationId = pTop.id;
+                pBot.destinationX = (int) pTop.X;
+                pBot.destinationY = (int) pTop.Y;
+
+                context.entityPool.add(pTop);
                 context.entityPool.add(pBot);
             }
 
-            // Backwall-to-1/3-Line Pairing (15 sets = 30 portals total)
-            double backX = 2012.0;
-            double thirdX = 1368.0;
-            double startY = 36.0;
-            double endY = 1182.0;
+            // 2. Backwall-to-Midfield Pairing (10 sets = 20 portals)
             for (int i = 0; i < count; i++) {
                 int yVal = (int) (startY + i * (endY - startY) / (count - 1.0));
 
-                BallPortal pBack = new BallPortal(team, goalie, context.entityPool, (int)backX, yVal, context);
-                pBack.team = team; pBack.health = 99999; pBack.maxHealth = 99999;
-                pBack.width = 40; pBack.height = 40;
-                pBack.destinationX = (int)thirdX;
-                pBack.destinationY = yVal;
-                context.entityPool.add(pBack);
+                BallPortal pBack = new BallPortal(team, backX, yVal, pSize, pSize, cd);
+                BallPortal pMid = new BallPortal(team, midX, yVal, pSize, pSize, cd);
 
-                BallPortal pThird = new BallPortal(team, goalie, context.entityPool, (int)thirdX, yVal, context);
-                pThird.team = team; pThird.health = 99999; pThird.maxHealth = 99999;
-                pThird.width = 40; pThird.height = 40;
-                pThird.destinationX = (int)backX;
-                pThird.destinationY = yVal;
-                context.entityPool.add(pThird);
+                pBack.destinationId = pMid.id;
+                pBack.destinationX = (int) pMid.X;
+                pBack.destinationY = (int) pMid.Y;
+
+                pMid.destinationId = pBack.id;
+                pMid.destinationX = (int) pBack.X;
+                pMid.destinationY = (int) pBack.Y;
+
+                context.entityPool.add(pBack);
+                context.entityPool.add(pMid);
             }
         } else {
-            // AWAY goalie purchased upgrade (opponent is HOME)
-            // Top-to-Bottom Pairing (15 sets = 30 portals total)
-            double startX = 36.0;
-            double endX = 948.0;
-            double topY = 36.0;
-            double botY = 1182.0;
+            // AWAY goalie purchased upgrade -> Affects opponent side (HOME half)
+            int startX = 40;
+            int endX = 980;
+            int backX = 40;
+            int midX = 980;
+
+            // 1. Top-to-Bottom Pairing (10 sets = 20 portals)
             for (int i = 0; i < count; i++) {
                 int xVal = (int) (startX + i * (endX - startX) / (count - 1.0));
 
-                BallPortal pTop = new BallPortal(team, goalie, context.entityPool, xVal, (int)topY, context);
-                pTop.team = team; pTop.health = 99999; pTop.maxHealth = 99999;
-                pTop.width = 40; pTop.height = 40;
-                pTop.destinationX = xVal;
-                pTop.destinationY = (int)botY;
-                context.entityPool.add(pTop);
+                BallPortal pTop = new BallPortal(team, xVal, topY, pSize, pSize, cd);
+                BallPortal pBot = new BallPortal(team, xVal, botY, pSize, pSize, cd);
 
-                BallPortal pBot = new BallPortal(team, goalie, context.entityPool, xVal, (int)botY, context);
-                pBot.team = team; pBot.health = 99999; pBot.maxHealth = 99999;
-                pBot.width = 40; pBot.height = 40;
-                pBot.destinationX = xVal;
-                pBot.destinationY = (int)topY;
+                pTop.destinationId = pBot.id;
+                pTop.destinationX = (int) pBot.X;
+                pTop.destinationY = (int) pBot.Y;
+
+                pBot.destinationId = pTop.id;
+                pBot.destinationX = (int) pTop.X;
+                pBot.destinationY = (int) pTop.Y;
+
+                context.entityPool.add(pTop);
                 context.entityPool.add(pBot);
             }
 
-            // Backwall-to-1/3-Line Pairing (15 sets = 30 portals total)
-            double backX = 36.0;
-            double thirdX = 680.0;
-            double startY = 36.0;
-            double endY = 1182.0;
+            // 2. Backwall-to-Midfield Pairing (10 sets = 20 portals)
             for (int i = 0; i < count; i++) {
                 int yVal = (int) (startY + i * (endY - startY) / (count - 1.0));
 
-                BallPortal pBack = new BallPortal(team, goalie, context.entityPool, (int)backX, yVal, context);
-                pBack.team = team; pBack.health = 99999; pBack.maxHealth = 99999;
-                pBack.width = 40; pBack.height = 40;
-                pBack.destinationX = (int)thirdX;
-                pBack.destinationY = yVal;
-                context.entityPool.add(pBack);
+                BallPortal pBack = new BallPortal(team, backX, yVal, pSize, pSize, cd);
+                BallPortal pMid = new BallPortal(team, midX, yVal, pSize, pSize, cd);
 
-                BallPortal pThird = new BallPortal(team, goalie, context.entityPool, (int)thirdX, yVal, context);
-                pThird.team = team; pThird.health = 99999; pThird.maxHealth = 99999;
-                pThird.width = 40; pThird.height = 40;
-                pThird.destinationX = (int)backX;
-                pThird.destinationY = yVal;
-                context.entityPool.add(pThird);
+                pBack.destinationId = pMid.id;
+                pBack.destinationX = (int) pMid.X;
+                pBack.destinationY = (int) pMid.Y;
+
+                pMid.destinationId = pBack.id;
+                pMid.destinationX = (int) pBack.X;
+                pMid.destinationY = (int) pBack.Y;
+
+                context.entityPool.add(pBack);
+                context.entityPool.add(pMid);
             }
         }
     }

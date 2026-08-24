@@ -464,7 +464,7 @@ public class AbilityStrategy    {
                 Titan tip = context.titanInPossession().get();
                 boolean isOccupyingParapet = false;
                 for (Entity e : context.entityPool) {
-                    if (e instanceof Parapet && e.asBounds().intersects(tip.asBounds())) {
+                    if (e instanceof Parapet p && p.isMounted(tip.id)) {
                         isOccupyingParapet = true;
                         break;
                     }
