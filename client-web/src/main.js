@@ -16,7 +16,7 @@ import { drawEffectIcons } from './render/effects.js';
 import { drawBall, displayBallArrow } from './render/ball.js';
 import { drawGoals } from './render/goals.js';
 import { drawAllPseudotextures } from './render/pseudotextures.js';
-import { drawHud } from './render/hud.js';
+import { drawHud, drawHealthBars } from './render/hud.js';
 import { drawClassStatsOverlay, formatClassTooltip, CLASS_INFO, computeStatWithMastery, getActiveMasteries, getAbilityCd, loadGameConfig } from './render/classStats.js';
 import { login, joinQueue, checkGame, register, startTutorial } from './network/auth.js';
 import { connectGame, disconnectGame } from './network/socket.js';
@@ -666,6 +666,7 @@ function drawIngame(ctx, dt) {
   drawMinions(ctx, game, camX, camY);
   drawAimAndRangeIndicators(ctx, game, gameState.controlsHeld, camX, camY);
   drawEffectIcons(ctx, game, camX, camY);
+  drawHealthBars(ctx, game, camX, camY);
   drawBall(ctx, game, camX, camY);
   displayBallArrow(ctx, game, camX, camY);
 
@@ -1089,6 +1090,8 @@ function drawDraftShowcase(ctx) {
   ctx.fillText('VS', 1920 / 2, 960 / 2 - 50);
   ctx.restore();
 
+  const myEmail = jwtDecodeEmail(gameState.token || sessionStorage.getItem('accessToken'));
+
   // Roster Columns
   const drawColumn = (players, isHome, startX) => {
     ctx.save();
@@ -1128,25 +1131,47 @@ function drawDraftShowcase(ctx) {
     }
 
     players.forEach((p, idx) => {
+      const origIdx = game.players.indexOf(p);
+      const client = game.clients ? game.clients.find(c => c.selection === origIdx + 1) : null;
+      const displayName = client && client.email ? client.email.split('@')[0] : `Slot ${idx + 1}: Player`;
+      const isLocalUser = Boolean(
+        (game.underControl && (p === game.underControl || p.id === game.underControl.id)) ||
+        (client && client.email && myEmail && client.email.toLowerCase() === myEmail.toLowerCase())
+      );
+
       // Draw card background
       ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
       ctx.fillRect(startX + 50, py, 600, cardHeight);
-      ctx.strokeStyle = isHome ? 'rgba(59, 130, 246, 0.3)' : 'rgba(68, 68, 68, 0.3)';
+      ctx.strokeStyle = isLocalUser ? 'rgba(255, 255, 0, 0.8)' : (isHome ? 'rgba(59, 130, 246, 0.3)' : 'rgba(68, 68, 68, 0.3)');
+      ctx.lineWidth = isLocalUser ? 2 : 1;
       ctx.strokeRect(startX + 50, py, 600, cardHeight);
 
       // Text details
-      ctx.fillStyle = '#ffffff';
-      ctx.font = `bold ${fontSizeText}px Arial`;
+      const textX = startX + 80;
+      const textY = py + textOffsetY1;
+      ctx.save();
       ctx.textAlign = 'left';
-      
-      const origIdx = game.players.indexOf(p);
-      const client = game.clients.find(c => c.selection === origIdx + 1);
-      const displayName = client && client.email ? client.email.split('@')[0] : `Slot ${idx + 1}: Player`;
-      ctx.fillText(displayName, startX + 80, py + textOffsetY1);
+      ctx.font = `bold ${fontSizeText}px Arial`;
+      if (isLocalUser) {
+        ctx.fillStyle = '#ffff00';
+        ctx.fillText(displayName, textX, textY);
+        const textMetrics = ctx.measureText(displayName);
+        const underlineY = textY + Math.max(3, Math.round(fontSizeText * 0.15));
+        ctx.strokeStyle = '#ffff00';
+        ctx.lineWidth = Math.max(2, Math.round(fontSizeText * 0.08));
+        ctx.beginPath();
+        ctx.moveTo(textX, underlineY);
+        ctx.lineTo(textX + textMetrics.width, underlineY);
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(displayName, textX, textY);
+      }
 
       ctx.fillStyle = '#ff9f1c';
       ctx.font = `bold ${fontSizeClass}px Courier New`;
-      ctx.fillText(`Class: ${p.type}`, startX + 80, py + textOffsetY2);
+      ctx.fillText(`Class: ${p.type}`, textX, py + textOffsetY2);
+      ctx.restore();
 
       // Small stand sprite preview
       const standImg = AssetManager.images[`${p.type}_standR`] || AssetManager.images[`${p.type}_standL`];

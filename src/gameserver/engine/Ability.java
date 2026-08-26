@@ -73,7 +73,8 @@ public class Ability    {
                     strat.flashbang(c.getI("titan.flashbang.dur"));
                     break;
             }
-            return injectColliders(context, strat, caster);
+            injectColliders(context, strat, caster);
+            return true;
         }
         return false;
     }
@@ -135,7 +136,8 @@ public class Ability    {
                     strat.molotov();
                     break;
             }
-            return injectColliders(context, strat, caster);
+            injectColliders(context, strat, caster);
+            return true;
         }
         return false;
     }

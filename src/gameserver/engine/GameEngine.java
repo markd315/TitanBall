@@ -1368,6 +1368,10 @@ public class GameEngine extends Game {
                     dy = (t.Y + t.height/2) - t.marchingOrderY;
                 }
                 boolean atLocation = 0.1 * t.actualSpeed(this) > (Math.abs(dx) + Math.abs(dy));
+                if (atLocation) {
+                    t.runningFrame = 0;
+                    t.runningFrameCounter = 0;
+                }
                 if (!atLocation && !t.collidesSolid(this, allSolids, 0, dx)) {
                     t.facing = (int) ang;
                     t.diagonalRunDir = dx > 0 ? 2 : 1;

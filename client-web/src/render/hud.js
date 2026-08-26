@@ -439,9 +439,8 @@ function drawOverlayIcon(ctx, src, x, y, w, h, alpha) {
     ctx.restore();
 }
 
-export function drawHud(ctx, game, state) {
+export function drawHealthBars(ctx, game, camX, camY) {
     if (!game) return;
-    let hoveredNode = null;
     ctx.globalCompositeOperation = "source-over";
 
     // Draw Health bars above entities
@@ -457,8 +456,8 @@ export function drawHud(ctx, game, state) {
             if (invisible) continue;
 
             if (e.entityClass === 'Dragon') {
-                const cx = Math.floor(e.X + (e.width || 120) / 2 - state.camX);
-                const cy = Math.floor(e.Y - 25 - state.camY);
+                const cx = Math.floor(e.X + (e.width || 120) / 2 - camX);
+                const cy = Math.floor(e.Y - 25 - camY);
                 const radius = 22;
 
                 ctx.save();
@@ -496,24 +495,30 @@ export function drawHud(ctx, game, state) {
             let xOffset = (e.team === 'AWAY') ? -21 : -25;
 
             ctx.fillStyle = e.team === 'HOME' ? 'blue' : 'white';
-            const x = Math.floor(e.X + xOffset - state.camX);
-            const y = Math.floor(e.Y - 13 - state.camY);
+            const x = Math.floor(e.X + xOffset - camX);
+            const y = Math.floor(e.Y - 13 - camY);
 
             // Background
             ctx.fillRect(x, y, 100, 15);
 
             // Foreground
             ctx.fillStyle = getHpColor(hpPercent * 100);
-            ctx.fillRect(x, Math.floor(e.Y - 10 - state.camY), Math.floor(hpPercent * 100), 9);
+            ctx.fillRect(x, Math.floor(e.Y - 10 - camY), Math.floor(hpPercent * 100), 9);
 
             if (e.entityClass !== 'Wall' && e.entityClass !== 'Trap') {
                 if (e.fuel !== undefined) {
                     ctx.fillStyle = e.fuel > 25 ? 'rgb(128,128,255)' : 'darkred';
-                    ctx.fillRect(x, Math.floor(e.Y - 4 - state.camY), Math.floor(e.fuel), 3);
+                    ctx.fillRect(x, Math.floor(e.Y - 4 - camY), Math.floor(e.fuel), 3);
                 }
             }
         }
     }
+}
+
+export function drawHud(ctx, game, state) {
+    if (!game) return;
+    let hoveredNode = null;
+    ctx.globalCompositeOperation = "source-over";
 
     // Draw Scores
     ctx.font = 'bold 30px Arial';
@@ -654,6 +659,9 @@ export function drawHud(ctx, game, state) {
                 } else if (eff.effect === 'STEAL') {
                     bannerText = "Stolen!";
                     bannerColor = 'rgba(200, 50, 50, 0.9)';
+                } else if (eff.effect === 'DEAD') {
+                    bannerText = "Dead!";
+                    bannerColor = 'black';
                 }
 
                 if (eff.effect !== 'ATTACKED') {
@@ -694,7 +702,7 @@ export function drawHud(ctx, game, state) {
             ctx.textBaseline = 'middle';
             ctx.font = 'bold 54px Verdana';
 
-            ctx.fillStyle = 'black';
+            ctx.fillStyle = (bannerColor === 'black' || bannerColor === 'rgba(0, 0, 0, 0.9)') ? 'rgba(255, 255, 255, 0.6)' : 'black';
             ctx.fillText(bannerText, CONSTANTS.X_RES / 2 + 3, CONSTANTS.Y_RES / 2 - 100 + 3);
 
             ctx.fillStyle = bannerColor;

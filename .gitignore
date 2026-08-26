@@ -14,3 +14,5 @@ settings.gradle
 /target/*
 __pycache__/
 *.py[cod]
+node_modules/
+.vite/
