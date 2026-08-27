@@ -32,6 +32,94 @@ let isAimDragging = false;
 let aimStartX = 0;
 let aimStartY = 0;
 let aimMaxRadius = 50;
+let lastAimNormX = 1;
+let lastAimNormY = 0;
+
+const BASE_ABILITY_RANGES = {
+  E: {
+    MAGE: 400,
+    BUILDER: 200,
+    SUPPORT: 65,
+    RANGER: 320,
+    WARRIOR: 100,
+    ARTISAN: 140,
+    GRENADIER: 130,
+    MARKSMAN: 150,
+    HOUNDMASTER: 9999,
+    CAPTAIN: 300,
+    SPIDER: 250,
+    DASHER: 0,
+    GOLEM: 0,
+    STEALTH: 0,
+    GOALIE: 0
+  },
+  R: {
+    MAGE: 250,
+    BUILDER: 350,
+    SUPPORT: 250,
+    RANGER: 60,
+    WARRIOR: 140,
+    ARTISAN: 200,
+    GRENADIER: 140,
+    DASHER: 250,
+    GOLEM: 90,
+    STEALTH: 100,
+    CAPTAIN: 250,
+    SPIDER: 300,
+    MARKSMAN: 0,
+    HOUNDMASTER: 0,
+    GOALIE: 0
+  }
+};
+
+export function getAbilityRange(titan, slot) {
+  if (!titan) return 300;
+  const rangeFactor = titan.rangeFactor || 1.0;
+  
+  if (titan.rangeIndicators && titan.rangeIndicators.length > 0) {
+    for (const ri of titan.rangeIndicators) {
+      const color = ri.colorArray || ri.color;
+      if (slot === 'E' && color && color[1] > 0.8 && color[0] < 0.2) {
+        const rad = ri.radiusX || ri.radius || 0;
+        if (rad > 0) return rad * rangeFactor;
+      } else if (slot === 'R' && color && color[0] > 0.3 && color[2] > 0.3) {
+        const rad = ri.radiusX || ri.radius || 0;
+        if (rad > 0) return rad * rangeFactor;
+      }
+    }
+  }
+
+  const type = titan.type;
+  if (BASE_ABILITY_RANGES[slot] && BASE_ABILITY_RANGES[slot][type] !== undefined) {
+    const fallback = BASE_ABILITY_RANGES[slot][type];
+    if (fallback > 0) {
+      return fallback * rangeFactor;
+    }
+  }
+
+  return 300;
+}
+
+export function updateDoubleJoyAimPosition(range = 300) {
+  const game = gameState.game;
+  const t = getControlledTitan(game);
+  if (!t) return;
+
+  const playerCanvasX = t.X + 35 - (gameState.camX || 0);
+  const playerCanvasY = t.Y + 35 - (gameState.camY || 0);
+
+  if (lastAimNormX === 0 && lastAimNormY === 0) {
+    const isAway = t.team === 'AWAY' || t.team === 1;
+    lastAimNormX = isAway ? -1 : 1;
+    lastAimNormY = 0;
+  }
+
+  const effectiveRange = Math.max(10, range);
+  gameState.mouseX = playerCanvasX + lastAimNormX * effectiveRange;
+  gameState.mouseY = playerCanvasY + lastAimNormY * effectiveRange;
+  gameState.controlsHeld.posX = Math.floor(gameState.mouseX);
+  gameState.controlsHeld.posY = Math.floor(gameState.mouseY);
+}
 
 // Single Joystick Mode touch tracking variables
 let activeCanvasTouchId = null;
@@ -140,15 +228,20 @@ export function initMobileControls() {
 
   // Button Ability 1 (labeled "1")
   btnAbility1.addEventListener('touchstart', (e) => {
+    const currentPreset = sessionStorage.getItem('controlPreset') || getDefaultPreset();
     const game = gameState.game;
-    if (game && game.underControl) {
-      const t = game.underControl;
+    const t = getControlledTitan(game);
+    if (t) {
       if (t.type === 'ARTISAN' && t.possession === 1) {
         const current = gameState.controlsHeld.artisanShot || 'SHOT';
         let next = 'LEFT';
         if (current === 'LEFT') next = 'RIGHT';
         else if (current === 'RIGHT') next = 'SHOT';
         gameState.controlsHeld.artisanShot = next;
+      }
+      if (currentPreset === 'mobile-double') {
+        const abilityRange = getAbilityRange(t, 'E');
+        updateDoubleJoyAimPosition(abilityRange);
       }
     }
     gameState.controlsHeld.E = true;
@@ -163,6 +256,13 @@ export function initMobileControls() {
 
   // Button Ability 2 (labeled "2")
   btnAbility2.addEventListener('touchstart', (e) => {
+    const currentPreset = sessionStorage.getItem('controlPreset') || getDefaultPreset();
+    const game = gameState.game;
+    const t = getControlledTitan(game);
+    if (t && currentPreset === 'mobile-double') {
+      const abilityRange = getAbilityRange(t, 'R');
+      updateDoubleJoyAimPosition(abilityRange);
+    }
     gameState.controlsHeld.R = true;
     e.preventDefault();
     e.stopPropagation();
@@ -205,6 +305,12 @@ export function initMobileControls() {
 
   // Button Shot (only for Double Joystick Mode)
   btnShot.addEventListener('touchstart', (e) => {
+    const currentPreset = sessionStorage.getItem('controlPreset') || getDefaultPreset();
+    const game = gameState.game;
+    const t = getControlledTitan(game);
+    if (t && currentPreset === 'mobile-double') {
+      updateDoubleJoyAimPosition(300);
+    }
     gameState.controlsHeld.shotBtn = true;
     e.preventDefault();
     e.stopPropagation();
@@ -375,23 +481,14 @@ function handleAimJoystickMove(e) {
   if (aimMaxRadius > 0 && dist > aimMaxRadius * 0.1) {
     const normX = dx / dist;
     const normY = dy / dist;
+    lastAimNormX = normX;
+    lastAimNormY = normY;
+    gameState.aimAngle = Math.atan2(normY, normX);
+    gameState.aimDirX = normX;
+    gameState.aimDirY = normY;
 
-    // Update aim target in game state
-    const game = gameState.game;
-    if (game && game.underControl) {
-      const playerX = game.underControl.X;
-      const playerY = game.underControl.Y;
-
-      // Calculate screen coordinate for player center (width/height is 70)
-      const playerCanvasX = playerX + 35 - (gameState.camX || 0);
-      const playerCanvasY = playerY + 35 - (gameState.camY || 0);
-
-      const aimDistance = 300; // Aiming radius in canvas pixels
-      gameState.mouseX = playerCanvasX + normX * aimDistance;
-      gameState.mouseY = playerCanvasY + normY * aimDistance;
-      gameState.controlsHeld.posX = Math.floor(gameState.mouseX);
-      gameState.controlsHeld.posY = Math.floor(gameState.mouseY);
-    }
+    // Update aim target in game state relative to current player position
+    updateDoubleJoyAimPosition(300);
   }
 
   e.preventDefault();
@@ -554,8 +651,8 @@ export function updateMobileControls(game) {
     if (joystickBase && joystickBase.style.display !== '') {
       joystickBase.style.display = '';
     }
-    if (mobileButtonsZone && mobileButtonsZone.style.display !== 'flex') {
-      mobileButtonsZone.style.display = 'flex';
+    if (mobileButtonsZone && mobileButtonsZone.style.display !== 'grid') {
+      mobileButtonsZone.style.display = 'grid';
     }
 
     // Toggle single vs double joystick specific layout/UI elements
@@ -569,6 +666,19 @@ export function updateMobileControls(game) {
       if (mobileButtonsZone && !mobileButtonsZone.classList.contains('double-joy')) {
         mobileButtonsZone.classList.add('double-joy');
       }
+
+      // Initialize default aim direction if not set
+      if (gameState.aimAngle === undefined) {
+        const isAway = myTitan && (myTitan.team === 'AWAY' || myTitan.team === 1);
+        lastAimNormX = isAway ? -1 : 1;
+        lastAimNormY = 0;
+        gameState.aimAngle = isAway ? Math.PI : 0;
+        gameState.aimDirX = lastAimNormX;
+        gameState.aimDirY = lastAimNormY;
+      }
+
+      // Maintain aim position continuously as player moves
+      updateDoubleJoyAimPosition(300);
     } else {
       if (aimJoystickZone && aimJoystickZone.style.display !== 'none') {
         aimJoystickZone.style.display = 'none';

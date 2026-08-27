@@ -1,4 +1,5 @@
 import { CONSTANTS } from '../constants.js';
+import { gameState } from '../state.js';
 
 export function drawAimAndRangeIndicators(ctx, game, controlsHeld, camX, camY) {
     if (!game || !game.underControl) return;
@@ -25,14 +26,20 @@ export function drawAimAndRangeIndicators(ctx, game, controlsHeld, camX, camY) {
             by = game.ball.Y + game.ball.height / 2;
         }
 
-        // Cursor position in field space
-        const cursorX = isGoalie ? ((controlsHeld.posX || 0) / 0.9375) : (controlsHeld.posX || 0);
-        const cursorY = controlsHeld.posY || 0;
-        const mx = cursorX + camX;
-        const my = cursorY + camY;
-        
-        // Angle from ball center to cursor
-        const angle = Math.atan2(my - by, mx - bx);
+        let angle;
+        const currentPreset = sessionStorage.getItem('controlPreset');
+        if (currentPreset === 'mobile-double' && gameState.aimAngle !== undefined) {
+            angle = gameState.aimAngle;
+        } else {
+            // Cursor position in field space
+            const cursorX = isGoalie ? ((controlsHeld.posX || 0) / 0.9375) : (controlsHeld.posX || 0);
+            const cursorY = controlsHeld.posY || 0;
+            const mx = cursorX + camX;
+            const my = cursorY + camY;
+            
+            // Angle from ball center to cursor
+            angle = Math.atan2(my - by, mx - bx);
+        }
         
         // Screen coordinates of ball center
         const ox = bx - camX;

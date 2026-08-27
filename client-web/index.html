@@ -307,8 +307,11 @@
         background: rgba(255, 255, 255, 0.03);
         border: 1px solid rgba(45, 140, 100, 0.15);
         border-radius: 12px;
-        padding: 10px 14px;
+        padding: clamp(8px, 2vw, 10px) clamp(10px, 2.5vw, 14px);
         transition: all 0.3s;
+        gap: 10px;
+        box-sizing: border-box;
+        max-width: 100%;
       }
       .mastery-row:hover {
         background: rgba(255, 255, 255, 0.05);
@@ -319,20 +322,25 @@
         flex-direction: column;
         gap: 2px;
         flex: 1;
+        min-width: 0;
       }
       .mastery-name {
         font-weight: 600;
-        font-size: 15px;
+        font-size: clamp(13px, 3.4vw, 15px);
         color: #e2e8f0;
+        word-break: break-word;
       }
       .mastery-desc {
-        font-size: 11px;
+        font-size: clamp(10px, 2.4vw, 11px);
         color: #94a3b8;
+        line-height: 1.25;
+        word-break: break-word;
       }
       .mastery-controls {
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: clamp(6px, 1.5vw, 10px);
+        flex-shrink: 0;
       }
       .mastery-btn {
         width: 28px;
@@ -365,28 +373,111 @@
         width: 14px;
         text-align: center;
       }
+
+      /* Build Order Planner Expand & Responsive CSS */
+      .btn-expand-tree {
+        background: rgba(45, 140, 100, 0.15);
+        border: 1px solid rgba(45, 140, 100, 0.4);
+        color: #a7f3d0;
+        border-radius: 8px;
+        padding: 5px 12px;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        cursor: pointer;
+        font-family: inherit;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        user-select: none;
+      }
+      .btn-expand-tree:hover {
+        background: rgba(45, 140, 100, 0.3);
+        color: #ffffff;
+        transform: scale(1.03);
+      }
+      .btn-expand-tree.active {
+        background: rgba(124, 58, 237, 0.3);
+        border-color: rgba(168, 85, 247, 0.6);
+        color: #d8b4fe;
+      }
+
+      .planner-canvas-pane {
+        flex: 2;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        gap: 6px;
+        overflow: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      .planner-sidebar-pane {
+        flex: 0 0 260px;
+        display: flex;
+        flex-direction: column;
+        min-width: 180px;
+        max-width: 300px;
+        transition: all 0.3s ease;
+      }
+
+      .build-order-expanded .planner-sidebar-pane {
+        display: none !important;
+      }
+      .build-order-expanded .planner-canvas-pane {
+        flex: 1 1 100% !important;
+        max-height: 75vh;
+      }
+      .build-order-expanded #planner-canvas {
+        min-width: 860px;
+        width: 100%;
+        max-width: 1360px;
+        margin: 0 auto;
+      }
+
+      @media (max-width: 768px) {
+        .build-order-modal-body {
+          flex-direction: column !important;
+          overflow-y: auto !important;
+        }
+        .planner-sidebar-pane {
+          flex: none !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          max-height: 220px;
+        }
+        .planner-canvas-pane {
+          overflow: auto !important;
+        }
+        .build-order-expanded #planner-canvas {
+          min-width: 780px;
+        }
+      }
       
       /* Mobile Controls CSS */
       #mobile-controls-container {
         position: absolute;
-        bottom: 0;
+        top: 0;
         left: 0;
         width: 100%;
-        height: 45vmin;
+        height: 100%;
         pointer-events: none;
         z-index: 10;
         display: none;
         justify-content: space-between;
-        align-items: flex-end;
-        padding: 4.5vmin;
+        align-items: center;
+        padding: 2vmin 3vmin;
         box-sizing: border-box;
       }
       #mobile-left-zone {
         display: flex;
         flex-direction: column;
-        align-items: flex-start;
-        gap: 1.5vmin;
+        align-items: center;
+        justify-content: center;
+        gap: 2vmin;
         pointer-events: auto;
+        height: 100%;
+        max-width: 25vmin;
       }
       #boost-switch-container {
         display: flex;
@@ -396,12 +487,12 @@
       .mobile-switch {
         display: flex;
         align-items: center;
-        gap: 1.5vmin;
+        gap: 1.2vmin;
         background: rgba(10, 26, 20, 0.65);
         backdrop-filter: blur(10px);
         border: 2px solid rgba(45, 140, 100, 0.3);
         border-radius: 4vmin;
-        padding: 0.8vmin 2vmin 0.8vmin 1vmin;
+        padding: 0.8vmin 1.8vmin 0.8vmin 1vmin;
         cursor: pointer;
         user-select: none;
         touch-action: none;
@@ -417,8 +508,8 @@
         box-shadow: 0 0 3vmin rgba(255, 159, 28, 0.4), inset 0 0 1.5vmin rgba(255, 127, 17, 0.2);
       }
       .mobile-switch-track {
-        width: 7vmin;
-        height: 3.6vmin;
+        width: 6.5vmin;
+        height: 3.4vmin;
         background: rgba(255, 255, 255, 0.12);
         border-radius: 2vmin;
         position: relative;
@@ -428,8 +519,8 @@
         background: #ff9f1c;
       }
       .mobile-switch-thumb {
-        width: 3vmin;
-        height: 3vmin;
+        width: 2.8vmin;
+        height: 2.8vmin;
         border-radius: 50%;
         background: #94a3b8;
         position: absolute;
@@ -439,13 +530,13 @@
         box-shadow: 0 0.4vmin 1vmin rgba(0,0,0,0.3);
       }
       .mobile-switch.active .mobile-switch-thumb {
-        transform: translateX(3.4vmin);
+        transform: translateX(3.1vmin);
         background: #ffffff;
         box-shadow: 0 0 1.5vmin rgba(255, 255, 255, 0.8);
       }
       .mobile-switch-label {
         font-family: 'Outfit', sans-serif;
-        font-size: 2.2vmin;
+        font-size: 2vmin;
         font-weight: 800;
         letter-spacing: 1px;
         color: #94a3b8;
@@ -456,16 +547,16 @@
         text-shadow: 0 0 10px rgba(255, 159, 28, 0.6);
       }
       #virtual-joystick-zone {
-        width: 27vmin;
-        height: 27vmin;
+        width: 24vmin;
+        height: 24vmin;
         display: flex;
         justify-content: center;
         align-items: center;
         pointer-events: auto;
       }
       #joystick-base {
-        width: 22.5vmin;
-        height: 22.5vmin;
+        width: 20vmin;
+        height: 20vmin;
         border-radius: 50%;
         background: rgba(10, 26, 20, 0.4);
         backdrop-filter: blur(10px);
@@ -475,35 +566,39 @@
         touch-action: none;
       }
       #joystick-stick {
-        width: 9vmin;
-        height: 9vmin;
+        width: 8vmin;
+        height: 8vmin;
         border-radius: 50%;
         background: radial-gradient(circle, #2ed573 0%, #1b4d3e 100%);
         border: 2px solid rgba(255, 255, 255, 0.4);
-        box-shadow: 0 0 2.25vmin rgba(46, 213, 115, 0.6);
+        box-shadow: 0 0 2vmin rgba(46, 213, 115, 0.6);
         position: absolute;
         top: 50%;
         left: 50%;
-        margin-top: -4.5vmin;
-        margin-left: -4.5vmin;
+        margin-top: -4vmin;
+        margin-left: -4vmin;
         transition: transform 0.05s ease-out;
       }
       #mobile-right-zone {
         display: flex;
-        align-items: flex-end;
-        gap: 4.5vmin;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 2vmin;
         pointer-events: auto;
+        height: 100%;
+        max-width: 25vmin;
       }
       #aim-joystick-zone {
-        width: 27vmin;
-        height: 27vmin;
+        width: 24vmin;
+        height: 24vmin;
         display: flex;
         justify-content: center;
         align-items: center;
       }
       #aim-joystick-base {
-        width: 22.5vmin;
-        height: 22.5vmin;
+        width: 20vmin;
+        height: 20vmin;
         border-radius: 50%;
         background: rgba(10, 26, 20, 0.4);
         backdrop-filter: blur(10px);
@@ -513,17 +608,17 @@
         touch-action: none;
       }
       #aim-joystick-stick {
-        width: 9vmin;
-        height: 9vmin;
+        width: 8vmin;
+        height: 8vmin;
         border-radius: 50%;
         background: radial-gradient(circle, #a855f7 0%, #4c1d95 100%);
         border: 2px solid rgba(255, 255, 255, 0.4);
-        box-shadow: 0 0 2.25vmin rgba(168, 85, 247, 0.6);
+        box-shadow: 0 0 2vmin rgba(168, 85, 247, 0.6);
         position: absolute;
         top: 50%;
         left: 50%;
-        margin-top: -4.5vmin;
-        margin-left: -4.5vmin;
+        margin-top: -4vmin;
+        margin-left: -4vmin;
         transition: transform 0.05s ease-out;
       }
       #mobile-buttons-zone {
@@ -531,7 +626,7 @@
         grid-template-areas: 
           ". pos"
           "ab1 ab2";
-        gap: 1.8vmin;
+        gap: 1.2vmin;
       }
       #mobile-buttons-zone.double-joy {
         grid-template-areas: 
@@ -539,20 +634,20 @@
           "ab1 ab2";
       }
       .mobile-action-btn {
-        width: 12vmin;
-        height: 12vmin;
+        width: 9.5vmin;
+        height: 9.5vmin;
         border-radius: 50%;
         background: rgba(10, 26, 20, 0.6);
         backdrop-filter: blur(10px);
         border: 2px solid rgba(255, 255, 255, 0.2);
         color: #fff;
         font-family: 'Outfit', sans-serif;
-        font-size: 3vmin;
+        font-size: 2.4vmin;
         font-weight: 800;
         display: flex;
         justify-content: center;
         align-items: center;
-        box-shadow: 0 1.2vmin 3vmin rgba(0,0,0,0.4);
+        box-shadow: 0 1vmin 2.5vmin rgba(0,0,0,0.4);
         touch-action: none;
         user-select: none;
         cursor: pointer;
@@ -564,54 +659,54 @@
       #btn-ability-1 {
         grid-area: ab1;
         border-color: rgba(168, 85, 247, 0.4);
-        box-shadow: 0 0 2.25vmin rgba(168, 85, 247, 0.2);
+        box-shadow: 0 0 2vmin rgba(168, 85, 247, 0.2);
       }
       #btn-ability-1:active {
         background: rgba(168, 85, 247, 0.2);
-        box-shadow: 0 0 3.75vmin rgba(168, 85, 247, 0.6);
+        box-shadow: 0 0 3vmin rgba(168, 85, 247, 0.6);
       }
       #btn-ability-2 {
         grid-area: ab2;
         border-color: rgba(59, 130, 246, 0.4);
-        box-shadow: 0 0 2.25vmin rgba(59, 130, 246, 0.2);
+        box-shadow: 0 0 2vmin rgba(59, 130, 246, 0.2);
       }
       #btn-ability-2:active {
         background: rgba(59, 130, 246, 0.2);
-        box-shadow: 0 0 3.75vmin rgba(59, 130, 246, 0.6);
+        box-shadow: 0 0 3vmin rgba(59, 130, 246, 0.6);
       }
       #btn-possession {
         grid-area: pos;
-        width: 15vmin;
-        height: 15vmin;
-        font-size: 2.7vmin;
+        width: 10.5vmin;
+        height: 10.5vmin;
+        font-size: 2.1vmin;
         border-radius: 50%;
         background: rgba(255, 159, 28, 0.15);
         border-color: rgba(255, 159, 28, 0.6);
-        box-shadow: 0 0 3vmin rgba(255, 159, 28, 0.3);
+        box-shadow: 0 0 2.5vmin rgba(255, 159, 28, 0.3);
       }
       #btn-possession.lob-mode {
         background: rgba(255, 159, 28, 0.2);
         border-color: rgba(255, 159, 28, 0.8);
-        box-shadow: 0 0 3.75vmin rgba(255, 159, 28, 0.5);
+        box-shadow: 0 0 3vmin rgba(255, 159, 28, 0.5);
       }
       #btn-possession.steal-mode {
         background: rgba(46, 213, 115, 0.15);
         border-color: rgba(46, 213, 115, 0.6);
-        box-shadow: 0 0 3vmin rgba(46, 213, 115, 0.3);
+        box-shadow: 0 0 2.5vmin rgba(46, 213, 115, 0.3);
       }
       #btn-shot {
         grid-area: shot;
-        width: 15vmin;
-        height: 15vmin;
-        font-size: 2.7vmin;
+        width: 10.5vmin;
+        height: 10.5vmin;
+        font-size: 2.1vmin;
         border-radius: 50%;
         background: rgba(239, 68, 68, 0.15);
         border-color: rgba(239, 68, 68, 0.6);
-        box-shadow: 0 0 3vmin rgba(239, 68, 68, 0.3);
+        box-shadow: 0 0 2.5vmin rgba(239, 68, 68, 0.3);
       }
       #btn-shot:active {
         background: rgba(239, 68, 68, 0.3);
-        box-shadow: 0 0 3.75vmin rgba(239, 68, 68, 0.6);
+        box-shadow: 0 0 3vmin rgba(239, 68, 68, 0.6);
       }
     </style>
   </head>
@@ -639,21 +734,21 @@
           </div>
         </div>
         
-        <!-- Right Side: Aim Joystick and Action Buttons -->
+        <!-- Right Side: Action Buttons and Aim Joystick -->
         <div id="mobile-right-zone">
-          <!-- Aim Joystick (only shown in double-joy) -->
-          <div id="aim-joystick-zone" style="display: none;">
-            <div id="aim-joystick-base">
-              <div id="aim-joystick-stick"></div>
-            </div>
-          </div>
-          
           <!-- Buttons Zone -->
           <div id="mobile-buttons-zone">
             <button id="btn-shot" class="mobile-action-btn" style="display: none;">SHOT</button>
             <button id="btn-ability-1" class="mobile-action-btn">1</button>
             <button id="btn-ability-2" class="mobile-action-btn">2</button>
             <button id="btn-possession" class="mobile-action-btn">STEAL</button>
+          </div>
+
+          <!-- Aim Joystick (only shown in double-joy) -->
+          <div id="aim-joystick-zone" style="display: none;">
+            <div id="aim-joystick-base">
+              <div id="aim-joystick-stick"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -783,7 +878,7 @@
         </div>
 
         <!-- Masteries Modal Overlay -->
-        <div id="masteries-modal" class="glass-card" style="display: none; position: absolute; z-index: 100; width: 480px; max-height: 90vh; overflow-y: auto;">
+        <div id="masteries-modal" class="glass-card" style="display: none; position: absolute; z-index: 100; width: min(480px, calc(100vw - 24px)); max-width: 100%; max-height: 90vh; overflow-y: auto; box-sizing: border-box;">
           <h2>Titan Masteries</h2>
           <div class="stat-row">
             <span class="stat-label">Points Remaining</span>
@@ -848,25 +943,30 @@
               <div id="build-slots-container" class="build-slots-container"></div>
             </div>
 
-            <!-- Tree Tabs -->
-            <div style="display:flex;gap:2px;padding:10px 20px 0;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,0.06);">
-              <button id="planner-tab-0" class="planner-tab-btn">Siege</button>
-              <button id="planner-tab-1" class="planner-tab-btn">Fortress</button>
-              <button id="planner-tab-2" class="planner-tab-btn">Empowerment</button>
-              <button id="planner-tab-3" class="planner-tab-btn">Cultivation</button>
+            <!-- Tree Tabs and Expand Button -->
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 20px 0;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,0.06);flex-wrap:wrap;gap:8px;">
+              <div style="display:flex;gap:2px;">
+                <button id="planner-tab-0" class="planner-tab-btn">Siege</button>
+                <button id="planner-tab-1" class="planner-tab-btn">Fortress</button>
+                <button id="planner-tab-2" class="planner-tab-btn">Empowerment</button>
+                <button id="planner-tab-3" class="planner-tab-btn">Cultivation</button>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;padding-bottom:6px;">
+                <button id="planner-expand-btn" class="btn-expand-tree" title="Expand / Shrink Tree View">⛶ Expand Tree</button>
+              </div>
             </div>
 
             <!-- Body -->
-            <div style="display:flex;flex:1;overflow:hidden;padding:14px 16px 14px;gap:14px;min-height:0;">
+            <div class="build-order-modal-body" style="display:flex;flex:1;overflow:hidden;padding:14px 16px 14px;gap:14px;min-height:0;">
 
               <!-- Tree Canvas pane -->
-              <div style="flex:2;display:flex;flex-direction:column;min-width:0;gap:6px;">
+              <div class="planner-canvas-pane">
                 <canvas id="planner-canvas" width="900" height="495" style="width:100%;height:auto;cursor:crosshair;border-radius:10px;border:1px solid rgba(45,140,100,0.18);display:block;"></canvas>
-                <p style="margin:0;color:#475569;font-size:11px;text-align:center;">Click an unlocked node to add it · Hover for details · Cost nodes can only be added once · Active nodes can be repeated</p>
+                <p style="margin:0;color:#475569;font-size:11px;text-align:center;">Click an unlocked node to add it · Hover/tap for details · Cost nodes can only be added once · Active nodes can be repeated</p>
               </div>
 
               <!-- Build Order sidebar -->
-              <div style="flex:0 0 260px;display:flex;flex-direction:column;min-width:180px;max-width:300px;">
+              <div class="planner-sidebar-pane">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
                   <span style="font-weight:700;font-size:12px;letter-spacing:1.5px;color:#a7f3d0;text-transform:uppercase;">Build Order</span>
                   <button id="build-order-clear-btn" style="background:rgba(220,38,38,0.08);border:1px solid rgba(220,38,38,0.25);color:#f87171;border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer;font-family:inherit;transition:all 0.2s;" onmouseover="this.style.background='rgba(220,38,38,0.2)'" onmouseout="this.style.background='rgba(220,38,38,0.08)'">Clear Slot</button>

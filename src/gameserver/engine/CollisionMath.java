@@ -53,45 +53,52 @@ public class CollisionMath   {
             return CollisionSide.NONE;
         }
 
-        double overlapLeft = (mover.minX() + mover.width()) - obstacle.minX();
-        double overlapRight = (obstacle.minX() + obstacle.width()) - mover.minX();
-        double overlapTop = (mover.minY() + mover.height()) - obstacle.minY();
-        double overlapBottom = (obstacle.minY() + obstacle.height()) - mover.minY();
+        double ballCenterX = mover.minX() + mover.width() / 2.0;
+        double ballCenterY = mover.minY() + mover.height() / 2.0;
 
-        double candX = Double.POSITIVE_INFINITY;
-        CollisionSide sideX = CollisionSide.NONE;
-        if (dx > 0 && overlapLeft > 0) {
-            candX = overlapLeft;
-            sideX = CollisionSide.LEFT;
-        } else if (dx < 0 && overlapRight > 0) {
-            candX = overlapRight;
-            sideX = CollisionSide.RIGHT;
+        double obstMinX = obstacle.minX();
+        double obstMaxX = obstacle.minX() + obstacle.width();
+        double obstMinY = obstacle.minY();
+        double obstMaxY = obstacle.minY() + obstacle.height();
+
+        boolean inYRange = (ballCenterY >= obstMinY && ballCenterY <= obstMaxY);
+        boolean inXRange = (ballCenterX >= obstMinX && ballCenterX <= obstMaxX);
+
+        // 1. Ball center is within the Y span of the obstacle (pure horizontal collision)
+        if (inYRange && !inXRange) {
+            return (ballCenterX <= obstMinX) ? CollisionSide.LEFT : CollisionSide.RIGHT;
         }
 
-        double candY = Double.POSITIVE_INFINITY;
-        CollisionSide sideY = CollisionSide.NONE;
-        if (dy > 0 && overlapTop > 0) {
-            candY = overlapTop;
-            sideY = CollisionSide.TOP;
-        } else if (dy < 0 && overlapBottom > 0) {
-            candY = overlapBottom;
-            sideY = CollisionSide.BOTTOM;
+        // 2. Ball center is within the X span of the obstacle (pure vertical collision)
+        if (inXRange && !inYRange) {
+            return (ballCenterY <= obstMinY) ? CollisionSide.TOP : CollisionSide.BOTTOM;
         }
 
-        if (candX < candY && sideX != CollisionSide.NONE) {
-            return sideX;
-        } else if (candY < candX && sideY != CollisionSide.NONE) {
-            return sideY;
+        // 3. Ball center is in a corner region (outside both X and Y spans)
+        if (!inXRange && !inYRange) {
+            double cornerX = (ballCenterX < obstMinX) ? obstMinX : obstMaxX;
+            double cornerY = (ballCenterY < obstMinY) ? obstMinY : obstMaxY;
+            double distCornerX = Math.abs(ballCenterX - cornerX);
+            double distCornerY = Math.abs(ballCenterY - cornerY);
+
+            if (distCornerX >= distCornerY) {
+                return (ballCenterX < obstMinX) ? CollisionSide.LEFT : CollisionSide.RIGHT;
+            } else {
+                return (ballCenterY < obstMinY) ? CollisionSide.TOP : CollisionSide.BOTTOM;
+            }
         }
 
-        // Fallback: choose smallest penetration depth overall
-        double minX = Math.min(overlapLeft, overlapRight);
-        double minY = Math.min(overlapTop, overlapBottom);
-        if (minX < minY) {
-            return (overlapLeft < overlapRight) ? CollisionSide.LEFT : CollisionSide.RIGHT;
-        } else {
-            return (overlapTop < overlapBottom) ? CollisionSide.TOP : CollisionSide.BOTTOM;
-        }
+        // 4. Ball center is fully inside the obstacle (deep penetration fallback)
+        double distLeft = ballCenterX - obstMinX;
+        double distRight = obstMaxX - ballCenterX;
+        double distTop = ballCenterY - obstMinY;
+        double distBottom = obstMaxY - ballCenterY;
+
+        double minDist = Math.min(Math.min(distLeft, distRight), Math.min(distTop, distBottom));
+        if (minDist == distLeft) return CollisionSide.LEFT;
+        if (minDist == distRight) return CollisionSide.RIGHT;
+        if (minDist == distTop) return CollisionSide.TOP;
+        return CollisionSide.BOTTOM;
     }
 
     public static boolean boundsIntersect(Bounds b1, Bounds b2) {

@@ -2109,19 +2109,19 @@ public class GameEngine extends Game {
 
             if (side == CollisionMath.CollisionSide.LEFT) {
                 ball.X = oBounds.minX() - ball.width;
-                xKickPow = -Math.abs(xKickPow != 0 ? xKickPow : 0.25);
+                xKickPow = -Math.abs(xKickPow);
                 if (vel != null) vel[0] = -Math.abs(vel[0]);
             } else if (side == CollisionMath.CollisionSide.RIGHT) {
                 ball.X = oBounds.minX() + oBounds.width();
-                xKickPow = Math.abs(xKickPow != 0 ? xKickPow : 0.25);
+                xKickPow = Math.abs(xKickPow);
                 if (vel != null) vel[0] = Math.abs(vel[0]);
             } else if (side == CollisionMath.CollisionSide.TOP) {
                 ball.Y = oBounds.minY() - ball.height;
-                yKickPow = Math.abs(yKickPow != 0 ? yKickPow : 0.25);
+                yKickPow = Math.abs(yKickPow);
                 if (vel != null) vel[1] = -Math.abs(vel[1]);
             } else if (side == CollisionMath.CollisionSide.BOTTOM) {
                 ball.Y = oBounds.minY() + oBounds.height();
-                yKickPow = -Math.abs(yKickPow != 0 ? yKickPow : 0.25);
+                yKickPow = -Math.abs(yKickPow);
                 if (vel != null) vel[1] = Math.abs(vel[1]);
             } else {
                 if (obstacle.ballNearestEdgeisX(ball, curDx, curDy)) {
@@ -2144,7 +2144,7 @@ public class GameEngine extends Game {
                 return;
             } else {
                 ball.X = c.MAX_X;
-                xKickPow = -Math.abs(xKickPow != 0 ? xKickPow : 0.25);
+                xKickPow = -Math.abs(xKickPow);
                 if (vel != null) vel[0] = -Math.abs(vel[0]);
             }
         }
@@ -2157,7 +2157,7 @@ public class GameEngine extends Game {
                 return;
             } else {
                 ball.X = c.MIN_X;
-                xKickPow = Math.abs(xKickPow != 0 ? xKickPow : 0.25);
+                xKickPow = Math.abs(xKickPow);
                 if (vel != null) vel[0] = Math.abs(vel[0]);
             }
         }
@@ -2170,7 +2170,7 @@ public class GameEngine extends Game {
                 return;
             } else {
                 ball.Y = c.MIN_Y;
-                yKickPow = -Math.abs(yKickPow != 0 ? yKickPow : 0.25);
+                yKickPow = -Math.abs(yKickPow);
                 if (vel != null) vel[1] = Math.abs(vel[1]);
             }
         }
@@ -2183,7 +2183,7 @@ public class GameEngine extends Game {
                 return;
             } else {
                 ball.Y = c.MAX_Y;
-                yKickPow = Math.abs(yKickPow != 0 ? yKickPow : 0.25);
+                yKickPow = Math.abs(yKickPow);
                 if (vel != null) vel[1] = -Math.abs(vel[1]);
             }
         }

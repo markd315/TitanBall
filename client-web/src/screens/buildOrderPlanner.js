@@ -72,6 +72,7 @@ let localBuildOrder = [];          // working copy while the modal is open
 let plannerCanvas = null;
 let plannerCtx = null;
 let hoveredNodeIdx = -1;
+let isTreeExpanded = false;
 
 // ─── color slice computation ─────────────────────────────────────────────────
 /**
@@ -164,6 +165,8 @@ export function initBuildOrderPlanner() {
         }
         plannerActiveTabIndex = 0;
         hoveredNodeIdx = -1;
+        isTreeExpanded = false;
+        _updateExpandedUI();
         modal.style.display = 'flex';
         if (modeOverlay) modeOverlay.style.pointerEvents = 'none';
         // slight delay so canvas has final dimensions after flex layout
@@ -282,6 +285,15 @@ export function initBuildOrderPlanner() {
         });
     }
 
+    // Expand Tree View toggle
+    const expandBtn = document.getElementById('planner-expand-btn');
+    if (expandBtn) {
+        expandBtn.addEventListener('click', () => {
+            isTreeExpanded = !isTreeExpanded;
+            _updateExpandedUI();
+        });
+    }
+
     // Canvas
     plannerCanvas = document.getElementById('planner-canvas');
     if (plannerCanvas) {
@@ -292,6 +304,46 @@ export function initBuildOrderPlanner() {
             hoveredNodeIdx = -1;
             _renderTree();
         });
+
+        // Touch support for mobile devices
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchStartTime = 0;
+
+        plannerCanvas.addEventListener('touchstart', (e) => {
+            if (e.touches.length > 0) {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+                touchStartTime = Date.now();
+                const hit = _getHitInfo(e);
+                if (hit) {
+                    hoveredNodeIdx = hit.idx;
+                    _renderTree();
+                }
+            }
+        }, { passive: true });
+
+        plannerCanvas.addEventListener('touchmove', (e) => {
+            if (e.touches.length > 0) {
+                const hit = _getHitInfo(e);
+                const newIdx = hit ? hit.idx : -1;
+                if (newIdx !== hoveredNodeIdx) {
+                    hoveredNodeIdx = newIdx;
+                    _renderTree();
+                }
+            }
+        }, { passive: true });
+
+        plannerCanvas.addEventListener('touchend', (e) => {
+            if (e.changedTouches.length > 0) {
+                const touch = e.changedTouches[0];
+                const distMoved = Math.hypot(touch.clientX - touchStartX, touch.clientY - touchStartY);
+                const duration = Date.now() - touchStartTime;
+                if (distMoved < 15 && duration < 500) {
+                    _handleCanvasClick(e);
+                }
+            }
+        }, { passive: true });
     }
 
     function _closeModal() {
@@ -760,11 +812,43 @@ function _updateCount() {
         : `${localBuildOrder.length} step${localBuildOrder.length !== 1 ? 's' : ''} planned`;
 }
 
+function _updateExpandedUI() {
+    const modal = document.getElementById('build-order-modal');
+    const expandBtn = document.getElementById('planner-expand-btn');
+    if (modal) {
+        if (isTreeExpanded) {
+            modal.classList.add('build-order-expanded');
+            if (expandBtn) {
+                expandBtn.textContent = '⛶ Shrink Tree';
+                expandBtn.classList.add('active');
+            }
+        } else {
+            modal.classList.remove('build-order-expanded');
+            if (expandBtn) {
+                expandBtn.textContent = '⛶ Expand Tree';
+                expandBtn.classList.remove('active');
+            }
+        }
+    }
+    requestAnimationFrame(() => _renderTree());
+}
+
 // ─── canvas event handlers ────────────────────────────────────────────────────
 function _getHitInfo(e) {
-    const rect   = plannerCanvas.getBoundingClientRect();
-    const mx     = (e.clientX - rect.left) * (plannerCanvas.width  / rect.width);
-    const my     = (e.clientY - rect.top)  * (plannerCanvas.height / rect.height);
+    const rect = plannerCanvas.getBoundingClientRect();
+    let clientX = e.clientX;
+    let clientY = e.clientY;
+    if (e.touches && e.touches.length > 0) {
+        clientX = e.touches[0].clientX;
+        clientY = e.touches[0].clientY;
+    } else if (e.changedTouches && e.changedTouches.length > 0) {
+        clientX = e.changedTouches[0].clientX;
+        clientY = e.changedTouches[0].clientY;
+    }
+    if (clientX === undefined || clientY === undefined) return null;
+
+    const mx = (clientX - rect.left) * (plannerCanvas.width  / rect.width);
+    const my = (clientY - rect.top)  * (plannerCanvas.height / rect.height);
     const key    = tabKeys[plannerActiveTabIndex];
     const img    = AssetManager.images[key];
     const nodes  = TREE_NODES[key];
