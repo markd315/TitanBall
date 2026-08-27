@@ -510,6 +510,28 @@ export function drawHealthBars(ctx, game, camX, camY) {
                     ctx.fillStyle = e.fuel > 25 ? 'rgb(128,128,255)' : 'darkred';
                     ctx.fillRect(x, Math.floor(e.Y - 4 - camY), Math.floor(e.fuel), 3);
                 }
+
+                // Render 0-8 ammo dots above health bar for Captain
+                if (e.type === 'CAPTAIN' || (e.maxAmmo !== undefined && e.maxAmmo > 0)) {
+                    const totalDots = e.maxAmmo || 8;
+                    const curAmmo = e.ammo !== undefined ? e.ammo : 8;
+                    const dotSpacing = 11;
+                    const startDotX = x + (100 - (totalDots - 1) * dotSpacing) / 2;
+                    const dotY = Math.floor(e.Y - 18 - camY);
+
+                    for (let d = 0; d < totalDots; d++) {
+                        const dx = startDotX + d * dotSpacing;
+                        const isLoaded = d < curAmmo;
+
+                        ctx.beginPath();
+                        ctx.arc(dx, dotY, 3, 0, 2 * Math.PI);
+                        ctx.fillStyle = isLoaded ? '#facc15' : 'rgba(55, 65, 81, 0.8)';
+                        ctx.fill();
+                        ctx.strokeStyle = '#000000';
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+                    }
+                }
             }
         }
     }

@@ -30,6 +30,7 @@ from typing import Dict, List, Tuple, Any, Optional
 ABILITY_ORDER = [
     "dasher_flare",           # Flare [DASHER] (W/R)
     "marksman_slow",          # Frost Shot [MARKSMAN] (Q/E)
+    "captain_shot",           # Rifle Shot [CAPTAIN] (Q/E)
     "golem_shield",           # Barrier Shield [GOLEM] (Q/E)
     "artisan_suck",           # Ball Vacuum [ARTISAN] (Q/E)
     "builder_trap",           # Snare Trap [BUILDER] (Q/E)
@@ -44,9 +45,12 @@ ABILITY_ORDER = [
     "builder_wall",           # Barrier Wall [BUILDER] (W/R)
     "houndmaster_cage",       # Deploy Kennel [HOUNDMASTER] (Q/E)
     "houndmaster_wolf",       # Unleash Pack [HOUNDMASTER] (W/R)
+    "spider_web",             # Web Trap [SPIDER] (Q/E)
     "grenadier_molotov",      # Molotov [GRENADIER] (W/R)
+    "captain_slide",          # Slide & Timebomb [CAPTAIN] (W/R)
     "artisan_bportal",        # Ball Portal [ARTISAN] (W/R)
     "mage_ignite",            # Ignite [MAGE] (W/R)
+    "spider_cocoon",          # Cocoon Shift [SPIDER] (W/R)
     "stealth_flash",          # Shadow Blink [STEALTH] (W/R)
     "warrior_flash",          # Flash Dash [WARRIOR] (W/R)
     "support_stun",           # Shock Stun [SUPPORT] (Q/E)
@@ -106,6 +110,12 @@ ABILITY_WEIGHTS = {
     # HOUNDMASTER
     "houndmaster_cage": 50,
     "houndmaster_wolf": 50,
+    # CAPTAIN
+    "captain_shot": 50,
+    "captain_slide": 50,
+    # SPIDER
+    "spider_web": 50,
+    "spider_cocoon": 50,
 }
 
 # Registry linking abilities to classes, slots, and game.cfg cooldown keys
@@ -134,6 +144,10 @@ ABILITIES_REGISTRY = [
     {"id": "grenadier_molotov", "name": "Molotov", "class": "GRENADIER", "slot": "W/R", "cd_key": "titan.molotov.cdms", "default_cd": 15.0},
     {"id": "houndmaster_cage", "name": "Deploy Kennel", "class": "HOUNDMASTER", "slot": "Q/E", "cd_key": "titan.cage.cdms", "default_cd": 10.0},
     {"id": "houndmaster_wolf", "name": "Unleash Pack", "class": "HOUNDMASTER", "slot": "W/R", "cd_key": "titan.wolf.cdms", "default_cd": 20.0},
+    {"id": "captain_shot", "name": "Rifle Shot", "class": "CAPTAIN", "slot": "Q/E", "cd_key": "titan.captain.shot.cdms", "default_cd": 1.58},
+    {"id": "captain_slide", "name": "Slide & Timebomb", "class": "CAPTAIN", "slot": "W/R", "cd_key": "titan.captain.slide.cdms", "default_cd": 16.0},
+    {"id": "spider_web", "name": "Web Trap", "class": "SPIDER", "slot": "Q/E", "cd_key": "titan.spider.web.cdms", "default_cd": 13.0},
+    {"id": "spider_cocoon", "name": "Cocoon Shift", "class": "SPIDER", "slot": "W/R", "cd_key": "titan.spider.cocoon.cdms", "default_cd": 18.0},
 ]
 
 
@@ -244,16 +258,24 @@ def load_ability_cooldowns(cfg: Dict[str, float]) -> Dict[str, float]:
     """Extract ability cooldowns (in seconds) dynamically from game.cfg."""
     cds = {}
     for ab in ABILITIES_REGISTRY:
+        ab_id = ab["id"]
         cd_key = ab["cd_key"]
         default_cd = ab["default_cd"]
-        if cd_key in cfg:
+
+        if ab_id == "captain_shot":
+            # Captain Rifle Shot effective CD across full 8-round clip + reload cycle
+            shot_cd = cfg.get("titan.captain.shot.cdms", 700.0) / 1000.0
+            reload_cd = cfg.get("titan.captain.reload.cdms", 7000.0) / 1000.0
+            clip_size = 8
+            cds[ab_id] = (clip_size * shot_cd + reload_cd) / clip_size
+        elif cd_key in cfg:
             raw_val = cfg[cd_key]
             if cd_key.endswith(".cdms"):
-                cds[ab["id"]] = raw_val / 1000.0
+                cds[ab_id] = raw_val / 1000.0
             else:
-                cds[ab["id"]] = raw_val
+                cds[ab_id] = raw_val
         else:
-            cds[ab["id"]] = default_cd
+            cds[ab_id] = default_cd
     return cds
 
 

@@ -17,7 +17,7 @@ import { drawBall, displayBallArrow } from './render/ball.js';
 import { drawGoals } from './render/goals.js';
 import { drawAllPseudotextures } from './render/pseudotextures.js';
 import { drawHud, drawHealthBars } from './render/hud.js';
-import { drawClassStatsOverlay, formatClassTooltip, CLASS_INFO, computeStatWithMastery, getActiveMasteries, getAbilityCd, loadGameConfig } from './render/classStats.js';
+import { drawClassStatsOverlay, formatClassTooltip, CLASS_INFO, computeStatWithMastery, getActiveMasteries, getAbilityCd, loadGameConfig, TAG_COLORS, TAG_ICONS, SKILL_RANKS } from './render/classStats.js';
 import { login, joinQueue, checkGame, register, startTutorial } from './network/auth.js';
 import { connectGame, disconnectGame } from './network/socket.js';
 import { warmServer } from './network/warm.js';
@@ -76,7 +76,6 @@ function startQueuePolling() {
       if (status && status !== 'WAITING' && status !== 'NOT QUEUED') {
         clearInterval(pollingInterval);
         pollingInterval = null;
-        console.log("Match found! Game ID:", status);
         gameState.gameID = status;
         gameState.phase = GamePhase.COUNTDOWN;
         connectGame(status);
@@ -107,7 +106,6 @@ async function checkAndRejoinActiveGame() {
         gameState.phase = GamePhase.WAIT_FOR_GAME;
         startQueuePolling();
       } else {
-        console.log("Active game found! Rejoining game ID:", status);
         gameState.gameID = status;
         gameState.phase = GamePhase.COUNTDOWN;
         connectGame(status);
@@ -119,6 +117,14 @@ async function checkAndRejoinActiveGame() {
 }
 
 function initUIListeners() {
+  // Session expired refresh button
+  const sessionRefreshBtn = document.getElementById('session-refresh-btn');
+  if (sessionRefreshBtn) {
+    sessionRefreshBtn.addEventListener('click', () => {
+      window.location.reload();
+    });
+  }
+
   // Login click
   const loginBtn = document.getElementById('login-btn');
   if (loginBtn) {
@@ -129,10 +135,8 @@ function initUIListeners() {
       
       try {
         if (errorDiv) errorDiv.style.display = 'none';
-        console.log("Logging in as:", email);
         const data = await login(email, pass);
         sessionStorage.setItem('username', email.split('@')[0]);
-        console.log("Login successful");
         gameState.phase = GamePhase.SHOW_GAME_MODES;
         checkAndRejoinActiveGame();
       } catch (err) {
@@ -190,7 +194,6 @@ function initUIListeners() {
       try {
         if (errorDiv) errorDiv.style.display = 'none';
         if (successDiv) successDiv.style.display = 'none';
-        console.log("Registering:", username);
         await register(email, username, pass);
         
         if (successDiv) {
@@ -353,7 +356,6 @@ function initUIListeners() {
         const playerIndex = getPlayerIndexForSize(selectedMatchSize);
         const code = `/${playerIndex}/0/1/10/2/9999/10/12`;
         const partnersCsv = partners.join(',');
-        console.log(`Joining Team Match Queue with size ${selectedMatchSize}v${selectedMatchSize}, class ${classSel}, partners: ${partnersCsv}`);
         await joinQueue(code, classSel, partnersCsv);
         gameState.is3v3 = true;
         gameState.phase = GamePhase.WAIT_FOR_GAME;
@@ -387,7 +389,6 @@ function initUIListeners() {
         if (lobbyStatus) lobbyStatus.textContent = 'FINDING PLAYERS...';
         
         const classSel = classSelect ? classSelect.value : 'WARRIOR';
-        console.log("Joining Scrimmage (1v1) Queue as class:", classSel);
         await joinQueue('/4/1/1/5/2/9999/10/12', classSel, ''); // index 4 is 1v1, goalieIndex 1 is off
         gameState.is3v3 = false;
         gameState.phase = GamePhase.WAIT_FOR_GAME;
@@ -403,7 +404,6 @@ function initUIListeners() {
   if (leaveBtn) {
     leaveBtn.addEventListener('click', async () => {
       try {
-        console.log("Leaving queue");
         stopQueuePolling();
         const token = sessionStorage.getItem('accessToken');
         await fetch('/pages/titanball/api/leave', {
@@ -422,7 +422,6 @@ function initUIListeners() {
   if (tutorialBtn) {
     tutorialBtn.addEventListener('click', async () => {
       try {
-        console.log("Starting Tutorial");
         gameState.is3v3 = false;
 
         // Pre-unlock narration audios to avoid browser autoplay policy blocks
@@ -460,7 +459,6 @@ function initUIListeners() {
   const logoutBtn = document.getElementById('logout-btn');
   if (logoutBtn) {
     logoutBtn.addEventListener('click', () => {
-      console.log("Logging out...");
       sessionStorage.removeItem('accessToken');
       sessionStorage.removeItem('refreshToken');
       sessionStorage.removeItem('username');
@@ -481,6 +479,15 @@ function initUIListeners() {
   const classDesc = document.getElementById('class-select-desc');
   if (classSelect) {
     const savedClass = sessionStorage.getItem('classSelection') || 'WARRIOR';
+    
+    // Cache all master options from HTML
+    const allClassOptions = Array.from(classSelect.options).map(opt => ({
+      value: opt.value,
+      text: opt.textContent,
+      title: formatClassTooltip(opt.value),
+      tags: (CLASS_INFO[opt.value.toUpperCase()] && CLASS_INFO[opt.value.toUpperCase()].tags) || []
+    }));
+
     classSelect.value = savedClass;
     gameState.controlsHeld.classSelection = savedClass;
     
@@ -500,6 +507,12 @@ function initUIListeners() {
         const spd = computeStatWithMastery('speed', info.rawSpeed, masteries.speed);
         const thr = computeStatWithMastery('throwPower', info.rawThrow, masteries.shot);
         const stl = computeStatWithMastery('stealRad', info.rawSteal, masteries.stealRadius);
+
+        const tagBadgesHtml = (info.tags || []).map(t => {
+          const color = TAG_COLORS[t] || '#4deeea';
+          const icon = TAG_ICONS[t] || '';
+          return `<span class="tag-badge" style="background:rgba(255,255,255,0.08);border-color:${color};color:${color};">${icon} ${t}</span>`;
+        }).join(' ');
 
         const abText = info.abilities.map(ab => {
           const cdInfo = getAbilityCd(ab, masteries);
@@ -532,7 +545,10 @@ function initUIListeners() {
         }
 
         classDesc.innerHTML = `
-          <div style="color:#ffd700;font-weight:bold;font-size:14px;margin-bottom:3px;">${info.name} <span style="color:#4deeea;font-size:11px;font-weight:normal;">[${info.role}]</span></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;flex-wrap:wrap;gap:4px;">
+            <div style="color:#ffd700;font-weight:bold;font-size:14px;">${info.name} <span style="color:#4deeea;font-size:11px;font-weight:normal;">[${info.role}]</span></div>
+            <div style="display:flex;flex-wrap:wrap;">${tagBadgesHtml}</div>
+          </div>
           <div style="margin-bottom:8px;color:#e0f0ec;font-size:12px;">${info.overview}</div>
           <div style="margin-bottom:8px;font-size:12px;">${abText}</div>
           
@@ -559,6 +575,59 @@ function initUIListeners() {
 
     _updateClassInfoDisplay(savedClass);
 
+    // Dynamic DDL filtering by category tag
+    function applyClassFilter(tag) {
+      const currentSelected = classSelect.value;
+      classSelect.innerHTML = '';
+      
+      let filteredOptions = allClassOptions.filter(opt => {
+        if (!tag || tag === 'ALL') return true;
+        return opt.tags && opt.tags.includes(tag);
+      });
+
+      if (tag && tag !== 'ALL' && SKILL_RANKS[tag]) {
+        const rankList = SKILL_RANKS[tag];
+        filteredOptions.sort((a, b) => {
+          const idxA = rankList.indexOf(a.value.toUpperCase());
+          const idxB = rankList.indexOf(b.value.toUpperCase());
+          const posA = idxA === -1 ? 999 : idxA;
+          const posB = idxB === -1 ? 999 : idxB;
+          return posA - posB;
+        });
+      }
+
+      filteredOptions.forEach(opt => {
+        const optEl = document.createElement('option');
+        optEl.value = opt.value;
+        optEl.textContent = opt.text;
+        optEl.title = opt.title;
+        classSelect.appendChild(optEl);
+      });
+
+      // Keep current selection if still visible, otherwise select first match
+      const stillVisible = filteredOptions.some(opt => opt.value === currentSelected);
+      if (stillVisible) {
+        classSelect.value = currentSelected;
+      } else if (filteredOptions.length > 0) {
+        classSelect.value = filteredOptions[0].value;
+        gameState.controlsHeld.classSelection = filteredOptions[0].value;
+        sessionStorage.setItem('classSelection', filteredOptions[0].value);
+        updatePlanBuildButtonVisibility();
+      }
+
+      _updateClassInfoDisplay(classSelect.value);
+    }
+
+    const filterChips = document.querySelectorAll('#class-filter-bar .filter-chip');
+    filterChips.forEach(chip => {
+      chip.addEventListener('click', () => {
+        filterChips.forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        const tag = chip.getAttribute('data-tag');
+        applyClassFilter(tag);
+      });
+    });
+
     classSelect.addEventListener('change', (e) => {
       if (classError) {
         classError.style.display = 'none';
@@ -566,13 +635,15 @@ function initUIListeners() {
       gameState.controlsHeld.classSelection = e.target.value;
       sessionStorage.setItem('classSelection', e.target.value);
       _updateClassInfoDisplay(e.target.value);
-      console.log("Selected Titan Class:", e.target.value);
       updatePlanBuildButtonVisibility();
     });
 
     // Re-render class info preview card & option tooltips immediately when masteries are saved
     window.addEventListener('masteriesUpdated', () => {
       _updateClassInfoDisplay(classSelect.value);
+      allClassOptions.forEach(opt => {
+        opt.title = formatClassTooltip(opt.value);
+      });
       Array.from(classSelect.options).forEach(opt => {
         opt.title = formatClassTooltip(opt.value);
       });
@@ -597,7 +668,6 @@ function handleTutorialNarration(game) {
   if (!game || !game.gameId || !game.gameId.startsWith('tutorial-')) return;
   const nPhase = game.narrationPhase || 0;
   if (nPhase !== lastNarrationPhase) {
-    console.log("Tutorial Narration Phase changed to:", nPhase);
     // Stop all narration audios
     for (let i = 0; i <= 4; i++) {
       const aud = AssetManager.audio['tut' + i];
@@ -967,10 +1037,12 @@ function drawGameEnded(ctx) {
   const team = myTeam === 'HOME' ? game.home : game.away;
   const enemy = myTeam === 'HOME' ? game.away : game.home;
   
-  const isDisconnect = game.phase !== 'ENDED';
+  const hasScores = team && enemy;
+  const isMatchEnded = game.phase === 'ENDED' || game.ended || (hasScores && (team.score !== enemy.score || team.score > 0 || enemy.score > 0));
+  const isDisconnect = !isMatchEnded;
   
   let resultKey = 'tie';
-  if (!isDisconnect && team && enemy) {
+  if (hasScores) {
     if (team.score > enemy.score) resultKey = 'victory';
     else if (team.score < enemy.score) resultKey = 'defeat';
   }
@@ -992,7 +1064,7 @@ function drawGameEnded(ctx) {
       const ry = 120;
       ctx.drawImage(img, rx, ry);
     } else {
-      ctx.fillStyle = 'white';
+      ctx.fillStyle = resultKey === 'victory' ? '#22c55e' : (resultKey === 'defeat' ? '#ef4444' : 'white');
       ctx.font = 'bold 70px Arial';
       ctx.textAlign = 'center';
       ctx.fillText(resultKey.toUpperCase(), 1920 / 2, 220);

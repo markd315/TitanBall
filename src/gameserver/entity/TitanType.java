@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.*;
 public enum TitanType   {
     GOALIE, WARRIOR, RANGER, DASHER, MARKSMAN, STEALTH, /*RECON,*/
     SUPPORT, ARTISAN, GOLEM, MAGE, BUILDER,
-    GRENADIER, HOUNDMASTER,
+    GRENADIER, HOUNDMASTER, CAPTAIN, SPIDER,
     ANY, NOT_GUARDIAN, ANY_ENTITY
 }
 

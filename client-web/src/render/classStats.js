@@ -92,10 +92,73 @@ export function getAbilityCd(ab, customMasteries = null) {
   };
 }
 
+export const CATEGORY_TAGS = ['Damage', 'Control', 'Support', 'Mobility', 'Scoring'];
+
+export const SKILL_RANKS = {
+  Damage: [
+    'WARRIOR',
+    'RANGER',
+    'MAGE',
+    'HOUNDMASTER',
+    'CAPTAIN',
+    'GRENADIER'
+  ],
+  Control: [
+    'GOALIE',
+    'SUPPORT',
+    'BUILDER',
+    'GOLEM',
+    'GRENADIER',
+    'SPIDER',
+    'RANGER',
+    'HOUNDMASTER'
+  ],
+  Support: [
+    'GOALIE',
+    'SUPPORT',
+    'MAGE',
+    'ARTISAN',
+    'BUILDER'
+  ],
+  Mobility: [
+    'DASHER',
+    'SPIDER',
+    'STEALTH',
+    'WARRIOR',
+    'CAPTAIN',
+    'SUPPORT'
+  ],
+  Scoring: [
+    'MARKSMAN',
+    'DASHER',
+    'GOLEM',
+    'STEALTH',
+    'SPIDER',
+    'ARTISAN'
+  ]
+};
+
+export const TAG_COLORS = {
+  Damage: '#ef4444',
+  Control: '#f97316',
+  Support: '#22c55e',
+  Mobility: '#38bdf8',
+  Scoring: '#c084fc'
+};
+
+export const TAG_ICONS = {
+  Damage: '💥',
+  Control: '🛑',
+  Support: '🛡️',
+  Mobility: '⚡',
+  Scoring: '🎯'
+};
+
 export const CLASS_INFO = {
   WARRIOR: {
     name: 'WARRIOR',
     role: 'DAMAGE / DEFENSE',
+    tags: ['Damage', 'Mobility'],
     overview: 'High mobility and close-quarters burst damage.',
     rawHp: 135,
     rawSpeed: 5.40,
@@ -114,6 +177,7 @@ export const CLASS_INFO = {
   RANGER: {
     name: 'RANGER',
     role: 'DAMAGE / DEFENSE',
+    tags: ['Damage', 'Control'],
     overview: 'Long-range skillshots and defensive spacing.',
     rawHp: 120,
     rawSpeed: 5.00,
@@ -132,6 +196,7 @@ export const CLASS_INFO = {
   MAGE: {
     name: 'MAGE',
     role: 'DAMAGE / UTILITY',
+    tags: ['Damage', 'Support'],
     overview: 'Portals and targeted burn damage.',
     rawHp: 110,
     rawSpeed: 4.84,
@@ -150,6 +215,7 @@ export const CLASS_INFO = {
   MARKSMAN: {
     name: 'MARKSMAN',
     role: 'SCORER / SNIPER',
+    tags: ['Scoring'],
     overview: 'Long-range shooting and passing specialist with slowing skillshots.',
     rawHp: 85,
     rawSpeed: 5.08,
@@ -168,6 +234,7 @@ export const CLASS_INFO = {
   DASHER: {
     name: 'DASHER',
     role: 'SCORER / SPEEDSTER',
+    tags: ['Scoring', 'Mobility'],
     overview: 'High-octane scorer with enhanced boost efficiency.',
     rawHp: 80,
     rawSpeed: 4.76,
@@ -186,7 +253,8 @@ export const CLASS_INFO = {
   GOLEM: {
     name: 'GOLEM',
     role: 'DEFENSE / SCORER',
-    overview: 'High-survivability tank with area disruption.',
+    tags: ['Scoring', 'Control'],
+    overview: 'High-survivability tank with area disruption and deep shot separation.',
     rawHp: 200,
     rawSpeed: 4.60,
     rawThrow: 1.45,
@@ -204,6 +272,7 @@ export const CLASS_INFO = {
   BUILDER: {
     name: 'BUILDER',
     role: 'UTILITY / DEFENSE',
+    tags: ['Control', 'Support'],
     overview: 'Build field hazards and defensive structures to control enemy pathing.',
     rawHp: 90,
     rawSpeed: 4.80,
@@ -222,6 +291,7 @@ export const CLASS_INFO = {
   SUPPORT: {
     name: 'SUPPORT',
     role: 'HEALING / UTILITY',
+    tags: ['Support', 'Control', 'Mobility'],
     overview: 'Heal allies and stun enemies to create team advantages.',
     rawHp: 85,
     rawSpeed: 5.40,
@@ -240,6 +310,7 @@ export const CLASS_INFO = {
   ARTISAN: {
     name: 'ARTISAN',
     role: 'UTILITY / TRICKSTER',
+    tags: ['Scoring', 'Support'],
     overview: 'Manipulates ball physics with ball-portals, magnetic vacuums, and custom spin shots.',
     rawHp: 90,
     rawSpeed: 5.24,
@@ -258,6 +329,7 @@ export const CLASS_INFO = {
   STEALTH: {
     name: 'STEALTH',
     role: 'SCORER / INFILTRATOR',
+    tags: ['Mobility', 'Scoring'],
     overview: 'Invisibility and strategic teleportation.',
     rawHp: 80,
     rawSpeed: 4.88,
@@ -276,6 +348,7 @@ export const CLASS_INFO = {
   GRENADIER: {
     name: 'GRENADIER',
     role: 'UTILITY / CROWD CONTROL',
+    tags: ['Control', 'Damage'],
     overview: 'Explosive ordnance, blinds, and persistent fire.',
     rawHp: 110,
     rawSpeed: 4.84,
@@ -294,6 +367,7 @@ export const CLASS_INFO = {
   HOUNDMASTER: {
     name: 'HOUNDMASTER',
     role: 'DAMAGE / SWARM',
+    tags: ['Damage', 'Control'],
     overview: 'Deployable kennel cages and biting attack hounds.',
     rawHp: 120,
     rawSpeed: 5.08,
@@ -309,9 +383,48 @@ export const CLASS_INFO = {
     ],
     passive: 'Deploys autonomous minion swarms to pressure opposing lines.'
   },
+  CAPTAIN: {
+    name: 'CAPTAIN',
+    role: 'DAMAGE / MOBILITY',
+    tags: ['Damage', 'Mobility'],
+    overview: 'High-mobility marksman with 8-round burst rifle and slide timebombs.',
+    rawHp: 125,
+    rawSpeed: 5.15,
+    rawThrow: 1.05,
+    rawSteal: 16,
+    hp: '125 HP',
+    speed: '5.15',
+    throwPower: '1.05 (332px)',
+    stealRad: '16px',
+    abilities: [
+      { slot: 'E', name: 'Rifle Shot', label: 'Ability 1', cdKey: 'titan.captain.shot.cdms', fallbackCd: 700, desc: 'Fires one shot from an 8-round clip dealing 5 damage (double to minions). Reloading clip takes 7s.' },
+      { slot: 'R', name: 'Slide & Timebomb', label: 'Ability 2', cdKey: 'titan.captain.slide.cdms', fallbackCd: 16000, desc: 'Slides to target location (range 120) and leaves a 3-second delayed timebomb dealing 50 damage in a 100x140 area.' }
+    ],
+    passive: 'High baseline mobility, burst damage clip with ammo pips, and delayed timebomb zoning.'
+  },
+  SPIDER: {
+    name: 'SPIDER',
+    role: 'UTILITY / CONTROLLER',
+    tags: ['Control', 'Mobility', 'Scoring'],
+    overview: 'Sticky web traps and teleporting ambush cocoon.',
+    rawHp: 95,
+    rawSpeed: 5.12,
+    rawThrow: 0.95,
+    rawSteal: 14,
+    hp: '95 HP',
+    speed: '5.12',
+    throwPower: '0.95 (300px)',
+    stealRad: '14px',
+    abilities: [
+      { slot: 'E', name: 'Web Trap', label: 'Ability 1', cdKey: 'titan.spider.web.cdms', fallbackCd: 13000, desc: 'Places a sticky web trap that slows enemies inside by 25% and captures/sticks the ball on entry.' },
+      { slot: 'R', name: 'Cocoon Shift', label: 'Ability 2', cdKey: 'titan.spider.cocoon.cdms', fallbackCd: 18000, desc: 'Cocoons self for 1 second, then teleports to the opposite side of a targeted hero\'s position at cast time.' }
+    ],
+    passive: 'Controls ball movement with webs and bypasses defenses via cocoon teleportation.'
+  },
   GOALIE: {
     name: 'GOALIE',
     role: 'DEFENSE / RTS COMMANDER',
+    tags: ['Control', 'Support'],
     overview: 'Protect your net with high resilience, direct minion lane targeting, and Guardian upgrades.',
     rawHp: 200,
     rawSpeed: 3.86,
@@ -330,10 +443,10 @@ export const CLASS_INFO = {
 };
 
 export const ROSTER_STATS = {
-  hp: [80, 80, 85, 85, 90, 90, 110, 110, 120, 120, 135, 200, 200],
-  speed: [3.86, 4.60, 4.76, 4.80, 4.84, 4.84, 4.88, 5.00, 5.08, 5.08, 5.24, 5.40, 5.40],
-  throwPower: [0.80, 0.80, 0.84, 0.84, 0.90, 1.00, 1.02, 1.09, 1.09, 1.15, 1.45, 1.50, 1.50],
-  stealRad: [9, 9, 11, 11, 11, 11, 12, 13, 13, 15, 18, 20, 25]
+  hp: [80, 80, 85, 85, 90, 90, 95, 110, 110, 120, 120, 125, 135, 200, 200],
+  speed: [3.86, 4.60, 4.76, 4.80, 4.84, 4.84, 4.88, 5.00, 5.08, 5.08, 5.12, 5.15, 5.24, 5.40, 5.40],
+  throwPower: [0.80, 0.80, 0.84, 0.84, 0.90, 0.95, 1.00, 1.02, 1.05, 1.09, 1.09, 1.15, 1.45, 1.50, 1.50],
+  stealRad: [9, 9, 11, 11, 11, 11, 12, 13, 13, 14, 15, 16, 18, 20, 25]
 };
 
 export function getTierColor(percentile) {

@@ -123,8 +123,16 @@ export function connectGame(gameID) {
     }
     
     gameState.game = update;
-    if (update.phase) {
-      gameState.phase = update.phase;
+    if (update.phase === 'ENDED' || update.ended) {
+      gameState.phase = 'ENDED';
+      if (gameState.game) {
+        gameState.game.phase = 'ENDED';
+        gameState.game.ended = true;
+      }
+    } else if (update.phase) {
+      if (gameState.phase !== 'ENDED') {
+        gameState.phase = update.phase;
+      }
     }
 
     if (gameState.controlsHeld.BOOST) {
@@ -167,21 +175,20 @@ export function connectGame(gameID) {
       clearInterval(updateInterval);
       updateInterval = null;
     }
-    //if (pingInterval) {
-    //  clearInterval(pingInterval);
-    //  pingInterval = null;
-    //}
     
     const wasIngame = (gameState.phase === 'INGAME' || gameState.phase === 'SCORE_FREEZE');
-    if (wasIngame && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+    const isGameFinished = gameState.phase === 'ENDED' || (gameState.game && gameState.game.ended);
+    if (wasIngame && !isGameFinished && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
       reconnectAttempts++;
       console.log(`WebSocket disconnected mid-game. Attempting reconnect ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS} in 500ms...`);
       setTimeout(() => {
         connectGame(gameID);
       }, 500);
     } else {
-      if (wasIngame) {
-        gameState.phase = 'ENDED';
+      gameState.phase = 'ENDED';
+      if (gameState.game && isGameFinished) {
+        gameState.game.phase = 'ENDED';
+        gameState.game.ended = true;
       }
       reconnectAttempts = 0;
     }

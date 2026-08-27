@@ -525,6 +525,9 @@ public class GameEngine extends Game {
     }
 
     public void serverDelayReset() {
+        if (this.ended) {
+            return;
+        }
         this.phase = GamePhase.SCORE_FREEZE;
         this.lastPossessed = null;
         for (GoalHoop goal : lowGoals) {
@@ -556,7 +559,9 @@ public class GameEngine extends Game {
             }
             lock();
             try {
-                finishGoalReset();
+                if (!this.ended) {
+                    finishGoalReset();
+                }
             } finally {
                 unlock();
             }
@@ -564,6 +569,9 @@ public class GameEngine extends Game {
     }
 
     private void finishGoalReset() {
+        if (this.ended) {
+            return;
+        }
         this.phase = GamePhase.INGAME;
         goalVisible = false;
         ballVisible = true;
@@ -1442,6 +1450,11 @@ public class GameEngine extends Game {
                 ((Tickable) e).tick(this);
             }
         }
+        for (Titan t : players) {
+            if (t.getType() == TitanType.CAPTAIN && t.ammo == 0 && !effectPool.hasEffect(t, EffectId.COOLDOWN_Q)) {
+                t.ammo = 8;
+            }
+        }
     }
 
     protected void updateBallIfPossessed() {
@@ -2050,6 +2063,18 @@ public class GameEngine extends Game {
         boolean homeDead = homeGoaliePurchasedUpgrades.contains("fortress.t4.deadwalls");
         boolean awayDead = awayGoaliePurchasedUpgrades.contains("fortress.t4.deadwalls");
 
+        for (Entity ent : wallEntities) {
+            if (ent instanceof gameserver.entity.minions.Web && ent.asBounds().intersects(ball.asBounds()) && !contactExemptBall()) {
+                xKickPow = 0;
+                yKickPow = 0;
+                if (vel != null) {
+                    vel[0] = 0;
+                    vel[1] = 0;
+                }
+                return;
+            }
+        }
+
         // 1. Check solid obstacle entities (Builder walls, Bastion walls, etc.)
         Optional<Box> coll = ball.collidesSolidWhich(this, wallEntities);
         if (coll.isPresent() && !contactExemptBall()) {
@@ -2361,6 +2386,7 @@ public class GameEngine extends Game {
             }
         }
         this.ended = true;
+        gameserver.gamemanager.ServerApplication.triggerGameExpiry();
     }
 
     void triggerTie(Team winner) {
@@ -2373,6 +2399,7 @@ public class GameEngine extends Game {
             }
         }
         this.ended = true;
+        gameserver.gamemanager.ServerApplication.triggerGameExpiry();
     }
 
     private java.util.Map<String, Long> goalieLastAttackTime = new java.util.HashMap<>();
@@ -3107,6 +3134,7 @@ protected void tickLaneMinions() {
             if (context.ended) {
                 System.out.println("suspending game thread");
                 exec.shutdown();
+                gameserver.gamemanager.ServerApplication.triggerGameExpiry();
             } else {
                 try {
                     context.gameTick();

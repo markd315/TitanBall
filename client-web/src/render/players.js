@@ -45,7 +45,7 @@ export function drawPlayers(ctx, game, camX, camY) {
 
         // Check if player is currently dead (server sets X/Y to 9499999 or health <= 0 or DEAD effect)
         const hasDeadEffect = game.effectPool && game.effectPool.effects.some(e => e.effect === 'DEAD' && e.on && e.on.id === t.id);
-        const isDead = t.actionState === 'DEAD' || t.health <= 0 || t.X > 50000 || hasDeadEffect;
+        const isDead = t.actionState === 'DEAD' || (t.health !== undefined && t.health <= 0 && (t.maxHealth === undefined || t.maxHealth > 0)) || t.X > 500000 || hasDeadEffect;
 
         if (isDead) {
             if (!pState.wasDead) {
@@ -87,6 +87,11 @@ export function drawPlayers(ctx, game, camX, camY) {
             continue;
         }
 
+        // If entity is offscreen due to anticheat censoring (e.g. X = 99999 for stealthed enemy), skip without death animation
+        if (t.X > 50000) {
+            continue;
+        }
+
         // Player is alive - update last known on-field coordinates and facing
         pState.wasDead = false;
         pState.deathTimestamp = 0;
@@ -97,11 +102,13 @@ export function drawPlayers(ctx, game, camX, camY) {
         pState.lastWidth = t.width || 70;
         pState.lastHeight = t.height || 70;
 
-        // Skip rendering if stealthed and not on our team (simplified invisible check)
-        const invisible = game.underControl && game.underControl.team !== t.team && 
-                          game.effectPool && game.effectPool.effects.some(e => e.effect === 'STEALTHED' && e.on && e.on.id === t.id) &&
-                          !game.effectPool.effects.some(e => e.effect === 'FLARE' && e.on && e.on.id === t.id);
-        if (invisible) continue;
+        // Check if stealthed
+        const isStealthed = game.effectPool && game.effectPool.effects.some(e => e.effect === 'STEALTHED' && e.on && e.on.id === t.id) &&
+                            !game.effectPool.effects.some(e => e.effect === 'FLARE' && e.on && e.on.id === t.id);
+
+        // Skip rendering if stealthed and on enemy team
+        const isEnemy = game.underControl && game.underControl.team !== t.team;
+        if (isStealthed && isEnemy) continue;
 
         let facing = pState.lastFacing;
 
@@ -120,93 +127,94 @@ export function drawPlayers(ctx, game, camX, camY) {
         } else if (t.actionState === 'A2') {
             triggerAction = 'atk2';
         }
-
-        // Check for newly applied cooldown effects on ALL players (enemies, allies, remote clients)
-        if (game.effectPool && game.effectPool.effects) {
-            for (let eIdx = 0; eIdx < game.effectPool.effects.length; eIdx++) {
-                const ef = game.effectPool.effects[eIdx];
-                if (ef.on && ef.on.id === t.id) {
-                    if (ef.effect === 'COOLDOWN_Q') {
-                        const cdKey = ef.id || ef.duration || 1;
-                        if (pState.lastCdQ !== cdKey && (ef.percentLeft === undefined || ef.percentLeft > 80)) {
-                            pState.lastCdQ = cdKey;
-                            triggerAction = 'atk1';
-                        }
-                    } else if (ef.effect === 'COOLDOWN_W') {
-                        const cdKey = ef.id || ef.duration || 1;
-                        if (pState.lastCdW !== cdKey && (ef.percentLeft === undefined || ef.percentLeft > 80)) {
-                            pState.lastCdW = cdKey;
-                            triggerAction = 'atk2';
-                        }
-                    } else if (ef.effect === 'COOLDOWN_STEAL') {
-                        const cdKey = ef.id || ef.duration || 1;
-                        if (pState.lastCdSteal !== cdKey && (ef.percentLeft === undefined || ef.percentLeft > 80)) {
-                            pState.lastCdSteal = cdKey;
-                            triggerAction = 'steal';
-                        }
-                    }
-                }
-            }
-        }
-
-        // Clean up lastCd tracking when effects expire so repeated casts trigger animations
-        if (pState.lastCdQ && (!game.effectPool || !game.effectPool.effects.some(e => e.effect === 'COOLDOWN_Q' && e.on && e.on.id === t.id))) {
-            pState.lastCdQ = null;
-        }
-        if (pState.lastCdW && (!game.effectPool || !game.effectPool.effects.some(e => e.effect === 'COOLDOWN_W' && e.on && e.on.id === t.id))) {
-            pState.lastCdW = null;
-        }
-        if (pState.lastCdSteal && (!game.effectPool || !game.effectPool.effects.some(e => e.effect === 'COOLDOWN_STEAL' && e.on && e.on.id === t.id))) {
-            pState.lastCdSteal = null;
-        }
-
-        // Check if player just released the ball (throw/shot/pass)
-        if (pState.prevPossession === 1 && t.possession === 0 && t.actionState !== 'DEAD' && t.health > 0) {
-            triggerAction = 'shot';
-        }
-        pState.prevPossession = t.possession;
-
-        if (isControlled && gameState.controlsHeld) {
-            // Client-side local prediction for controlled player
-            if (gameState.controlsHeld.E) {
-                triggerAction = 'atk1';
-            } else if (gameState.controlsHeld.R) {
-                triggerAction = 'atk2';
-            } else if (gameState.controlsHeld.STEAL) {
-                triggerAction = 'steal';
-            } else if (gameState.controlsHeld.shotBtn) {
-                triggerAction = 'shot';
-            } else if (gameState.controlsHeld.lobBtn) {
-                triggerAction = 'pass';
-            }
-        }
-
-        if (triggerAction) {
-            pState.activeAction = triggerAction;
-            pState.actionStartTime = now;
-        } else if (pState.activeAction && (now - pState.actionStartTime >= ACTION_HOLD_MS)) {
-            pState.activeAction = null;
-        }
-
-        if (pState.prevX === undefined) {
-            pState.prevX = t.X;
-            pState.prevY = t.Y;
-            pState.lastMovedTime = 0;
-        }
-
-        const distMoved = Math.hypot(t.X - pState.prevX, t.Y - pState.prevY);
-        if (distMoved > 0.5) {
-            pState.lastMovedTime = now;
-            pState.prevX = t.X;
-            pState.prevY = t.Y;
-        }
-
+ 
+         // Check for newly applied cooldown effects on ALL players (enemies, allies, remote clients)
+         if (game.effectPool && game.effectPool.effects) {
+             for (let eIdx = 0; eIdx < game.effectPool.effects.length; eIdx++) {
+                 const ef = game.effectPool.effects[eIdx];
+                 if (ef.on && ef.on.id === t.id) {
+                     if (ef.effect === 'COOLDOWN_Q') {
+                         const cdKey = ef.id || ef.duration || 1;
+                         if (pState.lastCdQ !== cdKey && (ef.percentLeft === undefined || ef.percentLeft > 80)) {
+                             pState.lastCdQ = cdKey;
+                             triggerAction = 'atk1';
+                         }
+                     } else if (ef.effect === 'COOLDOWN_W') {
+                         const cdKey = ef.id || ef.duration || 1;
+                         if (pState.lastCdW !== cdKey && (ef.percentLeft === undefined || ef.percentLeft > 80)) {
+                             pState.lastCdW = cdKey;
+                             triggerAction = 'atk2';
+                         }
+                     } else if (ef.effect === 'COOLDOWN_STEAL') {
+                         const cdKey = ef.id || ef.duration || 1;
+                         if (pState.lastCdSteal !== cdKey && (ef.percentLeft === undefined || ef.percentLeft > 80)) {
+                             pState.lastCdSteal = cdKey;
+                             triggerAction = 'steal';
+                         }
+                     }
+                 }
+             }
+         }
+ 
+         // Clean up lastCd tracking when effects expire so repeated casts trigger animations
+         if (pState.lastCdQ && (!game.effectPool || !game.effectPool.effects.some(e => e.effect === 'COOLDOWN_Q' && e.on && e.on.id === t.id))) {
+             pState.lastCdQ = null;
+         }
+         if (pState.lastCdW && (!game.effectPool || !game.effectPool.effects.some(e => e.effect === 'COOLDOWN_W' && e.on && e.on.id === t.id))) {
+             pState.lastCdW = null;
+         }
+         if (pState.lastCdSteal && (!game.effectPool || !game.effectPool.effects.some(e => e.effect === 'COOLDOWN_STEAL' && e.on && e.on.id === t.id))) {
+             pState.lastCdSteal = null;
+         }
+ 
+         // Check if player just released the ball (throw/shot/pass)
+         if (pState.prevPossession === 1 && t.possession === 0 && t.actionState !== 'DEAD' && t.health > 0) {
+             triggerAction = 'shot';
+         }
+         pState.prevPossession = t.possession;
+ 
+         if (isControlled && gameState.controlsHeld) {
+             // Client-side local prediction for controlled player
+             if (gameState.controlsHeld.E) {
+                 triggerAction = 'atk1';
+             } else if (gameState.controlsHeld.R) {
+                 triggerAction = 'atk2';
+             } else if (gameState.controlsHeld.STEAL) {
+                 triggerAction = 'steal';
+             } else if (gameState.controlsHeld.shotBtn) {
+                 triggerAction = 'shot';
+             } else if (gameState.controlsHeld.lobBtn) {
+                 triggerAction = 'pass';
+             }
+         }
+ 
+         if (triggerAction) {
+             pState.activeAction = triggerAction;
+             pState.actionStartTime = now;
+         } else if (pState.activeAction && (now - pState.actionStartTime >= ACTION_HOLD_MS)) {
+             pState.activeAction = null;
+         }
+ 
+         if (pState.prevX === undefined) {
+             pState.prevX = t.X;
+             pState.prevY = t.Y;
+             pState.lastMovedTime = 0;
+         }
+ 
+         const distMoved = Math.hypot(t.X - pState.prevX, t.Y - pState.prevY);
+         if (distMoved > 0.5) {
+             pState.lastMovedTime = now;
+             pState.prevX = t.X;
+             pState.prevY = t.Y;
+         }
         // Maintain moving state across the 25-50ms packet interval (150ms window) so 60fps rendering is seamless
         const isMoving = (now - pState.lastMovedTime < 150) || (t.runningFrame === 1 || t.runningFrame === 2);
 
         let action = 'stand';
         if (pState.activeAction) {
             action = pState.activeAction;
+        } else if (isStealthed) {
+            action = 'atk1'; // Phasing / stealth sprite frame
         } else if (t.actionState === 'IDLE') {
             if (isMoving && (now - pState.lastMovedTime < 200)) {
                 // Purely client-side smooth alternation between runA and runB (180ms each)
@@ -308,28 +316,48 @@ export function drawPlayers(ctx, game, camX, camY) {
                 playersTintCanvas.width = width;
                 playersTintCanvas.height = height;
                 const tCtx = playersTintCanvas.getContext('2d');
+                tCtx.globalCompositeOperation = 'source-over';
                 tCtx.clearRect(0, 0, width, height);
                 tCtx.drawImage(img, 0, 0, width, height);
                 tCtx.globalCompositeOperation = 'source-in';
-                tCtx.fillStyle = color;
-                tCtx.fillRect(0, 0, width, height);
                 
-                // Draw original with pulsing outer glow drop-shadow
+                const rgbMap = {
+                    yellow: '255, 235, 59',
+                    green: '34, 197, 94',
+                    red: '239, 68, 68'
+                };
+                const rgb = rgbMap[color] || '255, 235, 59';
+                
+                // Gradient tint: 70% strength at bottom, fading to 20% at top
+                const grad = tCtx.createLinearGradient(0, 0, 0, height);
+                grad.addColorStop(0, `rgba(${rgb}, 0.20)`);
+                grad.addColorStop(1, `rgba(${rgb}, 0.70)`);
+                tCtx.fillStyle = grad;
+                tCtx.fillRect(0, 0, width, height);
+                tCtx.globalCompositeOperation = 'source-over';
+                
+                // Draw base player sprite
                 ctx.save();
-                const time = Date.now() / 200;
-                const glowSize = 4 + 4 * Math.sin(time);
-                ctx.filter = `drop-shadow(0px 0px ${glowSize}px ${color})`;
+                if (isStealthed) {
+                    ctx.globalAlpha = 0.55;
+                }
                 ctx.drawImage(img, drawX, drawY, width, height);
                 ctx.restore();
                 
-                // Draw pulsing tinted image on top to modify sprite texture color/hue
-                const pulse = 0.3 + 0.2 * Math.sin(time); // ranges between 0.1 and 0.5
+                // Draw pulsing gradient tint on top to subtly highlight controlled character
+                const time = Date.now() / 200;
+                const pulse = (0.3 + 0.2 * Math.sin(time)) * (isStealthed ? 0.6 : 1.0);
                 ctx.save();
                 ctx.globalAlpha = pulse;
                 ctx.drawImage(playersTintCanvas, drawX, drawY, width, height);
                 ctx.restore();
             } else {
+                ctx.save();
+                if (isStealthed) {
+                    ctx.globalAlpha = 0.55;
+                }
                 ctx.drawImage(img, drawX, drawY, width, height);
+                ctx.restore();
             }
         } else {
             // Log sprite miss — throttled to avoid spam

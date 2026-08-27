@@ -149,7 +149,6 @@ export function initMobileControls() {
         if (current === 'LEFT') next = 'RIGHT';
         else if (current === 'RIGHT') next = 'SHOT';
         gameState.controlsHeld.artisanShot = next;
-        console.log(`Artisan shot mode cycled to: ${next}`);
       }
     }
     gameState.controlsHeld.E = true;

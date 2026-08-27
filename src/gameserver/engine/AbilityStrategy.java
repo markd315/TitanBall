@@ -479,17 +479,210 @@ public class AbilityStrategy    {
                     eff = new EmptyEffect((int) (c.STOLEN_STUN * caster.durationsFactor), tip, EffectId.STEAL);
                     context.effectPool.addStackingEffect(caster, eff);
 
-                    context.ball.X = caster.X + caster.centerDist - context.ball.centerDist;
-                    context.ball.Y = caster.Y + caster.centerDist - context.ball.centerDist;
-                    caster.actionState = Titan.TitanState.IDLE;
-                    caster.actionFrame = 0;
-                    caster.possession = 1;
-                    return true;
+                        context.ball.X = caster.X + caster.centerDist - context.ball.centerDist;
+                        context.ball.Y = caster.Y + caster.centerDist - context.ball.centerDist;
+                        caster.actionState = Titan.TitanState.IDLE;
+                        caster.actionFrame = 0;
+                        caster.possession = 1;
+                        return true;
+                    }
+                }
+            }
+            caster.pushMove();
+        }
+        return false;
+    }
+
+    public void captainShoot() {
+        if (caster.ammo <= 0) {
+            return;
+        }
+        int range = (int) (c.getI("titan.captain.shot.range") * caster.rangeFactor);
+        double dmgChamp = 5.0 * caster.damageFactor;
+        double dmgMinion = 10.0 * caster.damageFactor;
+        shape = new CollisionMath.Bounds(0, 0, 24, 24);
+        sel = new Selector(shape, SelectorOffset.MOUSE_CENTER, range);
+        appliedTo = new Targeting(sel, notFriendly, mouseNear, context)
+                .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
+
+        for (Entity e : appliedTo) {
+            context.effectPool.addStackingEffect(caster, new EmptyEffect(5000, e, EffectId.ATTACKED));
+            if (e instanceof Titan) {
+                e.damage(context, dmgChamp);
+            } else {
+                e.damage(context, dmgMinion);
+            }
+        }
+
+        caster.ammo--;
+        if (caster.ammo > 0) {
+            goOnCooldown(caster, "titan.captain.shot.cdms", 'Q');
+        } else {
+            goOnCooldown(caster, "titan.captain.reload.cdms", 'Q');
+        }
+    }
+
+    public void captainSlideBomb() {
+        int maxDist = (int) (c.getI("titan.captain.slide.range") * caster.rangeFactor);
+        goOnCooldown(caster, "titan.captain.slide.cdms", 'W');
+
+        // Drop 3s timebomb at origin
+        context.entityPool.add(new Bomb(caster, (int) caster.X, (int) caster.Y, context));
+
+        // Slide toward target direction up to maxDist
+        double ang = Util.degreesFromCoords(x - caster.X - 35, y - caster.Y - 35);
+        double dx = Math.cos(Math.toRadians(ang));
+        double dy = Math.sin(Math.toRadians(ang));
+        int limit = 0;
+        while (limit < maxDist) {
+            if (!caster.collidesSolid(context, context.allSolids, 0, (int) dy)) {
+                caster.translateBounded(context, 0, dy);
+            }
+            if (!caster.collidesSolid(context, context.allSolids, (int) dx, 0)) {
+                caster.translateBounded(context, dx, 0);
+            }
+            limit++;
+        }
+    }
+
+    public void spiderWeb() {
+        int range = (int) (c.getI("titan.spider.web.range") * caster.rangeFactor);
+        shape = new CollisionMath.Bounds(0, 0, 110, 110);
+        sel = new Selector(shape, SelectorOffset.MOUSE_CENTER, range);
+        sel.select(Collections.EMPTY_SET, x, y, caster);
+        corners = sel.getLatestColliderBounds();
+        if (corners.getWidth() > 0 && inBoundsNotRedzone(corners)) {
+            goOnCooldown(caster, "titan.spider.web.cdms", 'Q');
+            context.entityPool.add(new Web(caster, context, (int) corners.getX(), (int) corners.getY()));
+        }
+    }
+
+    public void spiderCocoon() {
+        int range = (int) (c.getI("titan.spider.cocoon.range") * caster.rangeFactor);
+        shape = new CollisionMath.Bounds(0, 0, 20, 20);
+        sel = new Selector(shape, SelectorOffset.MOUSE_CENTER, range);
+        appliedTo = new Targeting(sel, all, nearest, context)
+                .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
+
+        Entity targetHero = null;
+        for (Entity e : appliedTo) {
+            if (e instanceof Titan && !e.id.equals(caster.id)) {
+                targetHero = e;
+                break;
+            }
+        }
+        if (targetHero == null) {
+            return;
+        }
+
+        goOnCooldown(caster, "titan.spider.cocoon.cdms", 'W');
+        caster.actionState = Titan.TitanState.A2;
+        context.effectPool.addUniqueEffect(new EmptyEffect(1000, caster, EffectId.ROOT), context);
+        final double origX = caster.X + 35.0;
+        final double origY = caster.Y + 35.0;
+        final double targetCastX = targetHero.X + 35.0;
+        final double targetCastY = targetHero.Y + 35.0;
+
+        double dx = targetCastX - origX;
+        double dy = targetCastY - origY;
+        double dist = Math.hypot(dx, dy);
+        if (dist < 1.0) {
+            dx = 1.0;
+            dy = 0.0;
+            dist = 1.0;
+        }
+        double rawDestX = targetCastX + (dx / dist) * 70.0 - 35.0;
+        double rawDestY = targetCastY + (dy / dist) * 70.0 - 35.0;
+
+        final double destX = Math.max(context.c.MIN_X, Math.min(context.c.MAX_X - 70, rawDestX));
+        final double destY = Math.max(context.c.MIN_Y, Math.min(context.c.MAX_Y - 70, rawDestY));
+        final double finalDx = dx;
+        final double finalDy = dy;
+
+        context.effectPool.addStackingEffect(new CallbackEffect(1000, caster, EffectId.COOLDOWN_W, () -> {
+            double finalX = destX;
+            double finalY = destY;
+
+            // Find overlapping player if any to determine preferred push-out direction
+            double prefAngle = Math.atan2(finalDy, finalDx);
+            if (context.players != null) {
+                for (Titan other : context.players) {
+                    if (other != null && other.health > 0 && !other.id.equals(caster.id)) {
+                        int otherW = other.width > 0 ? other.width : 70;
+                        int otherH = other.height > 0 ? other.height : 70;
+                        if (finalX + 70 > other.X && finalX < other.X + otherW &&
+                            finalY + 70 > other.Y && finalY < other.Y + otherH) {
+                            double pdx = (finalX + 35.0) - (other.X + otherW / 2.0);
+                            double pdy = (finalY + 35.0) - (other.Y + otherH / 2.0);
+                            if (Math.hypot(pdx, pdy) > 0.1) {
+                                prefAngle = Math.atan2(pdy, pdx);
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+
+            double[] safePos = findClosestUnoccupiedPosition(finalX, finalY, caster, context, prefAngle);
+            caster.setX((int) safePos[0]);
+            caster.setY((int) safePos[1]);
+            caster.actionState = Titan.TitanState.IDLE;
+        }));
+    }
+
+    private boolean isPositionOccupied(double testX, double testY, Titan caster, GameEngine context) {
+        if (testX < context.c.MIN_X || testX > context.c.MAX_X - 70 ||
+            testY < context.c.MIN_Y || testY > context.c.MAX_Y - 70) {
+            return true;
+        }
+        double prevX = caster.X;
+        double prevY = caster.Y;
+        caster.setX((int) testX);
+        caster.setY((int) testY);
+
+        boolean collides = false;
+        if (caster.collidesSolid(context, context.allSolids)) {
+            collides = true;
+        } else if (context.players != null) {
+            for (Titan other : context.players) {
+                if (other != null && other.health > 0 && !other.id.equals(caster.id)) {
+                    int otherW = other.width > 0 ? other.width : 70;
+                    int otherH = other.height > 0 ? other.height : 70;
+                    if (testX + 70 > other.X && testX < other.X + otherW &&
+                        testY + 70 > other.Y && testY < other.Y + otherH) {
+                        collides = true;
+                        break;
+                    }
                 }
             }
         }
-        caster.pushMove();
+        caster.setX((int) prevX);
+        caster.setY((int) prevY);
+        return collides;
     }
-    return false;
-}
+
+    private double[] findClosestUnoccupiedPosition(double initialX, double initialY, Titan caster, GameEngine context, double prefAngle) {
+        if (!isPositionOccupied(initialX, initialY, caster, context)) {
+            return new double[]{initialX, initialY};
+        }
+
+        for (int dist = 5; dist <= 300; dist += 5) {
+            for (int i = 0; i < 16; i++) {
+                int sign = (i % 2 == 0) ? 1 : -1;
+                double angleOffset = sign * (i / 2) * (Math.PI / 8.0);
+                double angle = prefAngle + angleOffset;
+
+                double testX = initialX + Math.cos(angle) * dist;
+                double testY = initialY + Math.sin(angle) * dist;
+
+                testX = Math.max(context.c.MIN_X, Math.min(context.c.MAX_X - 70, testX));
+                testY = Math.max(context.c.MIN_Y, Math.min(context.c.MAX_Y - 70, testY));
+
+                if (!isPositionOccupied(testX, testY, caster, context)) {
+                    return new double[]{testX, testY};
+                }
+            }
+        }
+        return new double[]{initialX, initialY};
+    }
 }

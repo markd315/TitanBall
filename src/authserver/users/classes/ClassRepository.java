@@ -10,5 +10,6 @@ public interface ClassRepository extends Repository<ClassStat, Integer> {
     void save(ClassStat classStats) throws DataAccessException;
     void delete(ClassStat classStats) throws DataAccessException;
     ClassStat findByRole(String className) throws DataAccessException;
+    ClassStat findFirstByRole(String className) throws DataAccessException;
     Optional<ClassStat> findById(Long id);
 }

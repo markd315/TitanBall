@@ -235,6 +235,63 @@
         border-radius: 10px;
         border: 1px solid rgba(45, 140, 100, 0.2);
       }
+      .class-filter-bar {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: clamp(4px, 1vh, 8px);
+        margin-top: 6px;
+        margin-bottom: 8px;
+        width: 100%;
+        box-sizing: border-box;
+      }
+      .filter-chip {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(45, 140, 100, 0.3);
+        border-radius: 12px;
+        padding: clamp(6px, 1vh, 9px) clamp(6px, 1vw, 10px);
+        color: #cbd5e1;
+        font-size: clamp(11px, 1.4vh, 13px);
+        font-weight: 700;
+        font-family: inherit;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        user-select: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        min-height: 32px;
+        box-sizing: border-box;
+        touch-action: manipulation;
+      }
+      .filter-chip:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 159, 28, 0.5);
+        color: #ffffff;
+        transform: translateY(-1px);
+      }
+      .filter-chip:active {
+        transform: translateY(0);
+      }
+      .filter-chip.active {
+        background: linear-gradient(135deg, rgba(255, 159, 28, 0.3), rgba(230, 92, 0, 0.45));
+        border-color: #ff9f1c;
+        color: #ffd700;
+        box-shadow: 0 0 12px rgba(255, 159, 28, 0.35);
+      }
+      .tag-badge {
+        display: inline-block;
+        font-size: 11px;
+        font-weight: bold;
+        padding: 2px 7px;
+        border-radius: 10px;
+        margin-right: 5px;
+        margin-bottom: 4px;
+        border: 1px solid;
+      }
       .stat-label {
         font-weight: 600;
         color: #a7f3d0;
@@ -654,6 +711,14 @@
           </div>
           <div class="input-group">
             <label for="class-select">Select Titan Class</label>
+            <div id="class-filter-bar" class="class-filter-bar">
+              <button type="button" class="filter-chip active" data-tag="ALL">All</button>
+              <button type="button" class="filter-chip" data-tag="Damage">💥 Damage</button>
+              <button type="button" class="filter-chip" data-tag="Control">🛑 Control</button>
+              <button type="button" class="filter-chip" data-tag="Support">🛡️ Support</button>
+              <button type="button" class="filter-chip" data-tag="Mobility">⚡ Mobility</button>
+              <button type="button" class="filter-chip" data-tag="Scoring">🎯 Scoring</button>
+            </div>
             <select id="class-select">
               <option value="WARRIOR">Warrior (Melee, Slash & Dash)</option>
               <option value="RANGER">Ranger (Ranged Archer & Knockback)</option>
@@ -667,6 +732,8 @@
               <option value="BUILDER">Builder (Traps & Wall Creator)</option>
               <option value="ARTISAN">Artisan (Ball Portals & Gravity Magnet)</option>
               <option value="GRENADIER">Grenadier (Flashbang Stun & AoE Fire)</option>
+              <option value="CAPTAIN">Captain (Burst Rifle & Slide Timebomb)</option>
+              <option value="SPIDER">Spider (Web Traps & Cocoon Teleport)</option>
               <option value="GOALIE">Goalie (RTS Lane Commander)</option>
             </select>
             <div id="class-select-desc" style="margin-top: 8px; padding: 10px 12px; background: rgba(16, 36, 30, 0.7); border: 1px solid rgba(255, 215, 0, 0.3); border-radius: 6px; font-size: 12px; line-height: 1.4; color: #d0e5dd; text-align: left;"></div>
@@ -747,11 +814,11 @@
         </div>
 
         <!-- Session Expired Overlay -->
-        <div id="session-expired-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 99999; flex-direction: column; align-items: center; justify-content: center; color: white; background: rgba(10, 10, 18, 0.95); backdrop-filter: blur(12px); font-family: 'Outfit', sans-serif;">
-          <div style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.15); padding: 40px; border-radius: 16px; text-align: center; max-width: 500px; box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+        <div id="session-expired-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 99999; pointer-events: auto; flex-direction: column; align-items: center; justify-content: center; color: white; background: rgba(10, 10, 18, 0.95); backdrop-filter: blur(12px); font-family: 'Outfit', sans-serif;">
+          <div style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.15); padding: 40px; border-radius: 16px; text-align: center; max-width: 500px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); pointer-events: auto;">
             <h2 style="color: #ff9f1c; margin-bottom: 20px; font-size: 2.2rem; letter-spacing: 1px; font-weight: 800;">SESSION EXPIRED</h2>
             <p style="color: #e2e8f0; font-size: 1.1rem; margin-bottom: 30px; line-height: 1.6;">You have been idle on this screen for over 4 hours. To conserve server resources, please refresh the page to continue.</p>
-            <button onclick="window.location.reload()" style="background: #ff9f1c; color: #0f172a; border: none; padding: 12px 30px; font-size: 1.1rem; font-weight: bold; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 15px rgba(255,159,28,0.4); transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='scale(1.05)';" onmouseout="this.style.transform='scale(1)';">REFRESH PAGE</button>
+            <button id="session-refresh-btn" onclick="window.location.reload()" style="background: #ff9f1c; color: #0f172a; border: none; padding: 12px 30px; font-size: 1.1rem; font-weight: bold; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 15px rgba(255,159,28,0.4); transition: transform 0.2s, box-shadow 0.2s; pointer-events: auto;" onmouseover="this.style.transform='scale(1.05)';" onmouseout="this.style.transform='scale(1)';">REFRESH PAGE</button>
           </div>
         </div>
 

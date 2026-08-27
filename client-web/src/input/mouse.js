@@ -49,11 +49,9 @@ function handleNodeClick(game, activeKey, mx, my) {
     const purchased = def.kind === 'cost' && treeState.purchased.has(nodeKey);
 
     if (!unlocked) {
-        console.log(`[locked] ${nodeKey}`);
         return true;
     }
     if (purchased) {
-        console.log(`[purchased] ${nodeKey}`);
         return true;
     }
 
@@ -64,7 +62,6 @@ function handleNodeClick(game, activeKey, mx, my) {
     // Game.handleGoalieTreePurchase, gated by the CHECK_BALANCE feature
     // toggle in costing.cfg.
     gameState.pendingGoalieBuy = { tree: activeKey, nodeKey };
-    console.log(`[buy] requested ${nodeKey}`);
     return true;
 }
 

@@ -130,7 +130,6 @@ export const AssetManager = {
     loadUnifiedSprite(cName, src) {
         const img = new Image();
         img.onload = () => {
-            console.log(`AssetManager: Unified spritesheet loaded for ${cName} from ${src}`);
             processUnifiedSpriteSheet(cName, img);
         };
         img.onerror = () => {
@@ -146,7 +145,8 @@ export const AssetManager = {
 
 const classNames = [
     'GOALIE', 'WARRIOR', 'RANGER', 'DASHER', 'MARKSMAN', 'STEALTH',
-    'SUPPORT', 'ARTISAN', 'GOLEM', 'MAGE', 'BUILDER', 'GRENADIER', 'HOUNDMASTER'
+    'SUPPORT', 'ARTISAN', 'GOLEM', 'MAGE', 'BUILDER', 'GRENADIER', 'HOUNDMASTER',
+    'CAPTAIN', 'SPIDER'
 ];
 
 function getDirectoryName(cName) {
@@ -189,6 +189,8 @@ export function initAssets() {
     AssetManager.loadSprite('trap1', 'res/Court/trap.png');
     AssetManager.loadSprite('trap2', 'res/Court/trap2.png');
     AssetManager.loadSprite('vines', 'res/Court/vines.png');
+    AssetManager.loadSprite('bomb', 'res/Court/bomb.png');
+    AssetManager.loadSprite('web', 'res/Court/web.png');
     AssetManager.loadSprite('portal1', 'res/Court/portal.png');
     AssetManager.loadSprite('portal2', 'res/Court/portal2.png');
     AssetManager.loadSprite('portalcd', 'res/Court/portalcd.png');
@@ -210,7 +212,14 @@ export function initAssets() {
     AssetManager.loadSprite('wolf3R', 'res/Wolf/wolf3R.png');
     AssetManager.loadSprite('wolf5R', 'res/Wolf/wolf5R.png');
 
-    // Load classes
+    const UNIFIED_CLASSES = new Set([
+        'WARRIOR', 'RANGER', 'DASHER', 'MARKSMAN', 'STEALTH',
+        'SUPPORT', 'ARTISAN', 'GOLEM', 'MAGE', 'BUILDER', 'GRENADIER', 'HOUNDMASTER',
+        'CAPTAIN', 'SPIDER'
+    ]);
+
+    const GUARDIAN_ANIMS = ['standL', 'standR', 'atk1L', 'atk1R', 'atk2L', 'atk2R'];
+
     const ANIM_SETS = {
         stand: ['standL', 'standR'],
         run:   ['runAL', 'runAR', 'runBL', 'runBR'],
@@ -225,13 +234,17 @@ export function initAssets() {
         const dir = getDirectoryName(cName);
         const base = `res/${dir}/`;
 
-        // 1. Fallback: load separate individual animation files
-        for (const suffix of Object.values(ANIM_SETS).flat()) {
-            AssetManager.loadSprite(`${cName}_${suffix}`, base + `${suffix}.png`);
+        if (UNIFIED_CLASSES.has(cName)) {
+            AssetManager.loadUnifiedSprite(cName, base + 'unified.png');
+        } else if (cName === 'GOALIE') {
+            for (const suffix of GUARDIAN_ANIMS) {
+                AssetManager.loadSprite(`${cName}_${suffix}`, base + `${suffix}.png`);
+            }
+        } else {
+            for (const suffix of Object.values(ANIM_SETS).flat()) {
+                AssetManager.loadSprite(`${cName}_${suffix}`, base + `${suffix}.png`);
+            }
         }
-
-        // 2. Priority: load unified 1x8 sprite sheet at runtime if available
-        AssetManager.loadUnifiedSprite(cName, base + 'unified.png');
     }
 
     // in initAssets():

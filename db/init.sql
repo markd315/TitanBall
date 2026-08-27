@@ -49,7 +49,7 @@ CREATE TABLE users (
 -- Per-class aggregate stats
 CREATE TABLE classstat (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    role VARCHAR(32),
+    role VARCHAR(32) UNIQUE,
     wins INT DEFAULT 0,
     losses INT DEFAULT 0,
     ties INT DEFAULT 0,
@@ -131,8 +131,8 @@ INSERT INTO users (id, username, email, password, role, created, subexpiration, 
 (20,  'pam',         'pam@gmail.com',         '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.', 'USER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1),
 (21,  'tim',         'tim@gmail.com',         '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.', 'USER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1),
 (22,  'brianna',         'brianna@gmail.com',         '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.', 'USER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1),
-(23,  'xheni',         'xheni@gmail.com',         '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.', 'USER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1);
-(24,  'christian',         'christian@gmail.com',         '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.', 'USER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1);
+(23,  'xheni',         'xheni@gmail.com',         '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.', 'USER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1),
+(25,  'christian',         'christian@gmail.com',         '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.', 'USER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1);
 
 
 
@@ -141,4 +141,4 @@ INSERT INTO users (id, username, email, password, role, created, subexpiration, 
 INSERT INTO classstat (role) VALUES
 ('GOALIE'), ('WARRIOR'), ('RANGER'), ('DASHER'), ('MARKSMAN'),
 ('STEALTH'), ('SUPPORT'), ('ARTISAN'), ('GOLEM'), ('MAGE'),
-('BUILDER'), ('GRENADIER'), ('HOUNDMASTER');
+('BUILDER'), ('GRENADIER'), ('HOUNDMASTER'), ('CAPTAIN'), ('SPIDER');

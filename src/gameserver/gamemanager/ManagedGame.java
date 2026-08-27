@@ -8,6 +8,7 @@ import gameserver.effects.EffectId;
 import gameserver.effects.EffectPool;
 import gameserver.engine.GameEngine;
 import gameserver.engine.GameOptions;
+import gameserver.engine.TeamAffiliation;
 import gameserver.entity.Entity;
 import gameserver.entity.Titan;
 import gameserver.models.Game;
@@ -432,32 +433,104 @@ public class ManagedGame {
                     }
                 });
             } else {
-                // Anticheat path (BLIND / STEALTHED active)
+                // High-performance Anticheat path (STEALTHED / BLIND active)
+                String homeBaseJson = null;
+                String awayBaseJson = null;
                 snapshot.lock();
                 try {
                     snapshot.nowEpochMs = nowMs;
-                    Game baseClone = mapper.convertValue(snapshot, Game.class);
-                    if (baseClone == null) return;
+                    snapshot.underControl = null;
 
-                    clients.forEach(client -> {
-                        try {
-                            PlayerDivider pd = dividerFromConn(client);
-                            if (!client.isConnected()) return;
-
-                            Game update = mapper.convertValue(baseClone, Game.class);
-                            if (update == null) return;
-                            update.underControl = state.titanSelected(pd);
-                            update.nowEpochMs = nowMs;
-                            client.sendJson(mapper.writeValueAsString(anticheat(update)));
-                        } catch (Exception ex) {
-                            ex.printStackTrace();
+                    // 1. Censor for AWAY viewers (censor HOME stealthed units)
+                    Map<Entity, double[]> origPos = new HashMap<>();
+                    if (snapshot.effectPool != null) {
+                        for (Titan p : snapshot.players) {
+                            if (p != null && snapshot.effectPool.hasEffect(p, EffectId.STEALTHED) && !snapshot.effectPool.hasEffect(p, EffectId.FLARE)) {
+                                if (p.team == TeamAffiliation.HOME) {
+                                    origPos.put(p, new double[]{p.X, p.Y});
+                                    p.X = 99999;
+                                    p.Y = 99999;
+                                }
+                            }
                         }
-                    });
+                        for (Entity ent : snapshot.entityPool) {
+                            if (ent != null && snapshot.effectPool.hasEffect(ent, EffectId.STEALTHED) && !snapshot.effectPool.hasEffect(ent, EffectId.FLARE)) {
+                                if (ent.team == TeamAffiliation.HOME) {
+                                    origPos.put(ent, new double[]{ent.X, ent.Y});
+                                    ent.X = 99999;
+                                    ent.Y = 99999;
+                                }
+                            }
+                        }
+                    }
+                    awayBaseJson = mapper.writeValueAsString(snapshot);
+
+                    // Restore HOME positions
+                    origPos.forEach((ent, coords) -> { ent.X = coords[0]; ent.Y = coords[1]; });
+                    origPos.clear();
+
+                    // 2. Censor for HOME viewers (censor AWAY stealthed units)
+                    if (snapshot.effectPool != null) {
+                        for (Titan p : snapshot.players) {
+                            if (p != null && snapshot.effectPool.hasEffect(p, EffectId.STEALTHED) && !snapshot.effectPool.hasEffect(p, EffectId.FLARE)) {
+                                if (p.team == TeamAffiliation.AWAY) {
+                                    origPos.put(p, new double[]{p.X, p.Y});
+                                    p.X = 99999;
+                                    p.Y = 99999;
+                                }
+                            }
+                        }
+                        for (Entity ent : snapshot.entityPool) {
+                            if (ent != null && snapshot.effectPool.hasEffect(ent, EffectId.STEALTHED) && !snapshot.effectPool.hasEffect(ent, EffectId.FLARE)) {
+                                if (ent.team == TeamAffiliation.AWAY) {
+                                    origPos.put(ent, new double[]{ent.X, ent.Y});
+                                    ent.X = 99999;
+                                    ent.Y = 99999;
+                                }
+                            }
+                        }
+                    }
+                    homeBaseJson = mapper.writeValueAsString(snapshot);
+
+                    // Restore all positions
+                    origPos.forEach((ent, coords) -> { ent.X = coords[0]; ent.Y = coords[1]; });
                 } catch (Exception ex) {
                     ex.printStackTrace();
                 } finally {
                     snapshot.unlock();
                 }
+
+                if (homeBaseJson == null || awayBaseJson == null) return;
+
+                final String finalHomeJson = homeBaseJson;
+                final String finalAwayJson = awayBaseJson;
+                final Map<UUID, String> titanJsonCache = new HashMap<>();
+
+                clients.forEach(client -> {
+                    try {
+                        PlayerDivider pd = dividerFromConn(client);
+                        if (!client.isConnected()) return;
+
+                        Titan controlled = (pd != null && state != null) ? state.titanSelected(pd) : null;
+                        String baseForClient = (controlled != null && controlled.team == TeamAffiliation.AWAY) ? finalAwayJson : finalHomeJson;
+
+                        if (controlled != null) {
+                            String titanJson = titanJsonCache.computeIfAbsent(controlled.id, id -> {
+                                try {
+                                    return mapper.writeValueAsString(controlled);
+                                } catch (Exception ex) {
+                                    return "null";
+                                }
+                            });
+                            String clientJson = baseForClient.replace("\"underControl\":null", "\"underControl\":" + titanJson);
+                            client.sendJson(clientJson);
+                        } else {
+                            client.sendJson(baseForClient);
+                        }
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
+                });
             }
         };
         exec.scheduleWithFixedDelay(updateClients, 1, c.getI("server.clients.updateinterval.ms"), TimeUnit.MILLISECONDS);
@@ -570,7 +643,9 @@ public class ManagedGame {
         if (snapshot == null) return;
         
         snapshot.phase = GamePhase.ENDED;
+        snapshot.ended = true;
         CompletableFuture.runAsync(() -> {
+            // 1. Broadcast ENDED packet to all connected clients immediately
             clients.forEach(client -> {
                 try {
                     PlayerDivider pd = dividerFromConn(client);
@@ -580,12 +655,21 @@ public class ManagedGame {
                     
                     if (client.isConnected()) {
                         client.sendJson(mapper.writeValueAsString(snapshot));
-                        Thread.sleep(1200);
-                        client.close();
                     }
                 } catch (Exception ex) {
                     ex.printStackTrace();
                 }
+            });
+            // 2. Allow clients to render endgame victory/defeat screens before closing
+            try {
+                Thread.sleep(1500);
+            } catch (InterruptedException ignored) {}
+            clients.forEach(client -> {
+                try {
+                    if (client.isConnected()) {
+                        client.close();
+                    }
+                } catch (Exception ignored) {}
             });
         });
     }

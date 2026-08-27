@@ -72,6 +72,12 @@ public class Ability    {
                 case GRENADIER:
                     strat.flashbang(c.getI("titan.flashbang.dur"));
                     break;
+                case CAPTAIN:
+                    strat.captainShoot();
+                    break;
+                case SPIDER:
+                    strat.spiderWeb();
+                    break;
             }
             injectColliders(context, strat, caster);
             return true;
@@ -134,6 +140,12 @@ public class Ability    {
                     break;
                 case GRENADIER:
                     strat.molotov();
+                    break;
+                case CAPTAIN:
+                    strat.captainSlideBomb();
+                    break;
+                case SPIDER:
+                    strat.spiderCocoon();
                     break;
             }
             injectColliders(context, strat, caster);

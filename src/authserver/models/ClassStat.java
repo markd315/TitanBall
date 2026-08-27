@@ -278,5 +278,11 @@ VALUES ('GRENADIER', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 
 INSERT INTO mysql.classstat (role, wins, losses, ties, goals, points, sidegoals, blocks, steals, passes, kills, deaths, turnovers, killassists, goalassists, rebounds)
 VALUES ('HOUNDMASTER', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+INSERT INTO mysql.classstat (role, wins, losses, ties, goals, points, sidegoals, blocks, steals, passes, kills, deaths, turnovers, killassists, goalassists, rebounds)
+VALUES ('CAPTAIN', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+INSERT INTO mysql.classstat (role, wins, losses, ties, goals, points, sidegoals, blocks, steals, passes, kills, deaths, turnovers, killassists, goalassists, rebounds)
+VALUES ('SPIDER', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
      */
 }

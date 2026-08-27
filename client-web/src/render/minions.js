@@ -3,6 +3,8 @@ import { AssetManager } from '../assets/sprites.js';
 
 let staticFrame = 0;
 
+const DAMAGE_CLASSES = new Set(['WARRIOR', 'RANGER', 'MAGE', 'HOUNDMASTER', 'CAPTAIN', 'GRENADIER']);
+
 export function drawMinions(ctx, game, camX, camY) {
     if (!game || !game.entityPool) return;
     
@@ -49,7 +51,10 @@ export function drawMinions(ctx, game, camX, camY) {
     staticFrame = (staticFrame + 1) % 60; // 60 frames per cycle roughly
     const isAltFrame = staticFrame > 30;
 
-    const isGoalie = game.underControl && game.underControl.type === 'GOALIE';
+    const myTitan = game.underControl;
+    const titanType = (myTitan && myTitan.type) ? String(myTitan.type).toUpperCase() : null;
+    const isGoalie = titanType === 'GOALIE';
+    const hasDamageAbility = !isGoalie && !!(titanType && DAMAGE_CLASSES.has(titanType));
 
     // For field players, pre-calculate the frontmost minion X per lane per team to only render lead groups
     const homeLeadX = [-Infinity, -Infinity, -Infinity];
@@ -108,6 +113,26 @@ export function drawMinions(ctx, game, camX, camY) {
             const anyPoss = game.players && game.players.some(p => p.possession === 1);
             imgKey = anyPoss ? (isFrameB ? 'ballB' : 'ballA') : (isFrameB ? 'ballFB' : 'ballFA');
         }
+        else if (e.entityClass === 'Web') {
+            imgKey = 'web';
+        }
+        else if (e.entityClass === 'Bomb') {
+            const bombImg = AssetManager.images['bomb'];
+            if (bombImg) {
+                if (e.exploded) {
+                    // Frame 4 (Explosion): sx=150, sy=0, sw=70, sh=50, drawn 2x centered
+                    const drawW = e.width || 100;
+                    const drawH = e.height || 140;
+                    ctx.drawImage(bombImg, 150, 0, 70, 50, Math.floor(e.X - camX), Math.floor(e.Y - camY), drawW, drawH);
+                } else {
+                    const elapsed = game.nowEpochMs ? Math.max(0, game.nowEpochMs - (e.spawnEpochMs || game.nowEpochMs)) : 0;
+                    let frameIdx = Math.min(2, Math.floor(elapsed / 1000));
+                    const sx = frameIdx * 50;
+                    ctx.drawImage(bombImg, sx, 0, 50, 50, Math.floor(e.X - camX), Math.floor(e.Y - camY), 50, 50);
+                }
+            }
+            continue;
+        }
 
         else if (e.entityClass === 'LaneMinion') {
             if (!isGoalie) {
@@ -119,9 +144,9 @@ export function drawMinions(ctx, game, camX, camY) {
             }
 
             ctx.save();
-            ctx.globalAlpha = isGoalie ? 0.7 : 0.30;
+            ctx.globalAlpha = isGoalie ? 0.7 : (hasDamageAbility ? 0.36 : 0.30);
 
-            const radius = isGoalie ? 20 : 4;
+            const radius = isGoalie ? 20 : (hasDamageAbility ? 4.8 : 4);
             const mx = Math.floor(e.X - camX);
             const my = Math.floor(e.Y - camY);
 

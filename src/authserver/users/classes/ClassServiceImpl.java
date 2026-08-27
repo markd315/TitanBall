@@ -15,10 +15,13 @@ public class ClassServiceImpl implements ClassService {
     @Override
     @Transactional(readOnly = true)
     public ClassStat findStatsTrackerByRole(String className) {
-        ClassStat classStats;
+        ClassStat classStats = null;
         try {
-            classStats = classRepository.findByRole(className);
-        } catch (ObjectRetrievalFailureException | EmptyResultDataAccessException e) {
+            classStats = classRepository.findFirstByRole(className);
+            if (classStats == null) {
+                classStats = classRepository.findByRole(className);
+            }
+        } catch (Exception e) {
             // just ignore not found exceptions for Jdbc/Jpa realization
             return null;
         }

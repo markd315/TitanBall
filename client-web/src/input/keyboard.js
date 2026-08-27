@@ -46,7 +46,6 @@ export async function setControlPreset(preset) {
     const data = await response.json();
     currentConfig = data;
     sessionStorage.setItem('controlPreset', preset);
-    console.log("Loaded control layout configuration:", preset, currentConfig);
   } catch (e) {
     console.error("Failed to load control configuration:", e);
   }
@@ -166,7 +165,6 @@ export function initKeyboard() {
             if (current === 'LEFT') next = 'RIGHT';
             else if (current === 'RIGHT') next = 'SHOT';
             gameState.controlsHeld.artisanShot = next;
-            console.log(`Artisan shot mode cycled to: ${next}`);
           }
         }
       }
@@ -202,7 +200,6 @@ export function initKeyboard() {
 function _executeNextBuildOrder(game) {
   const order = gameState.buildOrder;
   if (!order || order.length === 0) {
-    console.log('[Build Order] No build order configured.');
     return;
   }
 
@@ -245,15 +242,13 @@ function _executeNextBuildOrder(game) {
     }
 
     if (!unlocked) {
-      // Tier prerequisites not yet met — stop and tell the player
-      console.log(`[Build Order] Step ${i + 1} "${resolvedKey}" is locked — tier requirements not met yet.`);
+      // Tier prerequisites not yet met — stop
       break;
     }
 
     // Fire the purchase via the standard pending-buy pipe
     gameState.pendingGoalieBuy  = { tree: activeKey, nodeKey: resolvedKey };
     gameState.buildOrderIndex   = i + 1;
-    console.log(`[Build Order] Executing step ${i + 1}: ${resolvedKey}`);
     return;
   }
 
@@ -275,9 +270,6 @@ function _executeNextBuildOrder(game) {
 
     const resolvedKey = getNodeConfigKey(activeKey, nodeIdx, treeState.purchased);
     gameState.pendingGoalieBuy = { tree: activeKey, nodeKey: resolvedKey };
-    console.log(`[Build Order] Repeating last use node: ${resolvedKey}`);
     return;
   }
-
-  console.log('[Build Order] Build order complete — no repeatable use node found.');
 }

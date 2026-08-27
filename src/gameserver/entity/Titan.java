@@ -58,6 +58,8 @@ public class Titan extends Entity   {
     public double basePainReduction = 1.0;
     public int baseStealRad = 11;
     public double baseDamageFactor = 1.0;
+    public int ammo = 8;
+    public int maxAmmo = 8;
 
     private TitanType type;
 
@@ -114,6 +116,13 @@ public class Titan extends Entity   {
             if(titanRange.containsKey(this.type)){
                 this.rangeIndicators = new ArrayList<>();
                 this.rangeIndicators.addAll(titanRange.get(this.type));
+            }
+            if (type == TitanType.CAPTAIN) {
+                this.ammo = 8;
+                this.maxAmmo = 8;
+            } else {
+                this.ammo = 0;
+                this.maxAmmo = 0;
             }
             if(type == TitanType.DASHER){
                 this.boostFactor = c.getD("dasher.boost.boostFactor");
@@ -310,6 +319,12 @@ public class Titan extends Entity   {
         artisan.add(r(c.getI("titan.bportal.range")));
         grenadier.add(e(c.getI("titan.flashbang.range") /2));
         grenadier.add(r(c.getI("titan.molotov.range")));
+        HashSet<RangeCircle> captain= new HashSet<>();
+        HashSet<RangeCircle> spider= new HashSet<>();
+        captain.add(e(c.getI("titan.captain.shot.range")));
+        captain.add(r(c.getI("titan.captain.slide.range")));
+        spider.add(e(c.getI("titan.spider.web.range")));
+        spider.add(r(c.getI("titan.spider.cocoon.range")));
         titanRange.put(TitanType.MAGE, mage);
         titanRange.put(TitanType.RANGER, ranger);
         titanRange.put(TitanType.MARKSMAN, Collections.singleton(e(c.getI("titan.ice.range"))));
@@ -322,6 +337,8 @@ public class Titan extends Entity   {
         titanRange.put(TitanType.ARTISAN, artisan);
         titanRange.put(TitanType.HOUNDMASTER,  Collections.singleton(e(c.getI("titan.cage.range"))));
         titanRange.put(TitanType.GRENADIER, grenadier);
+        titanRange.put(TitanType.CAPTAIN, captain);
+        titanRange.put(TitanType.SPIDER, spider);
         titanRange.put(TitanType.GOALIE, Collections.singleton(e(c.getI("titan.goalie.rangex"), c.getI("titan.goalie.rangey"))));
 
         titanText.put(TitanType.MAGE, "DAMAGE ignite enemies and warp players around the map with portals");
@@ -336,6 +353,8 @@ public class Titan extends Entity   {
         titanText.put(TitanType.STEALTH, "SCORER vanish briefly and escape to a better strategic position");
         titanText.put(TitanType.GRENADIER, "UTILITY manipulate the battlefield with grenades");
         titanText.put(TitanType.HOUNDMASTER, "DAMAGE/DEFENSE swarm enemies with fragile, biting dogs");
+        titanText.put(TitanType.CAPTAIN, "DAMAGE/MOBILITY burst rifle fire and tactical slide bombs");
+        titanText.put(TitanType.SPIDER, "UTILITY/CONTROLLER slow enemies with sticky webs and cocoon teleport");
         titanText.put(TitanType.GOALIE, "DEFENSE protect goals and direct RTS lanes");
 
         titanEText.put(TitanType.MAGE, "Spawn a portal to carry friendly players long distances");
@@ -350,6 +369,8 @@ public class Titan extends Entity   {
         titanEText.put(TitanType.STEALTH, "Go invisible for a short time. Avoid fire!");
         titanEText.put(TitanType.GRENADIER, "Activate a flashbang blinding nearby enemies");
         titanEText.put(TitanType.HOUNDMASTER, "Spawn a cage with a hound");
+        titanEText.put(TitanType.CAPTAIN, "Fire a rifle shot (5 dmg, 2x vs minions). Auto-reloads at 0 ammo");
+        titanEText.put(TitanType.SPIDER, "Spawn a web trap that slows enemies and sticks the ball");
         titanEText.put(TitanType.GOALIE, "Goalie Ability E");
 
         titanRText.put(TitanType.MAGE, "Scald an enemy with powerful fire magic");
@@ -364,6 +385,8 @@ public class Titan extends Entity   {
         titanRText.put(TitanType.STEALTH, "Blink a very short distance");
         titanRText.put(TitanType.GRENADIER, "Deal damage and deny a large region with vicious fire");
         titanRText.put(TitanType.HOUNDMASTER, "Open all cages. More dogs means more damage");
+        titanRText.put(TitanType.CAPTAIN, "Slide in direction and drop a 3s delayed 50-damage timebomb");
+        titanRText.put(TitanType.SPIDER, "Cocoon for 1s then teleport to the opposite side of target hero's cast location");
         titanRText.put(TitanType.GOALIE, "Goalie Ability R");
 
     }
