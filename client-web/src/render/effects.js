@@ -13,8 +13,8 @@ export function drawEffectIcons(ctx, game, camX, camY) {
     const en = onEntities[i];
     if (!en || !e) continue;
     
-    // Skip dead or attacked effects to keep visual clean
-    if (e.effect === 'DEAD' || e.effect === 'ATTACKED') {
+    // Skip dead, attacked, or internal castlag effects to keep visual clean
+    if (e.effect === 'DEAD' || e.effect === 'ATTACKED' || e.effect === 'CAST_LAG') {
       continue;
     }
     

@@ -95,6 +95,11 @@ public class AbilityStrategy    {
             }
             limitt++;
         }
+        if (caster.possession == 1) {
+            context.ball.X = caster.X + 35 - context.ball.centerDist;
+            context.ball.Y = caster.Y + 35 - context.ball.centerDist;
+        }
+        caster.pushMove();
     }
 
     public void ignite(double cd, double dur, double initialD, double recurringD) {
@@ -132,6 +137,7 @@ public class AbilityStrategy    {
             context.effectPool.addStackingEffect(caster, new EmptyEffect(5000, e, EffectId.ATTACKED));
             e.damage(context, dmg);
         }
+        caster.pushMove();
     }
 
     public void kickSelectedTarget() {

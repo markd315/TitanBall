@@ -675,12 +675,12 @@ public class GameEngine extends Game {
                     System.out.println("got passed a bad titan index! Possibly from another game?");
                     return;
                 }
+                this.processKeys(request, from);
+                this.processProgramming(t, request);
                 int btn = getBtn(request, t);
                 if (request.posX != -1 && request.posY != -1 && btn != 0) {
                     this.serverMouseRoutine(t, request.posX, request.posY, btn, request.camX, request.camY);
                 }
-                this.processProgramming(t, request);
-                this.processKeys(request, from);
                 for (PlayerDivider client : clients) {
                     if (client.id == from.id) {
                         from.ready = true;
@@ -920,6 +920,7 @@ public class GameEngine extends Game {
                         if (t.actionState == Titan.TitanState.IDLE && !stolen) {//Curve may be set by ability
                             t.actionState = Titan.TitanState.STEAL;
                             t.actionFrame = 0;
+                            t.pushMove();
                         }
                     } catch (Exception e) {
                     }
@@ -929,29 +930,43 @@ public class GameEngine extends Game {
                 this.phase = GamePhase.SET_MASTERIES;
             }
             if (controlsHeld.E == 1 && this.phase == GamePhase.INGAME){
+                System.out.println("[CAST_DEBUG] E key detected for titan " + t.getType() + ", actionState=" + t.actionState + ", isStunned=" + effectPool.isStunned(t));
                 if((t.actionState == Titan.TitanState.IDLE) ) {
                     if (!effectPool.isStunned(t)) {
                         try {
                             boolean caststun = ability.castQ(this, t);
+                            System.out.println("[CAST_DEBUG] castQ returned: " + caststun + " for titan " + t.getType());
                             if (caststun) {//Curve may be set by ability
                                 t.actionState = Titan.TitanState.A1;
                                 t.actionFrame = 0;
+                                t.pushMove();
+                                effectPool.addUniqueEffect(
+                                    new EmptyEffect(t.eCastFrames * GAMETICK_MS, t, EffectId.CAST_LAG), this);
+                                System.out.println("[CAST_DEBUG] Set state to A1 for titan " + t.getType() + ", eCastFrames=" + t.eCastFrames + ", CAST_LAG added");
                             }
                         } catch (Exception e) {
+                            e.printStackTrace();
                         }
                     }
                 }
             }
             if (controlsHeld.R == 1 && this.phase == GamePhase.INGAME){
+                System.out.println("[CAST_DEBUG] R key detected for titan " + t.getType() + ", actionState=" + t.actionState + ", isStunned=" + effectPool.isStunned(t));
                 if((t.actionState == Titan.TitanState.IDLE)) {
                     if (!effectPool.isStunned(t)) {
                         try {
                             boolean caststun = ability.castW(this, t);
+                            System.out.println("[CAST_DEBUG] castW returned: " + caststun + " for titan " + t.getType());
                             if (caststun) {//Curve may be set by ability
                                 t.actionState = Titan.TitanState.A2;
                                 t.actionFrame = 0;
+                                t.pushMove();
+                                effectPool.addUniqueEffect(
+                                    new EmptyEffect(t.rCastFrames * GAMETICK_MS, t, EffectId.CAST_LAG), this);
+                                System.out.println("[CAST_DEBUG] Set state to A2 for titan " + t.getType() + ", rCastFrames=" + t.rCastFrames + ", CAST_LAG added");
                             }
                         } catch (Exception e) {
+                            e.printStackTrace();
                         }
                     }
                 }
@@ -963,6 +978,17 @@ public class GameEngine extends Game {
 
     public void moveKeys(KeyDifferences controlsHeld, Titan t) {
         if (!effectPool.hasEffect(t, EffectId.DEAD)) {
+            // Always keep keyHeld* in sync with the live key state,
+            // regardless of cast lag – popMove() uses these to resume movement.
+            if (controlsHeld.RIGHT == 1)  t.keyHeldR = true;
+            if (controlsHeld.RIGHT == -1) t.keyHeldR = false;
+            if (controlsHeld.LEFT  == 1)  t.keyHeldL = true;
+            if (controlsHeld.LEFT  == -1) t.keyHeldL = false;
+            if (controlsHeld.UP    == 1)  t.keyHeldU = true;
+            if (controlsHeld.UP    == -1) t.keyHeldU = false;
+            if (controlsHeld.DOWN  == 1)  t.keyHeldD = true;
+            if (controlsHeld.DOWN  == -1) t.keyHeldD = false;
+
             if (controlsHeld.RIGHT == 1 || controlsHeld.UP == 1 || controlsHeld.LEFT == 1 || controlsHeld.DOWN == 1) {
                 t.programmed = false;
             }
@@ -988,9 +1014,12 @@ public class GameEngine extends Game {
                 t.runRight = 0;
                 t.runUp = 0;
             } else {
+                boolean canMoveNow = !effectPool.isRooted(t) &&
+                        ((t.actionState == Titan.TitanState.IDLE) ||
+                        ((t.actionState == Titan.TitanState.SHOOT || t.actionState == Titan.TitanState.LOB) &&
+                         t.actionFrame >= (int) (t.kickingFrames * c.SHOT_FREEZE_RATIO)));
                 if (controlsHeld.RIGHT == 1 && this.phase == GamePhase.INGAME) {
-                    if (t.actionState == Titan.TitanState.IDLE ||
-                            t.actionFrame >= (int) (t.kickingFrames*c.SHOT_FREEZE_RATIO)) {
+                    if (canMoveNow) {
                         t.runLeft = 0;
                         t.runRight = 1;
                     } else {
@@ -999,8 +1028,7 @@ public class GameEngine extends Game {
                     }
                 }
                 if (controlsHeld.LEFT == 1 && this.phase == GamePhase.INGAME) {
-                    if (t.actionState == Titan.TitanState.IDLE ||
-                            t.actionFrame >= (int) (t.kickingFrames*c.SHOT_FREEZE_RATIO)) {
+                    if (canMoveNow) {
                         t.runLeft = 1;
                         t.runRight = 0;
                     } else {
@@ -1009,8 +1037,7 @@ public class GameEngine extends Game {
                     }
                 }
                 if (controlsHeld.UP == 1 && this.phase == GamePhase.INGAME) {
-                    if (t.actionState == Titan.TitanState.IDLE ||
-                            t.actionFrame >= (int) (t.kickingFrames*c.SHOT_FREEZE_RATIO)) {
+                    if (canMoveNow) {
                         t.runUp = 1;
                         t.runDown = 0;
                     } else {
@@ -1019,8 +1046,7 @@ public class GameEngine extends Game {
                     }
                 }
                 if (controlsHeld.DOWN == 1 && this.phase == GamePhase.INGAME) {
-                    if (t.actionState == Titan.TitanState.IDLE ||
-                            t.actionFrame >= (int) (t.kickingFrames*c.SHOT_FREEZE_RATIO)) {
+                    if (canMoveNow) {
                         t.runUp = 0;
                         t.runDown = 1;
                     } else {
@@ -1326,11 +1352,26 @@ public class GameEngine extends Game {
                         t.fuel = maxFuel;
                     }
                 }
-                if (t.runRight == 1) runRightCtrl(t);
-                if (t.runLeft == 1) runLeftCtrl(t);
-                if (t.runUp == 1) runUpCtrl(t);
-                if (t.runDown == 1) runDownCtrl(t);
-                programmedCtrl(t);
+                boolean canRun = !effectPool.isRooted(t) &&
+                        ((t.actionState == Titan.TitanState.IDLE) ||
+                        ((t.actionState == Titan.TitanState.SHOOT || t.actionState == Titan.TitanState.LOB) &&
+                         t.actionFrame >= (int) (t.kickingFrames * c.SHOT_FREEZE_RATIO)));
+                // DEBUG cast lag
+                if (t.actionState == Titan.TitanState.A1 || t.actionState == Titan.TitanState.A2) {
+                    System.out.println("[CASTLAG] titan=" + t.getType()
+                        + " state=" + t.actionState
+                        + " frame=" + t.actionFrame
+                        + " programmed=" + t.programmed
+                        + " isRooted=" + effectPool.isRooted(t)
+                        + " canRun=" + canRun);
+                }
+                if (canRun) {
+                    if (t.runRight == 1) runRightCtrl(t);
+                    if (t.runLeft == 1) runLeftCtrl(t);
+                    if (t.runUp == 1) runUpCtrl(t);
+                    if (t.runDown == 1) runDownCtrl(t);
+                    programmedCtrl(t);
+                }
                 unhideBallIfHidden(t);
                 if (t.actionState == Titan.TitanState.SHOOT) shootingBall(t);
                 else if (t.actionState == Titan.TitanState.LOB) lobbingBall(t);
@@ -1356,9 +1397,10 @@ public class GameEngine extends Game {
 
     public void programmedCtrl(Titan t) {
         if(t.programmed){
-            if (!effectPool.isRooted(t) &&
-                    (t.actionState == Titan.TitanState.IDLE ||
-                    t.actionFrame >= (int) (t.kickingFrames*c.SHOT_FREEZE_RATIO))) {
+            boolean canRun = (t.actionState == Titan.TitanState.IDLE) ||
+                    ((t.actionState == Titan.TitanState.SHOOT || t.actionState == Titan.TitanState.LOB) &&
+                     t.actionFrame >= (int) (t.kickingFrames * c.SHOT_FREEZE_RATIO));
+            if (!effectPool.isRooted(t) && canRun) {
                 double ang = Util.degreesFromCoords(t.marchingOrderX - (t.X + t.height/2),
                         t.marchingOrderY - (t.Y + t.height/2 ));
                 double dx = t.actualSpeed(this) * Math.cos(Math.toRadians((ang)));
@@ -1835,6 +1877,10 @@ public class GameEngine extends Game {
     // Movement methods with player selection
     public void runUpCtrl(Titan t) {
         if (phase == GamePhase.INGAME || phase == GamePhase.TUTORIAL) {
+            boolean canRun = (t.actionState == Titan.TitanState.IDLE) ||
+                    ((t.actionState == Titan.TitanState.SHOOT || t.actionState == Titan.TitanState.LOB) &&
+                     t.actionFrame >= (int) (t.kickingFrames * c.SHOT_FREEZE_RATIO));
+            if (!canRun) return;
             if (!effectPool.isRooted(t)) {
                 if (!t.collidesSolid(this, allSolids, (int) -t.speed, 0)) {
                     if (t.X <= ball.X) t.dirToBall = 1;
@@ -1857,6 +1903,10 @@ public class GameEngine extends Game {
 
     public void runDownCtrl(Titan t) {
         if (phase == GamePhase.INGAME || phase == GamePhase.TUTORIAL) {
+            boolean canRun = (t.actionState == Titan.TitanState.IDLE) ||
+                    ((t.actionState == Titan.TitanState.SHOOT || t.actionState == Titan.TitanState.LOB) &&
+                     t.actionFrame >= (int) (t.kickingFrames * c.SHOT_FREEZE_RATIO));
+            if (!canRun) return;
             if (!effectPool.isRooted(t)) {
                 if (!t.collidesSolid(this, allSolids, (int) t.speed, 0)) {
                     if (t.X <= ball.X) t.dirToBall = 1;
@@ -1879,6 +1929,10 @@ public class GameEngine extends Game {
 
     public void runRightCtrl(Titan t) {
         if (phase == GamePhase.INGAME || phase == GamePhase.TUTORIAL) {
+            boolean canRun = (t.actionState == Titan.TitanState.IDLE) ||
+                    ((t.actionState == Titan.TitanState.SHOOT || t.actionState == Titan.TitanState.LOB) &&
+                     t.actionFrame >= (int) (t.kickingFrames * c.SHOT_FREEZE_RATIO));
+            if (!canRun) return;
             if (!effectPool.isRooted(t)) {
                 if (!t.collidesSolid(this, allSolids, 0, (int) t.speed)) {
                     if (!t.programmed) {
@@ -1898,6 +1952,10 @@ public class GameEngine extends Game {
 
     public void runLeftCtrl(Titan t) {
         if (phase == GamePhase.INGAME || phase == GamePhase.TUTORIAL) {
+            boolean canRun = (t.actionState == Titan.TitanState.IDLE) ||
+                    ((t.actionState == Titan.TitanState.SHOOT || t.actionState == Titan.TitanState.LOB) &&
+                     t.actionFrame >= (int) (t.kickingFrames * c.SHOT_FREEZE_RATIO));
+            if (!canRun) return;
             if (!effectPool.isRooted(t)) {
                 t.diagonalRunDir = 2;
                 if (!t.collidesSolid(this, allSolids, 0, (int) -t.speed)) {
@@ -2277,9 +2335,6 @@ public class GameEngine extends Game {
     }
 
     public void attack1(Titan t) {
-        if (t.actionFrame == 0) {
-            t.pushMove();
-        }
         if (t.actionFrame < t.eCastFrames) {
             t.actionFrame++;
         }
@@ -2291,9 +2346,6 @@ public class GameEngine extends Game {
     }
 
     public void attack2(Titan t) {
-        if (t.actionFrame == 0) {
-            t.pushMove();
-        }
         if (t.actionFrame < t.rCastFrames) {
             t.actionFrame++;
         }

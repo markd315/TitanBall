@@ -257,11 +257,17 @@ public class TutorialOverrides extends GameEngine   {
                         t.fuel = 100.0;
                     }
                 }
-                if (t.runRight == 1) runRightCtrl(t);
-                if (t.runLeft == 1) runLeftCtrl(t);
-                if (t.runUp == 1) runUpCtrl(t);
-                if (t.runDown == 1) runDownCtrl(t);
-                programmedCtrl(t);
+                boolean canRun = !effectPool.isRooted(t) &&
+                        ((t.actionState == Titan.TitanState.IDLE) ||
+                        ((t.actionState == Titan.TitanState.SHOOT || t.actionState == Titan.TitanState.LOB) &&
+                         t.actionFrame >= (int) (t.kickingFrames * c.SHOT_FREEZE_RATIO)));
+                if (canRun) {
+                    if (t.runRight == 1) runRightCtrl(t);
+                    if (t.runLeft == 1) runLeftCtrl(t);
+                    if (t.runUp == 1) runUpCtrl(t);
+                    if (t.runDown == 1) runDownCtrl(t);
+                    programmedCtrl(t);
+                }
                 if (t.actionState == Titan.TitanState.SHOOT) shootingBall(t);
                 else if (t.actionState == Titan.TitanState.LOB) lobbingBall(t);
                 else if (t.actionState == Titan.TitanState.CURVE_LEFT) curve(t, 1);

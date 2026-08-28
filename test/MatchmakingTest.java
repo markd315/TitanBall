@@ -290,8 +290,8 @@ public class MatchmakingTest {
 
         // 8 players queue for 3v3 (needs 6 players per match)
         // p1 and p8 are mutual partners
-        mm.partnerPool.put("p1@test.com", new HashSet<>(Collections.singletonList("p8")));
-        mm.partnerPool.put("p8@test.com", new HashSet<>(Collections.singletonList("p1")));
+        mm.partnerPool.put("p1@test.com", new HashSet<>(Collections.singletonList("p8@test.com")));
+        mm.partnerPool.put("p8@test.com", new HashSet<>(Collections.singletonList("p1@test.com")));
 
         // Mock Authentication for registerIntent
         org.springframework.security.core.Authentication auth1 = createMockAuth("p1@test.com");
@@ -303,14 +303,14 @@ public class MatchmakingTest {
         org.springframework.security.core.Authentication auth7 = createMockAuth("p7@test.com");
         org.springframework.security.core.Authentication auth8 = createMockAuth("p8@test.com");
 
-        mm.registerIntent(auth1, "3v3", null, "WARRIOR", "p8");
+        mm.registerIntent(auth1, "3v3", null, "WARRIOR", "p8@test.com");
+        mm.registerIntent(auth8, "3v3", null, "WARRIOR", "p1@test.com");
         mm.registerIntent(auth2, "3v3", null, "WARRIOR", null);
         mm.registerIntent(auth3, "3v3", null, "WARRIOR", null);
         mm.registerIntent(auth4, "3v3", null, "WARRIOR", null);
         mm.registerIntent(auth5, "3v3", null, "WARRIOR", null);
         mm.registerIntent(auth6, "3v3", null, "WARRIOR", null);
         mm.registerIntent(auth7, "3v3", null, "WARRIOR", null);
-        mm.registerIntent(auth8, "3v3", null, "WARRIOR", "p1");
 
         // Both p1 and p8 should be matched into the same game
         String p1Game = mm.findGame(auth1);

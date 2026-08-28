@@ -162,6 +162,9 @@ public class Ability    {
     }
 
     private boolean injectColliders(Game context, AbilityStrategy strat, Titan caster) {
+        if (context.colliders == null) {
+            context.colliders = new java.util.ArrayList<>();
+        }
         context.cullOldColliders();
         Selector sel = strat.sel;
         if (sel != null && sel.latestCollider != null) {

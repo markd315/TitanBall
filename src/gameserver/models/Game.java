@@ -36,7 +36,7 @@ public class Game   {
     public final int GOALIE_SOLID_H = c.GOALIE_SOLID_H;
     public double secondsToStart = c.getD("server.startDelay");
     public long nowEpochMs;
-    public List<ShapePayload> colliders;
+    public List<ShapePayload> colliders = new java.util.ArrayList<>();
     @JsonIgnore
     protected AtomicBoolean locked = new AtomicBoolean(false);
     @JsonIgnore

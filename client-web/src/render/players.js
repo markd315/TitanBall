@@ -200,22 +200,26 @@ export function drawPlayers(ctx, game, camX, camY) {
              pState.prevY = t.Y;
              pState.lastMovedTime = 0;
          }
- 
-         const distMoved = Math.hypot(t.X - pState.prevX, t.Y - pState.prevY);
-         if (distMoved > 0.5) {
-             pState.lastMovedTime = now;
-             pState.prevX = t.X;
-             pState.prevY = t.Y;
-         }
+
+        const isRootedOrActing = (t.actionState && t.actionState !== 'IDLE') || 
+            (game.effectPool && game.effectPool.effects && game.effectPool.effects.some(e => (e.effect === 'ROOT' || e.effect === 'STUN' || e.effect === 'STEAL' || e.effect === 'CAST_LAG') && e.on && e.on.id === t.id));
+
+        const distMoved = Math.hypot(t.X - pState.prevX, t.Y - pState.prevY);
+        if (distMoved > 0.5 && distMoved < 50 && !isRootedOrActing) {
+            pState.lastMovedTime = now;
+        }
+        pState.prevX = t.X;
+        pState.prevY = t.Y;
+
         // Maintain moving state across the 25-50ms packet interval (150ms window) so 60fps rendering is seamless
-        const isMoving = (now - pState.lastMovedTime < 150) || (t.runningFrame === 1 || t.runningFrame === 2);
+        const isMoving = !isRootedOrActing && ((now - pState.lastMovedTime < 150) || (t.runningFrame === 1 || t.runningFrame === 2));
 
         let action = 'stand';
         if (pState.activeAction) {
             action = pState.activeAction;
         } else if (isStealthed) {
             action = 'atk1'; // Phasing / stealth sprite frame
-        } else if (t.actionState === 'IDLE') {
+        } else if (t.actionState === 'IDLE' && !isRootedOrActing) {
             if (isMoving && (now - pState.lastMovedTime < 200)) {
                 // Purely client-side smooth alternation between runA and runB (180ms each)
                 const runStep = Math.floor(now / 180) % 2;

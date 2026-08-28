@@ -115,7 +115,13 @@ public class EffectPool  {
     }
 
     public boolean isStunned(Titan t) {
-        return hasEffect(t, EffectId.STUN) || hasEffect(t, EffectId.STEAL);
+        if (t == null) return false;
+        return hasEffect(t, EffectId.STUN) ||
+                hasEffect(t, EffectId.STEAL) ||
+                hasEffect(t, EffectId.CAST_LAG) ||
+                t.actionState == Titan.TitanState.A1 ||
+                t.actionState == Titan.TitanState.A2 ||
+                t.actionState == Titan.TitanState.STEAL;
     }
 
     private List<Effect> pool;
@@ -145,8 +151,14 @@ public class EffectPool  {
     }
 
     public boolean isRooted(Titan t) {
+        if (t == null) return false;
         return hasEffect(t, EffectId.ROOT) ||
-                hasEffect(t, EffectId.STUN) || hasEffect(t, EffectId.STEAL);
+                hasEffect(t, EffectId.STUN) ||
+                hasEffect(t, EffectId.STEAL) ||
+                hasEffect(t, EffectId.CAST_LAG) ||
+                t.actionState == Titan.TitanState.A1 ||
+                t.actionState == Titan.TitanState.A2 ||
+                t.actionState == Titan.TitanState.STEAL;
     }
 
     public void cullAllOn(GameEngine context, Entity on) {

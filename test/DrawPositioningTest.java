@@ -14,13 +14,14 @@ public class DrawPositioningTest {
     private GameEngine createStandardGame() {
         GameEngine engine = new GameEngine();
         List<PlayerDivider> clients = new ArrayList<>();
-        // 4v4 setup: 1 goalie + 3 field players per team
+        // 4v4 setup: 1 goalie + 3 field players per team (8 total players)
         for (int i = 1; i <= 8; i++) {
             PlayerDivider pd = new PlayerDivider(Arrays.asList(i));
             pd.id = i;
             clients.add(pd);
         }
         engine.clients = clients;
+        engine.players = Arrays.copyOf(engine.players, 8);
         engine.initializeServer();
         return engine;
     }
@@ -28,9 +29,9 @@ public class DrawPositioningTest {
     @Test
     public void testGameStartDrawPositioningExactEquality() {
         GameEngine engine = createStandardGame();
-        engine.initializeServer();
 
-        // Forwards are slotIndex 1 and 2 (player indices 3, 4 for HOME and 6, 7 for AWAY)
+        // In 4v4 (3 field slots), slotIndex 1 is top forward:
+        // HOME top forward is index 3, AWAY top forward is index 6
         Titan homeForward = engine.players[3];
         Titan awayForward = engine.players[6];
 
@@ -53,7 +54,6 @@ public class DrawPositioningTest {
     @Test
     public void testBlueGoalResetWhiteForwardCloser() {
         GameEngine engine = createStandardGame();
-        engine.initializeServer();
 
         // Blue (HOME) scores
         engine.lastScoredTeam = TeamAffiliation.HOME;
@@ -75,7 +75,6 @@ public class DrawPositioningTest {
     @Test
     public void testWhiteGoalResetBlueForwardCloser() {
         GameEngine engine = createStandardGame();
-        engine.initializeServer();
 
         // White (AWAY) scores
         engine.lastScoredTeam = TeamAffiliation.AWAY;

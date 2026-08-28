@@ -48,6 +48,10 @@ public class Titan extends Entity   {
     public double durationsFactor = 1.0;
     public double rangeFactor = 1.0;
     public boolean moveMemU, moveMemD, moveMemL, moveMemR;
+    // Raw current-key-held state, always updated regardless of cast lag.
+    // Used by popMove() so post-cast movement matches what the player is
+    // actually holding at the moment the animation finishes.
+    public boolean keyHeldU, keyHeldD, keyHeldL, keyHeldR;
     public boolean resurrecting = false;
     public double baseSpeed = 5;
     public double baseThrowPower = 1.0;
@@ -231,8 +235,12 @@ public class Titan extends Entity   {
         if(this.runRight + this.runLeft + this.runDown + this.runUp > 1){
             inspeed *= .707; //sqrt(2)/2
         }
+        double currentBoostFactor = this.boostFactor;
+        if (this.type == TitanType.DASHER && this.possession == 1) {
+            currentBoostFactor = context.c.getD("dasher.boost.carrierFactor");
+        }
         double speedVal = this.isBoosting
-                ? inspeed * this.boostFactor
+                ? inspeed * currentBoostFactor
                 : inspeed;
 
         int L = 0;
@@ -419,10 +427,13 @@ public class Titan extends Entity   {
     }
 
     public void popMove() {
-        this.runUp = this.moveMemU ? 1 : 0;
-        this.runDown = this.moveMemD ? 1 : 0;
-        this.runLeft = this.moveMemL ? 1 : 0;
-        this.runRight = this.moveMemR ? 1 : 0;
+        // Restore run state from the live key-held snapshot rather than
+        // moveMem*, so post-cast movement matches what the player is
+        // actually pressing at the moment the animation finishes.
+        this.runUp    = this.keyHeldU ? 1 : 0;
+        this.runDown  = this.keyHeldD ? 1 : 0;
+        this.runLeft  = this.keyHeldL ? 1 : 0;
+        this.runRight = this.keyHeldR ? 1 : 0;
     }
     /*
 
