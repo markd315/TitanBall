@@ -222,7 +222,23 @@ public class Titan extends Entity   {
 
     public TitanState actionState  = TitanState.IDLE;
 
+    public double getDirX() {
+        if (this.programmed) {
+            double dx = this.marchingOrderX - (this.X + this.width / 2.0);
+            if (dx > 1.0) return 1.0;
+            if (dx < -1.0) return -1.0;
+            return 0.0;
+        }
+        if (this.runRight == 1 && this.runLeft == 0) return 1.0;
+        if (this.runLeft == 1 && this.runRight == 0) return -1.0;
+        return 0.0;
+    }
+
     public double actualSpeed(GameEngine context) {
+        return actualSpeed(context, 0.0);
+    }
+
+    public double actualSpeed(GameEngine context, double dirX) {
         double inspeed = this.speed;
         boolean hasDilators = context.homeGoaliePurchasedUpgrades.contains("fortress.t5.dilators") ||
                               context.awayGoaliePurchasedUpgrades.contains("fortress.t5.dilators");
@@ -263,7 +279,7 @@ public class Titan extends Entity   {
         if (d1 < d0 && d1 < d2) L = 1;
         else if (d2 < d0 && d2 < d1) L = 2;
 
-        return context.getLaneMinionSpeed(L, this.team, speedVal);
+        return context.getLaneMinionSpeed(L, this.team, speedVal, dirX);
     }
 
     public void resurrect(GameEngine context) {

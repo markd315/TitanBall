@@ -47,6 +47,7 @@ export function drawMinions(ctx, game, camX, camY) {
         ctx.strokeRect(1368 - camX, 36 - camY, 644, 1146);
     }
     ctx.restore();
+    drawHillChevrons(ctx, game, camX, camY);
 
     staticFrame = (staticFrame + 1) % 60; // 60 frames per cycle roughly
     const isAltFrame = staticFrame > 30;
@@ -313,6 +314,79 @@ export function drawMinions(ctx, game, camX, camY) {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(text, displayX, displayY);
+        ctx.restore();
+    }
+}
+
+function drawHillChevrons(ctx, game, camX, camY) {
+    const LANE_BOUNDS = [
+        { yTop: 240, yBottom: 468.5 },
+        { yTop: 468.5, yBottom: 686.5 },
+        { yTop: 686.5, yBottom: 905 }
+    ];
+    const startX = 350;
+    const endX = 1750;
+    const spacing = 180;
+
+    for (let L = 0; L < 3; L++) {
+        let homeCount = 0;
+        let awayCount = 0;
+        if (game.entityPool) {
+            for (let i = 0; i < game.entityPool.length; i++) {
+                const e = game.entityPool[i];
+                if (e.entityClass === 'LaneMinion' && e.laneIndex === L && e.health > 0) {
+                    if (e.team === 'HOME') homeCount++;
+                    else if (e.team === 'AWAY') awayCount++;
+                }
+            }
+        }
+        const homeBonus = game.homeLaneBonusValue ? game.homeLaneBonusValue[L] : 0;
+        const awayBonus = game.awayLaneBonusValue ? game.awayLaneBonusValue[L] : 0;
+
+        let netMinions = homeCount - awayCount;
+        if (netMinions > 10) netMinions = 10;
+        if (netMinions < -10) netMinions = -10;
+
+        let net = netMinions + (homeBonus - awayBonus);
+        if (net > 20) net = 20;
+        if (net < -20) net = -20;
+
+        if (net === 0) continue; // No chevron at all for 0 intensity
+
+        const intensity = Math.abs(net);
+        const downhillRight = net > 0;
+        const dir = downhillRight ? 1 : -1;
+
+        const bounds = LANE_BOUNDS[L];
+        const centerY = (bounds.yTop + bounds.yBottom) / 2.0;
+        const halfHeight = (bounds.yBottom - bounds.yTop) / 2.0;
+
+        // Map intensity 1..20 to half-angle (65 degrees down to 20 degrees)
+        const angleDeg = 65 - ((intensity - 1) / 19) * 45;
+        const halfAngleRad = (angleDeg * Math.PI) / 180.0;
+        const dxApex = halfHeight / Math.tan(halfAngleRad);
+
+        ctx.save();
+        ctx.globalAlpha = 0.02; // Stationary overlay at 2% opacity
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        const yTop = bounds.yTop - camY;
+        const yCenter = centerY - camY;
+        const yBottom = bounds.yBottom - camY;
+
+        for (let xBase = startX; xBase <= endX; xBase += spacing) {
+            const baseScreenX = xBase - camX;
+            const apexScreenX = (xBase + dir * dxApex) - camX;
+
+            ctx.beginPath();
+            ctx.moveTo(baseScreenX, yTop);
+            ctx.lineTo(apexScreenX, yCenter);
+            ctx.lineTo(baseScreenX, yBottom);
+            ctx.stroke();
+        }
         ctx.restore();
     }
 }

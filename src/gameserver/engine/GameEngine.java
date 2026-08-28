@@ -1406,8 +1406,11 @@ public class GameEngine extends Game {
             if (!effectPool.isRooted(t) && canRun) {
                 double ang = Util.degreesFromCoords(t.marchingOrderX - (t.X + t.height/2),
                         t.marchingOrderY - (t.Y + t.height/2 ));
-                double dx = t.actualSpeed(this) * Math.cos(Math.toRadians((ang)));
-                double dy = t.actualSpeed(this) * Math.sin(Math.toRadians((ang)));
+                double cosAng = Math.cos(Math.toRadians(ang));
+                double sinAng = Math.sin(Math.toRadians(ang));
+                double dirX = (cosAng > 0.001) ? 1.0 : ((cosAng < -0.001) ? -1.0 : 0.0);
+                double dx = t.actualSpeed(this, dirX) * cosAng;
+                double dy = t.actualSpeed(this, 0.0) * sinAng;
                 if(dx > 0 && dx > t.marchingOrderX - (t.X + t.width/2)){
                     dx = t.marchingOrderX - (t.X + t.width/2);
                 }
@@ -1915,7 +1918,7 @@ public class GameEngine extends Game {
                     if (t.diagonalRunDir == 1) t.dirToBall = 1;
                     if (t.diagonalRunDir == 2) t.dirToBall = 2;
                     if (!t.programmed) {
-                        t.translateBounded(this, 0.0, -t.actualSpeed(this));
+                        t.translateBounded(this, 0.0, -t.actualSpeed(this, 0.0));
                     }
                     t.runningFrameCounter += 1;
                     if (t.runningFrameCounter == 5) t.runningFrame = 1;
@@ -1941,7 +1944,7 @@ public class GameEngine extends Game {
                     if (t.diagonalRunDir == 1) t.dirToBall = 1;
                     if (t.diagonalRunDir == 2) t.dirToBall = 2;
                     if (!t.programmed) {
-                        t.translateBounded(this, 0.0, t.actualSpeed(this));
+                        t.translateBounded(this, 0.0, t.actualSpeed(this, 0.0));
                     }
                     t.runningFrameCounter += 1;
                     if (t.runningFrameCounter == 5) t.runningFrame = 1;
@@ -1963,7 +1966,7 @@ public class GameEngine extends Game {
             if (!effectPool.isRooted(t)) {
                 if (!t.collidesSolid(this, allSolids, 0, (int) t.speed)) {
                     if (!t.programmed) {
-                        t.translateBounded(this, t.actualSpeed(this), 0.0);
+                        t.translateBounded(this, t.actualSpeed(this, 1.0), 0.0);
                     }
                     t.diagonalRunDir = 1;
                     t.runningFrameCounter += 1;
@@ -1987,7 +1990,7 @@ public class GameEngine extends Game {
                 t.diagonalRunDir = 2;
                 if (!t.collidesSolid(this, allSolids, 0, (int) -t.speed)) {
                     if (!t.programmed) {
-                        t.translateBounded(this, -t.actualSpeed(this), 0.0);
+                        t.translateBounded(this, -t.actualSpeed(this, -1.0), 0.0);
                     }
                     t.runningFrameCounter += 1;
                     if (t.runningFrameCounter == 5) t.runningFrame = 1;
@@ -2741,8 +2744,8 @@ protected void tickLaneMinions() {
              L == 1 ? MID_CENTER :
                       BOT_CENTER);
 
-        double curHomeSpeed = getLaneMinionSpeed(L, TeamAffiliation.HOME, minionSpeed, homeInLane.size(), awayInLane.size());
-        double curAwaySpeed = getLaneMinionSpeed(L, TeamAffiliation.AWAY, minionSpeed, homeInLane.size(), awayInLane.size());
+        double curHomeSpeed = getLaneMinionSpeed(L, TeamAffiliation.HOME, minionSpeed, homeInLane.size(), awayInLane.size(), 1.0);
+        double curAwaySpeed = getLaneMinionSpeed(L, TeamAffiliation.AWAY, minionSpeed, homeInLane.size(), awayInLane.size(), -1.0);
 
         // HOME MINIONS
         // Every minion independently targets its nearest live enemy - multiple attackers can
@@ -3110,6 +3113,10 @@ protected void tickLaneMinions() {
     // Removed applyUninhibitedPortalForce
 
     public double getLaneMinionSpeed(int L, TeamAffiliation team, double baseSpeed) {
+        return getLaneMinionSpeed(L, team, baseSpeed, 0.0);
+    }
+
+    public double getLaneMinionSpeed(int L, TeamAffiliation team, double baseSpeed, double dirX) {
         int homeCount = 0;
         int awayCount = 0;
         for (Entity entity : entityPool) {
@@ -3118,58 +3125,61 @@ protected void tickLaneMinions() {
                 else awayCount++;
             }
         }
-        return getLaneMinionSpeed(L, team, baseSpeed, homeCount, awayCount);
+        return getLaneMinionSpeed(L, team, baseSpeed, homeCount, awayCount, dirX);
     }
 
     public double getLaneMinionSpeed(int L, TeamAffiliation team, double baseSpeed, int homeCount, int awayCount) {
+        double defaultDir = (team == TeamAffiliation.HOME) ? 1.0 : -1.0;
+        return getLaneMinionSpeed(L, team, baseSpeed, homeCount, awayCount, defaultDir);
+    }
+
+    public double getLaneMinionSpeed(int L, TeamAffiliation team, double baseSpeed, int homeCount, int awayCount, double dirX) {
         int homeBonus = homeLaneBonusValue[L];
         int awayBonus = awayLaneBonusValue[L];
-        
-        int netMinions = (team == TeamAffiliation.HOME)
-            ? (homeCount - awayCount)
-            : (awayCount - homeCount);
 
-        // Soft-cap base minion count difference at +10 / -10
-        if (netMinions > 10) netMinions = 10;
-        if (netMinions < -10) netMinions = -10;
+        int netMinionsHome = homeCount - awayCount;
+        if (netMinionsHome > 10) netMinionsHome = 10;
+        if (netMinionsHome < -10) netMinionsHome = -10;
 
-        int netBonus = (team == TeamAffiliation.HOME)
-            ? (homeBonus - awayBonus)
-            : (awayBonus - homeBonus);
+        int netBonusHome = homeBonus - awayBonus;
+        int P_home = netMinionsHome + netBonusHome;
+        if (P_home > 20) P_home = 20;
+        if (P_home < -20) P_home = -20;
 
-        int P = netMinions + netBonus;
+        int P_team = (team == TeamAffiliation.HOME) ? P_home : -P_home;
 
-        // Clamp total lane advantage at hard-cap (+20 / -20)
-        if (P > 20) P = 20;
-        if (P < -20) P = -20;
-
-        if (P > 0) {
+        // 1. Quartered Unilateral Boost (-5% to +5%)
+        double unilateralBoost = P_team * 0.0025;
+        if (unilateralBoost > 0) {
             boolean maxPressure = homeGoaliePurchasedUpgrades.contains("siege.t6.maximumpressure") ||
                                   awayGoaliePurchasedUpgrades.contains("siege.t6.maximumpressure");
-            double val = P * 0.01;
-            if (maxPressure && P > 5) {
-                val *= 2.0;
+            if (maxPressure && P_team > 5) {
+                unilateralBoost *= 2.0;
             }
-            return baseSpeed * (1.0 + val);
-        } else if (P < 0) {
+        } else if (unilateralBoost < 0) {
             boolean impenetrable = (team == TeamAffiliation.HOME)
                 ? homeGoaliePurchasedUpgrades.contains("fortress.t6.impenetrable")
                 : awayGoaliePurchasedUpgrades.contains("fortress.t6.impenetrable");
-            if (impenetrable && P < -3) {
-                P = -3;
+            if (impenetrable && P_team < -3) {
+                unilateralBoost = -3 * 0.0025;
             }
+        }
+
+        // 2. Directional Hill Effect (-20% to +20%)
+        double dirSign = (dirX > 0) ? 1.0 : ((dirX < 0) ? -1.0 : 0.0);
+        double hillEffect = dirSign * P_home * 0.01;
+
+        if (hillEffect < 0) {
             long insuranceUntil = (team == TeamAffiliation.HOME)
                 ? homeGoalieAbilities.fastBreakUntilMs
                 : awayGoalieAbilities.fastBreakUntilMs;
-            
-            double val = 0.0; //if insurance
-            if (nowEpochMs >= insuranceUntil) { //if NO insurance
-                val = P * 0.01;
+            if (nowEpochMs < insuranceUntil) {
+                hillEffect = 0.0;
             }
-            double speed = baseSpeed * (1.0 + val);
-            return Math.max(0.2, speed);
         }
-        return baseSpeed;
+
+        double speed = baseSpeed * (1.0 + unilateralBoost + hillEffect);
+        return Math.max(0.2, speed);
     }
 
     private void checkTurnovers() {
