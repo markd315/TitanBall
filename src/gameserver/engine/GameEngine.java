@@ -1333,9 +1333,9 @@ public class GameEngine extends Game {
                     t.isBoosting = false;
                 }
 
-                double maxFuel = (t.team == TeamAffiliation.HOME) 
+                double maxFuel = ((t.team == TeamAffiliation.HOME) 
                     ? homeGoalieAbilities.getMaxFuel(this) 
-                    : awayGoalieAbilities.getMaxFuel(this);
+                    : awayGoalieAbilities.getMaxFuel(this)) * t.boostMaxFactor;
 
                 if (t.isBoosting) {
                     t.fuel -= .75;
@@ -1343,10 +1343,12 @@ public class GameEngine extends Game {
                         t.fuel = 0;
                     }
                 } else {
+                    double fastRegen = c.getD("globals.boost.regen.fast") * t.boostRegenFactor;
+                    double slowRegen = c.getD("globals.boost.regen.slow") * t.boostRegenFactor;
                     if (t.fuel > c.getD("globals.boost.regen.cutoff")) {
-                        t.fuel += c.getD("globals.boost.regen.fast");//regen bonus
+                        t.fuel += fastRegen;//regen bonus
                     } else {
-                        t.fuel += c.getD("globals.boost.regen.slow");
+                        t.fuel += slowRegen;
                     }
                     if (t.fuel > maxFuel) {
                         t.fuel = maxFuel;
@@ -1380,6 +1382,7 @@ public class GameEngine extends Game {
                 if (t.actionState == Titan.TitanState.A1) attack1(t);
                 if (t.actionState == Titan.TitanState.A2) attack2(t);
                 if (t.actionState == Titan.TitanState.STEAL) steal(t);
+                checkAndExecuteQueuedShot(t);
             }
             yourPlayerTactics();
         }
@@ -1644,35 +1647,59 @@ public class GameEngine extends Game {
         return null;
     }
 
+    public void checkAndExecuteQueuedShot(Titan t) {
+        if (t.queuedBtn != 0) {
+            if (t.possession == 1 && t.actionState == Titan.TitanState.IDLE && !effectPool.isStunned(t)) {
+                int btn = t.queuedBtn;
+                int cx = t.queuedClickX;
+                int cy = t.queuedClickY;
+                int camX = t.queuedCamX;
+                int camY = t.queuedCamY;
+                t.queuedBtn = 0;
+                serverMouseRoutine(t, cx, cy, btn, camX, camY);
+            } else if (t.possession != 1) {
+                t.queuedBtn = 0;
+            }
+        }
+    }
+
     public void serverMouseRoutine(Titan t, int clickX, int clickY, int btn, int camX, int camY) {
         int priorPossession = t.possession;
         intersectAll(); //Update state of variables doubleclick fails
         // Only allow a throw if the titan already held the ball before intersectAll() ran.
         // This prevents a held-down shot button from auto-firing the instant the ball is caught.
-        if (t.possession == 1 && priorPossession == 1 && t.actionState == Titan.TitanState.IDLE
-                && !effectPool.isStunned(t)) {
-            if (phase == GamePhase.INGAME && btn == 1) {
-                t.actionState = Titan.TitanState.SHOOT;
-            } else if (phase == GamePhase.INGAME && btn == 3) {
-                t.actionState = Titan.TitanState.LOB;
-            } else if (phase == GamePhase.INGAME && btn == 4) {
-                if(!effectPool.hasEffect(t, EffectId.COOLDOWN_CURVE)){
-                    t.actionState = Titan.TitanState.CURVE_LEFT;
-                    effectPool.addUniqueEffect(new CooldownCurve((int) (t.cooldownFactor * 5000), t), this);
+        if (t.possession == 1 && priorPossession == 1) {
+            if (t.actionState == Titan.TitanState.IDLE && !effectPool.isStunned(t)) {
+                t.queuedBtn = 0;
+                if (phase == GamePhase.INGAME && btn == 1) {
+                    t.actionState = Titan.TitanState.SHOOT;
+                } else if (phase == GamePhase.INGAME && btn == 3) {
+                    t.actionState = Titan.TitanState.LOB;
+                } else if (phase == GamePhase.INGAME && btn == 4) {
+                    if(!effectPool.hasEffect(t, EffectId.COOLDOWN_CURVE)){
+                        t.actionState = Titan.TitanState.CURVE_LEFT;
+                        effectPool.addUniqueEffect(new CooldownCurve((int) (t.cooldownFactor * 5000), t), this);
+                    }
+                } else if (phase == GamePhase.INGAME && btn == 5) {
+                    if(!effectPool.hasEffect(t, EffectId.COOLDOWN_CURVE)){
+                        t.actionState = Titan.TitanState.CURVE_RIGHT;
+                        effectPool.addUniqueEffect(new CooldownCurve((int) (t.cooldownFactor * 5000), t), this);
+                    }
                 }
-            } else if (phase == GamePhase.INGAME && btn == 5) {
-                if(!effectPool.hasEffect(t, EffectId.COOLDOWN_CURVE)){
-                    t.actionState = Titan.TitanState.CURVE_RIGHT;
-                    effectPool.addUniqueEffect(new CooldownCurve((int) (t.cooldownFactor * 5000), t), this);
-                }
+                int xClick = (int) ((clickX - ball.X) + camX - ball.centerDist); //mid sprite, plus account for locations
+                int yClick = (int) (-1 * ((clickY - ball.Y) + camY - ball.centerDist)); //same, plus flip Y axis for coordinate plane
+                double angle = Util.degreesFromCoords(xClick, yClick);
+                xKickPow = Math.cos(Math.toRadians(angle)) / 4.0;
+                yKickPow = Math.sin(Math.toRadians(angle)) / 4.0;
+            } else {
+                // Titan holds ball but is currently in cast lag / animation / stunned.
+                // Queue the shot/lob to fire immediately when cast lag finishes.
+                t.queuedBtn = btn;
+                t.queuedClickX = clickX;
+                t.queuedClickY = clickY;
+                t.queuedCamX = camX;
+                t.queuedCamY = camY;
             }
-            int xClick = (int) ((clickX - ball.X) + camX - ball.centerDist); //mid sprite, plus account for locations
-            int yClick = (int) (-1 * ((clickY - ball.Y) + camY - ball.centerDist)); //same, plus flip Y axis for coordinate plane
-            //System.out.println("angle params: " + " (" + (xClick) + ", " + (yClick) + ")");
-            double angle = Util.degreesFromCoords(xClick, yClick);
-            //System.out.println("ang: " + angle);
-            xKickPow = Math.cos(Math.toRadians(angle)) / 4.0;
-            yKickPow = Math.sin(Math.toRadians(angle)) / 4.0;
         }
     }
 
@@ -2342,6 +2369,7 @@ public class GameEngine extends Game {
             t.actionFrame = 0;
             t.actionState = Titan.TitanState.IDLE;
             t.popMove();
+            checkAndExecuteQueuedShot(t);
         }
     }
 
@@ -2353,6 +2381,7 @@ public class GameEngine extends Game {
             t.actionFrame = 0;
             t.actionState = Titan.TitanState.IDLE;
             t.popMove();
+            checkAndExecuteQueuedShot(t);
         }
     }
 
@@ -2364,6 +2393,7 @@ public class GameEngine extends Game {
             t.actionFrame = 0;
             t.actionState = Titan.TitanState.IDLE;
             t.popMove();
+            checkAndExecuteQueuedShot(t);
         }
     }
 

@@ -1096,6 +1096,7 @@ public class GuardianAbilities implements Serializable {
         int painCount = 0;
         int stealCount = 0;
         int damageCount = 0;
+        int boostCount = 0;
 
         if (purchased.contains("empowerment.t3.grit")) { hpCount++; painCount++; }
         if (purchased.contains("empowerment.t3.marksmanship")) { throwCount++; rangeCount++; }
@@ -1104,7 +1105,7 @@ public class GuardianAbilities implements Serializable {
         
         if (purchased.contains("empowerment.t6.apexform")) {
             speedCount += 1; throwCount += 1; rangeCount += 1; cdCount += 1;
-            durCount += 1; hpCount += 1; painCount += 1; stealCount += 1; damageCount += 1;
+            durCount += 1; hpCount += 1; painCount += 1; stealCount += 1; damageCount += 1; boostCount += 1;
         }
 
         // Focused Training logic (+2 in highest existing mastery category)
@@ -1139,17 +1140,17 @@ public class GuardianAbilities implements Serializable {
         for (Titan t : context.players) {
             if (t.team == team && t.getType() != null && t.getType() != TitanType.GOALIE) {
                 // Apply enhancements
-                t.speed = t.baseSpeed * Math.pow(context.c.getD("masteries.speed.mult"), speedCount);
+                t.speed = t.baseSpeed * (1.0 + speedCount * (context.c.getD("masteries.speed.mult") - 1.0));
 
                 boolean hasSharpshooter = context.effectPool.hasEffect(t, EffectId.FLARE);
                 boolean hasShoot = context.effectPool.hasEffect(t, EffectId.SHOOT);
                 double sharpMult = hasSharpshooter ? 1.20 : 1.0;
                 double shootMult = hasShoot ? 1.20 : 1.0;
 
-                t.throwPower = t.baseThrowPower * Math.pow(context.c.getD("masteries.throw.mult"), throwCount) * sharpMult * shootMult;
-                t.rangeFactor = t.baseRangeFactor * Math.pow(context.c.getD("masteries.range.mult"), rangeCount) * sharpMult;
+                t.throwPower = t.baseThrowPower * (1.0 + throwCount * (context.c.getD("masteries.throw.mult") - 1.0)) * sharpMult * shootMult;
+                t.rangeFactor = t.baseRangeFactor * (1.0 + rangeCount * (context.c.getD("masteries.range.mult") - 1.0)) * sharpMult;
                 
-                double cf = t.baseCooldownFactor / Math.pow(context.c.getD("masteries.cooldowns.mult"), cdCount);
+                double cf = t.baseCooldownFactor / (1.0 + cdCount * (context.c.getD("masteries.cooldowns.mult") - 1.0));
                 if (purchased.contains("cultivation.t4.manafrenzy")) {
                     double currentMana = (team == TeamAffiliation.HOME) ? context.homeGoalieMana : context.awayGoalieMana;
                     double frenzyCdr = currentMana / 30.0;
@@ -1158,9 +1159,9 @@ public class GuardianAbilities implements Serializable {
                 }
                 t.cooldownFactor = cf;
 
-                t.durationsFactor = t.baseDurationsFactor * Math.pow(context.c.getD("masteries.effectDuration.mult"), durCount);
-                t.maxHealth = t.baseMaxHealth * Math.pow(context.c.getD("masteries.health.mult"), hpCount);
-                t.painReduction = t.basePainReduction * Math.pow(context.c.getD("masteries.painReduction.mult"), painCount);
+                t.durationsFactor = t.baseDurationsFactor * (1.0 + durCount * (context.c.getD("masteries.effectDuration.mult") - 1.0));
+                t.maxHealth = t.baseMaxHealth * (1.0 + hpCount * (context.c.getD("masteries.health.mult") - 1.0));
+                t.painReduction = t.basePainReduction * (1.0 + painCount * (context.c.getD("masteries.painReduction.mult") - 1.0));
                 
                 double heistBonus = purchased.contains("empowerment.t5.heistcamp") ? context.c.getD("guardian.heistcamp.bonus") : 0.0;
                 double stealBonus = 0.0;
@@ -1169,7 +1170,11 @@ public class GuardianAbilities implements Serializable {
                 }
                 double flatMasteryBonus = stealCount * context.c.getI("masteries.stealRadius.flat");
                 t.stealRad = (int) (t.baseStealRad + flatMasteryBonus + heistBonus + stealBonus);
-                t.damageFactor = t.baseDamageFactor * Math.pow(context.c.getD("masteries.damage.mult"), damageCount);
+                t.damageFactor = t.baseDamageFactor * (1.0 + damageCount * (context.c.getD("masteries.damage.mult") - 1.0));
+
+                double boostMult = 1.0 + boostCount * (context.c.getD("masteries.boost.mult") - 1.0);
+                t.boostMaxFactor = t.baseBoostMaxFactor * boostMult;
+                t.boostRegenFactor = t.baseBoostRegenFactor * boostMult;
             }
         }
     }

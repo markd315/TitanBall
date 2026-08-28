@@ -52,6 +52,12 @@ public class Titan extends Entity   {
     // Used by popMove() so post-cast movement matches what the player is
     // actually holding at the moment the animation finishes.
     public boolean keyHeldU, keyHeldD, keyHeldL, keyHeldR;
+    // Queued shot/lob initiated during cast lag to fire immediately on cast completion
+    public int queuedBtn = 0;
+    public int queuedClickX = -1;
+    public int queuedClickY = -1;
+    public int queuedCamX = 0;
+    public int queuedCamY = 0;
     public boolean resurrecting = false;
     public double baseSpeed = 5;
     public double baseThrowPower = 1.0;
@@ -62,6 +68,10 @@ public class Titan extends Entity   {
     public double basePainReduction = 1.0;
     public int baseStealRad = 11;
     public double baseDamageFactor = 1.0;
+    public double boostMaxFactor = 1.0;
+    public double boostRegenFactor = 1.0;
+    public double baseBoostMaxFactor = 1.0;
+    public double baseBoostRegenFactor = 1.0;
     public int ammo = 8;
     public int maxAmmo = 8;
 

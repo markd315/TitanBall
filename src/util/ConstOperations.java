@@ -21,6 +21,16 @@ public class ConstOperations  implements Serializable {
                     continue;
                 }
                 
+                // Strip inline comments starting with # or //
+                int hashIdx = line.indexOf("#");
+                if (hashIdx != -1) {
+                    line = line.substring(0, hashIdx);
+                }
+                int slashIdx = line.indexOf("//");
+                if (slashIdx != -1) {
+                    line = line.substring(0, slashIdx);
+                }
+
                 String[] parts = line.split("=");
                 if (parts.length >= 2) {
                     cache.put(parts[0].trim(), parts[1].trim());

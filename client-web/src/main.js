@@ -1,6 +1,6 @@
 import { gameState } from './state.js';
 import { initCanvas, clearScreen, drawImageCam } from './render/canvas.js';
-import { initMasteries } from './screens/masteries.js';
+import { initMasteries, loadMasteriesForTitan, validateMasteries } from './screens/masteries.js';
 import { initBuildOrderPlanner, updatePlanBuildButtonVisibility } from './screens/buildOrderPlanner.js';
 import { drawCredits } from './screens/credits.js';
 import { initKeyboard, setControlPreset } from './input/keyboard.js';
@@ -345,6 +345,18 @@ function initUIListeners() {
       try {
         const classSelect = document.getElementById('class-select');
         const classSel = classSelect ? classSelect.value : 'WARRIOR';
+        const classError = document.getElementById('class-select-error');
+
+        const activeMasteries = gameState.controlsHeld.masteries;
+        if (!validateMasteries(activeMasteries)) {
+          if (classError) {
+            classError.textContent = `Error: Invalid masteries for ${classSel}! You must allocate exactly 10 points before queuing.`;
+            classError.style.display = 'block';
+          }
+          return;
+        }
+
+        if (classError) classError.style.display = 'none';
         
         const modeLabel = document.getElementById('queue-mode-label');
         if (modeLabel) modeLabel.textContent = `${selectedMatchSize}v${selectedMatchSize}`;
@@ -373,6 +385,8 @@ function initUIListeners() {
       try {
         const classSelect = document.getElementById('class-select');
         const classError = document.getElementById('class-select-error');
+        const classSel = classSelect ? classSelect.value : 'WARRIOR';
+
         if (classSelect && classSelect.value === 'GOALIE') {
           if (classError) {
             classError.textContent = "Error: Cannot queue for 1v1 Scrimmage as a Goalie. Please select a Titan class.";
@@ -380,6 +394,17 @@ function initUIListeners() {
           }
           return;
         }
+
+        const activeMasteries = gameState.controlsHeld.masteries;
+        if (!validateMasteries(activeMasteries)) {
+          if (classError) {
+            classError.textContent = `Error: Invalid masteries for ${classSel}! You must allocate exactly 10 points before queuing.`;
+            classError.style.display = 'block';
+          }
+          return;
+        }
+
+        if (classError) classError.style.display = 'none';
         
         const modeLabel = document.getElementById('queue-mode-label');
         if (modeLabel) modeLabel.textContent = 'Scrimmage';
@@ -388,7 +413,6 @@ function initUIListeners() {
         const lobbyStatus = document.querySelector('#lobby-overlay .stat-value[style*="pulse"]');
         if (lobbyStatus) lobbyStatus.textContent = 'FINDING PLAYERS...';
         
-        const classSel = classSelect ? classSelect.value : 'WARRIOR';
         await joinQueue('/4/1/1/5/2/9999/10/12', classSel, ''); // index 4 is 1v1, goalieIndex 1 is off
         gameState.is3v3 = false;
         gameState.phase = GamePhase.WAIT_FOR_GAME;
@@ -490,6 +514,7 @@ function initUIListeners() {
 
     classSelect.value = savedClass;
     gameState.controlsHeld.classSelection = savedClass;
+    loadMasteriesForTitan(savedClass);
     
     const classError = document.getElementById('class-select-error');
 
@@ -634,6 +659,7 @@ function initUIListeners() {
       }
       gameState.controlsHeld.classSelection = e.target.value;
       sessionStorage.setItem('classSelection', e.target.value);
+      loadMasteriesForTitan(e.target.value);
       _updateClassInfoDisplay(e.target.value);
       updatePlanBuildButtonVisibility();
     });

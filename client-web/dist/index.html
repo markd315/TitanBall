@@ -709,7 +709,7 @@
         box-shadow: 0 0 3vmin rgba(239, 68, 68, 0.6);
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-cd940cde.js"></script>
+    <script type="module" crossorigin src="./assets/index-44558f5d.js"></script>
   </head>
   <body>
     <div id="app">
@@ -880,7 +880,23 @@
 
         <!-- Masteries Modal Overlay -->
         <div id="masteries-modal" class="glass-card" style="display: none; position: absolute; z-index: 100; width: min(480px, calc(100vw - 24px)); max-width: 100%; max-height: 90vh; overflow-y: auto; box-sizing: border-box;">
-          <h2>Titan Masteries</h2>
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
+            <h2 id="masteries-modal-title" style="margin: 0; font-size: 1.4rem;">Titan Masteries</h2>
+            <div style="display: flex; gap: 6px;">
+              <button id="masteries-export-btn" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px; margin: 0;">Export</button>
+              <button id="masteries-paste-btn" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px; margin: 0;">Paste</button>
+            </div>
+          </div>
+          <!-- Mastery Page Selector Tabs -->
+          <div id="masteries-page-tabs" style="display: flex; gap: 8px; margin-top: 10px; margin-bottom: 5px; flex-wrap: wrap;">
+            <!-- Tabs will be rendered here -->
+          </div>
+          <!-- Editable Page Name Input -->
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+            <label style="font-size: 12px; color: #94a3b8; white-space: nowrap;">Page Name:</label>
+            <input type="text" id="mastery-page-name-input" placeholder="Page Name" style="flex: 1; padding: 6px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.4); color: white; font-family: inherit; font-size: 13px;">
+            <button id="masteries-reset-btn" class="btn btn-secondary" style="padding: 6px 10px; font-size: 12px; margin: 0; white-space: nowrap;" title="Reset current page to default (all 1s)">Reset</button>
+          </div>
           <div class="stat-row">
             <span class="stat-label">Points Remaining</span>
             <span id="masteries-points-left" class="stat-value">0</span>

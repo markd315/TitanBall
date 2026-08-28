@@ -23,6 +23,7 @@ public class Masteries   {
         this.abilityRange = other.abilityRange;
         this.abilityLag = other.abilityLag;
         this.painReduction = other.painReduction;
+        this.boost = other.boost;
     }
 
     public Masteries() {
@@ -36,26 +37,27 @@ public class Masteries   {
         this.abilityLag = 1;
         this.speed = 1;
         this.painReduction = 1;
+        this.boost = 0;
     }
 
     public Masteries(Map<String, Integer> json){
-        this.health = json.get("health");
-        this.shot = json.get("shot");
-        this.damage = json.get("damage");
-        this.cooldowns = json.get("cooldowns");
-        this.effectDuration = json.get("effectDuration");
-        this.stealRadius = json.get("stealRadius");
-        this.abilityRange = json.get("abilityRange");
-        this.abilityLag = json.get("abilityLag");
-        this.speed = json.get("speed");
-        this.painReduction = json.get("painReduction");
-
+        this.health = json.getOrDefault("health", 1);
+        this.shot = json.getOrDefault("shot", 1);
+        this.damage = json.getOrDefault("damage", 1);
+        this.cooldowns = json.getOrDefault("cooldowns", 1);
+        this.effectDuration = json.getOrDefault("effectDuration", 1);
+        this.stealRadius = json.getOrDefault("stealRadius", 1);
+        this.abilityRange = json.getOrDefault("abilityRange", 1);
+        this.abilityLag = json.getOrDefault("abilityLag", 1);
+        this.speed = json.getOrDefault("speed", 1);
+        this.painReduction = json.getOrDefault("painReduction", 1);
+        this.boost = json.getOrDefault("boost", 0);
     }
 
     @JsonProperty
     public int health, shot, damage, cooldowns, effectDuration, stealRadius;
     @JsonProperty
-    public int abilityRange, abilityLag, speed, painReduction;
+    public int abilityRange, abilityLag, speed, painReduction, boost;
 
     public static String masteryFromIndex(int idx) {
         switch (idx) {
@@ -77,8 +79,10 @@ public class Masteries   {
                 return "Ability Range";
             case 8:
                 return "Cast lag";
-            default:
+            case 9:
                 return "Pain Reduction";
+            default:
+                return "Boost";
         }
     }
 
@@ -95,7 +99,10 @@ public class Masteries   {
                 return -1;
             }
         }
-        return skill_remaining;
+        if (skill_remaining != 0) {
+            return -1;
+        }
+        return 0;
     }
 
 
@@ -111,11 +118,12 @@ public class Masteries   {
         ret.put("abilityRange", this.abilityRange);
         ret.put("abilityLag", this.abilityLag);
         ret.put("painReduction", this.painReduction);
+        ret.put("boost", this.boost);
         return ret;
     }
 
     public int[] asArray() {
-        int[] ret = new int[10];
+        int[] ret = new int[11];
         ret[0] = this.health;
         ret[1] = this.shot;
         ret[2] = this.damage;
@@ -126,6 +134,7 @@ public class Masteries   {
         ret[7] = this.abilityRange;
         ret[8] = this.abilityLag;
         ret[9] = this.painReduction;
+        ret[10] = this.boost;
 
         return ret;
     }
@@ -149,20 +158,25 @@ public class Masteries   {
         if (!t.typeAndMasteriesLocked) {
             System.out.println("Mastery adjusted stats for " + t.getType().toString());
             ConstOperations c = new Const("res/game.cfg");
-            t.speed *= Math.pow(c.getD("masteries.speed.mult"), this.speed-1);
-            t.throwPower *= Math.pow(c.getD("masteries.throw.mult"), this.shot-1);
-            t.rangeFactor *= Math.pow(c.getD("masteries.range.mult"), this.abilityRange-1);
+            t.speed *= (1.0 + (this.speed - 1) * (c.getD("masteries.speed.mult") - 1.0));
+            t.throwPower *= (1.0 + (this.shot - 1) * (c.getD("masteries.throw.mult") - 1.0));
+            t.rangeFactor *= (1.0 + (this.abilityRange - 1) * (c.getD("masteries.range.mult") - 1.0));
             t.stealRad += (this.stealRadius - 1) * c.getI("masteries.stealRadius.flat");
-            t.maxHealth *= Math.pow(c.getD("masteries.health.mult"), this.health-1);
-            t.damageFactor *= Math.pow(c.getD("masteries.damage.mult"), this.damage-1);
-            t.cooldownFactor /= Math.pow(c.getD("masteries.cooldowns.mult"), this.cooldowns-1);
-            t.durationsFactor *= Math.pow(c.getD("masteries.effectDuration.mult"), this.effectDuration-1);
-            t.eCastFrames /= Math.pow(c.getD("masteries.eCastFrames.mult"), this.abilityLag-1);
-            t.rCastFrames /= Math.pow(c.getD("masteries.rCastFrames.mult"), this.abilityLag-1);
-            t.sCastFrames /= Math.pow(c.getD("masteries.stealCastFrames.mult"), this.abilityLag-1);
-            t.painReduction *= Math.pow(c.getD("masteries.painReduction.mult"), this.painReduction-1);
-            System.out.println("speed, throw, range, steal, health, damage, cooldown, duration, eCast, rCast, sCast");
-            System.out.println("[" + t.speed + "," + t.throwPower + "," + t.rangeFactor + "," + t.stealRad + "," + t.maxHealth + "," + t.damageFactor + "," + t.cooldownFactor + "," + t.durationsFactor + "," + t.eCastFrames + "," + t.rCastFrames + "," + t.sCastFrames + "]");
+            t.maxHealth *= (1.0 + (this.health - 1) * (c.getD("masteries.health.mult") - 1.0));
+            t.damageFactor *= (1.0 + (this.damage - 1) * (c.getD("masteries.damage.mult") - 1.0));
+            t.cooldownFactor /= (1.0 + (this.cooldowns - 1) * (c.getD("masteries.cooldowns.mult") - 1.0));
+            t.durationsFactor *= (1.0 + (this.effectDuration - 1) * (c.getD("masteries.effectDuration.mult") - 1.0));
+            t.eCastFrames /= (1.0 + (this.abilityLag - 1) * (c.getD("masteries.eCastFrames.mult") - 1.0));
+            t.rCastFrames /= (1.0 + (this.abilityLag - 1) * (c.getD("masteries.rCastFrames.mult") - 1.0));
+            t.sCastFrames /= (1.0 + (this.abilityLag - 1) * (c.getD("masteries.stealCastFrames.mult") - 1.0));
+            t.painReduction *= (1.0 + (this.painReduction - 1) * (c.getD("masteries.painReduction.mult") - 1.0));
+
+            double boostMult = 1.0 + (this.boost) * (c.getD("masteries.boost.mult") - 1.0);
+            t.boostMaxFactor *= boostMult;
+            t.boostRegenFactor *= boostMult;
+
+            System.out.println("speed, throw, range, steal, health, damage, cooldown, duration, eCast, rCast, sCast, boost");
+            System.out.println("[" + t.speed + "," + t.throwPower + "," + t.rangeFactor + "," + t.stealRad + "," + t.maxHealth + "," + t.damageFactor + "," + t.cooldownFactor + "," + t.durationsFactor + "," + t.eCastFrames + "," + t.rCastFrames + "," + t.sCastFrames + "," + boostMult + "]");
             t.baseSpeed = t.speed;
             t.baseThrowPower = t.throwPower;
             t.baseRangeFactor = t.rangeFactor;
@@ -172,6 +186,8 @@ public class Masteries   {
             t.basePainReduction = t.painReduction;
             t.baseStealRad = t.stealRad;
             t.baseDamageFactor = t.damageFactor;
+            t.baseBoostMaxFactor = t.boostMaxFactor;
+            t.baseBoostRegenFactor = t.boostRegenFactor;
             t.typeAndMasteriesLocked = true;
         }
     }
