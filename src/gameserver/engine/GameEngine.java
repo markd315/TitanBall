@@ -392,8 +392,7 @@ public class GameEngine extends Game {
         home.score = 0;
         away.score = 0;
         lastScoredTeam = TeamAffiliation.UNAFFILIATED;
-        ball.X = c.BALL_X;
-        ball.Y = c.BALL_Y;
+        setRandomBallSpawnPosition();
         for (Titan p : players) {
             p.runningFrame = 0;
             p.dirToBall = 0;
@@ -607,9 +606,24 @@ public class GameEngine extends Game {
             Titan tip = this.titanInPossession().get();
             tip.possession = 0;
         }
-        ball.X = c.BALL_X;
-        ball.Y = c.BALL_Y;
+        setRandomBallSpawnPosition();
         resetPosSel();
+    }
+
+    public void setRandomBallSpawnPosition() {
+        ball.X = c.BALL_X;
+        double TOP_CENTER = c.getI("goal.low.y") + c.getI("goal.low.height") / 2.0;
+        double MID_CENTER = c.getI("goal.hi.y") + c.getI("goal.hi.height") / 2.0;
+        double BOT_CENTER = c.getI("goal.low2.y") + c.getI("goal.low.height") / 2.0;
+
+        double roll = Math.random();
+        if (roll < 0.30) {
+            ball.Y = TOP_CENTER;
+        } else if (roll < 0.60) {
+            ball.Y = BOT_CENTER;
+        } else {
+            ball.Y = MID_CENTER;
+        }
     }
 
     public void intersectAll() {

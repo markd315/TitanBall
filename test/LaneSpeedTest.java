@@ -79,4 +79,35 @@ public class LaneSpeedTest {
         double leftSpeed = titan.actualSpeed(engine, -1.0);
         Assert.assertNotEquals(rightSpeed, defaultSpeed);
     }
+
+    @Test
+    public void testBallSpawnProbabilities() {
+        GameEngine engine = new GameEngine();
+        engine.c = new gameserver.engine.Const();
+        engine.players = new Titan[0];
+
+        double topCY = engine.c.getI("goal.low.y") + engine.c.getI("goal.low.height") / 2.0;
+        double midCY = engine.c.getI("goal.hi.y") + engine.c.getI("goal.hi.height") / 2.0;
+        double botCY = engine.c.getI("goal.low2.y") + engine.c.getI("goal.low.height") / 2.0;
+
+        int topCount = 0;
+        int midCount = 0;
+        int botCount = 0;
+        int iterations = 10000;
+
+        for (int i = 0; i < iterations; i++) {
+            engine.setRandomBallSpawnPosition();
+            if (Math.abs(engine.ball.Y - topCY) < 0.1) topCount++;
+            else if (Math.abs(engine.ball.Y - botCY) < 0.1) botCount++;
+            else if (Math.abs(engine.ball.Y - midCY) < 0.1) midCount++;
+        }
+
+        double topRatio = (double) topCount / iterations;
+        double botRatio = (double) botCount / iterations;
+        double midRatio = (double) midCount / iterations;
+
+        Assert.assertEquals("Top lane spawn ratio ~ 30%", 0.30, topRatio, 0.03);
+        Assert.assertEquals("Bot lane spawn ratio ~ 30%", 0.30, botRatio, 0.03);
+        Assert.assertEquals("Mid lane spawn ratio ~ 40%", 0.40, midRatio, 0.03);
+    }
 }
