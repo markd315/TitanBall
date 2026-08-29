@@ -39,7 +39,7 @@ export function connectGame(gameID) {
         // Target coordinate override is active ONLY when an ability key (E or R) for a single-target ability is currently pressed
         const isECasting = gameState.controlsHeld.E && isSingleTargetAbility(myTitan, 'E');
         const isRCasting = gameState.controlsHeld.R && isSingleTargetAbility(myTitan, 'R');
-        const isSingleTargetAbilityCasting = (isECasting || isRCasting) && !hasPossession;
+        const isSingleTargetAbilityCasting = isECasting || isRCasting;
 
         let posX, posY;
         const selectedTarget = getSelectedTargetEntity(gameState.game);
