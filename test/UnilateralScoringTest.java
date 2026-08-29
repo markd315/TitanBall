@@ -335,4 +335,52 @@ public class UnilateralScoringTest {
         Assert.assertEquals("Warrior throwPower should be 1.12 (flat +0.32)", 1.12, warrior.throwPower, 0.01);
         Assert.assertEquals("Support throwPower should be 1.14 (flat +0.32)", 1.14, support.throwPower, 0.01);
     }
+
+    /**
+     * Test 8: Goalie save when positioned to the rear of his hoops.
+     * Making a save while behind the goal line must gain possession, hold ball outside hoop,
+     * record save stats, and NOT trigger an own goal.
+     */
+    @Test
+    public void testGoalieSaveDoesNotTriggerOwnGoalWhenPositionedBehindHoop() throws Exception {
+        GameEngine engine = createStandardGame();
+
+        // Home Goalie positioned at X=200, Y=583 (behind Home Hi Goal at X=256)
+        Titan homeGoalie = engine.players[0]; // Home Goalie (numSel=1)
+        homeGoalie.setType(TitanType.GOALIE);
+        homeGoalie.team = TeamAffiliation.HOME;
+        homeGoalie.X = 200;
+        homeGoalie.Y = 583;
+        homeGoalie.possession = 0;
+
+        // Away shooter shooting towards Home Hi Goal
+        Titan shooter = engine.players[4]; // Away Titan
+        shooter.setType(TitanType.WARRIOR);
+        shooter.team = TeamAffiliation.AWAY;
+        shooter.X = 500;
+        shooter.Y = 583;
+        shooter.actionState = Titan.TitanState.SHOOT;
+        shooter.actionFrame = 1;
+        engine.xKickPow = -1.0;
+        engine.yKickPow = 0.0;
+
+        // Place ball flying towards Home Goalie (near Goalie's intercept hitbox)
+        engine.ball.X = 230;
+        engine.ball.Y = 583;
+
+        double initialAwayScore = engine.away.score;
+
+        // Execute shot substep
+        engine.shootingBall(shooter);
+
+        // 1. Goalie must have gained possession
+        Assert.assertEquals("Goalie must gain possession upon save", 1, homeGoalie.possession);
+
+        // 2. Score must not have increased
+        Assert.assertEquals("Away team score must not increase on goalie save", initialAwayScore, engine.away.score, 0.001);
+
+        // 3. Ball must be pushed outside the goal hoop
+        boolean inHoop = engine.ballIntersectsEllipse(engine.hiGoals[0]);
+        Assert.assertFalse("Ball must be held outside goal hoop", inHoop);
+    }
 }

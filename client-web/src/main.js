@@ -1111,44 +1111,117 @@ function drawGameEnded(ctx) {
   // Draw Stats Table
   const email = jwtDecodeEmail(gameState.token || sessionStorage.getItem('accessToken'));
   if (email && game.stats && game.stats.gamestats) {
+    let isGoalie = false;
+    if (game.underControl && (game.underControl.type === 'GOALIE' || (game.underControl.type && String(game.underControl.type).toUpperCase() === 'GOALIE'))) {
+      isGoalie = true;
+    } else if (game.clients && gameState.token) {
+      const emailDivider = game.clients.find(c => c.email === email);
+      if (emailDivider && game.players) {
+        const p = game.players[emailDivider.selection - 1];
+        if (p && p.type && String(p.type).toUpperCase() === 'GOALIE') {
+          isGoalie = true;
+        }
+      }
+    }
+
     ctx.save();
+    const panelH = isGoalie ? 520 : 460;
+    const panelY = isGoalie ? 395 : 420;
     ctx.fillStyle = 'rgba(10, 26, 20, 0.85)';
-    ctx.fillRect(1920 / 2 - 300, 420, 600, 460);
+    ctx.fillRect(1920 / 2 - 320, panelY, 640, panelH);
     ctx.strokeStyle = '#ff7f11';
     ctx.lineWidth = 3;
-    ctx.strokeRect(1920 / 2 - 300, 420, 600, 460);
+    ctx.strokeRect(1920 / 2 - 320, panelY, 640, panelH);
 
-    ctx.font = 'bold 28px Arial';
+    ctx.font = 'bold 26px Arial';
     ctx.fillStyle = '#00ff00';
     ctx.textAlign = 'center';
-    ctx.fillText('MATCH STATISTICS', 1920 / 2, 460);
+    ctx.fillText('MATCH STATISTICS', 1920 / 2, panelY + 35);
 
-    const STAT_NAMES = [
-      'GOALS', 'SIDEGOALS', 'POINTS',
-      'STEALS', 'BLOCKS', 'PASSES',
-      'KILLS', 'DEATHS', 'TURNOVERS',
-      'KILLASSISTS', 'GOALASSISTS', 'REBOUND'
-    ];
+    let statEntries = [];
+    if (isGoalie) {
+      statEntries = [
+        { label: 'CENTERGOAL SAVES', statIndex: 18, isFloat: false },
+        { label: 'CENTERGOALS CONCEDED', statIndex: 20, isFloat: false },
+        { label: 'CGSV%', customType: 'CGSV' },
+        { label: 'SIDEGOAL SAVES', statIndex: 17, isFloat: false },
+        { label: 'SIDEGOALS CONCEDED', statIndex: 19, isFloat: false },
+        { label: 'SGSV%', customType: 'SGSV' },
+        { label: 'BLOCKS', statIndex: 4, isFloat: false },
+        { label: 'LASTHITS', statIndex: 13, isFloat: false },
+        { label: 'MINION DAMAGE', statIndex: 14, isFloat: true },
+        { label: 'UPGRADES GOLD', statIndex: 15, isFloat: false },
+        { label: 'CONSUMABLES GOLD', statIndex: 16, isFloat: false },
+        { label: 'MANA SPENT', statIndex: 21, isFloat: false },
+        { label: 'STEALS', statIndex: 3, isFloat: false },
+        { label: 'REBOUNDS', statIndex: 11, isFloat: false },
+        { label: 'PASSES', statIndex: 5, isFloat: false },
+        { label: 'TURNOVERS', statIndex: 8, isFloat: false },
+        { label: 'GOALS', statIndex: 0, isFloat: false }
+      ];
+    } else {
+      statEntries = [
+        { label: 'GOALS', statIndex: 0, isFloat: false },
+        { label: 'SIDEGOALS', statIndex: 1, isFloat: false },
+        { label: 'POINTS', statIndex: 2, isFloat: true },
+        { label: 'STEALS', statIndex: 3, isFloat: false },
+        { label: 'BLOCKS', statIndex: 4, isFloat: false },
+        { label: 'PASSES', statIndex: 5, isFloat: false },
+        { label: 'KILLS', statIndex: 6, isFloat: false },
+        { label: 'DEATHS', statIndex: 7, isFloat: false },
+        { label: 'TURNOVERS', statIndex: 8, isFloat: false },
+        { label: 'KILLASSISTS', statIndex: 9, isFloat: false },
+        { label: 'GOALASSISTS', statIndex: 10, isFloat: false },
+        { label: 'REBOUND', statIndex: 11, isFloat: false }
+      ];
+    }
 
-    ctx.font = '22px Courier New';
-    let sy = 510;
+    ctx.font = isGoalie ? '18px Courier New' : '22px Courier New';
+    let sy = panelY + 60;
+    const lineHeight = isGoalie ? 24 : 30;
     
-    STAT_NAMES.forEach((name, idx) => {
-      const statMap = game.stats.gamestats[idx];
-      let val = 0;
-      if (statMap && statMap[email] !== undefined) {
-        val = statMap[email];
+    statEntries.forEach((entry) => {
+      let valStr = '';
+      if (entry.customType === 'CGSV') {
+        const cgSavesMap = game.stats.gamestats[18];
+        const cgConcMap = game.stats.gamestats[20];
+        const cgSaves = (cgSavesMap && cgSavesMap[email] !== undefined) ? cgSavesMap[email] : 0;
+        const cgConc = (cgConcMap && cgConcMap[email] !== undefined) ? cgConcMap[email] : 0;
+        const total = cgSaves + cgConc;
+        const pct = total > 0 ? (cgSaves / total) * 100.0 : 100.0;
+        valStr = `${pct.toFixed(1)}%`;
+      } else if (entry.customType === 'SGSV') {
+        const sgSavesMap = game.stats.gamestats[17];
+        const sgConcMap = game.stats.gamestats[19];
+        const sgSaves = (sgSavesMap && sgSavesMap[email] !== undefined) ? sgSavesMap[email] : 0;
+        const sgConc = (sgConcMap && sgConcMap[email] !== undefined) ? sgConcMap[email] : 0;
+        const total = sgSaves + sgConc;
+        const pct = total > 0 ? (sgSaves / total) * 100.0 : 100.0;
+        valStr = `${pct.toFixed(1)}%`;
+      } else {
+        let val = 0;
+        const statMap = game.stats.gamestats[entry.statIndex];
+        if (statMap && statMap[email] !== undefined) {
+          val = statMap[email];
+        }
+        if (val === 0 && entry.altIndex !== undefined) {
+          const altMap = game.stats.gamestats[entry.altIndex];
+          if (altMap && altMap[email] !== undefined) {
+            val = altMap[email];
+          }
+        }
+        valStr = entry.isFloat ? val.toFixed(1) : Math.floor(val).toString();
       }
       
       ctx.fillStyle = '#ffffff';
       ctx.textAlign = 'left';
-      ctx.fillText(name.padEnd(20, '.'), 1920 / 2 - 200, sy);
+      ctx.fillText(entry.label.padEnd(22, '.'), 1920 / 2 - 220, sy);
       
-      ctx.fillStyle = '#ff9f1c';
+      ctx.fillStyle = (entry.customType === 'CGSV' || entry.customType === 'SGSV') ? '#4deeea' : '#ff9f1c';
       ctx.textAlign = 'right';
-      ctx.fillText(idx === 2 ? val.toFixed(2) : Math.floor(val).toString(), 1920 / 2 + 200, sy);
+      ctx.fillText(valStr, 1920 / 2 + 220, sy);
       
-      sy += 30;
+      sy += lineHeight;
     });
 
     ctx.restore();

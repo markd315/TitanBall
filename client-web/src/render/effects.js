@@ -19,9 +19,12 @@ export function drawEffectIcons(ctx, game, camX, camY) {
     }
     
     // Skip rendering if stealthed (and not on fire) and on enemy team
-    const invisible = game.underControl && game.underControl.team !== en.team &&
-                      game.effectPool.effects.some(ef => ef.effect === 'STEALTHED' && ef.on && ef.on.id === en.id) &&
-                      !game.effectPool.effects.some(ef => ef.effect === 'FLARE' && ef.on && ef.on.id === en.id);
+    const invisible = Boolean(
+      game.underControl && game.underControl.team && en.team && game.underControl.team !== en.team &&
+      game.effectPool && Array.isArray(game.effectPool.effects) && en.id &&
+      game.effectPool.effects.some(ef => ef && ef.effect === 'STEALTHED' && ef.on && ef.on.id && ef.on.id.toString() === en.id.toString()) &&
+      !game.effectPool.effects.some(ef => ef && ef.effect === 'FLARE' && ef.on && ef.on.id && ef.on.id.toString() === en.id.toString())
+    );
     if (invisible) continue;
     
     const isCooldown = e.effect.startsWith('COOLDOWN');

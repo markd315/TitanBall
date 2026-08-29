@@ -103,11 +103,15 @@ export function drawPlayers(ctx, game, camX, camY) {
         pState.lastHeight = t.height || 70;
 
         // Check if stealthed
-        const isStealthed = game.effectPool && game.effectPool.effects.some(e => e.effect === 'STEALTHED' && e.on && e.on.id === t.id) &&
-                            !game.effectPool.effects.some(e => e.effect === 'FLARE' && e.on && e.on.id === t.id);
+        const isStealthed = Boolean(
+            game.effectPool && Array.isArray(game.effectPool.effects) &&
+            t.id &&
+            game.effectPool.effects.some(e => e && e.effect === 'STEALTHED' && e.on && e.on.id && e.on.id.toString() === t.id.toString()) &&
+            !game.effectPool.effects.some(e => e && e.effect === 'FLARE' && e.on && e.on.id && e.on.id.toString() === t.id.toString())
+        );
 
         // Skip rendering if stealthed and on enemy team
-        const isEnemy = game.underControl && game.underControl.team !== t.team;
+        const isEnemy = Boolean(game.underControl && game.underControl.team && t.team && game.underControl.team !== t.team);
         if (isStealthed && isEnemy) continue;
 
         let facing = pState.lastFacing;

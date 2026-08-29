@@ -23,6 +23,16 @@ public class ClassStat{
         this.killassists = 0;
         this.goalassists = 0;
         this.rebounds = 0;
+        this.saves = 0;
+        this.lasthits = 0;
+        this.miniondamage = 0.0;
+        this.upgradesgold = 0;
+        this.consumablesgold = 0;
+        this.sidegoalsaves = 0;
+        this.centergoalsaves = 0;
+        this.sidegoalsconceded = 0;
+        this.goalsconceded = 0;
+        this.manaspent = 0;
     }
 
     public ClassStat(){
@@ -96,6 +106,36 @@ public class ClassStat{
 
     @Column(name = "rebounds")
     protected int rebounds;
+
+    @Column(name = "saves")
+    protected int saves;
+
+    @Column(name = "lasthits")
+    protected int lasthits;
+
+    @Column(name = "miniondamage")
+    protected double miniondamage;
+
+    @Column(name = "upgradesgold")
+    protected int upgradesgold;
+
+    @Column(name = "consumablesgold")
+    protected int consumablesgold;
+
+    @Column(name = "sidegoalsaves")
+    protected int sidegoalsaves;
+
+    @Column(name = "centergoalsaves")
+    protected int centergoalsaves;
+
+    @Column(name = "sidegoalsconceded")
+    protected int sidegoalsconceded;
+
+    @Column(name = "goalsconceded")
+    protected int goalsconceded;
+
+    @Column(name = "manaspent")
+    protected int manaspent;
 
     public Integer getWins() {
         return wins;
@@ -215,6 +255,86 @@ public class ClassStat{
 
     public void setRebounds(int rebounds) {
         this.rebounds = rebounds;
+    }
+
+    public int getSaves() {
+        return saves;
+    }
+
+    public void setSaves(int saves) {
+        this.saves = saves;
+    }
+
+    public int getLasthits() {
+        return lasthits;
+    }
+
+    public void setLasthits(int lasthits) {
+        this.lasthits = lasthits;
+    }
+
+    public double getMiniondamage() {
+        return miniondamage;
+    }
+
+    public void setMiniondamage(double miniondamage) {
+        this.miniondamage = miniondamage;
+    }
+
+    public int getUpgradesgold() {
+        return upgradesgold;
+    }
+
+    public void setUpgradesgold(int upgradesgold) {
+        this.upgradesgold = upgradesgold;
+    }
+
+    public int getConsumablesgold() {
+        return consumablesgold;
+    }
+
+    public void setConsumablesgold(int consumablesgold) {
+        this.consumablesgold = consumablesgold;
+    }
+
+    public int getSidegoalsaves() {
+        return sidegoalsaves;
+    }
+
+    public void setSidegoalsaves(int sidegoalsaves) {
+        this.sidegoalsaves = sidegoalsaves;
+    }
+
+    public int getCentergoalsaves() {
+        return centergoalsaves;
+    }
+
+    public void setCentergoalsaves(int centergoalsaves) {
+        this.centergoalsaves = centergoalsaves;
+    }
+
+    public int getSidegoalsconceded() {
+        return sidegoalsconceded;
+    }
+
+    public void setSidegoalsconceded(int sidegoalsconceded) {
+        this.sidegoalsconceded = sidegoalsconceded;
+    }
+
+    public int getGoalsconceded() {
+        return goalsconceded;
+    }
+
+    public void setGoalsconceded(int goalsconceded) {
+        this.goalsconceded = goalsconceded;
+    }
+
+    public int getManaspent() {
+        return manaspent;
+    }
+
+    public void setManaspent(int manaspent) {
+        this.manaspent = manaspent;
     }
 
     /*

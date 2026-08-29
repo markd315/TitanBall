@@ -450,9 +450,12 @@ export function drawHealthBars(ctx, game, camX, camY) {
         if (e.health > 0 && e.entityClass !== 'LaneMinion') {
             if (e.entityClass === 'Fire' || e.entityClass === 'Portal' || e.entityClass === 'BallPortal' || e.entityClass === 'Parapet' || (e.entityClass === 'Trap' && (e.width === 80 || e.maxHealth >= 99999))) continue;
 
-            const invisible = game.underControl && game.underControl.team !== e.team &&
-                              game.effectPool && game.effectPool.effects.some(ef => ef.effect === 'STEALTHED' && ef.on && ef.on.id === e.id) &&
-                              !game.effectPool.effects.some(ef => ef.effect === 'FLARE' && ef.on && ef.on.id === e.id);
+            const invisible = Boolean(
+                game.underControl && game.underControl.team && e.team && game.underControl.team !== e.team &&
+                game.effectPool && Array.isArray(game.effectPool.effects) && e.id &&
+                game.effectPool.effects.some(ef => ef && ef.effect === 'STEALTHED' && ef.on && ef.on.id && ef.on.id.toString() === e.id.toString()) &&
+                !game.effectPool.effects.some(ef => ef && ef.effect === 'FLARE' && ef.on && ef.on.id && ef.on.id.toString() === e.id.toString())
+            );
             if (invisible) continue;
 
             if (e.entityClass === 'Dragon') {

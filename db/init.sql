@@ -64,7 +64,17 @@ CREATE TABLE classstat (
     turnovers INT DEFAULT 0,
     killassists INT DEFAULT 0,
     goalassists INT DEFAULT 0,
-    rebounds INT DEFAULT 0
+    rebounds INT DEFAULT 0,
+    saves INT DEFAULT 0,
+    lasthits INT DEFAULT 0,
+    miniondamage DOUBLE DEFAULT 0.0,
+    upgradesgold INT DEFAULT 0,
+    consumablesgold INT DEFAULT 0,
+    sidegoalsaves INT DEFAULT 0,
+    centergoalsaves INT DEFAULT 0,
+    sidegoalsconceded INT DEFAULT 0,
+    goalsconceded INT DEFAULT 0,
+    manaspent INT DEFAULT 0
 );
 
 -- Premade team stats

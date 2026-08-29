@@ -47,6 +47,11 @@ public class StatEngine  {
         grant(pl, en, 1.0);
     }
 
+    public void grant(GameEngine context, Titan t, StatEnum en, double amount) {
+        PlayerDivider pl = context.clientFromTitan(t);
+        grant(pl, en, amount);
+    }
+
     public Map<String, Double> getStat(StatEnum en) {
         return gamestats.get(en.index);
     }
@@ -158,7 +163,12 @@ public class StatEngine  {
         GOALS(0), SIDEGOALS(1), POINTS(2),
         STEALS(3), BLOCKS(4), PASSES(5),
         KILLS(6), DEATHS(7), TURNOVERS(8),
-        KILLASSISTS(9), GOALASSISTS(10), REBOUND(11);
+        KILLASSISTS(9), GOALASSISTS(10), REBOUND(11),
+        SAVES(12), LASTHITS(13), MINIONDAMAGE(14),
+        UPGRADESGOLD(15), CONSUMABLESGOLD(16),
+        SIDEGOAL_SAVES(17), CENTERGOAL_SAVES(18),
+        SIDEGOALS_CONCEDED(19), GOALS_CONCEDED(20),
+        MANASPENT(21);
         private final int index;
 
         private final static Map<Integer, StatEnum> map =
@@ -187,6 +197,16 @@ public class StatEngine  {
         Map<String, Double> killassists = new HashMap<>();
         Map<String, Double> goalassists = new HashMap<>();
         Map<String, Double> rebounds = new HashMap<>();
+        Map<String, Double> saves = new HashMap<>();
+        Map<String, Double> lasthits = new HashMap<>();
+        Map<String, Double> miniondamage = new HashMap<>();
+        Map<String, Double> upgradesgold = new HashMap<>();
+        Map<String, Double> consumablesgold = new HashMap<>();
+        Map<String, Double> sidegoalsaves = new HashMap<>();
+        Map<String, Double> centergoalsaves = new HashMap<>();
+        Map<String, Double> sidegoalsconceded = new HashMap<>();
+        Map<String, Double> goalsconceded = new HashMap<>();
+        Map<String, Double> manaspent = new HashMap<>();
         gamestats.add(goals);
         gamestats.add(sidegoals);
         gamestats.add(points);
@@ -199,6 +219,16 @@ public class StatEngine  {
         gamestats.add(killassists);
         gamestats.add(goalassists);
         gamestats.add(rebounds);
+        gamestats.add(saves);
+        gamestats.add(lasthits);
+        gamestats.add(miniondamage);
+        gamestats.add(upgradesgold);
+        gamestats.add(consumablesgold);
+        gamestats.add(sidegoalsaves);
+        gamestats.add(centergoalsaves);
+        gamestats.add(sidegoalsconceded);
+        gamestats.add(goalsconceded);
+        gamestats.add(manaspent);
     }
 
     public List<Map<String, Double>> getGamestats() {

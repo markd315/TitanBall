@@ -320,9 +320,9 @@ export function drawMinions(ctx, game, camX, camY) {
 
 function drawHillChevrons(ctx, game, camX, camY) {
     const LANE_BOUNDS = [
-        { yTop: 240, yBottom: 468.5 },
-        { yTop: 468.5, yBottom: 686.5 },
-        { yTop: 686.5, yBottom: 905 }
+        { yTop: 139, yBottom: 452.33 },
+        { yTop: 452.33, yBottom: 765.67 },
+        { yTop: 765.67, yBottom: 1079 }
     ];
     const startX = 350;
     const endX = 1750;
@@ -367,9 +367,9 @@ function drawHillChevrons(ctx, game, camX, camY) {
         const dxApex = halfHeight / Math.tan(halfAngleRad);
 
         ctx.save();
-        ctx.globalAlpha = 0.02; // Stationary overlay at 2% opacity
+        ctx.globalAlpha = 0.05; // Stationary overlay at 5% opacity
         ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 4;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
 

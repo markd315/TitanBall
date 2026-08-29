@@ -210,6 +210,9 @@ public class GameEngine extends Game {
                 }
             }
             p.possibleSelection = remapped;
+            if (!p.possibleSelection.isEmpty()) {
+                p.selection = p.possibleSelection.get(0);
+            }
         }
     }
 
@@ -268,6 +271,72 @@ public class GameEngine extends Game {
         return new GoalHoop[0];
     }
 
+    public enum ShotType {
+        NONE, CENTERGOAL, SIDEGOAL
+    }
+    public ShotType currentShotType = ShotType.NONE;
+    public double[] currentStepVel = new double[]{0, 0};
+    public UUID lastHomePossessor = null;
+    public UUID lastAwayPossessor = null;
+
+    public ShotType predictShotTypeFromRay(double bx, double by, double dx, double dy, TeamAffiliation throwerTeam) {
+        double len = Math.hypot(dx, dy);
+        if (len == 0) return ShotType.NONE;
+        double uX = dx / len;
+        double uY = dy / len;
+
+        // 1. Center Goal (hiGoals) takes absolute priority
+        if (hiGoals != null) {
+            for (GoalHoop goal : hiGoals) {
+                if (goal != null && goal.team != throwerTeam) {
+                    if (rayIntersectsHoop(bx, by, uX, uY, goal)) {
+                        return ShotType.CENTERGOAL;
+                    }
+                }
+            }
+        }
+
+        // 2. Side Goals (lowGoals) checked only if no Center Goal is targeted
+        if (lowGoals != null) {
+            for (GoalHoop goal : lowGoals) {
+                if (goal != null && goal.team != throwerTeam) {
+                    if (rayIntersectsHoop(bx, by, uX, uY, goal)) {
+                        return ShotType.SIDEGOAL;
+                    }
+                }
+            }
+        }
+
+        return ShotType.NONE;
+    }
+
+    private boolean rayIntersectsHoop(double bx, double by, double uX, double uY, GoalHoop goal) {
+        double gx = goal.x + goal.w / 2.0;
+        double gy = goal.y + goal.h / 2.0;
+        double rx = goal.w / 2.0 + 35.0; // hoop radius + tolerance
+        double ry = goal.h / 2.0 + 35.0;
+
+        double vX = gx - bx;
+        double vY = gy - by;
+        double t = vX * uX + vY * uY;
+        if (t <= 0) return false;
+
+        double px = bx + t * uX;
+        double py = by + t * uY;
+
+        double normX = (px - gx) / rx;
+        double normY = (py - gy) / ry;
+
+        return (normX * normX + normY * normY) <= 1.0;
+    }
+
+    public ShotType predictShotTrajectory(double startX, double startY, double[] vel, TeamAffiliation throwerTeam) {
+        if (vel == null || (vel[0] == 0 && vel[1] == 0)) return ShotType.NONE;
+        double bx = (ball != null) ? (ball.X + ball.width / 2.0) : startX;
+        double by = (ball != null) ? (ball.Y + ball.height / 2.0) : startY;
+        return predictShotTypeFromRay(bx, by, vel[0], vel[1], throwerTeam);
+    }
+
     public boolean ballIntersectsEllipse(GoalHoop goal) {
         gameserver.engine.CollisionMath.EllipseData g = goal.ellipseData();
         gameserver.engine.CollisionMath.EllipseData b = ball.ellipseData();
@@ -285,6 +354,10 @@ public class GameEngine extends Game {
         }
         for (GoalHoop goal : this.lowGoals) {
             if (ballIntersectsEllipse(goal) && goal.checkReady()) {
+                Optional<Titan> possessor = titanInPossession();
+                if (possessor.isPresent() && possessor.get().team == goal.team) {
+                    continue;
+                }
                 Team enemy, us;
                 if (goal.team == TeamAffiliation.HOME) {
                     us = this.away;
@@ -294,8 +367,14 @@ public class GameEngine extends Game {
                     enemy = this.away;
                 }
                 goal.trigger();
-                stats.grant(getPossessorOrThrower(), StatEngine.StatEnum.SIDEGOALS);
-                stats.grant(getPossessorOrThrower(), StatEngine.StatEnum.POINTS, .25);
+                Titan defGoalie = (goal.team == TeamAffiliation.HOME) ? players[0] : players[1];
+                stats.grant(this, defGoalie, StatEngine.StatEnum.SIDEGOALS_CONCEDED);
+                UUID attackerId = (us.which == TeamAffiliation.HOME) ? lastHomePossessor : lastAwayPossessor;
+                PlayerDivider scorer = (attackerId != null) ? clientFromTitan(titanByID(attackerId.toString()).orElse(null)) : getPossessorOrThrower();
+                if (scorer != null) {
+                    stats.grant(scorer, StatEngine.StatEnum.SIDEGOALS);
+                    stats.grant(scorer, StatEngine.StatEnum.POINTS, .25);
+                }
                 if (us.score % 1.0 == .75) {
                     goal.freeze();
                 }
@@ -312,6 +391,10 @@ public class GameEngine extends Game {
 
         for (GoalHoop goal : this.hiGoals) {
             if (ballIntersectsEllipse(goal) && goal.checkReady()) {
+                Optional<Titan> possessor = titanInPossession();
+                if (possessor.isPresent() && possessor.get().team == goal.team) {
+                    continue;
+                }
                 Team us, enemy;
                 if (goal.team == TeamAffiliation.HOME) {
                     us = this.away;
@@ -321,13 +404,19 @@ public class GameEngine extends Game {
                     enemy = this.away;
                 }
                 goal.trigger();
+                Titan defGoalieHi = (goal.team == TeamAffiliation.HOME) ? players[0] : players[1];
+                stats.grant(this, defGoalieHi, StatEngine.StatEnum.GOALS_CONCEDED);
                 //Cash in all ghost/combo points for a full point
                 long iPart = (long) us.score;
                 double fPart = us.score - iPart;
                 us.score = Math.floor(us.score);
                 us.score += fPart * 4 + 1;
-                stats.grant(getPossessorOrThrower(), StatEngine.StatEnum.GOALS);
-                stats.grant(getPossessorOrThrower(), StatEngine.StatEnum.POINTS, fPart * 4 + 1);
+                UUID attackerIdHi = (us.which == TeamAffiliation.HOME) ? lastHomePossessor : lastAwayPossessor;
+                PlayerDivider scorerHi = (attackerIdHi != null) ? clientFromTitan(titanByID(attackerIdHi.toString()).orElse(null)) : getPossessorOrThrower();
+                if (scorerHi != null) {
+                    stats.grant(scorerHi, StatEngine.StatEnum.GOALS);
+                    stats.grant(scorerHi, StatEngine.StatEnum.POINTS, fPart * 4 + 1);
+                }
                 checkWinCondition(false);
                 //reset enemy team ghost points
                 boolean saveProgressHi = (enemy == this.home)
@@ -867,6 +956,15 @@ public class GameEngine extends Game {
         } else {
             if (isHome) homeGoalieCurrency = newBalance; else awayGoalieCurrency = newBalance;
         }
+        if (isMana) {
+            stats.grant(this, t, StatEngine.StatEnum.MANASPENT, cost);
+        } else {
+            if (hasCost) {
+                stats.grant(this, t, StatEngine.StatEnum.UPGRADESGOLD, cost);
+            } else if (hasUse) {
+                stats.grant(this, t, StatEngine.StatEnum.CONSUMABLESGOLD, cost);
+            }
+        }
         if (hasCost) {
             purchased.add(nodeKey);
         }
@@ -1401,6 +1499,7 @@ public class GameEngine extends Game {
             yourPlayerTactics();
         }
         if (ballVisible) {
+            updateBallIfPossessed();
             intersectAll();
             detectGoals();
         }
@@ -1576,14 +1675,17 @@ public class GameEngine extends Game {
     protected void setBallFromTip() {
         Optional<Titan> tip = this.titanInPossession();
         if (tip.isPresent()) {
-            TeamAffiliation team = tip.get().team;
+            Titan tipTitan = tip.get();
+            TeamAffiliation team = tipTitan.team;
             if (team == TeamAffiliation.HOME) {
                 home.hasBall = true;
                 away.hasBall = false;
+                lastHomePossessor = tipTitan.id;
             }
             if (team == TeamAffiliation.AWAY) {
                 away.hasBall = true;
                 home.hasBall = false;
+                lastAwayPossessor = tipTitan.id;
             }
         } else {
             home.hasBall = false;
@@ -1611,6 +1713,11 @@ public class GameEngine extends Game {
                         release.actionFrame = 0;
                     }
                     changePossessionStats(release, t);
+                    if (t.team == TeamAffiliation.HOME) {
+                        lastHomePossessor = t.id;
+                    } else if (t.team == TeamAffiliation.AWAY) {
+                        lastAwayPossessor = t.id;
+                    }
                     home.hasBall = true;
                     away.hasBall = false;
                     players[numSel - 1].possession = 1;
@@ -1629,10 +1736,39 @@ public class GameEngine extends Game {
             } else { //Enemy taking possession
                 stats.grant(this, lost, StatEngine.StatEnum.TURNOVERS);
                 stats.grant(this, gained, StatEngine.StatEnum.BLOCKS);
+                if (gained.getType() == TitanType.GOALIE) {
+                    ShotType st = currentShotType;
+                    if (st == ShotType.NONE && currentStepVel != null) {
+                        st = predictShotTrajectory(ball.X, ball.Y, currentStepVel, lost.team);
+                    }
+                    if (st == ShotType.CENTERGOAL) {
+                        stats.grant(this, gained, StatEngine.StatEnum.CENTERGOAL_SAVES);
+                        stats.grant(this, gained, StatEngine.StatEnum.SAVES);
+                    } else if (st == ShotType.SIDEGOAL) {
+                        stats.grant(this, gained, StatEngine.StatEnum.SIDEGOAL_SAVES);
+                        stats.grant(this, gained, StatEngine.StatEnum.SAVES);
+                    }
+                }
             }
         } else {//Picking up loose ball
             stats.grant(this, gained, StatEngine.StatEnum.REBOUND);
+            stats.grant(this, gained, StatEngine.StatEnum.BLOCKS);
+            if (gained.getType() == TitanType.GOALIE) {
+                Titan shooter = (this.titanInPossession().isPresent()) ? this.titanInPossession().get() : (lastPossessed != null ? this.titanByID(lastPossessed.toString()).orElse(null) : null);
+                ShotType st = currentShotType;
+                if (st == ShotType.NONE && shooter != null && shooter.team != gained.team && currentStepVel != null) {
+                    st = predictShotTrajectory(ball.X, ball.Y, currentStepVel, shooter.team);
+                }
+                if (st == ShotType.CENTERGOAL) {
+                    stats.grant(this, gained, StatEngine.StatEnum.CENTERGOAL_SAVES);
+                    stats.grant(this, gained, StatEngine.StatEnum.SAVES);
+                } else if (st == ShotType.SIDEGOAL) {
+                    stats.grant(this, gained, StatEngine.StatEnum.SIDEGOAL_SAVES);
+                    stats.grant(this, gained, StatEngine.StatEnum.SAVES);
+                }
+            }
         }
+        currentShotType = ShotType.NONE;
     }
 
     protected CollisionMath.Bounds goalieHitboxOverride(int numSel, CollisionMath.Bounds rect) {
@@ -1708,6 +1844,7 @@ public class GameEngine extends Game {
                 double angle = Util.degreesFromCoords(xClick, yClick);
                 xKickPow = Math.cos(Math.toRadians(angle)) / 4.0;
                 yKickPow = Math.sin(Math.toRadians(angle)) / 4.0;
+                currentShotType = predictShotTypeFromRay(ball.X + ball.width / 2.0, ball.Y + ball.height / 2.0, xKickPow, -yKickPow, t.team);
             } else {
                 // Titan holds ball but is currently in cast lag / animation / stunned.
                 // Queue the shot/lob to fire immediately when cast lag finishes.
@@ -2045,7 +2182,9 @@ public class GameEngine extends Game {
             double dxPerStep = stepFactor * xKickPow * speedMult;
             double dyPerStep = -stepFactor * yKickPow * speedMult;
             double[] vel = new double[]{ dxPerStep, dyPerStep };
+            currentShotType = predictShotTrajectory(ball.X, ball.Y, vel, t.team);
             for (int i = 0; i < 800; i++) {
+                currentStepVel = vel;
                 if (this.phase == GamePhase.SCORE_FREEZE) {
                     break;
                 }
@@ -2055,6 +2194,9 @@ public class GameEngine extends Game {
                 ball.X += vel[0];
                 ball.Y += vel[1];
                 intersectAll();
+                if (titanInPossession().isPresent()) {
+                    break;
+                }
                 detectGoals();
                 bounceWalls(wallSnap, vel);
             }
@@ -2116,7 +2258,9 @@ public class GameEngine extends Game {
             double dxPerStep = stepFactor * xKickPow * speedMult;
             double dyPerStep = -stepFactor * yKickPow * speedMult;
             double[] vel = new double[]{ dxPerStep, dyPerStep };
+            currentShotType = predictShotTrajectory(ball.X, ball.Y, vel, t.team);
             for (int i = 0; i < 800; i++) {
+                currentStepVel = vel;
                 if (this.phase == GamePhase.SCORE_FREEZE) {
                     break;
                 }
@@ -2126,6 +2270,9 @@ public class GameEngine extends Game {
                 ball.X += vel[0];
                 ball.Y += vel[1];
                 intersectAll();
+                if (titanInPossession().isPresent()) {
+                    break;
+                }
                 detectGoals();
                 bounceWalls(wallSnap, vel);
             }
@@ -2344,7 +2491,9 @@ public class GameEngine extends Game {
             double dxPerStep = (dxTick / 800.0) * speedMult;
             double dyPerStep = (dyTick / 800.0) * speedMult;
             double[] vel = new double[]{ dxPerStep, dyPerStep };
+            currentShotType = predictShotTrajectory(ball.X, ball.Y, vel, t.team);
             for (int i = 0; i < 800; i++) {
+                currentStepVel = vel;
                 if (this.phase == GamePhase.SCORE_FREEZE || !ballVisible) {
                     break;
                 }
@@ -2354,6 +2503,9 @@ public class GameEngine extends Game {
                 ball.X += vel[0];
                 ball.Y += vel[1];
                 intersectAll();
+                if (titanInPossession().isPresent()) {
+                    break;
+                }
                 detectGoals();
                 bounceWalls(wallSnap, vel);
             }
@@ -3014,16 +3166,23 @@ protected void tickLaneMinions() {
 
             if (isDragon) {
                 gameserver.entity.minions.Dragon d = (gameserver.entity.minions.Dragon) target;
+                stats.grant(this, goalie, StatEngine.StatEnum.MINIONDAMAGE, dmg);
                 d.damage(this, dmg, goalieTeam);
+                if (d.getHealth() <= 0.0) {
+                    stats.grant(this, goalie, StatEngine.StatEnum.LASTHITS);
+                }
             } else {
                 LaneMinion m = (LaneMinion) target;
-                if (m.team == goalieTeam) {
+                if (m.team != goalieTeam) {
+                    stats.grant(this, goalie, StatEngine.StatEnum.MINIONDAMAGE, dmg);
+                } else {
                     dmg *= 0.5;
                 }
                 m.health -= dmg;
                 if (m.health <= 0.0) {
                     m.health = 0.0;
                     if (m.team != goalieTeam) {
+                        stats.grant(this, goalie, StatEngine.StatEnum.LASTHITS);
                         if (goalieTeam == TeamAffiliation.HOME) {
                             homeGoalieCurrency += 5.0;
                         } else {

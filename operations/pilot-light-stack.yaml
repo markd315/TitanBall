@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Pilot Light Server Stack for Titanball - ECS Fargate Server with Amazon Aurora Serverless v2, Autostart and 4-Hour Reaper'
+Description: 'Pilot Light Server Stack for Titanball - ECS Fargate 2-Container Server with Autostart and 4-Hour Reaper'
 
 Parameters:
   CloudFrontDistributionId:
@@ -16,30 +16,16 @@ Parameters:
     Type: String
     NoEcho: true
     Default: 'devpassword'
-    Description: Master password for the Aurora Serverless v2 Database.
-
-  AuroraMinACU:
-    Type: Number
-    Default: 0.5
-    MinValue: 0.5
-    MaxValue: 128.0
-    Description: Minimum Aurora Serverless v2 Capacity Units (0.5 ACU is ~1GB RAM, lowest cost baseline).
-
-  AuroraMaxACU:
-    Type: Number
-    Default: 2.0
-    MinValue: 0.5
-    MaxValue: 128.0
-    Description: Maximum Aurora Serverless v2 Capacity Units.
+    Description: Root password for the MySQL Database container.
 
   ExpirationHours:
     Type: String
     Default: '4'
-    Description: Hours of inactivity before the game server is automatically scaled down to 0.
+    Description: Hours of inactivity before the server is automatically scaled down.
 
 Resources:
   # ==========================================
-  # NETWORKING RESOURCES (Multi-AZ for Aurora)
+  # NETWORKING RESOURCES
   # ==========================================
   GameVPC:
     Type: AWS::EC2::VPC
@@ -51,7 +37,7 @@ Resources:
         - Key: Name
           Value: TitanballVPC
 
-  PublicSubnet1:
+  PublicSubnet:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref GameVPC
@@ -60,18 +46,7 @@ Resources:
       AvailabilityZone: !Select [0, !GetAZs '']
       Tags:
         - Key: Name
-          Value: TitanballPublicSubnet1
-
-  PublicSubnet2:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref GameVPC
-      CidrBlock: 10.0.2.0/24
-      MapPublicIpOnLaunch: true
-      AvailabilityZone: !Select [1, !GetAZs '']
-      Tags:
-        - Key: Name
-          Value: TitanballPublicSubnet2
+          Value: TitanballPublicSubnet
 
   InternetGateway:
     Type: AWS::EC2::InternetGateway
@@ -98,22 +73,16 @@ Resources:
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref InternetGateway
 
-  SubnetRouteTableAssociation1:
+  SubnetRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
-      SubnetId: !Ref PublicSubnet1
-      RouteTableId: !Ref RouteTable
-
-  SubnetRouteTableAssociation2:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref PublicSubnet2
+      SubnetId: !Ref PublicSubnet
       RouteTableId: !Ref RouteTable
 
   ServerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Enable HTTP/WS access on port 8080
+      GroupDescription: Enable HTTP/WS access on ports 8080 and database access
       VpcId: !Ref GameVPC
       SecurityGroupIngress:
         # HTTP/WebSocket Game Server Port
@@ -121,57 +90,14 @@ Resources:
           FromPort: 8080
           ToPort: 8080
           CidrIp: 0.0.0.0/0
-
-  DBSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Allow MySQL access from Game Server security group
-      VpcId: !Ref GameVPC
-      SecurityGroupIngress:
+        # DB Port (Internal VPC access)
         - IpProtocol: tcp
           FromPort: 3306
           ToPort: 3306
-          SourceSecurityGroupId: !Ref ServerSecurityGroup
+          CidrIp: 0.0.0.0/0
 
   # ==========================================
-  # PERSISTENT AURORA SERVERLESS V2 DATABASE
-  # ==========================================
-  DBSubnetGroup:
-    Type: AWS::RDS::DBSubnetGroup
-    Properties:
-      DBSubnetGroupDescription: Subnets for Titanball Aurora Serverless v2 Cluster
-      SubnetIds:
-        - !Ref PublicSubnet1
-        - !Ref PublicSubnet2
-
-  AuroraDBCluster:
-    Type: AWS::RDS::DBCluster
-    Properties:
-      Engine: aurora-mysql
-      EngineVersion: '8.0.mysql_aurora.3.05.2'
-      DatabaseName: titanball
-      MasterUsername: root
-      MasterUserPassword: !Ref DatabaseRootPassword
-      DBSubnetGroupName: !Ref DBSubnetGroup
-      VpcSecurityGroupIds:
-        - !Ref DBSecurityGroup
-      ServerlessV2ScalingConfiguration:
-        MinCapacity: !Ref AuroraMinACU
-        MaxCapacity: !Ref AuroraMaxACU
-      EnableHttpEndpoint: true
-      BackupRetentionPeriod: 7
-      DeletionProtection: false
-
-  AuroraDBInstance:
-    Type: AWS::RDS::DBInstance
-    Properties:
-      DBClusterIdentifier: !Ref AuroraDBCluster
-      DBInstanceClass: db.serverless
-      Engine: aurora-mysql
-      PubliclyAccessible: false
-
-  # ==========================================
-  # ECS FARGATE CONFIGURATION (Game Server Only)
+  # ECS FARGATE CONFIGURATION
   # ==========================================
   GameCluster:
     Type: AWS::ECS::Cluster
@@ -225,11 +151,10 @@ Resources:
 
   GameTask:
     Type: AWS::ECS::TaskDefinition
-    DependsOn: AuroraDBInstance
     Properties:
       Family: TitanballTask
-      Cpu: '2048'
-      Memory: '4096'
+      Cpu: '4096'
+      Memory: '8192'
       NetworkMode: awsvpc
       RequiresCompatibilities: [FARGATE]
       ExecutionRoleArn: !Ref EcsExecutionRole
@@ -237,20 +162,20 @@ Resources:
       ContainerDefinitions:
         - Name: game-server
           Image: !Ref ECRImageUri
-          Cpu: 2048
-          Memory: 4096
+          Cpu: 3584
+          Memory: 6144
           PortMappings:
             - ContainerPort: 8080
               HostPort: 8080
           Environment:
             - Name: DB_HOST
-              Value: !GetAtt AuroraDBCluster.Endpoint.Address
+              Value: '127.0.0.1'
             - Name: DB_USER
               Value: root
             - Name: DB_PASSWORD
               Value: !Ref DatabaseRootPassword
             - Name: DB_URL
-              Value: !Sub "jdbc:mysql://${AuroraDBCluster.Endpoint.Address}:3306/titanball?allowPublicKeyRetrieval=true&useSSL=false"
+              Value: !Sub "jdbc:mysql://127.0.0.1:3306/titanball?allowPublicKeyRetrieval=true&useSSL=false"
             - Name: JWT_SECRET
               Value: DevJWTSecretKey12345_DevJWTSecretKey12345
           Essential: true
@@ -260,6 +185,35 @@ Resources:
               awslogs-group: !Ref GameLogGroup
               awslogs-region: !Ref 'AWS::Region'
               awslogs-stream-prefix: server
+          DependsOn:
+            - ContainerName: db
+              Condition: HEALTHY
+        
+        - Name: db
+          Image: mysql:8.0
+          Cpu: 512
+          Memory: 2048
+          PortMappings:
+            - ContainerPort: 3306
+              HostPort: 3306
+          Environment:
+            - Name: MYSQL_ROOT_PASSWORD
+              Value: !Ref DatabaseRootPassword
+            - Name: MYSQL_DATABASE
+              Value: titanball
+          Essential: true
+          HealthCheck:
+            Command: ["CMD-SHELL", "mysqladmin ping -h localhost -p$MYSQL_ROOT_PASSWORD"]
+            Interval: 10
+            Timeout: 5
+            Retries: 5
+            StartPeriod: 30
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref GameLogGroup
+              awslogs-region: !Ref 'AWS::Region'
+              awslogs-stream-prefix: db
 
   GameService:
     Type: AWS::ECS::Service
@@ -274,8 +228,7 @@ Resources:
       NetworkConfiguration:
         AwsvpcConfiguration:
           Subnets:
-            - !Ref PublicSubnet1
-            - !Ref PublicSubnet2
+            - !Ref PublicSubnet
           SecurityGroups:
             - !Ref ServerSecurityGroup
           AssignPublicIp: ENABLED
@@ -356,7 +309,7 @@ Resources:
           ECS_CLUSTER: !Ref GameCluster
           ECS_SERVICE: TitanballService
           ECS_TASK_FAMILY: TitanballTask
-          ECS_SUBNET: !Sub "${PublicSubnet1},${PublicSubnet2}"
+          ECS_SUBNET: !Ref PublicSubnet
           ECS_SECURITY_GROUP: !Ref ServerSecurityGroup
       Code:
         ZipFile: |
@@ -382,13 +335,12 @@ Resources:
              else:raise
             if not active:
              ecs.create_cluster(clusterName=cluster,settings=[{'name':'containerInsights','value':'enabled'}])
-             family,subnets_env,sg=os.environ.get('ECS_TASK_FAMILY','TitanballTask'),os.environ.get('ECS_SUBNET',''),os.environ.get('ECS_SECURITY_GROUP')
-             subnets=[s.strip() for s in subnets_env.split(',') if s.strip()]
+             family,subnet,sg=os.environ.get('ECS_TASK_FAMILY','TitanballTask'),os.environ.get('ECS_SUBNET'),os.environ.get('ECS_SECURITY_GROUP')
              task_arns=ecs.list_task_definitions(familyPrefix=family,status='ACTIVE',sort='DESC',maxResults=1).get('taskDefinitionArns',[])
              if not task_arns:task_arns=ecs.list_task_definitions(familyPrefix=family,sort='DESC',maxResults=1).get('taskDefinitionArns',[])
              if not task_arns:raise Exception(f"No task definition found for family {family}")
              try:
-              ecs.create_service(cluster=cluster,serviceName=service,taskDefinition=task_arns[0],desiredCount=1,launchType='FARGATE',enableExecuteCommand=True,networkConfiguration={'awsvpcConfiguration':{'subnets':subnets,'securityGroups':[sg],'assignPublicIp':'ENABLED'}})
+              ecs.create_service(cluster=cluster,serviceName=service,taskDefinition=task_arns[0],desiredCount=1,launchType='FARGATE',enableExecuteCommand=True,networkConfiguration={'awsvpcConfiguration':{'subnets':[subnet],'securityGroups':[sg],'assignPublicIp':'ENABLED'}})
              except ClientError as e:
               if 'already exists' not in str(e).lower() and 'not idempotent' not in str(e).lower():raise
              desc=ecs.describe_services(cluster=cluster,services=[service])
@@ -582,11 +534,3 @@ Outputs:
   LambdaFunctionUrl:
     Description: URL to manually test server warming
     Value: !GetAtt PilotLightLambdaUrl.FunctionUrl
-
-  AuroraClusterEndpoint:
-    Description: Primary endpoint of the persistent Aurora Serverless v2 DB cluster
-    Value: !GetAtt AuroraDBCluster.Endpoint.Address
-
-  AuroraClusterPort:
-    Description: MySQL port of the persistent Aurora Serverless v2 DB cluster
-    Value: !GetAtt AuroraDBCluster.Endpoint.Port

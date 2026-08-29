@@ -128,7 +128,7 @@ export function initKeyboard() {
         game.underControl.type === 'GOALIE' &&
         (gameState.phase === GamePhase.INGAME || gameState.phase === GamePhase.SCORE_FREEZE)
       ) {
-        _executeNextBuildOrder(game);
+        executeNextBuildOrder(game);
         e.preventDefault();
         return;
       }
@@ -197,7 +197,7 @@ export function initKeyboard() {
 }
 
 // ─── build order execution ────────────────────────────────────────────────────
-function _executeNextBuildOrder(game) {
+export function executeNextBuildOrder(game) {
   const order = gameState.buildOrder;
   if (!order || order.length === 0) {
     return;

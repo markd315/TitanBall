@@ -302,9 +302,18 @@ public class ManagedGame {
     }
 
     private PlayerDivider dividerFromConn(WebSocketPlayerConnection connection) {
+        if (connection == null || state == null || state.clients == null) return null;
         for (PlayerDivider pc : state.clients) {
             if (connection.id == pc.id) {
                 return pc;
+            }
+        }
+        if (connection.getEmail() != null) {
+            for (PlayerDivider pc : state.clients) {
+                if (connection.getEmail().equals(pc.getEmail())) {
+                    pc.id = connection.id;
+                    return pc;
+                }
             }
         }
         return null;
@@ -508,21 +517,31 @@ public class ManagedGame {
 
                 clients.forEach(client -> {
                     try {
+                        if (client == null || !client.isConnected()) return;
                         PlayerDivider pd = dividerFromConn(client);
-                        if (!client.isConnected()) return;
 
-                        Titan controlled = (pd != null && state != null) ? state.titanSelected(pd) : null;
+                        Titan controlled = null;
+                        if (pd != null && state != null && pd.selection > 0 && pd.selection <= state.players.length) {
+                            controlled = state.players[pd.selection - 1];
+                        }
+
                         String baseForClient = (controlled != null && controlled.team == TeamAffiliation.AWAY) ? finalAwayJson : finalHomeJson;
 
                         if (controlled != null) {
+                            final Titan controlledTitan = controlled;
                             String titanJson = titanJsonCache.computeIfAbsent(controlled.id, id -> {
                                 try {
-                                    return mapper.writeValueAsString(controlled);
+                                    return mapper.writeValueAsString(controlledTitan);
                                 } catch (Exception ex) {
                                     return "null";
                                 }
                             });
-                            String clientJson = baseForClient.replace("\"underControl\":null", "\"underControl\":" + titanJson);
+                            String clientJson = baseForClient;
+                            if (clientJson.contains("\"underControl\":null")) {
+                                clientJson = clientJson.replace("\"underControl\":null", "\"underControl\":" + titanJson);
+                            } else if (clientJson.contains("\"underControl\": null")) {
+                                clientJson = clientJson.replace("\"underControl\": null", "\"underControl\":" + titanJson);
+                            }
                             client.sendJson(clientJson);
                         } else {
                             client.sendJson(baseForClient);
@@ -545,13 +564,18 @@ public class ManagedGame {
     private boolean censoringRequired(Game game) {
         if (game == null || game.effectPool == null) return false;
         List<gameserver.effects.effects.Effect> effects = game.effectPool.getEffects();
-        if (effects == null) return false;
-        for (gameserver.effects.effects.Effect eff : effects) {
-            EffectId id = eff.getEffect();
-            if (id == EffectId.BLIND || id == EffectId.STEALTHED) {
-                return true;
+        if (effects == null || effects.isEmpty()) return false;
+        try {
+            for (int i = 0; i < effects.size(); i++) {
+                gameserver.effects.effects.Effect eff = effects.get(i);
+                if (eff != null) {
+                    EffectId id = eff.getEffect();
+                    if (id == EffectId.BLIND || id == EffectId.STEALTHED) {
+                        return true;
+                    }
+                }
             }
-        }
+        } catch (Exception ignored) {}
         return false;
     }
 

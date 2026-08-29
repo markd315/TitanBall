@@ -83,6 +83,38 @@ public class PersistenceManager {
             user.setRebounds(user.getRebounds() +  toAdd.get(StatEngine.StatEnum.REBOUND.toString()).asInt());
             if (classStat != null) classStat.setRebounds(classStat.getRebounds() + toAdd.get(StatEngine.StatEnum.REBOUND.toString()).asInt());
         }
+        if (classStat != null) {
+            if (toAdd.has(StatEngine.StatEnum.SAVES.toString())) {
+                classStat.setSaves(classStat.getSaves() + toAdd.get(StatEngine.StatEnum.SAVES.toString()).asInt());
+            }
+            if (toAdd.has(StatEngine.StatEnum.LASTHITS.toString())) {
+                classStat.setLasthits(classStat.getLasthits() + toAdd.get(StatEngine.StatEnum.LASTHITS.toString()).asInt());
+            }
+            if (toAdd.has(StatEngine.StatEnum.MINIONDAMAGE.toString())) {
+                classStat.setMiniondamage(classStat.getMiniondamage() + toAdd.get(StatEngine.StatEnum.MINIONDAMAGE.toString()).asDouble());
+            }
+            if (toAdd.has(StatEngine.StatEnum.UPGRADESGOLD.toString())) {
+                classStat.setUpgradesgold(classStat.getUpgradesgold() + toAdd.get(StatEngine.StatEnum.UPGRADESGOLD.toString()).asInt());
+            }
+            if (toAdd.has(StatEngine.StatEnum.CONSUMABLESGOLD.toString())) {
+                classStat.setConsumablesgold(classStat.getConsumablesgold() + toAdd.get(StatEngine.StatEnum.CONSUMABLESGOLD.toString()).asInt());
+            }
+            if (toAdd.has(StatEngine.StatEnum.SIDEGOAL_SAVES.toString())) {
+                classStat.setSidegoalsaves(classStat.getSidegoalsaves() + toAdd.get(StatEngine.StatEnum.SIDEGOAL_SAVES.toString()).asInt());
+            }
+            if (toAdd.has(StatEngine.StatEnum.CENTERGOAL_SAVES.toString())) {
+                classStat.setCentergoalsaves(classStat.getCentergoalsaves() + toAdd.get(StatEngine.StatEnum.CENTERGOAL_SAVES.toString()).asInt());
+            }
+            if (toAdd.has(StatEngine.StatEnum.SIDEGOALS_CONCEDED.toString())) {
+                classStat.setSidegoalsconceded(classStat.getSidegoalsconceded() + toAdd.get(StatEngine.StatEnum.SIDEGOALS_CONCEDED.toString()).asInt());
+            }
+            if (toAdd.has(StatEngine.StatEnum.GOALS_CONCEDED.toString())) {
+                classStat.setGoalsconceded(classStat.getGoalsconceded() + toAdd.get(StatEngine.StatEnum.GOALS_CONCEDED.toString()).asInt());
+            }
+            if (toAdd.has(StatEngine.StatEnum.MANASPENT.toString())) {
+                classStat.setManaspent(classStat.getManaspent() + toAdd.get(StatEngine.StatEnum.MANASPENT.toString()).asInt());
+            }
+        }
         userService.saveUser(user);
         if (classStat != null) classService.saveClass(classStat);
     }
@@ -149,6 +181,38 @@ public class PersistenceManager {
         if(toAdd.has(StatEngine.StatEnum.REBOUND.toString())){
             user.setRebounds_1v1((user.getRebounds_1v1() +  toAdd.get(StatEngine.StatEnum.REBOUND.toString()).asInt()));
             if (classStat != null) classStat.setRebounds((classStat.getRebounds() +  toAdd.get(StatEngine.StatEnum.REBOUND.toString()).asInt()));
+        }
+        if (classStat != null) {
+            if (toAdd.has(StatEngine.StatEnum.SAVES.toString())) {
+                classStat.setSaves(classStat.getSaves() + toAdd.get(StatEngine.StatEnum.SAVES.toString()).asInt());
+            }
+            if (toAdd.has(StatEngine.StatEnum.LASTHITS.toString())) {
+                classStat.setLasthits(classStat.getLasthits() + toAdd.get(StatEngine.StatEnum.LASTHITS.toString()).asInt());
+            }
+            if (toAdd.has(StatEngine.StatEnum.MINIONDAMAGE.toString())) {
+                classStat.setMiniondamage(classStat.getMiniondamage() + toAdd.get(StatEngine.StatEnum.MINIONDAMAGE.toString()).asDouble());
+            }
+            if (toAdd.has(StatEngine.StatEnum.UPGRADESGOLD.toString())) {
+                classStat.setUpgradesgold(classStat.getUpgradesgold() + toAdd.get(StatEngine.StatEnum.UPGRADESGOLD.toString()).asInt());
+            }
+            if (toAdd.has(StatEngine.StatEnum.CONSUMABLESGOLD.toString())) {
+                classStat.setConsumablesgold(classStat.getConsumablesgold() + toAdd.get(StatEngine.StatEnum.CONSUMABLESGOLD.toString()).asInt());
+            }
+            if (toAdd.has(StatEngine.StatEnum.SIDEGOAL_SAVES.toString())) {
+                classStat.setSidegoalsaves(classStat.getSidegoalsaves() + toAdd.get(StatEngine.StatEnum.SIDEGOAL_SAVES.toString()).asInt());
+            }
+            if (toAdd.has(StatEngine.StatEnum.CENTERGOAL_SAVES.toString())) {
+                classStat.setCentergoalsaves(classStat.getCentergoalsaves() + toAdd.get(StatEngine.StatEnum.CENTERGOAL_SAVES.toString()).asInt());
+            }
+            if (toAdd.has(StatEngine.StatEnum.SIDEGOALS_CONCEDED.toString())) {
+                classStat.setSidegoalsconceded(classStat.getSidegoalsconceded() + toAdd.get(StatEngine.StatEnum.SIDEGOALS_CONCEDED.toString()).asInt());
+            }
+            if (toAdd.has(StatEngine.StatEnum.GOALS_CONCEDED.toString())) {
+                classStat.setGoalsconceded(classStat.getGoalsconceded() + toAdd.get(StatEngine.StatEnum.GOALS_CONCEDED.toString()).asInt());
+            }
+            if (toAdd.has(StatEngine.StatEnum.MANASPENT.toString())) {
+                classStat.setManaspent(classStat.getManaspent() + toAdd.get(StatEngine.StatEnum.MANASPENT.toString()).asInt());
+            }
         }
         userService.saveUser(user);
         if (classStat != null) classService.saveClass(classStat);

@@ -1,3 +1,4 @@
+import gameserver.Const;
 import gameserver.engine.GameEngine;
 import gameserver.engine.TeamAffiliation;
 import gameserver.entity.Titan;
@@ -10,7 +11,7 @@ public class LaneSpeedTest {
     @Test
     public void testQuarteredUnilateralAndHillSpeedModifiers() {
         GameEngine engine = new GameEngine();
-        engine.c = new gameserver.engine.Const();
+        engine.c = new Const();
 
         // 1. Zero advantage: base speed should equal modified speed
         double baseSpeed = 3.0;
@@ -60,7 +61,7 @@ public class LaneSpeedTest {
     @Test
     public void testTitanXSpecificSpeedIntegration() {
         GameEngine engine = new GameEngine();
-        engine.c = new gameserver.engine.Const();
+        engine.c = new Const();
 
         Titan titan = new Titan(500, 500, TeamAffiliation.HOME, TitanType.WARRIOR);
         
@@ -83,7 +84,7 @@ public class LaneSpeedTest {
     @Test
     public void testBallSpawnProbabilities() {
         GameEngine engine = new GameEngine();
-        engine.c = new gameserver.engine.Const();
+        engine.c = new Const();
         engine.players = new Titan[0];
 
         double topCY = engine.c.getI("goal.low.y") + engine.c.getI("goal.low.height") / 2.0;

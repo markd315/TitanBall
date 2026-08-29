@@ -1,6 +1,6 @@
 import { gameState } from '../state.js';
 import { GamePhase } from '../constants.js';
-import { getDefaultPreset } from './keyboard.js';
+import { getDefaultPreset, executeNextBuildOrder } from './keyboard.js';
 import { handleUIClick } from './mouse.js';
 
 let joystickBase = null;
@@ -9,6 +9,7 @@ let container = null;
 let btnAbility1 = null;
 let btnAbility2 = null;
 let btnPossession = null;
+let btnUpgrade = null;
 
 // Boost Switch element
 let boostSwitchContainer = null;
@@ -188,6 +189,7 @@ export function initMobileControls() {
   btnAbility1 = document.getElementById('btn-ability-1');
   btnAbility2 = document.getElementById('btn-ability-2');
   btnPossession = document.getElementById('btn-possession');
+  btnUpgrade = document.getElementById('btn-upgrade');
   boostSwitchContainer = document.getElementById('boost-switch-container');
   boostSwitch = document.getElementById('boost-switch');
 
@@ -200,7 +202,7 @@ export function initMobileControls() {
 
   const canvas = document.getElementById('gameCanvas');
 
-  if (!joystickBase || !joystickStick || !container || !btnAbility1 || !btnAbility2 || !btnPossession || !canvas ||
+  if (!joystickBase || !joystickStick || !container || !btnAbility1 || !btnAbility2 || !btnPossession || !btnUpgrade || !canvas ||
       !aimJoystickZone || !aimJoystickBase || !aimJoystickStick || !btnShot || !mobileButtonsZone ||
       !boostSwitchContainer || !boostSwitch) {
     console.warn("Mobile control HTML elements not found.");
@@ -302,6 +304,18 @@ export function initMobileControls() {
     e.preventDefault();
     e.stopPropagation();
   }, { passive: false });
+
+  // Button Upgrade (sends goalie upgrade hotkey to backend, same as X key)
+  const handleUpgradeClick = (e) => {
+    const game = gameState.game;
+    if (game) {
+      executeNextBuildOrder(game);
+    }
+    if (e.cancelable) e.preventDefault();
+    e.stopPropagation();
+  };
+  btnUpgrade.addEventListener('touchstart', handleUpgradeClick, { passive: false });
+  btnUpgrade.addEventListener('click', handleUpgradeClick);
 
   // Button Shot (only for Double Joystick Mode)
   btnShot.addEventListener('touchstart', (e) => {
@@ -653,6 +667,9 @@ export function updateMobileControls(game) {
     }
     if (mobileButtonsZone && mobileButtonsZone.style.display !== 'grid') {
       mobileButtonsZone.style.display = 'grid';
+    }
+    if (btnUpgrade && btnUpgrade.style.display !== 'flex') {
+      btnUpgrade.style.display = 'flex';
     }
 
     // Toggle single vs double joystick specific layout/UI elements

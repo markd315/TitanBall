@@ -141,9 +141,18 @@ public class EffectPool  {
     }
 
     public boolean hasEffect(Entity target, EffectId queryType) {
+        if (target == null || target.id == null || pool == null) return false;
         for (int i = 0; i < pool.size(); i++) {
-            if (pool.get(i).getEffect() == queryType
-                    && (targetPool.get(i).id.equals(target.id) || pool.get(i).on.id.equals(target.id))) {
+            Effect eff = pool.get(i);
+            if (eff == null || eff.getEffect() != queryType) continue;
+            
+            Entity tEnt = (targetPool != null && i < targetPool.size()) ? targetPool.get(i) : null;
+            Entity onEnt = eff.on;
+            
+            boolean matchTarget = tEnt != null && tEnt.id != null && tEnt.id.equals(target.id);
+            boolean matchOn = onEnt != null && onEnt.id != null && onEnt.id.equals(target.id);
+            
+            if (matchTarget || matchOn) {
                 return true;
             }
         }
