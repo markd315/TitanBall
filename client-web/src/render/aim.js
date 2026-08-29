@@ -182,15 +182,10 @@ export function drawAimAndRangeIndicators(ctx, game, controlsHeld, camX, camY) {
 
     if (currentPreset === 'mobile-double' && gameState.aimAngle !== undefined) {
         aimAngle = gameState.aimAngle;
-    } else if (controlsHeld.posX !== undefined && controlsHeld.posX >= 0) {
-        const cursorX = t.type === 'GOALIE' ? ((controlsHeld.posX || 0) / 0.9375) : (controlsHeld.posX || 0);
-        const cursorY = controlsHeld.posY || 0;
-        const mx = cursorX + camX;
-        const my = cursorY + camY;
-        aimAngle = Math.atan2(my - cyField, mx - cxField);
     } else {
-        const isAway = t.team === 'AWAY' || t.team === 1;
-        aimAngle = isAway ? Math.PI : 0;
+        const mx = (gameState.mouseX || 0) + camX;
+        const my = (gameState.mouseY || 0) + camY;
+        aimAngle = Math.atan2(my - cyField, mx - cxField);
     }
 
     const aimDirX = Math.cos(aimAngle);
@@ -229,7 +224,7 @@ export function drawAimAndRangeIndicators(ctx, game, controlsHeld, camX, camY) {
         ctx.setLineDash([]);
     }
 
-    // Update target raycasting to detect targets inside ability range circles and maintain selection memory
+    // Update target raycasting to detect Titan targets inside ability range circles and maintain selection memory
     updateRaycastTargeting(game, t, cxField, cyField, aimDirX, aimDirY);
 
     // 4. Render blue sprite outline around selected entity in selection memory (top-most layer)

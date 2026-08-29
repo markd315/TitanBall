@@ -17,8 +17,8 @@ export function getSelectedTargetEntity(game) {
     if (game.players) {
         targetEntity = game.players.find(p => p.id !== undefined && p.id.toString() === selectedTargetEntityId.toString() && p.health > 0);
     }
-    if (!targetEntity && game.minions) {
-        targetEntity = game.minions.find(m => m.id !== undefined && m.id.toString() === selectedTargetEntityId.toString() && m.health > 0);
+    if (!targetEntity && game.entityPool) {
+        targetEntity = game.entityPool.find(e => e.id !== undefined && e.id.toString() === selectedTargetEntityId.toString() && e.health > 0);
     }
     return targetEntity;
 }
@@ -46,6 +46,13 @@ export function isSingleTargetAbility(titan, slot = 'E') {
 
 export function hasAnySingleTargetAbility(titan) {
     return isSingleTargetAbility(titan, 'E') || isSingleTargetAbility(titan, 'R');
+}
+
+export function getMaxSingleTargetAbilityRange(caster) {
+    if (!caster) return 0;
+    const rangeE = isSingleTargetAbility(caster, 'E') ? getAbilityRange(caster, 'E') : 0;
+    const rangeR = isSingleTargetAbility(caster, 'R') ? getAbilityRange(caster, 'R') : 0;
+    return Math.max(rangeE, rangeR);
 }
 
 /**
@@ -81,6 +88,9 @@ export function getEntityCollisionBounds(entity) {
 
 /**
  * Checks if an entity matches targeting rules based on caster titan type and ability slot.
+ * Based on AbilityStrategy.java backend contracts:
+ * - RANGER E (Arrow), CAPTAIN E (Pistol), MAGE R (Ignite) target Enemy Titans AND Minions in entityPool.
+ * - SUPPORT E (Stun), SUPPORT R (Heal), MARKSMAN E (Slow), SPIDER R (Cocoon), RANGER R (Kick) target TITANS ONLY.
  */
 export function isValidTarget(caster, entity, slot = 'E') {
     if (!caster || !entity || !isSingleTargetAbility(caster, slot)) return false;
@@ -91,21 +101,38 @@ export function isValidTarget(caster, entity, slot = 'E') {
     }
 
     const type = caster.type.toString().toUpperCase();
+    const slotKey = (slot === '1' || slot === 'Q' || slot === 'E') ? 'E' : 'R';
+    const isTitan = entity.entityClass === 'Titan' || entity.type !== undefined;
     const isSameTeam = entity.team !== undefined && caster.team !== undefined && entity.team === caster.team;
 
+    // Abilities that can target minions as well as Titans: Ranger Arrow, Captain Pistol, Mage Ignite
+    const allowsMinions = (type === 'RANGER' && slotKey === 'E') ||
+                          (type === 'CAPTAIN' && slotKey === 'E') ||
+                          (type === 'MAGE' && slotKey === 'R');
+
+    // If ability does not allow minions, target MUST be a Titan player!
+    if (!allowsMinions && !isTitan) {
+        return false;
+    }
+
     if (type === 'SUPPORT') {
-        if (slot === 'R' || slot === 'W' || slot === '2') {
-            return isSameTeam; // Heal: friendly only
+        if (slotKey === 'R') {
+            return isSameTeam && isTitan; // Heal: friendly titan only
         }
-        return !isSameTeam; // Stun: enemy only
+        return !isSameTeam && isTitan; // Stun: enemy titan only
     } else if (type === 'MARKSMAN') {
-        if (slot === 'E' || slot === 'Q' || slot === '1') {
-            return !isSameTeam; // Slow: enemy only
-        }
+        return !isSameTeam && isTitan; // Slow: enemy titan only
     } else if (type === 'SPIDER') {
-        if (slot === 'R' || slot === 'W' || slot === '2') {
-            return true; // Cocoon: can target ANY player of either team
+        return isTitan; // Cocoon: any titan of either team except self
+    } else if (type === 'RANGER') {
+        if (slotKey === 'R') {
+            return !isSameTeam && isTitan; // Kick: enemy titan only
         }
+        return !isSameTeam; // Arrow: enemy titan or minion
+    } else if (type === 'CAPTAIN') {
+        return !isSameTeam; // Pistol: enemy titan or minion
+    } else if (type === 'MAGE') {
+        return !isSameTeam; // Ignite: enemy titan or minion
     }
 
     return !isSameTeam;
@@ -126,29 +153,58 @@ export function isEntityInAbilityRange(caster, entity, dist) {
 }
 
 /**
- * Performs raycast from caster along aim vector to detect hovered targets and update selection memory.
- * Selection memory PERSISTS continuously across all distances until another valid entity is raycast-hovered.
+ * Performs target detection from caster to update selection memory.
+ * - New selections can ONLY occur on valid targets WITHIN the caster's maximum single-target ability range.
+ * - Out-of-range entities (> maxAbilityRange) cannot be selected as new targets.
+ * - Once an entity is selected, selection memory PERSISTS continuously when out of range (rendered RED)
+ *   until another valid target WITHIN range is raycast-hovered.
  */
-export function updateRaycastTargeting(game, caster, rayOriginX, rayOriginY, aimDirX, aimDirY, maxRaySearch = 1200) {
+export function updateRaycastTargeting(game, caster, rayOriginX, rayOriginY, aimDirX, aimDirY) {
     if (!game || !caster || !hasAnySingleTargetAbility(caster)) return null;
 
+    const maxAbilityRange = getMaxSingleTargetAbilityRange(caster);
+    if (maxAbilityRange <= 0) return selectedTargetEntityId;
+
+    const casterBounds = getEntityCollisionBounds(caster);
+    const mouseFieldX = (gameState.mouseX || 0) + (gameState.camX || 0);
+    const mouseFieldY = (gameState.mouseY || 0) + (gameState.camY || 0);
+
     const candidates = [];
-    if (game.players) {
-        for (const p of game.players) {
-            if (p.health > 0 && p.id !== caster.id && isValidTargetForAnySlot(caster, p)) {
-                candidates.push({ entity: p, bounds: getEntityCollisionBounds(p) });
-            }
+    const checkCandidate = (candEntity) => {
+        if (!candEntity || candEntity.health <= 0 || candEntity.id === caster.id) return;
+        if (!isValidTargetForAnySlot(caster, candEntity)) return;
+
+        const bounds = getEntityCollisionBounds(candEntity);
+        const dx = bounds.cx - casterBounds.cx;
+        const dy = bounds.cy - casterBounds.cy;
+        const dist = Math.hypot(dx, dy);
+
+        // ONLY entities WITHIN maximum single-target ability range are valid new selection candidates
+        if (dist <= maxAbilityRange) {
+            candidates.push({ entity: candEntity, bounds, dist });
         }
+    };
+
+    if (game.players) {
+        for (const p of game.players) checkCandidate(p);
     }
-    if (game.minions) {
-        for (const m of game.minions) {
-            if (m.health > 0 && isValidTargetForAnySlot(caster, m)) {
-                candidates.push({ entity: m, bounds: getEntityCollisionBounds(m) });
+    if (game.entityPool) {
+        for (const e of game.entityPool) checkCandidate(e);
+    }
+
+    // 1. Direct Touch/Mouse Hover Check (within maxAbilityRange)
+    for (const cand of candidates) {
+        const b = cand.bounds;
+        if (mouseFieldX >= b.x && mouseFieldX <= b.x + b.w && mouseFieldY >= b.y && mouseFieldY <= b.y + b.h) {
+            if (cand.entity && cand.entity.id !== undefined) {
+                selectedTargetEntityId = cand.entity.id.toString();
+                return selectedTargetEntityId;
             }
         }
     }
 
-    let closestDist = maxRaySearch;
+    // 2. Aim Ray Search (closest in-range candidate along ray)
+    let closestProj = maxAbilityRange;
     let hoveredEntity = null;
 
     for (const cand of candidates) {
@@ -160,19 +216,17 @@ export function updateRaycastTargeting(game, caster, rayOriginX, rayOriginY, aim
         const dy = ey - rayOriginY;
 
         const proj = dx * aimDirX + dy * aimDirY;
-        if (proj < 0 || proj > maxRaySearch) continue;
+        if (proj < 0 || proj > maxAbilityRange) continue;
 
         const perpDistSq = (dx * dx + dy * dy) - (proj * proj);
         if (perpDistSq <= radius * radius) {
-            if (proj < closestDist) {
-                closestDist = proj;
+            if (proj < closestProj) {
+                closestProj = proj;
                 hoveredEntity = cand.entity;
             }
         }
     }
 
-    // Update selection memory ONLY when a valid entity is raycast-hovered.
-    // Selection NEVER clears automatically on empty space or distance; it persists until overridden by another titan.
     if (hoveredEntity && hoveredEntity.id !== undefined) {
         selectedTargetEntityId = hoveredEntity.id.toString();
     }
@@ -181,7 +235,7 @@ export function updateRaycastTargeting(game, caster, rayOriginX, rayOriginY, aim
 }
 
 /**
- * Renders the outline highlight around the currently selected target entity's actual collision box.
+ * Renders the outline highlight around the currently selected target entity's (Titan or Minion) actual collision box.
  * Selection memory PERSISTS at all distances:
  * - In range of any single-target ability: BLUE outline (#3b82f6)
  * - Out of range: RED outline (#ef4444)
