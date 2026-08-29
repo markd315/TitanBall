@@ -37,6 +37,11 @@ public class Selector  {
         }
         for (Entity e : input) {
             if (collide(e, latestCollider)) {
+                if (offsetRange > 0 && offsetRange < 9000 && casting != null && Math.hypot(
+                        (e.X + (e.width > 0 ? e.width : 70) / 2.0) - (casting.X + (casting.width > 0 ? casting.width : 70) / 2.0),
+                        (e.Y + (e.height > 0 ? e.height : 70) / 2.0) - (casting.Y + (casting.height > 0 ? casting.height : 70) / 2.0)) > offsetRange + 15) {
+                    continue;
+                }
                 ret.add(e);
             }
         }

@@ -1,5 +1,6 @@
 import { gameState } from '../state.js';
 import { setBoostState, getControlledTitan } from '../input/mobile.js';
+import { getSelectedTargetEntity, getEntityCollisionBounds, isSingleTargetAbility, isEntityInAbilityRangeForSlot } from '../render/targeting.js';
 
 let socket = null;
 let updateInterval = null;
@@ -33,8 +34,41 @@ export function connectGame(gameID) {
       if (socket && socket.readyState === WebSocket.OPEN) {
         const myTitan = getControlledTitan(gameState.game);
         const isGoalie = myTitan && myTitan.type === 'GOALIE';
-        const posX = isGoalie ? Math.floor((gameState.mouseX || 0) / 0.9375) : (gameState.mouseX || 0);
-        const posY = gameState.mouseY || 0;
+        const hasPossession = myTitan && myTitan.possession === 1;
+
+        // Target coordinate override is active ONLY when an ability key (E or R) for a single-target ability is currently pressed
+        const isECasting = gameState.controlsHeld.E && isSingleTargetAbility(myTitan, 'E');
+        const isRCasting = gameState.controlsHeld.R && isSingleTargetAbility(myTitan, 'R');
+        const isSingleTargetAbilityCasting = (isECasting || isRCasting) && !hasPossession;
+
+        let posX, posY;
+        const selectedTarget = getSelectedTargetEntity(gameState.game);
+        let isTargetInRange = false;
+
+        if (selectedTarget && selectedTarget.health > 0 && myTitan && isSingleTargetAbilityCasting) {
+          const myBounds = getEntityCollisionBounds(myTitan);
+          const targetBounds = getEntityCollisionBounds(selectedTarget);
+          const dx = targetBounds.cx - myBounds.cx;
+          const dy = targetBounds.cy - myBounds.cy;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (isECasting) {
+            isTargetInRange = isEntityInAbilityRangeForSlot(myTitan, selectedTarget, dist, 'E');
+          } else if (isRCasting) {
+            isTargetInRange = isEntityInAbilityRangeForSlot(myTitan, selectedTarget, dist, 'R');
+          }
+        }
+
+        if (selectedTarget && selectedTarget.health > 0 && isTargetInRange && isSingleTargetAbilityCasting && !gameState.controlsHeld.MV_CLICK) {
+          const bounds = getEntityCollisionBounds(selectedTarget);
+          const camX = gameState.camX || 0;
+          const camY = gameState.camY || 0;
+          posX = Math.floor(bounds.cx - camX);
+          posY = Math.floor(bounds.cy - camY);
+        } else {
+          posX = isGoalie ? Math.floor((gameState.mouseX || 0) / 0.9375) : (gameState.mouseX || 0);
+          posY = gameState.mouseY || 0;
+        }
         
         if (myTitan && myTitan.possession !== 1) {
           gameState.controlsHeld.artisanShot = 'SHOT';
@@ -47,8 +81,19 @@ export function connectGame(gameID) {
           }
         }
 
+        // Construct control packet copy to send to backend
+        const controlsToSend = { ...gameState.controlsHeld };
+
+        // STRICTLY PROHIBIT sending ability activation to server if target is out of range (or no valid target in range)
+        if (isECasting && (!selectedTarget || !isTargetInRange)) {
+          controlsToSend.E = false;
+        }
+        if (isRCasting && (!selectedTarget || !isTargetInRange)) {
+          controlsToSend.R = false;
+        }
+
         const controls = {
-          ...gameState.controlsHeld,
+          ...controlsToSend,
           token: token,
           gameID: gameID,
           camX: gameState.camX || 0,

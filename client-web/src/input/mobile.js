@@ -40,15 +40,15 @@ const BASE_ABILITY_RANGES = {
   E: {
     MAGE: 400,
     BUILDER: 200,
-    SUPPORT: 65,
+    SUPPORT: 130,
     RANGER: 320,
-    WARRIOR: 100,
+    WARRIOR: 200,
     ARTISAN: 140,
-    GRENADIER: 130,
-    MARKSMAN: 150,
+    GRENADIER: 260,
+    MARKSMAN: 250,
     HOUNDMASTER: 9999,
-    CAPTAIN: 300,
-    SPIDER: 250,
+    CAPTAIN: 200,
+    SPIDER: 280,
     DASHER: 0,
     GOLEM: 0,
     STEALTH: 0,
@@ -58,15 +58,15 @@ const BASE_ABILITY_RANGES = {
     MAGE: 250,
     BUILDER: 350,
     SUPPORT: 250,
-    RANGER: 60,
+    RANGER: 120,
     WARRIOR: 140,
     ARTISAN: 200,
-    GRENADIER: 140,
+    GRENADIER: 180,
     DASHER: 250,
     GOLEM: 90,
     STEALTH: 100,
     CAPTAIN: 250,
-    SPIDER: 300,
+    SPIDER: 150,
     MARKSMAN: 0,
     HOUNDMASTER: 0,
     GOALIE: 0
@@ -339,6 +339,24 @@ export function initMobileControls() {
   canvas.addEventListener('touchstart', handleCanvasTouchStart, { passive: false });
   canvas.addEventListener('touchmove', handleCanvasTouchMove, { passive: false });
   canvas.addEventListener('touchend', handleCanvasTouchEnd, { passive: false });
+
+  // Double-tap screen on mobile to return to lobby when game has ended
+  let lastEndedTouchTime = 0;
+  window.addEventListener('touchend', (e) => {
+    if (gameState.phase === GamePhase.ENDED) {
+      const now = Date.now();
+      if (now - lastEndedTouchTime < 450 && now - lastEndedTouchTime > 30) {
+        window.location.reload();
+      }
+      lastEndedTouchTime = now;
+    }
+  }, { passive: false });
+
+  window.addEventListener('touchstart', (e) => {
+    if (gameState.phase === GamePhase.ENDED && e.touches && e.touches.length >= 2) {
+      window.location.reload();
+    }
+  }, { passive: false });
 }
 
 function handleJoystickStart(e) {
@@ -346,7 +364,7 @@ function handleJoystickStart(e) {
   const rect = joystickBase.getBoundingClientRect();
   startX = rect.left + rect.width / 2;
   startY = rect.top + rect.height / 2;
-  maxRadius = rect.width * 0.35;
+  maxRadius = rect.width * 0.32;
   isDragging = true;
   e.preventDefault();
   e.stopPropagation();
@@ -380,8 +398,8 @@ function handleJoystickMove(e) {
     dy = (dy / dist) * maxRadius;
   }
 
-  // Move the stick visually
-  joystickStick.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
+  // Move the stick visually (preserving CSS centering translate)
+  joystickStick.style.transform = `translate(-50%, -50%) translate3d(${dx}px, ${dy}px, 0)`;
 
   // Normalized values
   const valX = dx / maxRadius;
@@ -422,7 +440,7 @@ function handleJoystickEnd(e) {
   // If there are no touches left, or the joystick touch ended
   if (e.touches.length === 0) {
     isDragging = false;
-    joystickStick.style.transform = 'translate3d(0px, 0px, 0px)';
+    joystickStick.style.transform = 'translate(-50%, -50%) translate3d(0px, 0px, 0px)';
     gameState.controlsHeld.UP = false;
     gameState.controlsHeld.DOWN = false;
     gameState.controlsHeld.LEFT = false;
@@ -441,7 +459,7 @@ function handleJoystickEnd(e) {
     }
     if (!joystickStillActive) {
       isDragging = false;
-      joystickStick.style.transform = 'translate3d(0px, 0px, 0px)';
+      joystickStick.style.transform = 'translate(-50%, -50%) translate3d(0px, 0px, 0px)';
       gameState.controlsHeld.UP = false;
       gameState.controlsHeld.DOWN = false;
       gameState.controlsHeld.LEFT = false;
@@ -455,7 +473,7 @@ function handleAimJoystickStart(e) {
   const rect = aimJoystickBase.getBoundingClientRect();
   aimStartX = rect.left + rect.width / 2;
   aimStartY = rect.top + rect.height / 2;
-  aimMaxRadius = rect.width * 0.35;
+  aimMaxRadius = rect.width * 0.32;
   isAimDragging = true;
   e.preventDefault();
   e.stopPropagation();
@@ -488,8 +506,8 @@ function handleAimJoystickMove(e) {
     dy = (dy / dist) * aimMaxRadius;
   }
 
-  // Move the stick visually
-  aimJoystickStick.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
+  // Move the stick visually (preserving CSS centering translate)
+  aimJoystickStick.style.transform = `translate(-50%, -50%) translate3d(${dx}px, ${dy}px, 0)`;
 
   // Aim direction vector (normalized)
   if (aimMaxRadius > 0 && dist > aimMaxRadius * 0.1) {
@@ -516,7 +534,7 @@ function handleAimJoystickEnd(e) {
 
   if (e.touches.length === 0) {
     isAimDragging = false;
-    aimJoystickStick.style.transform = 'translate3d(0px, 0px, 0px)';
+    aimJoystickStick.style.transform = 'translate(-50%, -50%) translate3d(0px, 0px, 0px)';
   } else {
     let aimStillActive = false;
     for (let i = 0; i < e.touches.length; i++) {
@@ -530,7 +548,7 @@ function handleAimJoystickEnd(e) {
     }
     if (!aimStillActive) {
       isAimDragging = false;
-      aimJoystickStick.style.transform = 'translate3d(0px, 0px, 0px)';
+      aimJoystickStick.style.transform = 'translate(-50%, -50%) translate3d(0px, 0px, 0px)';
     }
   }
 }
@@ -623,9 +641,76 @@ function handleCanvasTouchEnd(e) {
         }
       }
       activeCanvasTouchId = null;
-      hasLobbedCurrentTouch = false;
-      e.preventDefault();
     }
+  }
+}
+
+function updateMobileButtonStates(game, myTitan) {
+  if (!myTitan) return;
+
+  const isDead = myTitan.health !== undefined && myTitan.health <= 0;
+  
+  // Check active cooldowns from effectPool
+  let hasCdQ = false;
+  let hasCdW = false;
+  let hasCdSteal = false;
+  let hasCdCurve = false;
+
+  if (game && game.effectPool && Array.isArray(game.effectPool.effects)) {
+    const effects = game.effectPool.effects;
+    const onEntities = game.effectPool.on || [];
+    for (let i = 0; i < effects.length; i++) {
+      const e = effects[i];
+      const en = onEntities[i] || (e && e.on);
+      if (e && en && en.id !== undefined && en.id.toString() === myTitan.id.toString()) {
+        const effName = e.effect || '';
+        if (effName === 'COOLDOWN_Q' || effName === 'COOLDOWN_E') hasCdQ = true;
+        if (effName === 'COOLDOWN_W' || effName === 'COOLDOWN_R') hasCdW = true;
+        if (effName === 'COOLDOWN_STEAL') hasCdSteal = true;
+        if (effName === 'COOLDOWN_CURVE') hasCdCurve = true;
+      }
+    }
+  }
+
+  // Ability 1 (E/Q)
+  if (btnAbility1) {
+    let disabled = isDead;
+    if (myTitan.type === 'ARTISAN') {
+      if (myTitan.possession === 1) {
+        disabled = disabled || hasCdCurve;
+      } else {
+        disabled = disabled || hasCdQ;
+      }
+    } else {
+      disabled = disabled || hasCdQ;
+    }
+    btnAbility1.classList.toggle('disabled', disabled);
+  }
+
+  // Ability 2 (R/W)
+  if (btnAbility2) {
+    const disabled = isDead || hasCdW;
+    btnAbility2.classList.toggle('disabled', disabled);
+  }
+
+  // Possession (Steal / Lob)
+  if (btnPossession) {
+    const hasPossession = myTitan.possession === 1;
+    // Greys out during STEAL cooldown or death (Lob mode does not show when not in possession)
+    const disabled = isDead || (!hasPossession && hasCdSteal);
+    btnPossession.classList.toggle('disabled', disabled);
+  }
+
+  // Shot
+  if (btnShot) {
+    const disabled = isDead;
+    btnShot.classList.toggle('disabled', disabled);
+  }
+
+  // Boost Switch
+  if (boostSwitch) {
+    const cannotBoost = isDead || (myTitan.fuel !== undefined && myTitan.fuel < 1.0) || (myTitan.possession === 1 && myTitan.type !== 'DASHER');
+    boostSwitch.classList.toggle('disabled', cannotBoost);
   }
 }
 
@@ -644,11 +729,14 @@ export function updateMobileControls(game) {
   const isMobile = currentPreset === 'mobile-single' || currentPreset === 'mobile-double';
 
   if (isMobile && isGameplayPhase) {
+    if (!document.body.classList.contains('mobile-controls-active')) {
+      document.body.classList.add('mobile-controls-active');
+    }
     if (container.style.display !== 'flex') {
       container.style.display = 'flex';
       // Reset stick/directions on show
-      if (joystickStick) joystickStick.style.transform = 'translate3d(0px, 0px, 0px)';
-      if (aimJoystickStick) aimJoystickStick.style.transform = 'translate3d(0px, 0px, 0px)';
+      if (joystickStick) joystickStick.style.transform = 'translate(-50%, -50%) translate3d(0px, 0px, 0px)';
+      if (aimJoystickStick) aimJoystickStick.style.transform = 'translate(-50%, -50%) translate3d(0px, 0px, 0px)';
       gameState.controlsHeld.UP = false;
       gameState.controlsHeld.DOWN = false;
       gameState.controlsHeld.LEFT = false;
@@ -668,8 +756,14 @@ export function updateMobileControls(game) {
     if (mobileButtonsZone && mobileButtonsZone.style.display !== 'grid') {
       mobileButtonsZone.style.display = 'grid';
     }
-    if (btnUpgrade && btnUpgrade.style.display !== 'flex') {
-      btnUpgrade.style.display = 'flex';
+
+    // Only show Upgrade button for Goalie titans
+    if (btnUpgrade) {
+      if (isGoalie) {
+        if (btnUpgrade.style.display !== 'flex') btnUpgrade.style.display = 'flex';
+      } else {
+        if (btnUpgrade.style.display !== 'none') btnUpgrade.style.display = 'none';
+      }
     }
 
     // Toggle single vs double joystick specific layout/UI elements
@@ -770,7 +864,13 @@ export function updateMobileControls(game) {
         }
       }
     }
+
+    // Dynamically grey out mobile buttons based on cooldowns, fuel, and possession
+    updateMobileButtonStates(game, myTitan);
   } else {
+    if (document.body.classList.contains('mobile-controls-active')) {
+      document.body.classList.remove('mobile-controls-active');
+    }
     if (container.style.display !== 'none') {
       container.style.display = 'none';
       // Clear buttons states if hidden

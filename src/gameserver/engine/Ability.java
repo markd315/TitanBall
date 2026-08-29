@@ -110,9 +110,7 @@ public class Ability    {
                             context.c.getI("titan.scatter.cdms"));
                     break;
                 case RANGER:
-                    strat.scatter(context.c.getI("titan.kick.range"),
-                            context.c.getI("titan.kick.dist"),
-                            context.c.getI("titan.kick.cdms"));
+                    strat.kickSelectedTarget();
                     break;
                 case MAGE:
                     strat.ignite(context.c.getD("titan.ignite.cds"),

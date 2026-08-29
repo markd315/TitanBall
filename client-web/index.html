@@ -454,19 +454,25 @@
         }
       }
       
-      /* Mobile Controls CSS */
+      /* Mobile Controls CSS & Screen Scaling Rules */
+      body.mobile-controls-active canvas#gameCanvas {
+        max-width: 70vw !important;
+        margin: 0 auto;
+      }
       #mobile-controls-container {
-        position: absolute;
+        position: fixed;
         top: 0;
         left: 0;
-        width: 100%;
-        height: 100%;
+        width: 100vw;
+        width: 100dvw;
+        height: 100vh;
+        height: 100dvh;
         pointer-events: none;
         z-index: 10;
         display: none;
         justify-content: space-between;
         align-items: flex-end;
-        padding: 1vmin 3vmin 2vmin 3vmin;
+        padding: max(1vh, env(safe-area-inset-top, 1vh)) max(0.8vw, env(safe-area-inset-right, 0.8vw)) 0 max(0.8vw, env(safe-area-inset-left, 0.8vw));
         box-sizing: border-box;
       }
       #mobile-left-zone {
@@ -474,30 +480,42 @@
         flex-direction: column;
         align-items: center;
         justify-content: flex-end;
-        gap: 1.5vmin;
+        gap: 1.5vh;
+        padding-bottom: max(2vh, env(safe-area-inset-bottom, 2vh));
         pointer-events: auto;
         height: 100%;
-        max-width: 32vmin;
+        width: 15vw;
+        max-width: 15vw;
+        flex: 0 0 15vw;
+        box-sizing: border-box;
       }
       #boost-switch-container {
         display: flex;
         align-items: center;
+        justify-content: center;
         pointer-events: auto;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
       }
       .mobile-switch {
         display: flex;
         align-items: center;
-        gap: 1.2vmin;
+        justify-content: center;
+        gap: 0.6vw;
         background: rgba(10, 26, 20, 0.65);
         backdrop-filter: blur(10px);
         border: 2px solid rgba(45, 140, 100, 0.3);
-        border-radius: 4vmin;
-        padding: 0.8vmin 1.8vmin 0.8vmin 1vmin;
+        border-radius: 20px;
+        padding: 0.5vh 0.8vw;
         cursor: pointer;
         user-select: none;
         touch-action: none;
         box-shadow: 0 1vmin 3vmin rgba(0,0,0,0.4);
         transition: all 0.25s ease;
+        width: min(13.8vw, 130px);
+        max-width: 100%;
+        box-sizing: border-box;
       }
       .mobile-switch:hover {
         border-color: rgba(45, 140, 100, 0.5);
@@ -508,55 +526,61 @@
         box-shadow: 0 0 3vmin rgba(255, 159, 28, 0.4), inset 0 0 1.5vmin rgba(255, 127, 17, 0.2);
       }
       .mobile-switch-track {
-        width: 6.5vmin;
-        height: 3.4vmin;
+        width: min(4.2vw, 34px);
+        height: min(2.4vw, 19px);
         background: rgba(255, 255, 255, 0.12);
-        border-radius: 2vmin;
+        border-radius: 10px;
         position: relative;
         transition: background-color 0.25s ease;
+        flex-shrink: 0;
       }
       .mobile-switch.active .mobile-switch-track {
         background: #ff9f1c;
       }
       .mobile-switch-thumb {
-        width: 2.8vmin;
-        height: 2.8vmin;
+        width: min(1.8vw, 15px);
+        height: min(1.8vw, 15px);
         border-radius: 50%;
         background: #94a3b8;
         position: absolute;
-        top: 0.3vmin;
-        left: 0.3vmin;
+        top: 50%;
+        left: 2px;
+        transform: translateY(-50%);
         transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.25s ease;
         box-shadow: 0 0.4vmin 1vmin rgba(0,0,0,0.3);
       }
       .mobile-switch.active .mobile-switch-thumb {
-        transform: translateX(3.1vmin);
+        transform: translate(calc(min(4.2vw, 34px) - min(1.8vw, 15px) - 4px), -50%);
         background: #ffffff;
         box-shadow: 0 0 1.5vmin rgba(255, 255, 255, 0.8);
       }
       .mobile-switch-label {
         font-family: 'Outfit', sans-serif;
-        font-size: 2vmin;
+        font-size: clamp(9px, 1.1vw, 12px);
         font-weight: 800;
         letter-spacing: 1px;
         color: #94a3b8;
         transition: color 0.25s ease, text-shadow 0.25s ease;
+        white-space: nowrap;
       }
       .mobile-switch.active .mobile-switch-label {
         color: #ff9f1c;
         text-shadow: 0 0 10px rgba(255, 159, 28, 0.6);
       }
       #virtual-joystick-zone {
-        width: 32vmin;
-        height: 32vmin;
+        width: 100%;
+        max-width: 100%;
         display: flex;
         justify-content: center;
         align-items: center;
         pointer-events: auto;
+        box-sizing: border-box;
       }
       #joystick-base {
-        width: 28vmin;
-        height: 28vmin;
+        width: min(13vw, 24vh, 140px);
+        height: min(13vw, 24vh, 140px);
+        max-width: 90%;
+        aspect-ratio: 1;
         border-radius: 50%;
         background: rgba(10, 26, 20, 0.4);
         backdrop-filter: blur(10px);
@@ -564,10 +588,12 @@
         box-shadow: 0 1.5vmin 4.5vmin rgba(0,0,0,0.5), inset 0 0 3vmin rgba(45, 140, 100, 0.1);
         position: relative;
         touch-action: none;
+        box-sizing: border-box;
+        margin: 0 auto;
       }
       #joystick-stick {
-        width: 11vmin;
-        height: 11vmin;
+        width: 40%;
+        height: 40%;
         border-radius: 50%;
         background: radial-gradient(circle, #2ed573 0%, #1b4d3e 100%);
         border: 2px solid rgba(255, 255, 255, 0.4);
@@ -575,30 +601,37 @@
         position: absolute;
         top: 50%;
         left: 50%;
-        margin-top: -5.5vmin;
-        margin-left: -5.5vmin;
+        transform: translate(-50%, -50%);
         transition: transform 0.05s ease-out;
+        box-sizing: border-box;
       }
       #mobile-right-zone {
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: flex-end;
-        gap: 1.5vmin;
+        gap: 1.5vh;
+        padding-bottom: max(2vh, env(safe-area-inset-bottom, 2vh));
         pointer-events: auto;
         height: 100%;
-        max-width: 38vmin;
+        width: 15vw;
+        max-width: 15vw;
+        flex: 0 0 15vw;
+        box-sizing: border-box;
       }
       #aim-joystick-zone {
-        width: 32vmin;
-        height: 32vmin;
+        width: 100%;
+        max-width: 100%;
         display: flex;
         justify-content: center;
         align-items: center;
+        box-sizing: border-box;
       }
       #aim-joystick-base {
-        width: 28vmin;
-        height: 28vmin;
+        width: min(13vw, 24vh, 140px);
+        height: min(13vw, 24vh, 140px);
+        max-width: 90%;
+        aspect-ratio: 1;
         border-radius: 50%;
         background: rgba(10, 26, 20, 0.4);
         backdrop-filter: blur(10px);
@@ -606,10 +639,12 @@
         box-shadow: 0 1.5vmin 4.5vmin rgba(0,0,0,0.5), inset 0 0 3vmin rgba(168, 85, 247, 0.1);
         position: relative;
         touch-action: none;
+        box-sizing: border-box;
+        margin: 0 auto;
       }
       #aim-joystick-stick {
-        width: 11vmin;
-        height: 11vmin;
+        width: 40%;
+        height: 40%;
         border-radius: 50%;
         background: radial-gradient(circle, #a855f7 0%, #4c1d95 100%);
         border: 2px solid rgba(255, 255, 255, 0.4);
@@ -617,32 +652,42 @@
         position: absolute;
         top: 50%;
         left: 50%;
-        margin-top: -5.5vmin;
-        margin-left: -5.5vmin;
+        transform: translate(-50%, -50%);
         transition: transform 0.05s ease-out;
+        box-sizing: border-box;
       }
       #mobile-buttons-zone {
         display: grid;
+        grid-template-columns: repeat(2, 1fr);
         grid-template-areas: 
-          ". pos ."
-          "ab1 ab2 upg";
-        gap: 1.2vmin;
+          "pos upg"
+          "ab1 ab2";
+        gap: 1vh 0.8vw;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        justify-items: center;
+        align-items: center;
       }
       #mobile-buttons-zone.double-joy {
+        grid-template-columns: repeat(2, 1fr);
         grid-template-areas: 
-          "shot pos ."
-          "ab1 ab2 upg";
+          "shot pos"
+          "ab1 ab2"
+          "upg .";
+        gap: 1vh 0.8vw;
       }
       .mobile-action-btn {
-        width: 9.5vmin;
-        height: 9.5vmin;
+        width: min(6.5vw, 12vh, 60px);
+        height: min(6.5vw, 12vh, 60px);
+        max-width: 100%;
         border-radius: 50%;
         background: rgba(10, 26, 20, 0.6);
         backdrop-filter: blur(10px);
         border: 2px solid rgba(255, 255, 255, 0.2);
         color: #fff;
         font-family: 'Outfit', sans-serif;
-        font-size: 2.4vmin;
+        font-size: clamp(10px, 1.3vw, 14px);
         font-weight: 800;
         display: flex;
         justify-content: center;
@@ -652,15 +697,17 @@
         user-select: none;
         cursor: pointer;
         transition: transform 0.1s, background-color 0.2s, box-shadow 0.2s;
+        box-sizing: border-box;
+        margin: 0 auto;
       }
       .mobile-action-btn:active {
         transform: scale(0.9);
       }
       #btn-upgrade {
         grid-area: upg;
-        width: 10.5vmin;
-        height: 10.5vmin;
-        font-size: 1.6vmin;
+        width: min(6.5vw, 12vh, 60px);
+        height: min(6.5vw, 12vh, 60px);
+        font-size: clamp(9px, 1.1vw, 12px);
         border-radius: 50%;
         background: rgba(255, 159, 28, 0.15);
         border-color: rgba(255, 159, 28, 0.7);
@@ -692,9 +739,9 @@
       }
       #btn-possession {
         grid-area: pos;
-        width: 10.5vmin;
-        height: 10.5vmin;
-        font-size: 2.1vmin;
+        width: min(6.5vw, 12vh, 60px);
+        height: min(6.5vw, 12vh, 60px);
+        font-size: clamp(9px, 1.1vw, 12px);
         border-radius: 50%;
         background: rgba(0, 80, 255, 0.2);
         border-color: rgba(0, 102, 255, 0.7);
@@ -712,17 +759,18 @@
       }
       #btn-shot {
         grid-area: shot;
-        width: 10.5vmin;
-        height: 10.5vmin;
-        font-size: 2.1vmin;
+        width: min(6.5vw, 12vh, 60px);
+        height: min(6.5vw, 12vh, 60px);
+        font-size: clamp(9px, 1.1vw, 12px);
         border-radius: 50%;
         background: rgba(180, 0, 0, 0.2);
         border-color: rgba(220, 38, 38, 0.8);
         box-shadow: 0 0 2.5vmin rgba(220, 38, 38, 0.45);
       }
-      #btn-shot:active {
-        background: rgba(220, 38, 38, 0.4);
-        box-shadow: 0 0 3.5vmin rgba(220, 38, 38, 0.8);
+      .mobile-action-btn.disabled, .mobile-switch.disabled {
+        opacity: 0.35;
+        filter: grayscale(0.85);
+        pointer-events: none;
       }
     </style>
   </head>
@@ -733,8 +781,17 @@
       
       <!-- Mobile Controls Overlay -->
       <div id="mobile-controls-container">
-        <!-- Left Side: Movement Joystick & Boost Switch -->
+        <!-- Left Side: Movement Joystick -->
         <div id="mobile-left-zone">
+          <div id="virtual-joystick-zone">
+            <div id="joystick-base">
+              <div id="joystick-stick"></div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Right Side: Action Buttons, Boost Switch and Aim Joystick -->
+        <div id="mobile-right-zone">
           <div id="boost-switch-container">
             <div id="boost-switch" class="mobile-switch" role="switch" aria-checked="false" tabindex="0">
               <div class="mobile-switch-track">
@@ -743,15 +800,7 @@
               <span class="mobile-switch-label">BOOST</span>
             </div>
           </div>
-          <div id="virtual-joystick-zone">
-            <div id="joystick-base">
-              <div id="joystick-stick"></div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Right Side: Action Buttons and Aim Joystick -->
-        <div id="mobile-right-zone">
+
           <!-- Buttons Zone -->
           <div id="mobile-buttons-zone">
             <button id="btn-upgrade" class="mobile-action-btn">UPGRADE</button>

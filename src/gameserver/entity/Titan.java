@@ -87,6 +87,7 @@ public class Titan extends Entity   {
         this.type = type;
         this.width = 70;
         this.height = 70;
+        this.centerDist = (this.width + this.height) / 4;
         this.solid = true;
         this.setVarsBasedOnType();
     }

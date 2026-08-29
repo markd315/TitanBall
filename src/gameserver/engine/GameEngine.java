@@ -355,7 +355,7 @@ public class GameEngine extends Game {
         for (GoalHoop goal : this.lowGoals) {
             if (ballIntersectsEllipse(goal) && goal.checkReady()) {
                 Optional<Titan> possessor = titanInPossession();
-                if (possessor.isPresent() && possessor.get().team == goal.team) {
+                if (possessor.isPresent() && possessor.get().getType() == TitanType.GOALIE && possessor.get().team == goal.team) {
                     continue;
                 }
                 Team enemy, us;
@@ -392,7 +392,7 @@ public class GameEngine extends Game {
         for (GoalHoop goal : this.hiGoals) {
             if (ballIntersectsEllipse(goal) && goal.checkReady()) {
                 Optional<Titan> possessor = titanInPossession();
-                if (possessor.isPresent() && possessor.get().team == goal.team) {
+                if (possessor.isPresent() && possessor.get().getType() == TitanType.GOALIE && possessor.get().team == goal.team) {
                     continue;
                 }
                 Team us, enemy;
