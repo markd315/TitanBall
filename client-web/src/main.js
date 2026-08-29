@@ -1232,7 +1232,9 @@ function drawGameEnded(ctx) {
   ctx.font = 'bold 24px Arial';
   ctx.fillStyle = '#888888';
   ctx.textAlign = 'center';
-  ctx.fillText('Press SPACE to return to lobby menu', 1920 / 2, 940);
+  const isMobileDev = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+  const returnMsg = isMobileDev ? 'Press SPACE or Double-Tap screen to return to lobby menu' : 'Press SPACE to return to lobby menu';
+  ctx.fillText(returnMsg, 1920 / 2, 940);
   ctx.restore();
 }
 

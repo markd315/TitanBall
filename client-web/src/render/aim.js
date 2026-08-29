@@ -1,5 +1,7 @@
 import { CONSTANTS } from '../constants.js';
 import { gameState } from '../state.js';
+import { getAbilityRange } from '../input/mobile.js';
+import { updateRaycastTargeting, drawTargetingOverlay, isSingleTargetAbility } from './targeting.js';
 
 export function drawAimAndRangeIndicators(ctx, game, controlsHeld, camX, camY) {
     if (!game || !game.underControl) return;
@@ -7,7 +9,7 @@ export function drawAimAndRangeIndicators(ctx, game, controlsHeld, camX, camY) {
     const t = game.underControl;
     ctx.save();
 
-    // 1. If player has possession of the ball, draw aiming lines and curves
+    // 1. If player has possession of the ball, draw thick aiming shot/lob lines and curves (width 30px)
     if (t.possession === 1 && game.ball) {
         const pow = t.throwPower || 0.1;
         const isGoalie = t.type === 'GOALIE';
@@ -130,19 +132,19 @@ export function drawAimAndRangeIndicators(ctx, game, controlsHeld, camX, camY) {
             }
         }
     } else {
-        // 2. If player does NOT possess the ball, draw their turquoise steal radius circle
+        // Draw turquoise steal radius circle when player does NOT possess ball
         const stealRad = t.stealRad || 70;
-        const cx = t.X + t.width / 2 - camX;
-        const cy = t.Y + t.height / 2 - camY;
+        const cxScreen = t.X + t.width / 2 - camX;
+        const cyScreen = t.Y + t.height / 2 - camY;
         
         ctx.beginPath();
-        ctx.arc(cx, cy, stealRad, 0, Math.PI * 2);
+        ctx.arc(cxScreen, cyScreen, stealRad, 0, Math.PI * 2);
         ctx.strokeStyle = 'rgba(64, 224, 208, 0.4)'; // Turquoise
         ctx.lineWidth = 3;
         ctx.stroke();
     }
 
-    // 3. Draw active range indicator circles/ellipses from the server
+    // 2. Draw active range indicator circles/ellipses from the server
     if (t.rangeIndicators) {
         for (const ri of t.rangeIndicators) {
             const rx = (ri.radiusX || ri.radius) * (t.rangeFactor || 1.0);
@@ -169,6 +171,69 @@ export function drawAimAndRangeIndicators(ctx, game, controlsHeld, camX, camY) {
             }
         }
     }
+
+    // 3. Draw THIN RAYCAST LINES ON TOP of thick shot/lob lines and range indicators
+    let aimAngle;
+    const currentPreset = sessionStorage.getItem('controlPreset');
+    const cxField = t.X + t.width / 2;
+    const cyField = t.Y + t.height / 2;
+    const cxScreen = cxField - camX;
+    const cyScreen = cyField - camY;
+
+    if (currentPreset === 'mobile-double' && gameState.aimAngle !== undefined) {
+        aimAngle = gameState.aimAngle;
+    } else if (controlsHeld.posX !== undefined && controlsHeld.posX >= 0) {
+        const cursorX = t.type === 'GOALIE' ? ((controlsHeld.posX || 0) / 0.9375) : (controlsHeld.posX || 0);
+        const cursorY = controlsHeld.posY || 0;
+        const mx = cursorX + camX;
+        const my = cursorY + camY;
+        aimAngle = Math.atan2(my - cyField, mx - cxField);
+    } else {
+        const isAway = t.team === 'AWAY' || t.team === 1;
+        aimAngle = isAway ? Math.PI : 0;
+    }
+
+    const aimDirX = Math.cos(aimAngle);
+    const aimDirY = Math.sin(aimAngle);
+
+    const rangeE = getAbilityRange(t, 'E');
+    const rangeR = getAbilityRange(t, 'R');
+
+    // Draw thin raycast line for Ability 1 / E (Green) - rendered ONLY for single-target abilities
+    if (rangeE > 0 && isSingleTargetAbility(t, 'E')) {
+        const ex = cxScreen + aimDirX * rangeE;
+        const ey = cyScreen + aimDirY * rangeE;
+        ctx.beginPath();
+        ctx.moveTo(cxScreen, cyScreen);
+        ctx.lineTo(ex, ey);
+        ctx.strokeStyle = 'rgba(46, 213, 115, 0.95)'; // Slot 1 Green (high visibility on top)
+        ctx.lineWidth = 3.5;
+        ctx.lineCap = 'round';
+        ctx.setLineDash([8, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+    }
+
+    // Draw thin raycast line for Ability 2 / R (Purple) - rendered ONLY for single-target abilities
+    if (rangeR > 0 && isSingleTargetAbility(t, 'R')) {
+        const ex = cxScreen + aimDirX * rangeR;
+        const ey = cyScreen + aimDirY * rangeR;
+        ctx.beginPath();
+        ctx.moveTo(cxScreen, cyScreen);
+        ctx.lineTo(ex, ey);
+        ctx.strokeStyle = 'rgba(168, 85, 247, 0.95)'; // Slot 2 Purple (high visibility on top)
+        ctx.lineWidth = 3.5;
+        ctx.lineCap = 'round';
+        ctx.setLineDash([4, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+    }
+
+    // Update target raycasting to detect targets inside ability range circles and maintain selection memory
+    updateRaycastTargeting(game, t, cxField, cyField, aimDirX, aimDirY);
+
+    // 4. Render blue sprite outline around selected entity in selection memory (top-most layer)
+    drawTargetingOverlay(ctx, game, camX, camY);
 
     ctx.restore();
 }

@@ -383,4 +383,31 @@ public class UnilateralScoringTest {
         boolean inHoop = engine.ballIntersectsEllipse(engine.hiGoals[0]);
         Assert.assertFalse("Ball must be held outside goal hoop", inHoop);
     }
+
+    /**
+     * Test 9: Non-Guardian field Titan carrying ball into own goal scores an own goal.
+     * The own-goal suppression while holding the ball is strictly a Guardian/Goalie override.
+     */
+    @Test
+    public void testNonGoalieCanStillOwnGoalByWalkingIn() {
+        GameEngine engine = createStandardGame();
+
+        Titan warrior = engine.players[2]; // Home Warrior (field titan)
+        warrior.setType(TitanType.WARRIOR);
+        warrior.team = TeamAffiliation.HOME;
+        warrior.possession = 1;
+        engine.home.hasBall = true;
+
+        // Position warrior carrying ball on Home Hi Goal
+        warrior.X = 256;
+        warrior.Y = 583;
+        engine.ball.X = warrior.X + 35 - engine.ball.centerDist;
+        engine.ball.Y = warrior.Y + 35 - engine.ball.centerDist;
+
+        double initialAwayScore = engine.away.score;
+        engine.detectGoals();
+
+        Assert.assertTrue("Non-Guardian walking ball into own goal triggers own goal for enemy",
+                engine.away.score > initialAwayScore);
+    }
 }

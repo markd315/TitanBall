@@ -37,6 +37,17 @@ public class Selector  {
         }
         for (Entity e : input) {
             if (collide(e, latestCollider)) {
+                // Strictly prohibit targeting entities outside caster ability range
+                if (offsetRange > 0 && offsetRange < 9000 && casting != null) {
+                    double cx = casting.X + (casting.width > 0 ? casting.width : 70) / 2.0;
+                    double cy = casting.Y + (casting.height > 0 ? casting.height : 70) / 2.0;
+                    double ex = e.X + (e.width > 0 ? e.width : 70) / 2.0;
+                    double ey = e.Y + (e.height > 0 ? e.height : 70) / 2.0;
+                    double dist = Math.hypot(ex - cx, ey - cy);
+                    if (dist > offsetRange + 15) {
+                        continue; // Exclude out-of-range entity on server
+                    }
+                }
                 ret.add(e);
             }
         }

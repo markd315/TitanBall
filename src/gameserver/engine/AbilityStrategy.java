@@ -108,11 +108,14 @@ public class AbilityStrategy    {
         initialD *= caster.damageFactor;
         recurringD *= caster.damageFactor;
         int range = (int) (c.getI("titan.ignite.range") * caster.rangeFactor);
-        shape = new CollisionMath.Bounds(0, 0, 20, 20);
+        shape = new CollisionMath.Bounds(0, 0, range * 2, range * 2);
         sel = new Selector(shape, SelectorOffset.MOUSE_CENTER,
                 range);
         appliedTo = new Targeting(sel, notFriendly, mouseNear, context)
                 .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
+        if (appliedTo.isEmpty()) {
+            return;
+        }
         for (Entity e : appliedTo) {
             if (initialD + recurringD > 0.0) {
                 context.effectPool.addStackingEffect(caster, new EmptyEffect(5000, e, EffectId.ATTACKED));
@@ -141,9 +144,10 @@ public class AbilityStrategy    {
     }
 
     public void kickSelectedTarget() {
-        shape = new CollisionMath.Bounds(0, 0, 1, 1);
-        sel = new Selector(shape, SelectorOffset.MOUSE_CENTER, (int) (c.getI("titan.kick.range") * caster.rangeFactor));
-        appliedTo = new Targeting(sel, champions, nearest, context)
+        int range = (int) (c.getI("titan.kick.range") * caster.rangeFactor);
+        shape = new CollisionMath.Bounds(0, 0, range * 2, range * 2);
+        sel = new Selector(shape, SelectorOffset.MOUSE_CENTER, range);
+        appliedTo = new Targeting(sel, champions, mouseNear, context)
                 .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
         if (!appliedTo.isEmpty()) {
             context.effectPool.addUniqueEffect(new CooldownW((int) (c.getI("titan.kick.cdms") * caster.cooldownFactor), caster), context);
@@ -262,11 +266,14 @@ public class AbilityStrategy    {
     public void heal() {
         int dur = (int) (c.getI("titan.heal.dur") * caster.durationsFactor);
         int range = (int) (c.getI("titan.heal.range") * caster.rangeFactor);
-        shape = new CollisionMath.Bounds(0, 0, 1, 1);
+        shape = new CollisionMath.Bounds(0, 0, range * 2, range * 2);
         sel = new Selector(shape, SelectorOffset.MOUSE_CENTER,
                 range);
         appliedTo = new Targeting(sel, friendlyIncSelf, mouseNear, context)
                 .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
+        if (appliedTo.isEmpty()) {
+            return;
+        }
         for (Entity e : appliedTo) {
             goOnCooldown(caster, "titan.heal.cdms", 'W');
             eff = new HealEffect(dur, e, c.getD("titan.heal.initd"), c.getD("titan.heal.recurd"));
@@ -313,11 +320,14 @@ public class AbilityStrategy    {
     public void slow() {
         int dur = (int) (c.getI("titan.slow.dur") * caster.durationsFactor);
         int range = (int) (c.getI("titan.slow.range") * caster.rangeFactor);
-        shape = new CollisionMath.Bounds(0, 0, 1, 1);
+        shape = new CollisionMath.Bounds(0, 0, range * 2, range * 2);
         sel = new Selector(shape, SelectorOffset.MOUSE_CENTER,
                 range);
         appliedTo = new Targeting(sel, champions, mouseNear, context)
                 .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
+        if (appliedTo.isEmpty()) {
+            return;
+        }
         for (Entity e : appliedTo) {
             goOnCooldown(caster, "titan.slow.cdms", 'Q');
             eff = new RatioEffect(dur, e, EffectId.SLOW, c.getD("titan.slow.ratio"));
@@ -337,14 +347,28 @@ public class AbilityStrategy    {
             if (context.lastPossessed != null && context.lastPossessed.equals(caster.id)) {
                 context.lastPossessed = null;
             }
-            double tx = caster.X + caster.centerDist - context.ball.centerDist;
-            double ty = caster.Y + caster.centerDist - context.ball.centerDist;
-            double ang = Util.degreesFromCoords(tx - context.ball.X, ty - context.ball.Y);
+            double casterCenterX = caster.X + (caster.width > 0 ? caster.width / 2.0 : 35.0);
+            double casterCenterY = caster.Y + (caster.height > 0 ? caster.height / 2.0 : 35.0);
+
+            double ballCenterX = context.ball.X + (context.ball.width > 0 ? context.ball.width / 2.0 : 10.0);
+            double ballCenterY = context.ball.Y + (context.ball.height > 0 ? context.ball.height / 2.0 : 10.0);
+
+            double dx = casterCenterX - ballCenterX;
+            double dy = casterCenterY - ballCenterY;
+            double dist = Math.sqrt(dx * dx + dy * dy);
+
+            double dirX = 0.0;
+            double dirY = 0.0;
+            if (dist > 0) {
+                dirX = dx / dist;
+                dirY = dy / dist;
+            }
+
             int limit = 0;
             int maxDist = (int)(range * 1.5); // Enough to pull from max range
             while (!context.anyPoss() && limit < maxDist) {
-                context.ball.X += 3.0 * Math.cos(Math.toRadians((ang)));
-                context.ball.Y += 3.0 * Math.sin(Math.toRadians((ang)));
+                context.ball.X += 3.0 * dirX;
+                context.ball.Y += 3.0 * dirY;
                 if (!context.contactExemptBall()) {
                     for (int n = context.players.length - 1; n >= 0; n--) {
                         Titan p = context.players[n];
@@ -448,7 +472,7 @@ public class AbilityStrategy    {
     public void shootArrow(double dmg) {
         int range = (int) (c.getI("titan.arrow.range") * caster.rangeFactor);
         dmg *= caster.damageFactor;
-        shape = new CollisionMath.Bounds(0, 0, 20, 20);
+        shape = new CollisionMath.Bounds(0, 0, range * 2, range * 2);
         sel = new Selector(shape, SelectorOffset.MOUSE_CENTER,
                 range);
         appliedTo = new Targeting(sel, notFriendly, mouseNear, context)
@@ -506,10 +530,13 @@ public class AbilityStrategy    {
         int range = (int) (c.getI("titan.captain.shot.range") * caster.rangeFactor);
         double dmgChamp = 5.0 * caster.damageFactor;
         double dmgMinion = 10.0 * caster.damageFactor;
-        shape = new CollisionMath.Bounds(0, 0, 24, 24);
+        shape = new CollisionMath.Bounds(0, 0, range * 2, range * 2);
         sel = new Selector(shape, SelectorOffset.MOUSE_CENTER, range);
         appliedTo = new Targeting(sel, notFriendly, mouseNear, context)
                 .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
+        if (appliedTo.isEmpty()) {
+            return;
+        }
 
         for (Entity e : appliedTo) {
             context.effectPool.addStackingEffect(caster, new EmptyEffect(5000, e, EffectId.ATTACKED));
@@ -565,9 +592,9 @@ public class AbilityStrategy    {
 
     public void spiderCocoon() {
         int range = (int) (c.getI("titan.spider.cocoon.range") * caster.rangeFactor);
-        shape = new CollisionMath.Bounds(0, 0, 20, 20);
+        shape = new CollisionMath.Bounds(0, 0, range * 2, range * 2);
         sel = new Selector(shape, SelectorOffset.MOUSE_CENTER, range);
-        appliedTo = new Targeting(sel, all, nearest, context)
+        appliedTo = new Targeting(sel, all, mouseNear, context)
                 .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
 
         Entity targetHero = null;
