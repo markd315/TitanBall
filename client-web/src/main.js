@@ -20,7 +20,7 @@ import { drawHud, drawHealthBars } from './render/hud.js';
 import { drawClassStatsOverlay, formatClassTooltip, CLASS_INFO, computeStatWithMastery, getActiveMasteries, getAbilityCd, loadGameConfig, TAG_COLORS, TAG_ICONS, SKILL_RANKS } from './render/classStats.js';
 import { login, joinQueue, checkGame, register, startTutorial } from './network/auth.js';
 import { connectGame, disconnectGame } from './network/socket.js';
-import { warmServer } from './network/warm.js';
+import { warmServer, recordUserActivity } from './network/warm.js';
 
 let ctx;
 let lastTime = 0;
@@ -856,18 +856,21 @@ function gameLoop(timestamp) {
   const dt = timestamp - lastTime;
   lastTime = timestamp;
 
-  // Track idle time (4 hours = 14400000 ms)
-  const isIdle = gameState.phase === GamePhase.SHOW_GAME_MODES || gameState.phase === GamePhase.ENDED;
-  if (isIdle) {
-    if (idleStart === null) {
-      idleStart = Date.now();
-    } else if (Date.now() - idleStart > 14400000) {
-      window.warmExpired = true;
-    }
-  } else {
-    if (gameState.phase === GamePhase.INGAME || gameState.phase === GamePhase.COUNTDOWN || gameState.phase === GamePhase.SCORE_FREEZE) {
-      idleStart = null;
-    }
+  // Track active gameplay / user interaction to reset the 4-hour idle timer
+  const isGameplay = gameState.phase === GamePhase.INGAME || 
+                     gameState.phase === GamePhase.COUNTDOWN || 
+                     gameState.phase === GamePhase.SCORE_FREEZE ||
+                     gameState.phase === GamePhase.WAIT_FOR_GAME ||
+                     gameState.phase === GamePhase.TUTORIAL ||
+                     gameState.phase === GamePhase.TUTORIAL_START;
+
+  if (isGameplay) {
+    recordUserActivity();
+  }
+
+  const IDLE_LIMIT_MS = 4 * 60 * 60 * 1000; // 4 hours
+  if (Date.now() - (window.lastUserActivity || Date.now()) > IDLE_LIMIT_MS) {
+    window.warmExpired = true;
   }
 
   if (window.warmExpired) {
@@ -1391,6 +1394,11 @@ export function start() {
   initMobileControls();
   initUIListeners();
   
+  // Track user interaction to reset 4-hour idle timer
+  ['mousemove', 'mousedown', 'keydown', 'touchstart', 'click'].forEach(evt => {
+    window.addEventListener(evt, recordUserActivity, { passive: true });
+  });
+
   // Warm the pilot-light server immediately on startup and keep warm every 10 minutes
   warmServer();
   setInterval(warmServer, 600000);
