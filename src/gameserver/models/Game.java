@@ -83,6 +83,25 @@ public class Game   {
     public double awayGoalieMana = 0.0;
     public Set<String> homeGoaliePurchasedUpgrades = new HashSet<String>();
     public Set<String> awayGoaliePurchasedUpgrades = new HashSet<String>();
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class RecentPurchase {
+        public String team;
+        public String nodeKey;
+        public long timestampMs;
+        public String gameTime;
+
+        public RecentPurchase() {}
+
+        public RecentPurchase(String team, String nodeKey, long timestampMs, String gameTime) {
+            this.team = team;
+            this.nodeKey = nodeKey;
+            this.timestampMs = timestampMs;
+            this.gameTime = gameTime;
+        }
+    }
+
+    public List<RecentPurchase> recentPurchases = new ArrayList<>();
     public boolean homeNoFlyZoneActive = false;
     public boolean awayNoFlyZoneActive = false;
     public long homeNoFlyZoneActiveUntil = 0;

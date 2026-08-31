@@ -88,9 +88,22 @@ export function handleUIClick(mx, my) {
     if (clientUI.goalieTabIndex >= 0 && clientUI.goalieTabIndex < tabCount) {
         const selectedKey = tabKeys[clientUI.goalieTabIndex];
 
-        if (handleNodeClick(game, selectedKey, mx, my)) {
-            gameState.uiClick = true;
-            return true;
+        if (gameState.controlsHeld && gameState.controlsHeld.TAB) {
+            // Read-only opponent view active: block purchases inside tree image
+            const activeImg = AssetManager.images[selectedKey];
+            if (activeImg) {
+                const ox = (CONSTANTS.X_RES - activeImg.width) / 2;
+                const oy = (CONSTANTS.Y_RES - activeImg.height) / 2;
+                if (mx >= ox && mx <= ox + activeImg.width && my >= oy && my <= oy + activeImg.height) {
+                    gameState.uiClick = true;
+                    return true;
+                }
+            }
+        } else {
+            if (handleNodeClick(game, selectedKey, mx, my)) {
+                gameState.uiClick = true;
+                return true;
+            }
         }
 
         // Click was outside the tree image - close the menu.

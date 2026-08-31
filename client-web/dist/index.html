@@ -221,6 +221,55 @@
         padding: 10px;
         border-radius: 10px;
       }
+      .server-status-badge {
+        display: none;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 8px 14px;
+        border-radius: 12px;
+        font-size: 13px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        text-align: center;
+      }
+      .server-status-badge.warming {
+        background: rgba(255, 159, 28, 0.12);
+        border: 1px solid rgba(255, 159, 28, 0.35);
+        color: #ff9f1c;
+      }
+      .server-status-badge.warmed {
+        background: rgba(46, 213, 115, 0.12);
+        border: 1px solid rgba(46, 213, 115, 0.35);
+        color: #2ed573;
+      }
+      .status-spinner {
+        width: 14px;
+        height: 14px;
+        border: 2px solid rgba(255, 159, 28, 0.3);
+        border-top-color: #ff9f1c;
+        border-radius: 50%;
+        animation: statusSpin 0.8s linear infinite;
+        display: inline-block;
+        flex-shrink: 0;
+      }
+      @keyframes statusSpin {
+        to { transform: rotate(360deg); }
+      }
+      .status-checkmark {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #2ed573;
+        color: #0b1a13;
+        font-size: 11px;
+        font-weight: 900;
+        line-height: 1;
+        flex-shrink: 0;
+      }
       .menu-list {
         display: flex;
         flex-direction: column;
@@ -773,7 +822,7 @@
         pointer-events: none;
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-551dbc60.js"></script>
+    <script type="module" crossorigin src="./assets/index-a9e9e7c8.js"></script>
   </head>
   <body>
     <div id="app">
@@ -826,6 +875,10 @@
         <!-- Login Overlay -->
         <div id="login-overlay" class="glass-card" style="display: none;">
           <h2>TitanBall Access</h2>
+          <div class="server-status-badge warming" style="display: none;">
+            <span class="status-spinner"></span>
+            <span class="status-text">servers warming up, wait 1-2 mins</span>
+          </div>
           <div class="input-group">
             <label for="login-email">Username or Email</label>
             <input type="text" id="login-email" placeholder="markd315@gmail.com" />
@@ -844,6 +897,10 @@
         <!-- Signup Overlay -->
         <div id="signup-overlay" class="glass-card" style="display: none;">
           <h2>Create Account</h2>
+          <div class="server-status-badge warming" style="display: none;">
+            <span class="status-spinner"></span>
+            <span class="status-text">servers warming up, wait 1-2 mins</span>
+          </div>
           <div class="input-group">
             <label for="signup-username">Username</label>
             <input type="text" id="signup-username" placeholder="SlamDunker" />
@@ -928,6 +985,15 @@
             <div id="partner-list-container" style="max-height: 100px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); font-size: 13px; display: flex; flex-direction: column; gap: 6px;">
               <!-- Partners will be dynamically rendered here -->
             </div>
+          </div>
+          <!-- Preferred Lane Selection (50% size, bottom) -->
+          <div class="input-group" style="width: 50%; margin: 10px auto 14px auto; text-align: center;">
+            <label for="lane-select" style="font-size: 12px; margin-bottom: 4px; display: block; color: #94a3b8;">Preferred Lane</label>
+            <select id="lane-select" style="width: 100%; font-size: 12px; padding: 5px 8px; text-align: center;">
+              <option value="TOP">Top Lane</option>
+              <option value="MID">Mid Lane</option>
+              <option value="BOT">Bot Lane</option>
+            </select>
           </div>
           <div class="menu-list">
             <div class="team-match-container">

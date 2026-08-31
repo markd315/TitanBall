@@ -444,16 +444,18 @@ public class GuardianAbilities implements Serializable {
                 }
             }
 
-            // Forward Medics (continuous healing zone)
-            if (e instanceof Fire && e.team == team && e.width == 160) {
+            // Forward Medics (continuous healing zone covering entire opponent's third)
+            if (e instanceof Fire && e.team == team && (e.width == 680 || e.width == 160)) {
+                double hps = context.c.getD("guardian.forwardmedics.hps");
+                double healPerTick = hps / (1000.0 / context.c.GAMETICK_MS);
                 for (Titan t : context.players) {
                     if (t.team == team && t.health > 0.0 && e.asBounds().intersects(t.asBounds())) {
-                        context.effectPool.addUniqueEffect(new HealEffect(1000, t, 1.5, 0.1), context);
+                        t.heal(healPerTick);
                     }
                 }
                 for (Entity mn : context.entityPool) {
                     if (mn instanceof LaneMinion && mn.team == team && mn.getHealth() > 0.0 && e.asBounds().intersects(mn.asBounds())) {
-                        mn.heal(0.12);
+                        mn.heal(healPerTick);
                     }
                 }
             }
@@ -877,13 +879,18 @@ public class GuardianAbilities implements Serializable {
     }
 
     private void spawnForwardMedics(GameEngine context, Titan goalie) {
-        int midHoopCY = (int) (context.c.getI("goal.hi.y") + context.c.getI("goal.hi.height") / 2.0);
-        int mx = (team == TeamAffiliation.HOME) ? 1600 : 400;
-        int mHeight = 160;
-        int my = midHoopCY - mHeight / 2;
-        Fire medics = new Fire(goalie, mx, my);
+        int mx = (team == TeamAffiliation.HOME) ? 1368 : 0;
+        int mWidth = 680;
+        int mHeight = 988;
+        int my = 0;
+        Fire medics = new Fire(goalie, mx, my) {
+            @Override
+            public void triggerCollide(GameEngine context, gameserver.entity.Box box) {
+                // Forward Medics is a pure healing zone and NEVER applies burn or flare damage
+            }
+        };
         medics.team = team;
-        medics.width = 160;
+        medics.width = mWidth;
         medics.height = mHeight;
         medics.health = 99999;
         medics.maxHealth = 99999;
@@ -895,14 +902,17 @@ public class GuardianAbilities implements Serializable {
     private void applyHealingBurst(GameEngine context, Titan goalie) {
         Set<String> purchased = (team == TeamAffiliation.HOME) ? context.homeGoaliePurchasedUpgrades : context.awayGoaliePurchasedUpgrades;
         double mult = purchased.contains("fortress.t3.homehealamp") ? context.c.getD("guardian.homehealamp.mult") : 1.0;
-        double amt = context.c.getD("guardian.healingburst.amt") * mult;
+        double initAmt = context.c.getD("guardian.healingburst.amt") * mult;
+        double recurTotal = context.c.getD("guardian.healingburst.recurtot") * mult;
         int dur = context.c.getI("guardian.healingburst.dur");
+        double totalTicks = dur / (1000.0 / context.c.GAMETICK_MS);
+        double recurPerTick = recurTotal / totalTicks;
 
         for (Titan t : context.players) {
             if (t.team == team && t.health > 0.0) {
                 boolean inOwnEnd = (team == TeamAffiliation.HOME) ? (t.X <= 680) : (t.X >= 1368);
                 if (inOwnEnd) {
-                    context.effectPool.addUniqueEffect(new HealEffect(dur, t, amt, amt * 0.05), context);
+                    context.effectPool.addUniqueEffect(new HealEffect(dur, t, initAmt, recurPerTick), context);
                 }
             }
         }

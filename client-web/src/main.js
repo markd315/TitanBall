@@ -1,4 +1,4 @@
-import { gameState } from './state.js';
+import { gameState, clientUI } from './state.js';
 import { initCanvas, clearScreen, drawImageCam } from './render/canvas.js';
 import { initMasteries, loadMasteriesForTitan, validateMasteries } from './screens/masteries.js';
 import { initBuildOrderPlanner, updatePlanBuildButtonVisibility } from './screens/buildOrderPlanner.js';
@@ -140,9 +140,15 @@ function initUIListeners() {
         gameState.phase = GamePhase.SHOW_GAME_MODES;
         checkAndRejoinActiveGame();
       } catch (err) {
-        console.error(err);
+        console.error('[Login Failure]', err);
         if (errorDiv) {
-          errorDiv.textContent = 'Invalid credentials or server offline.';
+          if (err.code === 'INVALID_CREDENTIALS') {
+            errorDiv.textContent = 'Invalid credentials. Please check your username/email and password.';
+          } else if (err.code === 'SERVER_DOWN') {
+            errorDiv.textContent = 'Server down or unreachable. Servers warming up, wait 1-2 mins.';
+          } else {
+            errorDiv.textContent = err.message || 'Login failed.';
+          }
           errorDiv.style.display = 'block';
         }
       }
@@ -227,6 +233,57 @@ function initUIListeners() {
 
   // Selected Match Size state
   let selectedMatchSize = parseInt(sessionStorage.getItem('lastQueueSize') || '4');
+
+  function updateLaneSelectState() {
+    const classSelect = document.getElementById('class-select');
+    const laneSelect = document.getElementById('lane-select');
+    if (!laneSelect) return;
+    const inputGroup = laneSelect.closest('.input-group') || laneSelect.parentElement;
+
+    if (classSelect && classSelect.value === 'GOALIE') {
+      if (inputGroup) inputGroup.style.display = 'none';
+      sessionStorage.setItem('preferredLane', 'GOALIE');
+      return;
+    }
+
+    if (selectedMatchSize <= 2) {
+      if (inputGroup) inputGroup.style.display = 'none';
+      sessionStorage.setItem('preferredLane', 'MID');
+      return;
+    }
+
+    if (inputGroup) inputGroup.style.display = '';
+
+    const validLanes = selectedMatchSize >= 5
+      ? ['TOP', 'MID', 'BOT', 'DEFENSIVE']
+      : (selectedMatchSize === 3 ? ['TOP', 'BOT'] : ['TOP', 'MID', 'BOT']);
+    const laneLabels = { TOP: 'Top Lane', MID: 'Mid Lane', BOT: 'Bot Lane', DEFENSIVE: 'Defensive' };
+
+    laneSelect.innerHTML = '';
+    validLanes.forEach(lane => {
+      const opt = document.createElement('option');
+      opt.value = lane;
+      opt.textContent = laneLabels[lane];
+      laneSelect.appendChild(opt);
+    });
+
+    let savedLane = sessionStorage.getItem('preferredLane') || 'TOP';
+    if (!validLanes.includes(savedLane)) {
+      savedLane = validLanes[0];
+    }
+    laneSelect.value = savedLane;
+    laneSelect.disabled = false;
+    sessionStorage.setItem('preferredLane', laneSelect.value);
+  }
+
+  const laneSelectEl = document.getElementById('lane-select');
+  if (laneSelectEl) {
+    laneSelectEl.addEventListener('change', () => {
+      if (!laneSelectEl.disabled && laneSelectEl.value !== 'GOALIE') {
+        sessionStorage.setItem('preferredLane', laneSelectEl.value);
+      }
+    });
+  }
   
   const sizeDisplay = document.getElementById('match-size-display');
   const sizeDownBtn = document.getElementById('size-down-btn');
@@ -242,6 +299,7 @@ function initUIListeners() {
         selectedMatchSize--;
         sizeDisplay.textContent = `${selectedMatchSize}v${selectedMatchSize}`;
         sessionStorage.setItem('lastQueueSize', selectedMatchSize);
+        updateLaneSelectState();
       }
     });
     sizeUpBtn.addEventListener('click', () => {
@@ -249,6 +307,7 @@ function initUIListeners() {
         selectedMatchSize++;
         sizeDisplay.textContent = `${selectedMatchSize}v${selectedMatchSize}`;
         sessionStorage.setItem('lastQueueSize', selectedMatchSize);
+        updateLaneSelectState();
       }
     });
   }
@@ -368,7 +427,8 @@ function initUIListeners() {
         const playerIndex = getPlayerIndexForSize(selectedMatchSize);
         const code = `/${playerIndex}/0/1/10/2/9999/10/12`;
         const partnersCsv = partners.join(',');
-        await joinQueue(code, classSel, partnersCsv);
+        const preferredLane = sessionStorage.getItem('preferredLane') || 'TOP';
+        await joinQueue(code, classSel, partnersCsv, preferredLane);
         gameState.is3v3 = true;
         gameState.phase = GamePhase.WAIT_FOR_GAME;
         startQueuePolling();
@@ -413,7 +473,8 @@ function initUIListeners() {
         const lobbyStatus = document.querySelector('#lobby-overlay .stat-value[style*="pulse"]');
         if (lobbyStatus) lobbyStatus.textContent = 'FINDING PLAYERS...';
         
-        await joinQueue('/4/1/1/5/2/9999/10/12', classSel, ''); // index 4 is 1v1, goalieIndex 1 is off
+        const preferredLane = sessionStorage.getItem('preferredLane') || 'TOP';
+        await joinQueue('/4/1/1/5/2/9999/10/12', classSel, '', preferredLane); // index 4 is 1v1, goalieIndex 1 is off
         gameState.is3v3 = false;
         gameState.phase = GamePhase.WAIT_FOR_GAME;
         startQueuePolling();
@@ -641,6 +702,7 @@ function initUIListeners() {
       }
 
       _updateClassInfoDisplay(classSelect.value);
+      updateLaneSelectState();
     }
 
     const filterChips = document.querySelectorAll('#class-filter-bar .filter-chip');
@@ -662,6 +724,7 @@ function initUIListeners() {
       loadMasteriesForTitan(e.target.value);
       _updateClassInfoDisplay(e.target.value);
       updatePlanBuildButtonVisibility();
+      updateLaneSelectState();
     });
 
     // Re-render class info preview card & option tooltips immediately when masteries are saved
@@ -675,8 +738,9 @@ function initUIListeners() {
       });
     });
 
-    // Set initial visibility of Plan Build Order button
+    // Set initial visibility of Plan Build Order button & initial lane state
     updatePlanBuildButtonVisibility();
+    updateLaneSelectState();
   }
 
   // Controls Layout dropdown change
@@ -758,8 +822,8 @@ function drawIngame(ctx, dt) {
   
   drawGoals(ctx, game, camX, camY);
   drawAllPseudotextures(ctx, game, camX, camY);
-  drawPlayers(ctx, game, camX, camY);
   drawMinions(ctx, game, camX, camY);
+  drawPlayers(ctx, game, camX, camY);
   drawAimAndRangeIndicators(ctx, game, gameState.controlsHeld, camX, camY);
   drawEffectIcons(ctx, game, camX, camY);
   drawHealthBars(ctx, game, camX, camY);
@@ -1015,8 +1079,8 @@ function gameLoop(timestamp) {
       break;
   }
 
-  // Draw full Class Abilities & Stats Guide overlay whenever [TAB] is held
-  if (gameState.controlsHeld && gameState.controlsHeld.TAB && gameState.game) {
+  // Draw full Class Abilities & Stats Guide overlay whenever [TAB] is held (only when upgrade tree pane is closed)
+  if (gameState.controlsHeld && gameState.controlsHeld.TAB && gameState.game && clientUI.goalieTabIndex < 0) {
     drawClassStatsOverlay(ctx, gameState.game, false);
   }
 
