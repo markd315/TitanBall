@@ -159,11 +159,12 @@ public class LoginController {
               @RequestParam String tournamentCode,
               @RequestParam(required = false) String teamname,
               @RequestParam(required = false) String classSelection,
+              @RequestParam(required = false) String preferredLane,
               @RequestParam(required = false) String partners) throws IOException {
         if (shutDownMode) {
             return new ResponseEntity<>("Shutting down", HttpStatus.SERVICE_UNAVAILABLE);
         }
-        userPool.registerIntent(auth, tournamentCode, teamname, classSelection, partners);
+        userPool.registerIntent(auth, tournamentCode, teamname, classSelection, preferredLane, partners);
         return new ResponseEntity<>(userPool.findGame(auth), HttpStatus.OK);
     }
 

@@ -139,12 +139,45 @@ public class ManagedGame {
         if (goalie != null) {
             preAssignedSlots.put(goalie, goalieSlot);
         }
-        int fieldIdx = 0;
+        List<String> fieldPlayers = new ArrayList<>();
         for (String email : team) {
             if (!email.equals(goalie)) {
-                preAssignedSlots.put(email, fieldSlotStart + fieldIdx++);
+                fieldPlayers.add(email);
             }
         }
+        int numFieldSlots = fieldPlayers.size();
+        String[] assigned = new String[numFieldSlots];
+        boolean[] usedPlayer = new boolean[numFieldSlots];
+
+        for (int slotIdx = 0; slotIdx < numFieldSlots; slotIdx++) {
+            String targetLane = getTargetLaneForSlot(slotIdx, numFieldSlots);
+            for (int p = 0; p < numFieldSlots; p++) {
+                if (!usedPlayer[p] && targetLane.equalsIgnoreCase(mm != null ? mm.playerPreferredLanes.get(fieldPlayers.get(p)) : null)) {
+                    assigned[slotIdx] = fieldPlayers.get(p);
+                    usedPlayer[p] = true;
+                    break;
+                }
+            }
+        }
+        for (int slotIdx = 0; slotIdx < numFieldSlots; slotIdx++) {
+            if (assigned[slotIdx] == null) {
+                for (int p = 0; p < numFieldSlots; p++) {
+                    if (!usedPlayer[p]) {
+                        assigned[slotIdx] = fieldPlayers.get(p);
+                        usedPlayer[p] = true;
+                        break;
+                    }
+                }
+            }
+            if (assigned[slotIdx] != null) preAssignedSlots.put(assigned[slotIdx], fieldSlotStart + slotIdx);
+        }
+    }
+
+    private String getTargetLaneForSlot(int slotIdx, int numFieldSlots) {
+        if (numFieldSlots == 1) return "MID";
+        if (numFieldSlots == 2) return slotIdx == 0 ? "TOP" : "BOT";
+        String[] lanes = {"TOP", "MID", "BOT", "DEFENSIVE"};
+        return slotIdx < lanes.length ? lanes[slotIdx] : "DEFENSIVE";
     }
 
     private void partitionTeams(List<String> selectedPlayers, List<String> teamHome, List<String> teamAway, int teamSize) {

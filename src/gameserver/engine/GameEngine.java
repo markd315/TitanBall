@@ -245,7 +245,9 @@ public class GameEngine extends Game {
                         }
                     }
                     if (!e.teamPoss(this) && hoopDmg) {
-                        e.heal(-delta / factor);
+                        Set<String> purchased = (e.team == TeamAffiliation.HOME) ? homeGoaliePurchasedUpgrades : awayGoaliePurchasedUpgrades;
+                        double ampMult = (purchased != null && purchased.contains("fortress.t3.homehealamp")) ? c.getD("guardian.homehealamp.mult") : 1.0;
+                        e.heal((-delta * ampMult) / factor);
                     }
                 }
             }
@@ -546,67 +548,73 @@ public class GameEngine extends Game {
     }
 
     protected void setPosition(Titan t, int slotIndex, int slots) {
-        if (slots <= 2) {
+        if (slots <= 1) {
             if (slotIndex == 0) {
                 t.X = MID_HOME;
                 t.Y = MID_WING_HOME;
             }
+        }
+        if (slots == 2) {
+            if (slotIndex == 0) {
+                t.X = MID_HOME;
+                t.Y = TOP_WING_HOME;
+            }
             if (slotIndex == 1) {
-                t.X = DEFENDER_HOME;
-                t.Y = MID_WING_HOME;
+                t.X = MID_HOME;
+                t.Y = BOT_WING_HOME;
             }
         }
         if (slots == 3) {
             if (slotIndex == 0) {
                 t.X = MID_HOME;
-                t.Y = MID_WING_HOME;
-            }
-            if (slotIndex == 1) {
-                t.X = FW_HOME;
                 t.Y = TOP_WING_HOME;
             }
+            if (slotIndex == 1) {
+                t.X = MID_HOME;
+                t.Y = MID_WING_HOME;
+            }
             if (slotIndex == 2) {
-                t.X = FW_HOME;
+                t.X = MID_HOME;
                 t.Y = BOT_WING_HOME;
             }
         }
         if (slots == 4) {
             if (slotIndex == 0) {
                 t.X = MID_HOME;
-                t.Y = MID_WING_HOME;
-            }
-            if (slotIndex == 1) {
-                t.X = DEFENDER_HOME;
-                t.Y = MID_WING_HOME;
-            }
-            if (slotIndex == 2) {
-                t.X = FW_HOME;
                 t.Y = TOP_WING_HOME;
             }
-            if (slotIndex >= 3) {
-                t.X = FW_HOME;
-                t.Y = BOT_WING_HOME;
-            }
-        }
-        if (slots == 5) {
-            if (slotIndex == 0) {
+            if (slotIndex == 1) {
                 t.X = MID_HOME;
                 t.Y = MID_WING_HOME;
             }
-            if (slotIndex == 1) {
+            if (slotIndex == 2) {
+                t.X = MID_HOME;
+                t.Y = BOT_WING_HOME;
+            }
+            if (slotIndex >= 3) {
                 t.X = DEFENDER_HOME;
+                t.Y = MID_WING_HOME;
+            }
+        }
+        if (slots >= 5) {
+            if (slotIndex == 0) {
+                t.X = MID_HOME;
                 t.Y = TOP_WING_HOME;
             }
+            if (slotIndex == 1) {
+                t.X = MID_HOME;
+                t.Y = MID_WING_HOME;
+            }
             if (slotIndex == 2) {
-                t.X = DEFENDER_HOME;
+                t.X = MID_HOME;
                 t.Y = BOT_WING_HOME;
             }
             if (slotIndex == 3) {
-                t.X = FW_HOME;
+                t.X = DEFENDER_HOME;
                 t.Y = TOP_WING_HOME;
             }
             if (slotIndex >= 4) {
-                t.X = FW_HOME;
+                t.X = DEFENDER_HOME;
                 t.Y = BOT_WING_HOME;
             }
         }
@@ -973,6 +981,13 @@ public class GameEngine extends Game {
             homeGoalieAbilities.purchaseOrUse(this, t, nodeKey);
         } else {
             awayGoalieAbilities.purchaseOrUse(this, t, nodeKey);
+        }
+        double matchFps = 1000.0 / (GAMETICK_MS > 0 ? GAMETICK_MS : 25);
+        int totalSec = (int)(framesSinceStart / matchFps);
+        String gameTimeStr = String.format("%d:%02d", totalSec / 60, totalSec % 60);
+        recentPurchases.add(new RecentPurchase(isHome ? "HOME" : "AWAY", nodeKey, System.currentTimeMillis(), gameTimeStr));
+        if (recentPurchases.size() > 20) {
+            recentPurchases.remove(0);
         }
         for(String s : purchased)
             System.out.println(s);
