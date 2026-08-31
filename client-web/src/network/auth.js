@@ -11,9 +11,10 @@ export async function login(usernameOrEmail, password) {
   return data;
 }
 
-export async function joinQueue(tournamentCode = '', classSelection = '', partners = '') {
+export async function joinQueue(tournamentCode = '', classSelection = '', partners = '', preferredLane = '') {
   const token = sessionStorage.getItem('accessToken');
-  const url = `/pages/titanball/api/join?tournamentCode=${encodeURIComponent(tournamentCode)}&classSelection=${encodeURIComponent(classSelection)}&partners=${encodeURIComponent(partners)}`;
+  const laneParam = preferredLane || sessionStorage.getItem('preferredLane') || 'TOP';
+  const url = `/pages/titanball/api/join?tournamentCode=${encodeURIComponent(tournamentCode)}&classSelection=${encodeURIComponent(classSelection)}&preferredLane=${encodeURIComponent(laneParam)}&partners=${encodeURIComponent(partners)}`;
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${token}` }

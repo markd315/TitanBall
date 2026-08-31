@@ -1,5 +1,6 @@
 import { drawImageCam } from './canvas.js';
 import { AssetManager } from '../assets/sprites.js';
+import { canSelectMinions } from './targeting.js';
 
 let staticFrame = 0;
 
@@ -55,12 +56,13 @@ export function drawMinions(ctx, game, camX, camY) {
     const myTitan = game.underControl;
     const titanType = (myTitan && myTitan.type) ? String(myTitan.type).toUpperCase() : null;
     const isGoalie = titanType === 'GOALIE';
+    const showAllMinions = isGoalie || canSelectMinions(myTitan);
     const hasDamageAbility = !isGoalie && !!(titanType && DAMAGE_CLASSES.has(titanType));
 
-    // For field players, pre-calculate the frontmost minion X per lane per team to only render lead groups
+    // For field players without minion-selecting abilities, pre-calculate the frontmost minion X per lane per team to only render lead groups
     const homeLeadX = [-Infinity, -Infinity, -Infinity];
     const awayLeadX = [Infinity, Infinity, Infinity];
-    if (!isGoalie) {
+    if (!showAllMinions) {
         for (let i = 0; i < game.entityPool.length; i++) {
             const e = game.entityPool[i];
             if (e.entityClass === 'LaneMinion' && e.health > 0) {
@@ -92,7 +94,8 @@ export function drawMinions(ctx, game, camX, camY) {
         else if (e.entityClass === 'Portal') imgKey = isCooldown ? 'portalcd' : (isAltFrame ? 'portal2' : 'portal1');
         else if (e.entityClass === 'Fire') {
             const isBarrage = (e.height === 252 || e.height === 260 || (e.width === 150 && e.height === 280));
-            if (!isBarrage) {
+            const isForwardMedics = (e.width === 680 || e.width === 160);
+            if (!isBarrage && !isForwardMedics) {
                 const isHome = (e.team === 'HOME' || e.team === 0);
                 const prefix = isHome ? 'fireH' : 'fireA';
                 imgKey = isAltFrame ? `${prefix}2` : `${prefix}1`;
@@ -136,7 +139,7 @@ export function drawMinions(ctx, game, camX, camY) {
         }
 
         else if (e.entityClass === 'LaneMinion') {
-            if (!isGoalie) {
+            if (!showAllMinions) {
                 const lane = e.laneIndex >= 0 && e.laneIndex < 3 ? e.laneIndex : 0;
                 const leadX = e.team === 'HOME' ? homeLeadX[lane] : awayLeadX[lane];
                 // Do not draw minions that aren't in the lead group of minions

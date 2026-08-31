@@ -773,7 +773,7 @@
         pointer-events: none;
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-551dbc60.js"></script>
+    <script type="module" crossorigin src="./assets/index-05517b8e.js"></script>
   </head>
   <body>
     <div id="app">
@@ -928,6 +928,15 @@
             <div id="partner-list-container" style="max-height: 100px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); font-size: 13px; display: flex; flex-direction: column; gap: 6px;">
               <!-- Partners will be dynamically rendered here -->
             </div>
+          </div>
+          <!-- Preferred Lane Selection (50% size, bottom) -->
+          <div class="input-group" style="width: 50%; margin: 10px auto 14px auto; text-align: center;">
+            <label for="lane-select" style="font-size: 12px; margin-bottom: 4px; display: block; color: #94a3b8;">Preferred Lane</label>
+            <select id="lane-select" style="width: 100%; font-size: 12px; padding: 5px 8px; text-align: center;">
+              <option value="TOP">Top Lane</option>
+              <option value="MID">Mid Lane</option>
+              <option value="BOT">Bot Lane</option>
+            </select>
           </div>
           <div class="menu-list">
             <div class="team-match-container">

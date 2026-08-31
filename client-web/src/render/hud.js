@@ -2,6 +2,7 @@ import { drawImageCam } from './canvas.js';
 import { CONSTANTS } from '../constants.js';
 import { AssetManager } from '../assets/sprites.js';
 import { clientUI, gameState } from '../state.js';
+import { isKillableEntity } from './targeting.js';
 
 export const ABILITY_TOOLTIPS = {
     // Fortress
@@ -448,7 +449,7 @@ export function drawHealthBars(ctx, game, camX, camY) {
 
     for (const e of entities) {
         if (e.health > 0 && e.entityClass !== 'LaneMinion') {
-            if (e.entityClass === 'Fire' || e.entityClass === 'Portal' || e.entityClass === 'BallPortal' || e.entityClass === 'Parapet' || (e.entityClass === 'Trap' && (e.width === 80 || e.maxHealth >= 99999))) continue;
+            if (!isKillableEntity(e)) continue;
 
             const invisible = Boolean(
                 game.underControl && game.underControl.team && e.team && game.underControl.team !== e.team &&
@@ -556,6 +557,9 @@ export function drawHud(ctx, game, state) {
         ctx.fillText(`AWAY: ${game.away.score}`, CONSTANTS.X_RES - 200, 35);
     }
 
+    // Draw 4x20 Dashed Line Upgrade Grids for both teams next to score
+    drawTreeProgressGrids(ctx, game);
+
     // Draw Game Timer
     const fps = 1000 / (game.GAMETICK_MS || 25);
     const timeSec = game.framesSinceStart / fps;
@@ -661,6 +665,9 @@ export function drawHud(ctx, game, state) {
         }
         ctx.restore();
     }
+
+    // Draw Rolling Purchase Announcements (shown up to 10s after purchase, main announcements take priority)
+    drawRollingAnnouncements(ctx, game, bottomText);
 
     // Draw Personal Cooldown / Status Effects
     if (game.underControl && game.effectPool && game.effectPool.effects) {
@@ -893,7 +900,10 @@ export function drawHud(ctx, game, state) {
                             ctx.fillRect(boxX, boxY, boxW, boxH);
                         }
                     } else {
-                        const treeState = getTreeState(game, game.underControl.team, activeKey);
+                        const isTabHeld = gameState.controlsHeld && gameState.controlsHeld.TAB;
+                        const myTeam = game.underControl ? game.underControl.team : 'HOME';
+                        const viewTeam = isTabHeld ? ((myTeam === 'HOME' || myTeam === 0) ? 'AWAY' : 'HOME') : myTeam;
+                        const treeState = getTreeState(game, viewTeam, activeKey);
 
                         nodes.forEach((coords, idx) => {
                             const [x1, y1, x2, y2] = coords;
@@ -909,7 +919,7 @@ export function drawHud(ctx, game, state) {
 
                             if (state && state.mouseX >= boxX && state.mouseX <= boxX + boxW &&
                                 state.mouseY >= boxY && state.mouseY <= boxY + boxH) {
-                                hoveredNode = { nodeKey, def, boxX, boxY, boxW, boxH };
+                                hoveredNode = { nodeKey, def, boxX, boxY, boxW, boxH, viewTeam };
                             }
 
                             // Star: purchased, one-time ('cost' kind) upgrade. 'use'
@@ -933,6 +943,25 @@ export function drawHud(ctx, game, state) {
                             }
                             // else: prereqs met, unpurchased (or repeatable) -> no overlay, still clickable.
                         });
+
+                        // Notice Banner about TAB control to view opponent tech tree
+                        ctx.save();
+                        ctx.textAlign = 'left';
+                        ctx.textBaseline = 'top';
+                        const noticeX = ox + 30;
+                        const noticeY = oy + (activeImg.height * 0.20);
+                        if (isTabHeld) {
+                            ctx.font = 'bold 14px Outfit, sans-serif';
+                            ctx.fillStyle = '#f43f5e';
+                            ctx.fillText('VIEWING OPPONENT', noticeX, noticeY);
+                            ctx.fillText('TECH TREE (READ-ONLY)', noticeX, noticeY + 18);
+                        } else {
+                            ctx.font = '13px Outfit, sans-serif';
+                            ctx.fillStyle = '#cbd5e1';
+                            ctx.fillText('Hold [TAB] to view', noticeX, noticeY);
+                            ctx.fillText('Opponent Tech Tree', noticeX, noticeY + 18);
+                        }
+                        ctx.restore();
                     }
                 }
             }
@@ -969,8 +998,8 @@ export function drawHud(ctx, game, state) {
         // Look up cost in the hardcoded map
         const costData = HARDCODED_COSTS[hoveredNode.nodeKey] || {};
         let costText = "";
-        const isHome = game.underControl && (game.underControl.team === 0 || game.underControl.team === 'HOME');
-        const rawUpgrades = isHome ? game.homeGoaliePurchasedUpgrades : game.awayGoaliePurchasedUpgrades;
+        const isViewHome = (hoveredNode.viewTeam === 0 || hoveredNode.viewTeam === 'HOME');
+        const rawUpgrades = isViewHome ? game.homeGoaliePurchasedUpgrades : game.awayGoaliePurchasedUpgrades;
         const purchasedSet = new Set(rawUpgrades || []);
 
         if (hoveredNode.def.kind === 'cost') {
@@ -1055,6 +1084,180 @@ export function drawHud(ctx, game, state) {
 
         ctx.restore();
     }
+}
+
+export function drawTreeProgressGrids(ctx, game) {
+    if (!game) return;
+
+    const cols = 4;
+    const colWidth = 19;  // +60% wider
+    const colGap = 10;
+    const rowHeight = 3.4; // +40% taller
+    const rowGap = 1.6;
+    const stepY = rowHeight + rowGap; // 5.0px per row
+
+    const treeKeys = ["GOALIE_TREE_SIEGE", "GOALIE_TREE_FORTRESS", "GOALIE_TREE_EMPOWERMENT", "GOALIE_TREE_CULTIVATION"];
+    const treeColors = ["#ef4444", "#3b82f6", "#eab308", "#a855f7"];
+
+    const teams = [
+        { x: 210, y: 14, purchased: game.homeGoaliePurchasedUpgrades || [] },
+        { x: CONSTANTS.X_RES - 330, y: 14, purchased: game.awayGoaliePurchasedUpgrades || [] }
+    ];
+
+    teams.forEach(({ x: startX, y: startY, purchased }) => {
+        const purchasedSet = new Set(purchased);
+
+        treeKeys.forEach((treeKey, colIdx) => {
+            const shortName = TREE_SHORT_NAME[treeKey];
+            const defs = NODE_DEFS[treeKey] || [];
+            const permDefs = defs.filter(def => def.kind === 'cost');
+            const treeRows = permDefs.length; // Dynamic rows based on total permanent cost upgrades for this tree
+            
+            let count = 0;
+            permDefs.forEach(def => {
+                const nodeKey = `${shortName}.${def.tier}.${def.name}`;
+                if (purchasedSet.has(nodeKey)) {
+                    count++;
+                }
+            });
+
+            const colX = startX + colIdx * (colWidth + colGap);
+            const color = treeColors[colIdx];
+
+            // Bottom-to-top stacking: starts at bottom and counts UP!
+            const colBottomY = startY + treeRows * stepY;
+
+            for (let r = 0; r < treeRows; r++) {
+                // r = 0 is bottom row (1st upgrade purchased)
+                const rowY = colBottomY - (r + 1) * stepY + rowGap / 2;
+                const isPurchased = r < count;
+
+                ctx.save();
+                ctx.beginPath();
+                ctx.moveTo(colX, rowY);
+                ctx.lineTo(colX + colWidth, rowY);
+
+                if (isPurchased) {
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = 3.2;
+                    ctx.globalAlpha = 1.0;
+                } else {
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = 1.5;
+                    ctx.globalAlpha = 0.25;
+                }
+
+                ctx.stroke();
+                ctx.restore();
+            }
+        });
+    });
+}
+
+export function drawRollingAnnouncements(ctx, game, mainAnnouncementText) {
+    if (!game) return;
+
+    const now = Date.now();
+    const rawList = game.recentPurchases || [];
+    const validPurchases = rawList.filter(p => p && p.timestampMs && (now - p.timestampMs <= 10000));
+    
+    const recent3 = validPurchases.slice(-3);
+    if (recent3.length === 0) return;
+
+    // Shifted up by ~1% screen height (baseY = 38) so 3rd popup doesn't block the field
+    const baseY = 38;
+    const boxW = 360;
+    const boxH = 18;
+    const spacingY = 19.5;
+
+    const treeColors = {
+        siege: "#ef4444",
+        fortress: "#3b82f6",
+        empowerment: "#eab308",
+        cultivation: "#a855f7"
+    };
+
+    recent3.forEach((item, idx) => {
+        const boxX = (CONSTANTS.X_RES - boxW) / 2;
+        const boxY = baseY + idx * spacingY;
+
+        const isHome = item.team === 'HOME';
+        const teamName = isHome ? "Home" : "Away";
+        const teamColor = isHome ? "#3b82f6" : "#ffffff";
+
+        const nodeKey = item.nodeKey || "";
+        const parts = nodeKey.split('.');
+        const treeShort = parts[0] || "siege";
+
+        const tooltip = ABILITY_TOOLTIPS[nodeKey] || {};
+        const title = tooltip.title || nodeKey;
+
+        const costData = HARDCODED_COSTS[nodeKey] || {};
+        const amt = costData.cost !== undefined ? costData.cost : (costData.use !== undefined ? costData.use : 0);
+        const isMana = !!costData.isMana;
+        const currency = isMana ? "mana" : "gold";
+        const costColor = treeColors[treeShort] || "#ef4444";
+
+        const timeStr = `[${item.gameTime || "0:00"}] `;
+
+        ctx.save();
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+        ctx.strokeStyle = 'rgba(148, 163, 184, 0.25)';
+        ctx.lineWidth = 1;
+
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(boxX, boxY, boxW, boxH, 4);
+        else ctx.rect(boxX, boxY, boxW, boxH);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textBaseline = 'middle';
+
+        const seg0 = timeStr;
+        const seg1 = teamName;
+        const seg2 = ` purchased ${title} `;
+        const seg3 = `(${amt} ${currency})`;
+
+        ctx.font = 'bold 11px Outfit, sans-serif';
+        const w0 = ctx.measureText(seg0).width;
+        const w1 = ctx.measureText(seg1).width;
+        ctx.font = '11px Outfit, sans-serif';
+        const w2 = ctx.measureText(seg2).width;
+        ctx.font = 'bold 11px Outfit, sans-serif';
+        const w3 = ctx.measureText(seg3).width;
+
+        const totalW = w0 + w1 + w2 + w3;
+        let startX = (CONSTANTS.X_RES - totalW) / 2;
+        const centerY = boxY + boxH / 2;
+
+        ctx.save();
+        ctx.textAlign = 'left';
+
+        // 1. Purchase Game Time (Green)
+        ctx.font = 'bold 11px Outfit, sans-serif';
+        ctx.fillStyle = '#22c55e';
+        ctx.fillText(seg0, startX, centerY);
+        startX += w0;
+
+        // 2. Team Name (Home: Blue, Away: White)
+        ctx.fillStyle = teamColor;
+        ctx.fillText(seg1, startX, centerY);
+        startX += w1;
+
+        // 3. Action (" purchased <Title> ")
+        ctx.font = '11px Outfit, sans-serif';
+        ctx.fillStyle = '#e2e8f0';
+        ctx.fillText(seg2, startX, centerY);
+        startX += w2;
+
+        // 4. Cost & Currency (Tree Color)
+        ctx.font = 'bold 11px Outfit, sans-serif';
+        ctx.fillStyle = costColor;
+        ctx.fillText(seg3, startX, centerY);
+        ctx.restore();
+
+        ctx.restore();
+    });
 }
 
 function getHpColor(percent) {

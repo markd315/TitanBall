@@ -139,11 +139,61 @@ public class ManagedGame {
         if (goalie != null) {
             preAssignedSlots.put(goalie, goalieSlot);
         }
-        int fieldIdx = 0;
+        List<String> fieldPlayers = new ArrayList<>();
         for (String email : team) {
             if (!email.equals(goalie)) {
-                preAssignedSlots.put(email, fieldSlotStart + fieldIdx++);
+                fieldPlayers.add(email);
             }
+        }
+        int numFieldSlots = fieldPlayers.size();
+        String[] assigned = new String[numFieldSlots];
+        boolean[] usedPlayer = new boolean[numFieldSlots];
+
+        for (int slotIdx = 0; slotIdx < numFieldSlots; slotIdx++) {
+            String targetLane = getTargetLaneForSlot(slotIdx, numFieldSlots);
+            for (int p = 0; p < fieldPlayers.size(); p++) {
+                if (!usedPlayer[p]) {
+                    String pref = mm != null ? mm.playerPreferredLanes.get(fieldPlayers.get(p)) : null;
+                    if (pref != null && targetLane.equalsIgnoreCase(pref)) {
+                        assigned[slotIdx] = fieldPlayers.get(p);
+                        usedPlayer[p] = true;
+                        break;
+                    }
+                }
+            }
+        }
+        for (int slotIdx = 0; slotIdx < numFieldSlots; slotIdx++) {
+            if (assigned[slotIdx] == null) {
+                for (int p = 0; p < fieldPlayers.size(); p++) {
+                    if (!usedPlayer[p]) {
+                        assigned[slotIdx] = fieldPlayers.get(p);
+                        usedPlayer[p] = true;
+                        break;
+                    }
+                }
+            }
+        }
+        for (int slotIdx = 0; slotIdx < numFieldSlots; slotIdx++) {
+            if (assigned[slotIdx] != null) {
+                preAssignedSlots.put(assigned[slotIdx], fieldSlotStart + slotIdx);
+            }
+        }
+    }
+
+    private String getTargetLaneForSlot(int slotIdx, int numFieldSlots) {
+        if (numFieldSlots == 1) {
+            return "MID";
+        } else if (numFieldSlots == 2) {
+            return slotIdx == 0 ? "TOP" : "BOT";
+        } else if (numFieldSlots == 3) {
+            if (slotIdx == 0) return "TOP";
+            if (slotIdx == 1) return "MID";
+            return "BOT";
+        } else {
+            if (slotIdx == 0) return "TOP";
+            if (slotIdx == 1) return "MID";
+            if (slotIdx == 2) return "BOT";
+            return "DEFENSIVE";
         }
     }
 

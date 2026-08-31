@@ -55,6 +55,46 @@ export function getMaxSingleTargetAbilityRange(caster) {
     return Math.max(rangeE, rangeR);
 }
 
+const UNKILLABLE_CLASSES = new Set([
+    'Fire', 'Portal', 'BallPortal', 'Trap', 'Parapet',
+    'SecondBall', 'Web', 'Bomb'
+]);
+
+/**
+ * Returns true if an entity can be killed (damaged/slain), and false for unkillable entities
+ * (barrages, permanent ballportals, hero portals, hemmed in, snare traps, bastion protocol, etc.).
+ */
+export function isKillableEntity(entity) {
+    if (!entity) return false;
+    if (entity.health <= 0) return false;
+
+    // Entities with unkillable high-HP thresholds (e.g. Bastion Protocol walls, Hemmed In walls, Barrages)
+    if ((entity.maxHealth !== undefined && entity.maxHealth >= 99999) || (entity.health !== undefined && entity.health >= 99999)) {
+        return false;
+    }
+
+    // Utility/structure entity classes that cannot be attacked or killed by abilities
+    if (entity.entityClass && UNKILLABLE_CLASSES.has(entity.entityClass)) {
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * Checks if a Titan has any single-target ability capable of targeting enemy minions.
+ */
+export function canSelectMinions(titan) {
+    if (!titan || !titan.type) return false;
+    const dummyMinion = {
+        entityClass: 'LaneMinion',
+        health: 10,
+        maxHealth: 22.5,
+        team: (titan.team === 'HOME' || titan.team === 0) ? 'AWAY' : 'HOME'
+    };
+    return isValidTargetForAnySlot(titan, dummyMinion);
+}
+
 /**
  * Returns the actual server collision box/bounds of an entity (rather than raw 70x70 sprite box).
  */
@@ -77,6 +117,16 @@ export function getEntityCollisionBounds(entity) {
         const x = entity.X + 25;
         const y = entity.Y + 9;
         return { x, y, w, h, cx: x + w / 2, cy: y + h / 2 };
+    } else if (entity.entityClass === 'LaneMinion') {
+        const myTitan = (gameState.game && gameState.game.underControl) ? gameState.game.underControl : null;
+        const tType = (myTitan && myTitan.type) ? String(myTitan.type).toUpperCase() : null;
+        const isPlayerGoalie = tType === 'GOALIE';
+        const r = isPlayerGoalie ? 20 : 10;
+        const cx = entity.X;
+        const cy = entity.Y;
+        const w = r * 2;
+        const h = r * 2;
+        return { x: cx - r, y: cy - r, w, h, cx, cy };
     } else {
         const w = entity.width || 70;
         const h = entity.height || 70;
@@ -104,6 +154,11 @@ export function isValidTarget(caster, entity, slot = 'E') {
     const slotKey = (slot === '1' || slot === 'Q' || slot === 'E') ? 'E' : 'R';
     const isTitan = entity.entityClass === 'Titan' || entity.type !== undefined;
     const isSameTeam = entity.team !== undefined && caster.team !== undefined && entity.team === caster.team;
+
+    // Do not target unkillable entities (barrages, permanent portals, hemmed in, snare traps, etc.)
+    if (!isTitan && !isKillableEntity(entity)) {
+        return false;
+    }
 
     // Abilities that can target minions as well as Titans: Ranger Arrow, Captain Pistol, Mage Ignite
     const allowsMinions = (type === 'RANGER' && slotKey === 'E') ||
@@ -264,12 +319,13 @@ export function drawTargetingOverlay(ctx, game, camX, camY) {
     const shadowColor = isInRange ? 'rgba(59, 130, 246, 0.85)' : 'rgba(239, 68, 68, 0.85)';
     const accentColor = isInRange ? '#60a5fa' : '#f87171';
 
-    const padding = 5;
+    const isMinion = targetEntity.entityClass === 'LaneMinion';
+    const padding = isMinion ? 2 : 5;
     const rx = Math.floor(targetBounds.x - camX) - padding;
     const ry = Math.floor(targetBounds.y - camY) - padding;
     const rw = Math.floor(targetBounds.w) + padding * 2;
     const rh = Math.floor(targetBounds.h) + padding * 2;
-    const cornerRadius = 8;
+    const cornerRadius = isMinion ? 4 : 8;
 
     ctx.save();
     ctx.beginPath();

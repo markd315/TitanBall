@@ -23,6 +23,7 @@ public class Matchmaker {
     private Map<String, String> waitingPool = new HashMap<>();//user emails -> tournament code
     private Map<String, String> gameMap = new HashMap<>();//user emails -> game id
     public Map<String, String> playerClasses = new java.util.concurrent.ConcurrentHashMap<>();
+    public Map<String, String> playerPreferredLanes = new java.util.concurrent.ConcurrentHashMap<>();
     public Map<String, Set<String>> partnerPool = new java.util.concurrent.ConcurrentHashMap<>();
 
     private Map<String, String> teamMemberWaitingPool = new HashMap<>();//user emails -> teamN
@@ -192,7 +193,7 @@ public class Matchmaker {
         return code;
     }
 
-    public synchronized void registerIntent(Authentication login, String tournamentCode, String teamname, String classSelection, String partners) {
+    public synchronized void registerIntent(Authentication login, String tournamentCode, String teamname, String classSelection, String preferredLane, String partners) {
         tournamentCode = normalizeTournamentCode(tournamentCode);
         if (teamname != null) {
             registerIntentTeam(login, tournamentCode, teamname);
@@ -205,6 +206,14 @@ public class Matchmaker {
             playerClasses.put(email, classSelection);
         } else {
             playerClasses.put(email, "WARRIOR");
+        }
+
+        if ("GOALIE".equalsIgnoreCase(classSelection)) {
+            playerPreferredLanes.put(email, "GOALIE");
+        } else if (preferredLane != null && !preferredLane.trim().isEmpty()) {
+            playerPreferredLanes.put(email, preferredLane.trim().toUpperCase());
+        } else {
+            playerPreferredLanes.remove(email);
         }
 
         if (partners != null && !partners.trim().isEmpty()) {
@@ -231,12 +240,16 @@ public class Matchmaker {
         }
     }
 
+    public synchronized void registerIntent(Authentication login, String tournamentCode, String teamname, String classSelection, String partners) {
+        registerIntent(login, tournamentCode, teamname, classSelection, null, partners);
+    }
+
     public synchronized void registerIntent(Authentication login, String tournamentCode, String teamname, String classSelection) {
-        registerIntent(login, tournamentCode, teamname, classSelection, null);
+        registerIntent(login, tournamentCode, teamname, classSelection, null, null);
     }
 
     public synchronized void registerIntent(Authentication login, String tournamentCode, String teamname) {
-        registerIntent(login, tournamentCode, teamname, "WARRIOR", null);
+        registerIntent(login, tournamentCode, teamname, "WARRIOR", null, null);
     }
 
     public synchronized void registerIntentTeam(Authentication login, String tournamentCode, String teamname) {
