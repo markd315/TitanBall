@@ -444,7 +444,7 @@ public class GuardianAbilities implements Serializable {
                 }
             }
 
-            // Forward Medics (continuous healing zone covering entire opponent's third)
+            // Forward Medics (continuous healing zone)
             if (e instanceof Fire && e.team == team && (e.width == 680 || e.width == 160)) {
                 double hps = context.c.getD("guardian.forwardmedics.hps");
                 double healPerTick = hps / (1000.0 / context.c.GAMETICK_MS);
