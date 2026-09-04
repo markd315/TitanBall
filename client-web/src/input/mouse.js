@@ -136,6 +136,14 @@ export function initMouse() {
 
     canvas.addEventListener('mousemove', updateCoordinates);
     canvas.addEventListener('mousedown', (e) => {
+        const isGameEnded = gameState.phase === GamePhase.ENDED ||
+                            gameState.phase === 'ENDED' ||
+                            (gameState.game && (gameState.game.ended || gameState.game.phase === 'ENDED'));
+        if (isGameEnded) {
+            window.location.reload();
+            e.preventDefault();
+            return;
+        }
         updateCoordinates(e);
         // First: UI click check
         if (handleUIClick(gameState.mouseX, gameState.mouseY)) {

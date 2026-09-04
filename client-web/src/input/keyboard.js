@@ -107,6 +107,19 @@ export function initKeyboard() {
   initControlConfig();
 
   window.addEventListener('keydown', (e) => {
+    const isGameEnded = gameState.phase === GamePhase.ENDED ||
+                        gameState.phase === 'ENDED' ||
+                        (gameState.game && (gameState.game.ended || gameState.game.phase === 'ENDED'));
+
+    if (isGameEnded) {
+      if (e.code === 'Space' || e.key === ' ' || e.key === 'Spacebar' || e.keyCode === 32 || e.code === 'Enter' || e.key === 'Enter' || e.keyCode === 13) {
+        e.preventDefault();
+        e.stopPropagation();
+        window.location.reload();
+        return;
+      }
+    }
+
     // If typing in an input field, do not capture/prevent default controls
     if (document.activeElement && document.activeElement.tagName === 'INPUT') {
       return;
@@ -135,17 +148,13 @@ export function initKeyboard() {
     }
 
     // Menu navigation on Space or Enter
-    if (e.code === 'Space' || e.code === 'Enter') {
-      if (gameState.phase === GamePhase.CREDITS) {
+    if (e.code === 'Space' || e.code === 'Enter' || e.key === ' ' || e.key === 'Spacebar' || e.keyCode === 32 || e.keyCode === 13) {
+      if (gameState.phase === GamePhase.CREDITS || gameState.phase === 'CREDITS') {
         gameState.phase = GamePhase.CONTROLS;
         e.preventDefault();
         return;
-      } else if (gameState.phase === GamePhase.CONTROLS) {
+      } else if (gameState.phase === GamePhase.CONTROLS || gameState.phase === 'CONTROLS') {
         gameState.phase = GamePhase.SHOW_GAME_MODES;
-        e.preventDefault();
-        return;
-      } else if (gameState.phase === GamePhase.ENDED) {
-        window.location.reload();
         e.preventDefault();
         return;
       }

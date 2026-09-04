@@ -2,7 +2,11 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="theme-color" content="#0b1a13" />
     <title>TitanBall V2</title>
     <!-- Modern Premium Typography -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -12,8 +16,10 @@
       body, html {
         margin: 0;
         padding: 0;
-        width: 100%;
-        height: 100%;
+        width: 100vw;
+        width: 100dvw;
+        height: 100vh;
+        height: 100dvh;
         overflow: hidden;
         overscroll-behavior: none;
         /* Green field court themed background */
@@ -23,8 +29,10 @@
       }
       #app {
         position: relative;
-        width: 100%;
-        height: 100%;
+        width: 100vw;
+        width: 100dvw;
+        height: 100vh;
+        height: 100dvh;
         display: flex;
         justify-content: center;
         align-items: center;
@@ -505,8 +513,9 @@
       
       /* Mobile Controls CSS & Screen Scaling Rules */
       body.mobile-controls-active canvas#gameCanvas {
-        max-width: 70vw !important;
-        margin: 0 auto;
+        max-width: 74.5vw !important;
+        margin-left: max(11vw, env(safe-area-inset-left, 11vw)) !important;
+        margin-right: max(14.5vw, env(safe-area-inset-right, 14.5vw)) !important;
       }
       #mobile-controls-container {
         position: fixed;
@@ -521,49 +530,49 @@
         display: none;
         justify-content: space-between;
         align-items: flex-end;
-        padding: max(1vh, env(safe-area-inset-top, 1vh)) max(0.8vw, env(safe-area-inset-right, 0.8vw)) 0 max(0.8vw, env(safe-area-inset-left, 0.8vw));
+        padding: max(1vh, env(safe-area-inset-top, 1vh)) 
+                 max(1.5vw, env(safe-area-inset-right, 1.5vw)) 
+                 0 
+                 max(1.5vw, env(safe-area-inset-left, 1.5vw));
         box-sizing: border-box;
       }
       #mobile-left-zone {
         display: flex;
         flex-direction: column;
-        align-items: center;
+        align-items: flex-start;
         justify-content: flex-end;
-        gap: 1.5vh;
-        padding-bottom: max(2vh, env(safe-area-inset-bottom, 2vh));
+        gap: 1vh;
+        padding-bottom: max(1.5vh, env(safe-area-inset-bottom, 1.5vh));
         pointer-events: auto;
         height: 100%;
-        width: 15vw;
-        max-width: 15vw;
-        flex: 0 0 15vw;
+        width: auto;
         box-sizing: border-box;
       }
       #boost-switch-container {
         display: flex;
         align-items: center;
-        justify-content: center;
+        justify-content: flex-end;
         pointer-events: auto;
         width: 100%;
-        max-width: 100%;
         box-sizing: border-box;
       }
       .mobile-switch {
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 0.6vw;
+        gap: 4px;
         background: rgba(10, 26, 20, 0.65);
         backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
         border: 2px solid rgba(45, 140, 100, 0.3);
-        border-radius: 20px;
-        padding: 0.5vh 0.8vw;
+        border-radius: 16px;
+        padding: 4px 8px;
         cursor: pointer;
         user-select: none;
         touch-action: none;
         box-shadow: 0 1vmin 3vmin rgba(0,0,0,0.4);
         transition: all 0.25s ease;
-        width: min(13.8vw, 130px);
-        max-width: 100%;
+        width: min(9.5vw, 95px);
         box-sizing: border-box;
       }
       .mobile-switch:hover {
@@ -575,10 +584,10 @@
         box-shadow: 0 0 3vmin rgba(255, 159, 28, 0.4), inset 0 0 1.5vmin rgba(255, 127, 17, 0.2);
       }
       .mobile-switch-track {
-        width: min(4.2vw, 34px);
-        height: min(2.4vw, 19px);
+        width: min(3.2vw, 26px);
+        height: min(1.8vw, 15px);
         background: rgba(255, 255, 255, 0.12);
-        border-radius: 10px;
+        border-radius: 8px;
         position: relative;
         transition: background-color 0.25s ease;
         flex-shrink: 0;
@@ -587,8 +596,8 @@
         background: #ff9f1c;
       }
       .mobile-switch-thumb {
-        width: min(1.8vw, 15px);
-        height: min(1.8vw, 15px);
+        width: min(1.3vw, 11px);
+        height: min(1.3vw, 11px);
         border-radius: 50%;
         background: #94a3b8;
         position: absolute;
@@ -599,15 +608,15 @@
         box-shadow: 0 0.4vmin 1vmin rgba(0,0,0,0.3);
       }
       .mobile-switch.active .mobile-switch-thumb {
-        transform: translate(calc(min(4.2vw, 34px) - min(1.8vw, 15px) - 4px), -50%);
+        transform: translate(calc(min(3.2vw, 26px) - min(1.3vw, 11px) - 4px), -50%);
         background: #ffffff;
         box-shadow: 0 0 1.5vmin rgba(255, 255, 255, 0.8);
       }
       .mobile-switch-label {
         font-family: 'Outfit', sans-serif;
-        font-size: clamp(9px, 1.1vw, 12px);
+        font-size: clamp(8px, 0.9vw, 11px);
         font-weight: 800;
-        letter-spacing: 1px;
+        letter-spacing: 0.5px;
         color: #94a3b8;
         transition: color 0.25s ease, text-shadow 0.25s ease;
         white-space: nowrap;
@@ -618,31 +627,33 @@
       }
       #virtual-joystick-zone {
         width: 100%;
-        max-width: 100%;
         display: flex;
-        justify-content: center;
+        justify-content: flex-start;
         align-items: center;
         pointer-events: auto;
         box-sizing: border-box;
       }
       #joystick-base {
-        width: min(13vw, 24vh, 140px);
-        height: min(13vw, 24vh, 140px);
-        max-width: 90%;
-        aspect-ratio: 1;
+        width: min(11vw, 22vh, 125px);
+        height: min(11vw, 22vh, 125px);
+        aspect-ratio: 1 / 1;
+        flex-shrink: 0;
         border-radius: 50%;
         background: rgba(10, 26, 20, 0.4);
         backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
         border: 2px solid rgba(45, 140, 100, 0.3);
         box-shadow: 0 1.5vmin 4.5vmin rgba(0,0,0,0.5), inset 0 0 3vmin rgba(45, 140, 100, 0.1);
         position: relative;
         touch-action: none;
         box-sizing: border-box;
-        margin: 0 auto;
+        margin: 0;
       }
       #joystick-stick {
         width: 40%;
         height: 40%;
+        aspect-ratio: 1 / 1;
+        flex-shrink: 0;
         border-radius: 50%;
         background: radial-gradient(circle, #2ed573 0%, #1b4d3e 100%);
         border: 2px solid rgba(255, 255, 255, 0.4);
@@ -657,43 +668,43 @@
       #mobile-right-zone {
         display: flex;
         flex-direction: column;
-        align-items: center;
+        align-items: flex-end;
         justify-content: flex-end;
-        gap: 1.5vh;
-        padding-bottom: max(2vh, env(safe-area-inset-bottom, 2vh));
+        gap: 1vh;
+        padding-bottom: max(1.5vh, env(safe-area-inset-bottom, 1.5vh));
         pointer-events: auto;
         height: 100%;
-        width: 15vw;
-        max-width: 15vw;
-        flex: 0 0 15vw;
+        width: auto;
         box-sizing: border-box;
       }
       #aim-joystick-zone {
         width: 100%;
-        max-width: 100%;
         display: flex;
-        justify-content: center;
+        justify-content: flex-end;
         align-items: center;
         box-sizing: border-box;
       }
       #aim-joystick-base {
-        width: min(13vw, 24vh, 140px);
-        height: min(13vw, 24vh, 140px);
-        max-width: 90%;
-        aspect-ratio: 1;
+        width: min(11vw, 22vh, 125px);
+        height: min(11vw, 22vh, 125px);
+        aspect-ratio: 1 / 1;
+        flex-shrink: 0;
         border-radius: 50%;
         background: rgba(10, 26, 20, 0.4);
         backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
         border: 2px solid rgba(168, 85, 247, 0.3);
         box-shadow: 0 1.5vmin 4.5vmin rgba(0,0,0,0.5), inset 0 0 3vmin rgba(168, 85, 247, 0.1);
         position: relative;
         touch-action: none;
         box-sizing: border-box;
-        margin: 0 auto;
+        margin: 0;
       }
       #aim-joystick-stick {
         width: 40%;
         height: 40%;
+        aspect-ratio: 1 / 1;
+        flex-shrink: 0;
         border-radius: 50%;
         background: radial-gradient(circle, #a855f7 0%, #4c1d95 100%);
         border: 2px solid rgba(255, 255, 255, 0.4);
@@ -707,36 +718,35 @@
       }
       #mobile-buttons-zone {
         display: grid;
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(2, auto);
         grid-template-areas: 
           "pos upg"
           "ab1 ab2";
-        gap: 1vh 0.8vw;
-        width: 100%;
-        max-width: 100%;
+        gap: 0.5vh 0.4vw;
         box-sizing: border-box;
-        justify-items: center;
+        justify-items: end;
         align-items: center;
       }
       #mobile-buttons-zone.double-joy {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(2, auto);
         grid-template-areas: 
           "shot pos"
           "ab1 ab2"
           "upg .";
-        gap: 1vh 0.8vw;
+        gap: 0.5vh 0.4vw;
       }
       .mobile-action-btn {
-        width: min(6.5vw, 12vh, 60px);
-        height: min(6.5vw, 12vh, 60px);
+        width: min(5.2vw, 10vh, 52px);
+        height: min(5.2vw, 10vh, 52px);
         max-width: 100%;
         border-radius: 50%;
         background: rgba(10, 26, 20, 0.6);
         backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
         border: 2px solid rgba(255, 255, 255, 0.2);
         color: #fff;
         font-family: 'Outfit', sans-serif;
-        font-size: clamp(10px, 1.3vw, 14px);
+        font-size: clamp(9px, 1.1vw, 13px);
         font-weight: 800;
         display: flex;
         justify-content: center;
@@ -747,17 +757,14 @@
         cursor: pointer;
         transition: transform 0.1s, background-color 0.2s, box-shadow 0.2s;
         box-sizing: border-box;
-        margin: 0 auto;
+        margin: 0;
       }
       .mobile-action-btn:active {
         transform: scale(0.9);
       }
       #btn-upgrade {
         grid-area: upg;
-        width: min(6.5vw, 12vh, 60px);
-        height: min(6.5vw, 12vh, 60px);
-        font-size: clamp(9px, 1.1vw, 12px);
-        border-radius: 50%;
+        font-size: clamp(8px, 0.9vw, 11px);
         background: rgba(255, 159, 28, 0.15);
         border-color: rgba(255, 159, 28, 0.7);
         box-shadow: 0 0 2.5vmin rgba(255, 159, 28, 0.35);
@@ -788,10 +795,7 @@
       }
       #btn-possession {
         grid-area: pos;
-        width: min(6.5vw, 12vh, 60px);
-        height: min(6.5vw, 12vh, 60px);
-        font-size: clamp(9px, 1.1vw, 12px);
-        border-radius: 50%;
+        font-size: clamp(8px, 0.9vw, 11px);
         background: rgba(0, 80, 255, 0.2);
         border-color: rgba(0, 102, 255, 0.7);
         box-shadow: 0 0 2.5vmin rgba(0, 102, 255, 0.35);
@@ -808,10 +812,7 @@
       }
       #btn-shot {
         grid-area: shot;
-        width: min(6.5vw, 12vh, 60px);
-        height: min(6.5vw, 12vh, 60px);
-        font-size: clamp(9px, 1.1vw, 12px);
-        border-radius: 50%;
+        font-size: clamp(8px, 0.9vw, 11px);
         background: rgba(180, 0, 0, 0.2);
         border-color: rgba(220, 38, 38, 0.8);
         box-shadow: 0 0 2.5vmin rgba(220, 38, 38, 0.45);
@@ -821,10 +822,112 @@
         filter: grayscale(0.85);
         pointer-events: none;
       }
+
+      /* Fullscreen Toggle Button */
+      #fullscreen-btn {
+        position: fixed;
+        top: max(12px, env(safe-area-inset-top, 12px));
+        right: max(14px, env(safe-area-inset-right, 14px));
+        z-index: 1000;
+        pointer-events: auto;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(10, 26, 20, 0.75);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1.5px solid rgba(45, 140, 100, 0.35);
+        border-radius: 12px;
+        padding: 6px 12px;
+        color: #a7f3d0;
+        font-family: 'Outfit', sans-serif;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 1px;
+        cursor: pointer;
+        user-select: none;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+        transition: all 0.25s ease;
+      }
+      #fullscreen-btn:hover {
+        background: rgba(45, 140, 100, 0.25);
+        border-color: rgba(255, 159, 28, 0.6);
+        color: #ffffff;
+        transform: translateY(-1px);
+      }
+      #fullscreen-btn:active {
+        transform: translateY(0);
+      }
+      #fullscreen-btn.active {
+        background: rgba(255, 159, 28, 0.2);
+        border-color: #ff9f1c;
+        color: #ff9f1c;
+        box-shadow: 0 0 12px rgba(255, 159, 28, 0.3);
+      }
+
+      /* Orientation Lock Prompt Overlay */
+      #orientation-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        width: 100dvw;
+        height: 100vh;
+        height: 100dvh;
+        z-index: 999999;
+        background: rgba(5, 15, 11, 0.96);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        box-sizing: border-box;
+        text-align: center;
+        color: #e2e8f0;
+        pointer-events: auto;
+      }
+      .orient-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+        max-width: 340px;
+      }
+      .orient-icon {
+        width: 64px;
+        height: 64px;
+        animation: rotatePhone 2.5s ease-in-out infinite;
+      }
+      @keyframes rotatePhone {
+        0%, 10% { transform: rotate(0deg); }
+        45%, 65% { transform: rotate(-90deg); }
+        90%, 100% { transform: rotate(0deg); }
+      }
     </style>
   </head>
   <body>
     <div id="app">
+      <!-- Fullscreen Toggle Button -->
+      <button id="fullscreen-btn" title="Toggle Fullscreen" aria-label="Toggle Fullscreen">
+        <span class="fs-icon" style="font-size: 14px; line-height: 1;">⛶</span>
+        <span class="fs-label">FULL</span>
+      </button>
+
+      <!-- Orientation Lock Prompt Overlay for Mobile -->
+      <div id="orientation-overlay">
+        <div class="orient-card">
+          <svg class="orient-icon" viewBox="0 0 24 24" fill="none" stroke="#ff9f1c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+            <line x1="12" y1="18" x2="12.01" y2="18"></line>
+          </svg>
+          <h3 style="margin:0; font-size: 20px; font-weight: 800; color: #ff9f1c; text-transform: uppercase; letter-spacing: 1.5px;">Rotate Your Device</h3>
+          <p style="margin:0; font-size: 14px; color: #94a3b8; line-height: 1.5;">TitanBall requires Landscape mode for optimal controls and field view.</p>
+          <button id="orientation-fullscreen-btn" class="btn" style="margin-top: 8px; width: 100%;">Go Fullscreen</button>
+        </div>
+      </div>
+
       <div class="court-decor"></div>
       <canvas id="gameCanvas" width="1920" height="960"></canvas>
       

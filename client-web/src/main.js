@@ -21,6 +21,7 @@ import { drawClassStatsOverlay, formatClassTooltip, CLASS_INFO, computeStatWithM
 import { login, joinQueue, checkGame, register, startTutorial } from './network/auth.js';
 import { connectGame, disconnectGame } from './network/socket.js';
 import { warmServer, recordUserActivity } from './network/warm.js';
+import { initFullscreenListeners, requestFullscreen, isMobileDevice, isFullscreenActive, checkOrientation } from './util/fullscreen.js';
 
 let ctx;
 let lastTime = 0;
@@ -32,6 +33,7 @@ let idleStart = null;
 window.warmExpired = false;
 
 function updateOverlays() {
+  checkOrientation();
   if (gameState.phase === lastPhase && currentScreen === lastScreen) return;
   lastPhase = gameState.phase;
   lastScreen = currentScreen;
@@ -417,6 +419,10 @@ function initUIListeners() {
 
         if (classError) classError.style.display = 'none';
         
+        if (isMobileDevice() && !isFullscreenActive()) {
+          requestFullscreen();
+        }
+
         const modeLabel = document.getElementById('queue-mode-label');
         if (modeLabel) modeLabel.textContent = `${selectedMatchSize}v${selectedMatchSize}`;
         const lobbyTitle = document.querySelector('#lobby-overlay h2');
@@ -466,6 +472,10 @@ function initUIListeners() {
 
         if (classError) classError.style.display = 'none';
         
+        if (isMobileDevice() && !isFullscreenActive()) {
+          requestFullscreen();
+        }
+
         const modeLabel = document.getElementById('queue-mode-label');
         if (modeLabel) modeLabel.textContent = 'Scrimmage';
         const lobbyTitle = document.querySelector('#lobby-overlay h2');
@@ -508,6 +518,10 @@ function initUIListeners() {
     tutorialBtn.addEventListener('click', async () => {
       try {
         gameState.is3v3 = false;
+
+        if (isMobileDevice() && !isFullscreenActive()) {
+          requestFullscreen();
+        }
 
         // Pre-unlock narration audios to avoid browser autoplay policy blocks
         for (let i = 0; i <= 4; i++) {
@@ -1456,6 +1470,7 @@ export function start() {
   initKeyboard();
   initMouse();
   initMobileControls();
+  initFullscreenListeners();
   initUIListeners();
   
   // Track user interaction to reset 4-hour idle timer

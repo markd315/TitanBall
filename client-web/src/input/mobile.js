@@ -2,6 +2,7 @@ import { gameState } from '../state.js';
 import { GamePhase } from '../constants.js';
 import { getDefaultPreset, executeNextBuildOrder } from './keyboard.js';
 import { handleUIClick } from './mouse.js';
+import { requestFullscreen, isFullscreenActive } from '../util/fullscreen.js';
 
 let joystickBase = null;
 let joystickStick = null;
@@ -209,6 +210,13 @@ export function initMobileControls() {
     return;
   }
 
+  // Request fullscreen on mobile controls interaction if not already active
+  container.addEventListener('touchstart', () => {
+    if (!isFullscreenActive()) {
+      requestFullscreen();
+    }
+  }, { passive: true });
+
   // Boost Switch toggle events
   const handleBoostToggle = (e) => {
     toggleBoost();
@@ -340,12 +348,15 @@ export function initMobileControls() {
   canvas.addEventListener('touchmove', handleCanvasTouchMove, { passive: false });
   canvas.addEventListener('touchend', handleCanvasTouchEnd, { passive: false });
 
-  // Double-tap screen on mobile to return to lobby when game has ended
+  // Double-tap or multi-tap screen on mobile to return to lobby menu when game has ended
   let lastEndedTouchTime = 0;
   window.addEventListener('touchend', (e) => {
-    if (gameState.phase === GamePhase.ENDED) {
+    const isGameEnded = gameState.phase === GamePhase.ENDED ||
+                        gameState.phase === 'ENDED' ||
+                        (gameState.game && (gameState.game.ended || gameState.game.phase === 'ENDED'));
+    if (isGameEnded) {
       const now = Date.now();
-      if (now - lastEndedTouchTime < 450 && now - lastEndedTouchTime > 30) {
+      if (now - lastEndedTouchTime < 500 && now - lastEndedTouchTime > 30) {
         window.location.reload();
       }
       lastEndedTouchTime = now;
@@ -353,7 +364,10 @@ export function initMobileControls() {
   }, { passive: false });
 
   window.addEventListener('touchstart', (e) => {
-    if (gameState.phase === GamePhase.ENDED && e.touches && e.touches.length >= 2) {
+    const isGameEnded = gameState.phase === GamePhase.ENDED ||
+                        gameState.phase === 'ENDED' ||
+                        (gameState.game && (gameState.game.ended || gameState.game.phase === 'ENDED'));
+    if (isGameEnded && e.touches && e.touches.length >= 2) {
       window.location.reload();
     }
   }, { passive: false });

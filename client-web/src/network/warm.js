@@ -36,7 +36,7 @@ function updateBadgeUI(warmed) {
         badge.classList.add('warmed');
         badge.innerHTML = `
           <span class="status-checkmark">✓</span>
-          <span class="status-text">Server Warmed</span>
+          <span class="status-text">servers online</span>
         `;
       } else {
         badge.style.display = 'none';

@@ -162,4 +162,52 @@ public class BallWallCollisionTest {
         // Ball must have bounced and ended up to the left of the wall (never passed through to X > 912)
         Assert.assertTrue("Ball must not pass through the wall (ball.X <= 900)", engine.ball.X <= wall.X);
     }
+
+    @Test
+    public void testCornerHitMirroredReflectionNoDirectionReversal() {
+        GameEngine engine = createStandardGame();
+        // Place vertical wall pane at (1000, 500), width=12, height=120
+        Wall wall = new Wall(engine, 1000, 500);
+        wall.width = 12;
+        wall.height = 120;
+        engine.entityPool.add(wall);
+
+        // Place ball near top corner of wall, moving right (xKickPow > 0) and down (yKickPow < 0)
+        engine.ball.X = 990;
+        engine.ball.Y = 495; // slightly above top edge (500)
+        engine.xKickPow = 0.3;
+        engine.yKickPow = -0.2; // moving down
+
+        double dx = 0.05 * engine.xKickPow;
+        double dy = -0.05 * engine.yKickPow;
+        double[] vel = new double[]{ dx, dy };
+
+        gameserver.entity.Entity[] snap = engine.entityPool.toArray(new gameserver.entity.Entity[0]);
+        engine.bounceWalls(snap, vel);
+
+        // Horizontal velocity component should negate (mirror reflection), vertical component preserved
+        Assert.assertTrue("xKickPow must flip to negative on left face hit", engine.xKickPow < 0);
+        Assert.assertTrue("yKickPow must preserve sign (no direction reversal)", engine.yKickPow < 0);
+    }
+
+    @Test
+    public void testPortalNullCreatedByIdAndLoopSafety() {
+        GameEngine engine = createStandardGame();
+        gameserver.entity.minions.Portal portal = new gameserver.entity.minions.Portal(); // createdById is null
+        Titan titan = engine.players[0];
+        titan.team = TeamAffiliation.HOME;
+
+        // Trigger collision with null createdById should not throw NPE
+        portal.triggerCollide(engine, titan);
+
+        // Spawn portal with valid titan and place solid wall around destination
+        gameserver.entity.minions.Portal p1 = new gameserver.entity.minions.Portal(TeamAffiliation.HOME, titan, engine.entityPool, 200, 200, engine);
+        gameserver.entity.minions.Portal p2 = new gameserver.entity.minions.Portal(TeamAffiliation.HOME, titan, engine.entityPool, 400, 400, engine);
+        engine.entityPool.add(p1);
+        engine.entityPool.add(p2);
+
+        // Trigger collision with titan inside portal - must terminate cleanly without freezing
+        p1.triggerCollide(engine, titan);
+        Assert.assertEquals(titan.getX(), 400 + 25 - 35, 1.0);
+    }
 }

@@ -61,20 +61,62 @@ public class CollisionMath   {
         double obstMinY = obstacle.minY();
         double obstMaxY = obstacle.minY() + obstacle.height();
 
+        boolean isVerticalPane = obstacle.height() > obstacle.width();
+        boolean isHorizontalPane = obstacle.width() > obstacle.height();
+
+        // Previous position bounds prior to velocity step (dx, dy)
+        double prevMinX = mover.minX() - dx;
+        double prevMaxX = prevMinX + mover.width();
+        double prevMinY = mover.minY() - dy;
+        double prevMaxY = prevMinY + mover.height();
+
+        Double tx = null;
+        CollisionSide sideX = null;
+        if (dx > 0 && prevMaxX <= obstMinX + 2.0) {
+            tx = Math.max(0.0, (obstMinX - (prevMaxX - 2.0)) / dx);
+            sideX = CollisionSide.LEFT;
+        } else if (dx < 0 && prevMinX >= obstMaxX - 2.0) {
+            tx = Math.max(0.0, ((prevMinX + 2.0) - obstMaxX) / (-dx));
+            sideX = CollisionSide.RIGHT;
+        }
+
+        Double ty = null;
+        CollisionSide sideY = null;
+        if (dy > 0 && prevMaxY <= obstMinY + 2.0) {
+            ty = Math.max(0.0, (obstMinY - (prevMaxY - 2.0)) / dy);
+            sideY = CollisionSide.TOP;
+        } else if (dy < 0 && prevMinY >= obstMaxY - 2.0) {
+            ty = Math.max(0.0, ((prevMinY + 2.0) - obstMaxY) / (-dy));
+            sideY = CollisionSide.BOTTOM;
+        }
+
+        if (sideX != null && sideY == null) return sideX;
+        if (sideY != null && sideX == null) return sideY;
+        if (sideX != null && sideY != null) {
+            if (tx < ty) return sideX;
+            if (ty < tx) return sideY;
+            return isVerticalPane ? sideX : sideY;
+        }
+
+        // Spatial center checks when backtrack was ambiguous or already overlapping
         boolean inYRange = (ballCenterY >= obstMinY && ballCenterY <= obstMaxY);
         boolean inXRange = (ballCenterX >= obstMinX && ballCenterX <= obstMaxX);
 
-        // 1. Ball center is within the Y span of the obstacle (pure horizontal collision)
         if (inYRange && !inXRange) {
             return (ballCenterX <= obstMinX) ? CollisionSide.LEFT : CollisionSide.RIGHT;
         }
-
-        // 2. Ball center is within the X span of the obstacle (pure vertical collision)
         if (inXRange && !inYRange) {
             return (ballCenterY <= obstMinY) ? CollisionSide.TOP : CollisionSide.BOTTOM;
         }
 
-        // 3. Ball center is in a corner region (outside both X and Y spans)
+        if (isVerticalPane && !inXRange) {
+            return (ballCenterX <= obstMinX) ? CollisionSide.LEFT : CollisionSide.RIGHT;
+        }
+        if (isHorizontalPane && !inYRange) {
+            return (ballCenterY <= obstMinY) ? CollisionSide.TOP : CollisionSide.BOTTOM;
+        }
+
+        // Corner region ratio fallback
         if (!inXRange && !inYRange) {
             double cornerX = (ballCenterX < obstMinX) ? obstMinX : obstMaxX;
             double cornerY = (ballCenterY < obstMinY) ? obstMinY : obstMaxY;
@@ -88,7 +130,14 @@ public class CollisionMath   {
             }
         }
 
-        // 4. Ball center is fully inside the obstacle (deep penetration fallback)
+        // Deep penetration fallback
+        if (isVerticalPane) {
+            return (ballCenterX <= (obstMinX + obstMaxX) / 2.0) ? CollisionSide.LEFT : CollisionSide.RIGHT;
+        }
+        if (isHorizontalPane) {
+            return (ballCenterY <= (obstMinY + obstMaxY) / 2.0) ? CollisionSide.TOP : CollisionSide.BOTTOM;
+        }
+
         double distLeft = ballCenterX - obstMinX;
         double distRight = obstMaxX - ballCenterX;
         double distTop = ballCenterY - obstMinY;
