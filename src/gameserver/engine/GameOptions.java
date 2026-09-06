@@ -44,21 +44,33 @@ public class GameOptions   {
     }
 
     public int getAiReactionTimeMinMs() {
+        return getAiReactionTimeMinMs(false);
+    }
+
+    public int getAiReactionTimeMinMs(boolean isGoalie) {
+        int base;
         switch (aiDifficultyIndex) {
-            case 0: return 950;  // Easy: 950-1100ms
-            case 1: return 550;  // Medium: 550-950ms
-            case 2: return 250;  // Hard: 250-550ms
-            default: return 950;
+            case 0: base = 1200; break; // Easy: 1200-1700ms
+            case 1: base = 500;  break; // Medium: 500-1200ms
+            case 2: base = 200;  break; // Hard: 200-700ms
+            default: base = 1200; break;
         }
+        return isGoalie ? (int) Math.round(base * 0.4) : base;
     }
 
     public int getAiReactionTimeMaxMs() {
+        return getAiReactionTimeMaxMs(false);
+    }
+
+    public int getAiReactionTimeMaxMs(boolean isGoalie) {
+        int base;
         switch (aiDifficultyIndex) {
-            case 0: return 1100; // Easy: 950-1100ms
-            case 1: return 950;  // Medium: 550-950ms
-            case 2: return 550;  // Hard: 250-550ms
-            default: return 1100;
+            case 0: base = 1700; break; // Easy: 1200-1700ms
+            case 1: base = 1200; break; // Medium: 500-1200ms
+            case 2: base = 700;  break; // Hard: 200-700ms
+            default: base = 1700; break;
         }
+        return isGoalie ? (int) Math.round(base * 0.4) : base;
     }
 
     /** 1v1 scrimmage is the only mode where guardians may be omitted. */

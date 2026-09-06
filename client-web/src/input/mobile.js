@@ -3,6 +3,7 @@ import { GamePhase } from '../constants.js';
 import { getDefaultPreset, executeNextBuildOrder } from './keyboard.js';
 import { handleUIClick } from './mouse.js';
 import { requestFullscreen, isFullscreenActive } from '../util/fullscreen.js';
+import { returnToMainMenu } from '../main.js';
 
 let joystickBase = null;
 let joystickStick = null;
@@ -357,7 +358,7 @@ export function initMobileControls() {
     if (isGameEnded) {
       const now = Date.now();
       if (now - lastEndedTouchTime < 500 && now - lastEndedTouchTime > 30) {
-        window.location.reload();
+        returnToMainMenu();
       }
       lastEndedTouchTime = now;
     }
@@ -368,7 +369,7 @@ export function initMobileControls() {
                         gameState.phase === 'ENDED' ||
                         (gameState.game && (gameState.game.ended || gameState.game.phase === 'ENDED'));
     if (isGameEnded && e.touches && e.touches.length >= 2) {
-      window.location.reload();
+      returnToMainMenu();
     }
   }, { passive: false });
 }

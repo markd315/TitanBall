@@ -1647,15 +1647,6 @@ public class GameEngine extends Game {
                     }
                 }
                 boolean canRun = !effectPool.isRooted(t) && isActionMovementUnlocked(t);
-                // DEBUG cast lag
-                if (t.actionState == Titan.TitanState.A1 || t.actionState == Titan.TitanState.A2) {
-                    System.out.println("[CASTLAG] titan=" + t.getType()
-                        + " state=" + t.actionState
-                        + " frame=" + t.actionFrame
-                        + " programmed=" + t.programmed
-                        + " isRooted=" + effectPool.isRooted(t)
-                        + " canRun=" + canRun);
-                }
                 if (canRun) {
                     if (t.runRight == 1) runRightCtrl(t);
                     if (t.runLeft == 1) runLeftCtrl(t);
@@ -2117,8 +2108,9 @@ public class GameEngine extends Game {
             return;
         }
 
-        int minDelay = (options != null) ? options.getAiReactionTimeMinMs() : 950;
-        int maxDelay = (options != null) ? options.getAiReactionTimeMaxMs() : 1100;
+        boolean isGoalie = (ai.getType() == TitanType.GOALIE);
+        int minDelay = (options != null) ? options.getAiReactionTimeMinMs(isGoalie) : (isGoalie ? 480 : 1200);
+        int maxDelay = (options != null) ? options.getAiReactionTimeMaxMs(isGoalie) : (isGoalie ? 680 : 1700);
 
         // 3. Movement target re-evaluation strictly governed by difficulty reaction delay timer.
         if (ai.aiReactionDelayMs == 0 || (nowMs - ai.aiLastDecisionTimeMs >= ai.aiReactionDelayMs)) {
@@ -2147,6 +2139,41 @@ public class GameEngine extends Game {
             ai.programmed = true;
             ai.marchingOrderX = (int) ai.aiTargetX;
             ai.marchingOrderY = (int) ai.aiTargetY;
+
+            // Track horizontal progress when attempting forward horizontal movement
+            double forwardDir = (ai.team == TeamAffiliation.HOME) ? 1.0 : -1.0;
+            if (dx * forwardDir > 15.0) {
+                if (ai.aiPrevX >= 0 && Math.abs(ai.X - ai.aiPrevX) < 0.25) {
+                    ai.aiStuckHorizontalTicks++;
+                } else {
+                    ai.aiStuckHorizontalTicks = Math.max(0, ai.aiStuckHorizontalTicks - 1);
+                }
+                ai.aiPrevX = ai.X;
+            } else {
+                ai.aiStuckHorizontalTicks = 0;
+                ai.aiPrevX = ai.X;
+            }
+
+            // Pathfind around enemies instead of purely through: mix in diagonal clicks if no horizontal progress happens
+            // Priorities when stuck: 2) Find backpass option, 3) Run backwards diagonally to create space
+            if (ai.aiStuckHorizontalTicks >= 3 && ai.possession == 1) {
+                TeamAffiliation enemyTeam = (ai.team == TeamAffiliation.HOME) ? TeamAffiliation.AWAY : TeamAffiliation.HOME;
+                Titan passTarget = findBackwardsOrVerticalPassTarget(ai, enemyTeam);
+                if (passTarget != null) {
+                    ai.aiTargetX = passTarget.X + passTarget.width / 2.0;
+                    ai.aiTargetY = passTarget.Y + passTarget.height / 2.0;
+                    ai.aiTargetAction = 1;
+                    executeAiShot(ai, ai.aiTargetX, ai.aiTargetY);
+                    ai.aiTargetAction = 0;
+                } else {
+                    Titan impeding = getHorizontalImpedingEnemy(ai, enemyTeam);
+                    double[] backTarget = calculateBackwardDiagonalEvadeTarget(ai, impeding, currentCenterX, currentCenterY);
+                    ai.marchingOrderX = (int) backTarget[0];
+                    ai.marchingOrderY = (int) backTarget[1];
+                    ai.aiTargetX = backTarget[0];
+                    ai.aiTargetY = backTarget[1];
+                }
+            }
         }
 
         // 4. Execute queued actions
@@ -2320,7 +2347,12 @@ public class GameEngine extends Game {
         GoalHoop myGoal = (ai.team == TeamAffiliation.HOME) ? homeHiGoal : awayHiGoal;
         double hoopCX = myGoal.x + myGoal.w / 2.0;
         double hoopCY = myGoal.y + myGoal.h / 2.0;
-        double hoopRadius = myGoal.w / 2.0;
+        double rx = myGoal.w / 2.0;
+        double ry = myGoal.h / 2.0;
+        double hoopLeft = myGoal.x;
+        double hoopRight = myGoal.x + myGoal.w;
+        double hoopTop = myGoal.y;
+        double hoopBottom = myGoal.y + myGoal.h;
 
         int YMAX = c.GOALIE_Y_MAX;
         int YMIN = c.GOALIE_Y_MIN;
@@ -2341,8 +2373,9 @@ public class GameEngine extends Game {
                     ai.aiTargetY = clearY;
                     ai.aiTargetAction = 1;
                 } else {
-                    ai.aiTargetX = Math.max(XMIN, Math.min(XMAX, hoopCX));
-                    ai.aiTargetY = Math.max(YMIN, Math.min(YMAX, hoopCY));
+                    double holdX = (ai.team == TeamAffiliation.HOME) ? (hoopLeft + c.GOALIE_INTERCEPT_W / 2.0) : (hoopRight - c.GOALIE_INTERCEPT_W / 2.0);
+                    ai.aiTargetX = Math.max(XMIN, Math.min(XMAX, holdX));
+                    ai.aiTargetY = Math.max(YMIN, Math.min(YMAX, hoopCY + 10.0));
                     ai.aiTargetAction = 0;
                 }
             }
@@ -2350,19 +2383,10 @@ public class GameEngine extends Game {
         }
 
         Optional<Titan> possessorOpt = titanInPossession();
-        boolean enemyHasBallOtherHalf = false;
-        if (possessorOpt.isPresent()) {
-            Titan possessor = possessorOpt.get();
-            if (possessor.team != ai.team) {
-                if (ai.team == TeamAffiliation.HOME && (possessor.X > FIELD_LENGTH / 2.0 || ball.X > FIELD_LENGTH / 2.0)) {
-                    enemyHasBallOtherHalf = true;
-                } else if (ai.team == TeamAffiliation.AWAY && (possessor.X < FIELD_LENGTH / 2.0 || ball.X < FIELD_LENGTH / 2.0)) {
-                    enemyHasBallOtherHalf = true;
-                }
-            }
-        }
+        boolean teamOnOffense = possessorOpt.isPresent() && possessorOpt.get().team == ai.team;
 
-        if (enemyHasBallOtherHalf) {
+        // The goalie only farms lanes when their team is on offense
+        if (teamOnOffense) {
             int[] enemyMinionsPerLane = new int[3];
             LaneMinion[] closestMinionPerLane = new LaneMinion[3];
             double[] closestDistPerLane = new double[]{Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE};
@@ -2401,13 +2425,24 @@ public class GameEngine extends Game {
                 ai.aiTargetY = Math.max(YMIN, Math.min(YMAX, targetY));
                 ai.aiTargetAction = 0;
 
+                // Goalie is bounded by the exact same elliptical range restrictions as a human player
                 if (targetMinion != null) {
-                    handleGoalieAttackClick("", targetMinion.X, targetMinion.Y, ai.team, ai);
+                    double gx = ai.X + ai.width / 2.0;
+                    double gy = ai.Y + ai.height / 2.0;
+                    double rangeX = c.getI("titan.goalie.rangex") * ai.rangeFactor;
+                    double rangeY = c.getI("titan.goalie.rangey") * ai.rangeFactor;
+                    double dx = targetMinion.X - gx;
+                    double dy = targetMinion.Y - gy;
+                    if ((dx * dx) / (rangeX * rangeX) + (dy * dy) / (rangeY * rangeY) <= 1.0) {
+                        handleGoalieAttackClick("", targetMinion.X, targetMinion.Y, ai.team, ai);
+                    }
                 }
                 return;
             }
         }
 
+        // Defensive objective: defend the outermost part of the hoop closest to the ball, not the center of the hoop.
+        // The rectangular intercept collider (90x50) must cover the hoop without leaving any part uncovered.
         double ballCX = ball.X + ball.width / 2.0;
         double ballCY = ball.Y + ball.height / 2.0;
         double vx = ballCX - hoopCX;
@@ -2415,9 +2450,36 @@ public class GameEngine extends Game {
         double len = Math.hypot(vx, vy);
         if (len < 0.001) { vx = (ai.team == TeamAffiliation.HOME ? 1.0 : -1.0); vy = 0; len = 1.0; }
 
-        double offsetFromCenter = hoopRadius + 15.0;
-        double targetX = hoopCX + (vx / len) * offsetFromCenter;
-        double targetY = hoopCY + (vy / len) * offsetFromCenter;
+        double ux = vx / len;
+        double uy = vy / len;
+
+        // Outermost point on the hoop's elliptical perimeter closest to the ball
+        double invDenom = Math.hypot(ux / rx, uy / ry);
+        double k = (invDenom > 0.0001) ? (1.0 / invDenom) : rx;
+        double outerHoopX = hoopCX + k * ux;
+        double outerHoopY = hoopCY + k * uy;
+
+        int colliderW = c.GOALIE_INTERCEPT_W; // 90
+        int colliderH = c.GOALIE_INTERCEPT_H; // 50
+
+        // In Y: Center collider on outerHoopY, clamped so the collider never extends into empty space outside the hoop,
+        // ensuring no part of the hoop is left uncovered.
+        double minColliderCY = hoopTop + colliderH / 2.0;
+        double maxColliderCY = hoopBottom - colliderH / 2.0;
+        double desiredColliderCY = Math.max(minColliderCY, Math.min(maxColliderCY, outerHoopY));
+        // Goalie sprite center Y is offset +10px from collider center Y (aiCenterY = ai.Y + 35, colliderCY = ai.Y + 25)
+        double targetY = desiredColliderCY + 10.0;
+
+        // In X: Cover from hoop back through outerHoopX towards the incoming ball.
+        double desiredColliderCX;
+        if (ai.team == TeamAffiliation.HOME) {
+            // Home hoop is [256, 326]. Collider spans [256, 346] with center at 301, completely covering the hoop and extending 20px out
+            desiredColliderCX = hoopLeft + colliderW / 2.0;
+        } else {
+            // Away hoop is [1786, 1856]. Collider spans [1766, 1856] with center at 1811, completely covering the hoop and extending 20px out
+            desiredColliderCX = hoopRight - colliderW / 2.0;
+        }
+        double targetX = desiredColliderCX;
 
         ai.aiTargetX = Math.max(XMIN, Math.min(XMAX, targetX));
         ai.aiTargetY = Math.max(YMIN, Math.min(YMAX, targetY));
@@ -2556,7 +2618,77 @@ public class GameEngine extends Game {
         ai.aiTargetY = Math.max(c.MIN_Y, Math.min(c.MAX_Y, carrierCY + verticalOffset));
     }
 
-    protected void evaluateOnBallOffense(Titan ai, TeamAffiliation enemyTeam) {
+    public Titan getHorizontalImpedingEnemy(Titan ai, TeamAffiliation enemyTeam) {
+        double fwdDir = (ai.team == TeamAffiliation.HOME) ? 1.0 : -1.0;
+        double aiCX = ai.X + ai.width / 2.0, aiCY = ai.Y + ai.height / 2.0;
+        Titan best = null;
+        double closestDist = Double.MAX_VALUE;
+        for (Titan t : players) {
+            if (t != null && t.team == enemyTeam && !effectPool.hasEffect(t, EffectId.DEAD)) {
+                double dx = (t.X + t.width / 2.0) - aiCX, dy = (t.Y + t.height / 2.0) - aiCY;
+                double fwdDist = dx * fwdDir;
+                if (fwdDist > -25.0 && fwdDist < 170.0 && Math.abs(dy) < 75.0) {
+                    double dist = Math.hypot(dx, dy);
+                    if (dist < closestDist) { closestDist = dist; best = t; }
+                }
+            }
+        }
+        return best;
+    }
+
+    public Titan findBackwardsOrVerticalPassTarget(Titan ai, TeamAffiliation enemyTeam) {
+        double fwdDir = (ai.team == TeamAffiliation.HOME) ? 1.0 : -1.0;
+        double aiCX = ai.X + ai.width / 2.0, aiCY = ai.Y + ai.height / 2.0;
+        Titan best = null;
+        double bestScore = -1.0;
+        for (Titan t : players) {
+            if (t != null && !t.id.equals(ai.id) && t.team == ai.team && t.getType() != TitanType.GOALIE && !effectPool.hasEffect(t, EffectId.DEAD)) {
+                double dx = (t.X + t.width / 2.0) - aiCX, dy = Math.abs((t.Y + t.height / 2.0) - aiCY);
+                double fwdDist = dx * fwdDir, dist = Math.hypot(dx, dy);
+                if (dist < 80.0 || dist > 520.0 || (fwdDist >= -20.0 && (dy < 80.0 || fwdDist > 60.0))) continue;
+                if (isPassPathBlocked(aiCX, aiCY, t.X + t.width / 2.0, t.Y + t.height / 2.0, enemyTeam)) continue;
+                Titan enemy = findNearestEnemy(t, enemyTeam);
+                double enemyDist = enemy != null ? Math.hypot(enemy.X - t.X, enemy.Y - t.Y) : 999.0;
+                if (enemyDist < 60.0) continue;
+                double score = enemyDist + (dy >= 80.0 ? 50.0 : 30.0);
+                if (score > bestScore) { bestScore = score; best = t; }
+            }
+        }
+        return best;
+    }
+
+    public int getEvasionVerticalDir(Titan ai, double eCY, double currentCY) {
+        if (ai.aiEvadeVerticalDir != 0 && Math.random() < 0.7) return ai.aiEvadeVerticalDir;
+        double distToTop = currentCY - c.MIN_Y, distToBottom = c.MAX_Y - currentCY;
+        int dir = (eCY > currentCY + 5.0) ? ((distToTop > 100.0) ? -1 : 1) :
+                  (eCY < currentCY - 5.0) ? ((distToBottom > 100.0) ? 1 : -1) :
+                  ((distToTop > distToBottom) ? -1 : 1);
+        return ai.aiEvadeVerticalDir = dir;
+    }
+
+    public double[] calculateForwardEvadeTarget(Titan ai, Titan impedingEnemy, double currentCX, double currentCY) {
+        return calculateEvadeTarget(ai, impedingEnemy, currentCX, currentCY, 80.0, 180.0);
+    }
+
+    public double[] calculateBackwardDiagonalEvadeTarget(Titan ai, Titan impedingEnemy, double currentCX, double currentCY) {
+        return calculateEvadeTarget(ai, impedingEnemy, currentCX, currentCY, -130.0, 120.0);
+    }
+
+    public double[] calculateVerticalEvasionTarget(Titan ai, Titan impedingEnemy, double currentCX, double currentCY) {
+        return calculateForwardEvadeTarget(ai, impedingEnemy, currentCX, currentCY);
+    }
+
+    private double[] calculateEvadeTarget(Titan ai, Titan impedingEnemy, double cx, double cy, double fwdDist, double vertDist) {
+        double eCY = (impedingEnemy != null) ? (impedingEnemy.Y + impedingEnemy.height / 2.0) : cy;
+        int vertDir = getEvasionVerticalDir(ai, eCY, cy);
+        double fwdDir = (ai.team == TeamAffiliation.HOME) ? 1.0 : -1.0;
+        return new double[]{
+            Math.max(c.MIN_X, Math.min(c.MAX_X, cx + fwdDir * fwdDist)),
+            Math.max(c.MIN_Y + 30.0, Math.min(c.MAX_Y - 30.0, cy + vertDir * vertDist))
+        };
+    }
+
+    public void evaluateOnBallOffense(Titan ai, TeamAffiliation enemyTeam) {
         double currentCX = ai.X + ai.width / 2.0;
         double currentCY = ai.Y + ai.height / 2.0;
 
@@ -2564,8 +2696,41 @@ public class GameEngine extends Game {
                 ? currentCX > (FIELD_LENGTH * 2.0 / 3.0)
                 : currentCX < (FIELD_LENGTH / 3.0);
 
+        Titan impedingEnemy = getHorizontalImpedingEnemy(ai, enemyTeam);
+
         // Transition Offense: Pass-and-chase priorities in backcourt/midfield
         if (!inAttackingThird) {
+            // If an opponent is an immediate steal threat on the X axis, evasive action must be taken:
+            // Priorities: 1) Run forward, 2) Find a backpass option, 3) Run backwards diagonally to create space.
+            if (impedingEnemy != null) {
+                // Priority 1: Run forward (via forward diagonal/vertical evasion around enemy) if not stuck
+                if (ai.aiStuckHorizontalTicks < 2) {
+                    double[] fwdTarget = calculateForwardEvadeTarget(ai, impedingEnemy, currentCX, currentCY);
+                    ai.aiTargetX = fwdTarget[0];
+                    ai.aiTargetY = fwdTarget[1];
+                    ai.aiTargetAction = 0; // RUN
+                    ai.isBoosting = false;
+                    return;
+                }
+
+                // Priority 2: Find a backpass option
+                Titan outletPass = findBackwardsOrVerticalPassTarget(ai, enemyTeam);
+                if (outletPass != null) {
+                    ai.aiTargetX = outletPass.X + outletPass.width / 2.0;
+                    ai.aiTargetY = outletPass.Y + outletPass.height / 2.0;
+                    ai.aiTargetAction = 1; // PASS
+                    return;
+                }
+
+                // Priority 3: Run backwards diagonally to create space
+                double[] backTarget = calculateBackwardDiagonalEvadeTarget(ai, impedingEnemy, currentCX, currentCY);
+                ai.aiTargetX = backTarget[0];
+                ai.aiTargetY = backTarget[1];
+                ai.aiTargetAction = 0; // RUN
+                ai.isBoosting = false;
+                return;
+            }
+
             // Priority 1: Pass to a faster, upfield teammate with clear passing line
             Titan fasterTeammate = findFasterUpfieldTeammate(ai, enemyTeam);
             if (fasterTeammate != null) {
@@ -2585,22 +2750,67 @@ public class GameEngine extends Game {
             }
 
             // Priority 3: Run upfield yourself (cannot boost while holding ball)
-            double forwardX = (ai.team == TeamAffiliation.HOME) ? currentCX + 250.0 : currentCX - 250.0;
-            ai.aiTargetX = Math.max(c.MIN_X, Math.min(c.MAX_X, forwardX));
-            ai.aiTargetY = currentCY;
+            double forwardDir = (ai.team == TeamAffiliation.HOME) ? 1.0 : -1.0;
+            if (ai.aiStuckHorizontalTicks >= 2) {
+                int vertDir = (ai.aiEvadeVerticalDir != 0) ? ai.aiEvadeVerticalDir : ((currentCY < (c.MIN_Y + c.MAX_Y) / 2.0) ? 1 : -1);
+                ai.aiEvadeVerticalDir = vertDir;
+                double forwardX = currentCX + forwardDir * 120.0;
+                ai.aiTargetX = Math.max(c.MIN_X, Math.min(c.MAX_X, forwardX));
+                ai.aiTargetY = Math.max(c.MIN_Y + 30.0, Math.min(c.MAX_Y - 30.0, currentCY + vertDir * 160.0));
+            } else {
+                double forwardX = currentCX + forwardDir * 250.0;
+                ai.aiTargetX = Math.max(c.MIN_X, Math.min(c.MAX_X, forwardX));
+                ai.aiTargetY = currentCY;
+            }
             ai.aiTargetAction = 0; // RUN
             ai.isBoosting = false;
             return;
         }
 
         // On ball offense in attacking third
+        if (impedingEnemy != null) {
+            // Check clear path to goals for a shot first
+            GoalHoop openGoal = findUnblockedGoal(ai, enemyTeam);
+            if (openGoal != null) {
+                ai.aiTargetX = openGoal.x + openGoal.w / 2.0;
+                ai.aiTargetY = openGoal.y + openGoal.h / 2.0;
+                ai.aiTargetAction = 1;
+                return;
+            }
+
+            // Priorities: 1) Run forward, 2) Find a backpass option, 3) Run backwards diagonally to create space
+            if (ai.aiStuckHorizontalTicks < 2) {
+                double[] fwdTarget = calculateForwardEvadeTarget(ai, impedingEnemy, currentCX, currentCY);
+                ai.aiTargetX = fwdTarget[0];
+                ai.aiTargetY = fwdTarget[1];
+                ai.aiTargetAction = 0;
+                return;
+            }
+
+            Titan outletPass = findBackwardsOrVerticalPassTarget(ai, enemyTeam);
+            if (outletPass != null) {
+                ai.aiTargetX = outletPass.X + outletPass.width / 2.0;
+                ai.aiTargetY = outletPass.Y + outletPass.height / 2.0;
+                ai.aiTargetAction = 1; // PASS
+                return;
+            }
+
+            double[] backTarget = calculateBackwardDiagonalEvadeTarget(ai, impedingEnemy, currentCX, currentCY);
+            ai.aiTargetX = backTarget[0];
+            ai.aiTargetY = backTarget[1];
+            ai.aiTargetAction = 0;
+            return;
+        }
+
         Titan nearestDefender = findNearestEnemy(ai, enemyTeam);
         if (nearestDefender != null) {
             double defDist = Math.hypot(nearestDefender.X - ai.X, nearestDefender.Y - ai.Y);
             if (defDist < 110.0) {
-                // Back away from defender to prevent steal attempt
+                // Back away from defender with vertical offset to prevent steal attempt and avoid horizontal trap
                 double retreatX = currentCX + (currentCX - (nearestDefender.X + nearestDefender.width / 2.0));
-                double retreatY = currentCY + (currentCY - (nearestDefender.Y + nearestDefender.height / 2.0));
+                double defCY = nearestDefender.Y + nearestDefender.height / 2.0;
+                double vertStep = (currentCY >= defCY) ? 90.0 : -90.0;
+                double retreatY = currentCY + vertStep;
                 ai.aiTargetX = Math.max(c.MIN_X, Math.min(c.MAX_X, retreatX));
                 ai.aiTargetY = Math.max(c.MIN_Y, Math.min(c.MAX_Y, retreatY));
                 ai.aiTargetAction = 0;
@@ -2629,9 +2839,17 @@ public class GameEngine extends Game {
         boolean groundGiven = (nearestDefender == null || Math.hypot(nearestDefender.X - ai.X, nearestDefender.Y - ai.Y) > 220.0);
         if (groundGiven) {
             // Take ground
-            double stepX = (ai.team == TeamAffiliation.HOME) ? currentCX + 150.0 : currentCX - 150.0;
-            ai.aiTargetX = Math.max(c.MIN_X, Math.min(c.MAX_X, stepX));
-            ai.aiTargetY = currentCY;
+            double forwardDir = (ai.team == TeamAffiliation.HOME) ? 1.0 : -1.0;
+            if (ai.aiStuckHorizontalTicks >= 2) {
+                int vertDir = (ai.aiEvadeVerticalDir != 0) ? ai.aiEvadeVerticalDir : ((currentCY < (c.MIN_Y + c.MAX_Y) / 2.0) ? 1 : -1);
+                ai.aiEvadeVerticalDir = vertDir;
+                ai.aiTargetX = Math.max(c.MIN_X, Math.min(c.MAX_X, currentCX + forwardDir * 80.0));
+                ai.aiTargetY = Math.max(c.MIN_Y + 30.0, Math.min(c.MAX_Y - 30.0, currentCY + vertDir * 140.0));
+            } else {
+                double stepX = currentCX + forwardDir * 150.0;
+                ai.aiTargetX = Math.max(c.MIN_X, Math.min(c.MAX_X, stepX));
+                ai.aiTargetY = currentCY;
+            }
         } else {
             // Probe back and forth
             double probeY = (Math.random() < 0.5) ? Math.max(c.MIN_Y, currentCY - 160.0) : Math.min(c.MAX_Y, currentCY + 160.0);
@@ -2734,13 +2952,20 @@ public class GameEngine extends Game {
     protected Titan findBestPassTarget(Titan ai) {
         Titan best = null;
         double bestDist = -1.0;
+        double aiCX = ai.X + ai.width / 2.0;
+        double aiCY = ai.Y + ai.height / 2.0;
+        TeamAffiliation enemyTeam = (ai.team == TeamAffiliation.HOME) ? TeamAffiliation.AWAY : TeamAffiliation.HOME;
         for (Titan t : players) {
-            if (t != null && !t.id.equals(ai.id) && t.team == ai.team && !effectPool.hasEffect(t, EffectId.DEAD)) {
-                double forwardX = (ai.team == TeamAffiliation.HOME) ? (t.X - ai.X) : (ai.X - t.X);
+            if (t != null && !t.id.equals(ai.id) && t.team == ai.team && t.getType() != TitanType.GOALIE && !effectPool.hasEffect(t, EffectId.DEAD)) {
+                double tCX = t.X + t.width / 2.0;
+                double tCY = t.Y + t.height / 2.0;
+                double forwardX = (ai.team == TeamAffiliation.HOME) ? (tCX - aiCX) : (aiCX - tCX);
                 if (forwardX > 50.0) {
-                    if (forwardX > bestDist) {
-                        bestDist = forwardX;
-                        best = t;
+                    if (!isPassPathBlocked(aiCX, aiCY, tCX, tCY, enemyTeam)) {
+                        if (forwardX > bestDist) {
+                            bestDist = forwardX;
+                            best = t;
+                        }
                     }
                 }
             }
@@ -2805,7 +3030,6 @@ public class GameEngine extends Game {
         if (!effectPool.isStunned(ai) && !effectPool.hasEffect(ai, EffectId.COOLDOWN_STEAL)) {
             try {
                 boolean stolen = ability.castSteal(this, ai);
-                System.out.println("[AI_STEAL] Titan " + ai.getType() + " team=" + ai.team + " castSteal returned: " + stolen);
                 if (!stolen) {
                     ai.actionState = Titan.TitanState.STEAL;
                     ai.actionFrame = 0;

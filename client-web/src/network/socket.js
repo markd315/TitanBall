@@ -1,4 +1,5 @@
 import { gameState } from '../state.js';
+import { GamePhase } from '../constants.js';
 import { setBoostState, getControlledTitan } from '../input/mobile.js';
 import { getSelectedTargetEntity, getEntityCollisionBounds, isSingleTargetAbility, isEntityInAbilityRangeForSlot } from '../render/targeting.js';
 
@@ -228,6 +229,12 @@ export function connectGame(gameID) {
       updateInterval = null;
     }
     
+    if (!gameState.game) {
+      gameState.phase = GamePhase.SHOW_GAME_MODES;
+      reconnectAttempts = 0;
+      return;
+    }
+
     const wasIngame = (gameState.phase === 'INGAME' || gameState.phase === 'SCORE_FREEZE' || gameState.phase === 'COUNTDOWN');
     const isGameFinished = gameState.phase === 'ENDED' || (gameState.game && gameState.game.ended);
     if (wasIngame && !isGameFinished && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {

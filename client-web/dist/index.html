@@ -1213,7 +1213,7 @@
         90%, 100% { transform: rotate(0deg); }
       }
     </style>
-    <script type="module" crossorigin src="./assets/main-1f45f2ce.js"></script>
+    <script type="module" crossorigin src="./assets/main-c4623c23.js"></script>
   </head>
   <body>
     <div id="app">
@@ -1408,24 +1408,6 @@
               <!-- Partners will be dynamically rendered here -->
             </div>
           </div>
-          <!-- Preferred Lane Selection (50% size, bottom) -->
-          <div class="input-group" style="width: 50%; margin: 10px auto 14px auto; text-align: center;">
-            <label for="lane-select" style="font-size: 12px; margin-bottom: 4px; display: block; color: #94a3b8;">Preferred Lane</label>
-            <select id="lane-select" style="width: 100%; font-size: 12px; padding: 5px 8px; text-align: center;">
-              <option value="TOP">Top Lane</option>
-              <option value="MID">Mid Lane</option>
-              <option value="BOT">Bot Lane</option>
-            </select>
-          </div>
-          <!-- AI Difficulty Selection (shown when Coop vs AI mode is selected) -->
-          <div class="input-group" id="ai-difficulty-container" style="display: none; width: 50%; margin: 0 auto 14px auto; text-align: center;">
-            <label for="ai-difficulty-select" style="font-size: 12px; margin-bottom: 4px; display: block; color: #ff9f1c;">AI Difficulty</label>
-            <select id="ai-difficulty-select" style="width: 100%; font-size: 12px; padding: 5px 8px; text-align: center;">
-              <option value="0">Easy (950-1100ms Delay)</option>
-              <option value="1">Medium (550-950ms Delay)</option>
-              <option value="2">Hard (250-550ms Delay)</option>
-            </select>
-          </div>
           <div class="menu-list">
             <div class="team-match-container">
               <button id="queue-team-btn" class="btn">Queue Team Match</button>
@@ -1434,6 +1416,24 @@
                 <span id="match-size-display">4v4</span>
                 <button id="size-up-btn" class="btn-arrow" title="Increase match size">▲</button>
               </div>
+            </div>
+            <!-- Preferred Lane Selection (50% size, below team match button) -->
+            <div class="input-group" style="width: 50%; margin: 0 auto; text-align: center;">
+              <label for="lane-select" style="font-size: 12px; margin-bottom: 4px; display: block; color: #94a3b8;">Preferred Lane</label>
+              <select id="lane-select" style="width: 100%; font-size: 12px; padding: 5px 8px; text-align: center;">
+                <option value="TOP">Top Lane</option>
+                <option value="MID">Mid Lane</option>
+                <option value="BOT">Bot Lane</option>
+              </select>
+            </div>
+            <!-- AI Difficulty Selection (shown when Coop vs AI mode is selected) -->
+            <div class="input-group" id="ai-difficulty-container" style="display: none; width: 50%; margin: 0 auto; text-align: center;">
+              <label for="ai-difficulty-select" style="font-size: 12px; margin-bottom: 4px; display: block; color: #ff9f1c;">AI Difficulty</label>
+              <select id="ai-difficulty-select" style="width: 100%; font-size: 12px; padding: 5px 8px; text-align: center;">
+                <option value="0">Easy (1200-1700ms Delay)</option>
+                <option value="1">Medium (500-1200ms Delay)</option>
+                <option value="2">Hard (200-700ms Delay)</option>
+              </select>
             </div>
             <button id="queue-1v1-btn" class="btn btn-secondary">Queue Scrimmage</button>
             <button id="tutorial-btn" class="btn btn-secondary">Play Tutorial</button>
@@ -1530,9 +1530,9 @@
             <div id="queue-ai-diff-row" style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
               <label for="queue-ai-difficulty-select" style="font-size: 12px; color: #94a3b8; white-space: nowrap;">AI Difficulty:</label>
               <select id="queue-ai-difficulty-select" style="flex: 1; font-size: 12px; padding: 4px 8px; border-radius: 6px; background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(45, 140, 100, 0.4); color: #fff; font-family: inherit;">
-                <option value="0">Easy (950-1100ms Delay)</option>
-                <option value="1" selected>Medium (550-950ms Delay)</option>
-                <option value="2">Hard (250-550ms Delay)</option>
+                <option value="0">Easy (1200-1700ms Delay)</option>
+                <option value="1" selected>Medium (500-1200ms Delay)</option>
+                <option value="2">Hard (200-700ms Delay)</option>
               </select>
             </div>
           </div>

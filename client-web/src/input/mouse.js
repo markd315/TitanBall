@@ -2,6 +2,7 @@ import { gameState, clientUI } from '../state.js';
 import { currentConfig, actionMap } from './keyboard.js';
 import { CONSTANTS, GamePhase } from '../constants.js';
 import { AssetManager } from '../assets/sprites.js';
+import { returnToMainMenu } from '../main.js';
 import {
     TREE_NODES, ANALYSIS_IMG_WIDTH, ANALYSIS_IMG_HEIGHT,
     tabKeys, tabCount, tabWidth, tabHeight, spacing,
@@ -140,7 +141,7 @@ export function initMouse() {
                             gameState.phase === 'ENDED' ||
                             (gameState.game && (gameState.game.ended || gameState.game.phase === 'ENDED'));
         if (isGameEnded) {
-            window.location.reload();
+            returnToMainMenu();
             e.preventDefault();
             return;
         }

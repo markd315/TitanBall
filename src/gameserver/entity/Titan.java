@@ -77,6 +77,12 @@ public class Titan extends Entity   {
     public transient int aiDefenseMode = 0; // 0 = CONCEDE_SPACE, 1 = AGGRESSIVE_STEAL_CHARGE
     @JsonIgnore
     public transient long aiDefenseModeSwitchTimeMs = 0;
+    @JsonIgnore
+    public transient double aiPrevX = -1;
+    @JsonIgnore
+    public transient int aiStuckHorizontalTicks = 0;
+    @JsonIgnore
+    public transient int aiEvadeVerticalDir = 0; // 1 = down, -1 = up
     public boolean resurrecting = false;
     public double baseSpeed = 5;
     public double baseThrowPower = 1.0;

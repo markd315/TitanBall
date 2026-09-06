@@ -124,6 +124,34 @@ function stopQueuePolling() {
   }
 }
 
+export async function returnToMainMenu() {
+  console.log("[Navigation] Dismissing postgame and returning to main menu...");
+  stopQueuePolling();
+  disconnectGame();
+
+  gameState.game = null;
+  gameState.gameID = null;
+  gameState.camX = 0;
+  gameState.camY = 0;
+  activeQueueTournamentCode = '';
+
+  const token = sessionStorage.getItem('accessToken');
+  if (token) {
+    try {
+      await fetch('/pages/titanball/api/leave', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+    } catch (e) {
+      console.warn('Failed to notify server of leaving game:', e);
+    }
+  }
+
+  gameState.phase = GamePhase.SHOW_GAME_MODES;
+  updateOverlays();
+  refreshUserStats();
+}
+
 async function checkAndRejoinActiveGame() {
   const token = sessionStorage.getItem('accessToken');
   if (!token) return;
@@ -143,8 +171,9 @@ async function checkAndRejoinActiveGame() {
         gameState.phase = GamePhase.WAIT_FOR_GAME;
         startQueuePolling();
       } else {
+        // Do not prematurely set COUNTDOWN here; connectGame and socket onmessage
+        // will set the live phase once verified.
         gameState.gameID = status;
-        gameState.phase = GamePhase.COUNTDOWN;
         connectGame(status);
       }
     }
@@ -1096,6 +1125,10 @@ function gameLoop(timestamp) {
       // Rendered via HTML overlay
       break;
     case GamePhase.COUNTDOWN:
+      if (!gameState.game) {
+        gameState.phase = GamePhase.SHOW_GAME_MODES;
+        break;
+      }
       if (gameState.is3v3) {
         drawDraftShowcase(ctx);
         
@@ -1425,7 +1458,7 @@ function drawGameEnded(ctx) {
   ctx.fillStyle = '#888888';
   ctx.textAlign = 'center';
   const isMobileDev = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-  const returnMsg = isMobileDev ? 'Press SPACE or Double-Tap screen to return to lobby menu' : 'Press SPACE to return to lobby menu';
+  const returnMsg = isMobileDev ? 'Press SPACE or Double-Tap screen to return to main menu' : 'Press SPACE to return to main menu';
   ctx.fillText(returnMsg, 1920 / 2, 940);
   ctx.restore();
 }

@@ -1,5 +1,6 @@
 import { gameState } from '../state.js';
 import { GamePhase } from '../constants.js';
+import { returnToMainMenu } from '../main.js';
 import {
     TREE_SHORT_NAME, NODE_DEFS,
     getNodeDef, getNodeConfigKey, isNodeUnlocked, getTreeState
@@ -115,7 +116,7 @@ export function initKeyboard() {
       if (e.code === 'Space' || e.key === ' ' || e.key === 'Spacebar' || e.keyCode === 32 || e.code === 'Enter' || e.key === 'Enter' || e.keyCode === 13) {
         e.preventDefault();
         e.stopPropagation();
-        window.location.reload();
+        returnToMainMenu();
         return;
       }
     }
