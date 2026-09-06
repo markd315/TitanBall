@@ -26,6 +26,8 @@ public class Matchmaker {
     public Map<String, String> playerClasses = new java.util.concurrent.ConcurrentHashMap<>();
     public Map<String, String> playerPreferredLanes = new java.util.concurrent.ConcurrentHashMap<>();
     public Map<String, Set<String>> partnerPool = new java.util.concurrent.ConcurrentHashMap<>();
+    public Map<String, Boolean> fillWithAiVotes = new java.util.concurrent.ConcurrentHashMap<>();
+    public Map<String, Integer> aiDifficultyVotes = new java.util.concurrent.ConcurrentHashMap<>();
 
     private Map<String, String> teamMemberWaitingPool = new HashMap<>();//user emails -> teamN
     private Map<String, String> teamWaitingPool = new HashMap<>();//teamN -> tournament code
@@ -34,6 +36,10 @@ public class Matchmaker {
         String email = (login.getPrincipal() instanceof authserver.models.User)
                 ? ((authserver.models.User) login.getPrincipal()).getEmail()
                 : login.getName();
+        if (gameMap.containsKey(email)) {
+            return gameMap.get(email);
+        }
+        makeMatches();
         if (gameMap.containsKey(email)) {
             return gameMap.get(email);
         }
@@ -110,6 +116,45 @@ public class Matchmaker {
                 }
             }
 
+            // Hybrid match check:
+            // After all players have checked the box and 10 seconds has passed since the most recent player joined,
+            // the match will start.
+            boolean canStartHybrid = false;
+            int winningDiff = 0;
+            if (op != null && !op.isCoopVsAi() && !pool.isEmpty()) {
+                boolean allChecked = true;
+                long mostRecentJoinTime = 0;
+                for (String email : pool) {
+                    if (!Boolean.TRUE.equals(fillWithAiVotes.get(email))) {
+                        allChecked = false;
+                        break;
+                    }
+                    Long entryTime = queueEntryTime.get(email);
+                    if (entryTime != null && entryTime > mostRecentJoinTime) {
+                        mostRecentJoinTime = entryTime;
+                    }
+                }
+                if (allChecked && mostRecentJoinTime > 0 && (nowMs - mostRecentJoinTime >= 10000)) {
+                    canStartHybrid = true;
+                    // Tally votes for AI difficulty
+                    int[] diffVotes = new int[3];
+                    for (String email : pool) {
+                        int diff = aiDifficultyVotes.getOrDefault(email, 0);
+                        if (diff >= 0 && diff <= 2) {
+                            diffVotes[diff]++;
+                        }
+                    }
+                    int maxVotes = -1;
+                    for (int d = 0; d < 3; d++) {
+                        if (diffVotes[d] > maxVotes) {
+                            maxVotes = diffVotes[d];
+                            winningDiff = d;
+                        }
+                    }
+                    minToStart = 1;
+                }
+            }
+
             while (pool.size() >= minToStart) {
                 List<String> selectedPlayers = new ArrayList<>();
                 // Form match prioritizing grouping mutual partners
@@ -137,9 +182,13 @@ public class Matchmaker {
                     }
                 }
 
-                if (!selectedPlayers.isEmpty() && (selectedPlayers.size() == players || (op != null && op.isCoopVsAi()))) {
+                if (!selectedPlayers.isEmpty() && (selectedPlayers.size() == players || (op != null && (op.isCoopVsAi() || canStartHybrid)))) {
                     gameFor.addAll(selectedPlayers);
                     pool.removeAll(selectedPlayers);
+                    if (canStartHybrid) {
+                        op.isHybrid = true;
+                        op.aiDifficultyIndex = winningDiff;
+                    }
                     spawnGame(selectedPlayers, op);
                 } else {
                     break;
@@ -150,6 +199,8 @@ public class Matchmaker {
         for (String s : gameFor) {
             waitingPool.remove(s);
             queueEntryTime.remove(s);
+            fillWithAiVotes.remove(s);
+            aiDifficultyVotes.remove(s);
             System.out.println("WAITING POOL SIZE: " + waitingPool.size());
         }
     }
@@ -219,6 +270,9 @@ public class Matchmaker {
         if (code.equalsIgnoreCase("4v0") || code.equalsIgnoreCase("/4v0")) {
             return "/11/0/1/5/2/9999/10/12/0"; // 4v0 is index 11
         }
+        if (code.equalsIgnoreCase("5v0") || code.equalsIgnoreCase("/5v0")) {
+            return "/12/0/1/5/2/9999/10/12/0"; // 5v0 is index 12
+        }
         if (!code.startsWith("/")) {
             code = "/" + code;
         }
@@ -238,7 +292,7 @@ public class Matchmaker {
         return false;
     }
 
-    public synchronized void registerIntent(Authentication login, String tournamentCode, String teamname, String classSelection, String preferredLane, String partners) {
+    public synchronized void registerIntent(Authentication login, String tournamentCode, String teamname, String classSelection, String preferredLane, String partners, boolean fillWithAi, int aiDifficulty) {
         tournamentCode = normalizeTournamentCode(tournamentCode);
         if (teamname != null) {
             registerIntentTeam(login, tournamentCode, teamname);
@@ -273,20 +327,30 @@ public class Matchmaker {
             partnerPool.remove(email);
         }
 
+        if (!queueEntryTime.containsKey(email)) {
+            queueEntryTime.put(email, System.currentTimeMillis());
+        }
+        fillWithAiVotes.put(email, fillWithAi);
+        aiDifficultyVotes.put(email, aiDifficulty);
+
         waitingPool.put(email, tournamentCode);
         makeMatches();
     }
 
+    public synchronized void registerIntent(Authentication login, String tournamentCode, String teamname, String classSelection, String preferredLane, String partners) {
+        registerIntent(login, tournamentCode, teamname, classSelection, preferredLane, partners, false, 0);
+    }
+
     public synchronized void registerIntent(Authentication login, String tournamentCode, String teamname, String classSelection, String partners) {
-        registerIntent(login, tournamentCode, teamname, classSelection, null, partners);
+        registerIntent(login, tournamentCode, teamname, classSelection, null, partners, false, 0);
     }
 
     public synchronized void registerIntent(Authentication login, String tournamentCode, String teamname, String classSelection) {
-        registerIntent(login, tournamentCode, teamname, classSelection, null, null);
+        registerIntent(login, tournamentCode, teamname, classSelection, null, null, false, 0);
     }
 
     public synchronized void registerIntent(Authentication login, String tournamentCode, String teamname) {
-        registerIntent(login, tournamentCode, teamname, "WARRIOR", null, null);
+        registerIntent(login, tournamentCode, teamname, "WARRIOR", null, null, false, 0);
     }
 
     public synchronized void registerIntentTeam(Authentication login, String tournamentCode, String teamname) {
@@ -348,6 +412,10 @@ public class Matchmaker {
         }
         playerClasses.remove(email);
         partnerPool.remove(email);
+        playerPreferredLanes.remove(email);
+        fillWithAiVotes.remove(email);
+        aiDifficultyVotes.remove(email);
+        queueEntryTime.remove(email);
     }
 
     public synchronized void clearWaitingPools() { //for graceful shutdown
@@ -355,6 +423,9 @@ public class Matchmaker {
         teamMemberWaitingPool.clear();
         teamWaitingPool.clear();
         partnerPool.clear();
+        fillWithAiVotes.clear();
+        aiDifficultyVotes.clear();
+        queueEntryTime.clear();
     }
 
     public synchronized void endGame(String id) {
@@ -370,6 +441,10 @@ public class Matchmaker {
             gameMap.remove(email);
             playerClasses.remove(email);
             partnerPool.remove(email);
+            playerPreferredLanes.remove(email);
+            fillWithAiVotes.remove(email);
+            aiDifficultyVotes.remove(email);
+            queueEntryTime.remove(email);
         }
     }
 

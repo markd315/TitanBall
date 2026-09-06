@@ -160,11 +160,13 @@ public class LoginController {
               @RequestParam(required = false) String teamname,
               @RequestParam(required = false) String classSelection,
               @RequestParam(required = false) String preferredLane,
-              @RequestParam(required = false) String partners) throws IOException {
+              @RequestParam(required = false) String partners,
+              @RequestParam(required = false, defaultValue = "false") boolean fillWithAi,
+              @RequestParam(required = false, defaultValue = "0") int aiDifficulty) throws IOException {
         if (shutDownMode) {
             return new ResponseEntity<>("Shutting down", HttpStatus.SERVICE_UNAVAILABLE);
         }
-        userPool.registerIntent(auth, tournamentCode, teamname, classSelection, preferredLane, partners);
+        userPool.registerIntent(auth, tournamentCode, teamname, classSelection, preferredLane, partners, fillWithAi, aiDifficulty);
         return new ResponseEntity<>(userPool.findGame(auth), HttpStatus.OK);
     }
 
@@ -194,30 +196,35 @@ public class LoginController {
         return new ResponseEntity<>("Successfully withdrawn", HttpStatus.OK);
     }
 
-    @RequestMapping(value = "/stat", method = RequestMethod.POST)
-    public ResponseEntity<UserResponse> userStats(@RequestBody @Valid UserDTO userinput) {
-        User user = userService.findUserByEmail(userinput.getEmail());
+    @RequestMapping(value = "/stat", method = {RequestMethod.POST, RequestMethod.GET})
+    public ResponseEntity<UserResponse> userStats(@RequestBody(required = false) UserDTO userinput, Authentication auth) {
+        User user = null;
+        if (userinput != null && userinput.getEmail() != null && !userinput.getEmail().trim().isEmpty()) {
+            user = userService.findUserByEmail(userinput.getEmail().trim());
+        }
+        if (user == null && userinput != null && userinput.getUsername() != null && !userinput.getUsername().trim().isEmpty()) {
+            user = userService.findUserByUsername(userinput.getUsername().trim());
+        }
+        if (user == null && auth != null) {
+            user = (auth.getPrincipal() instanceof User) ? (User) auth.getPrincipal() :
+                    (auth.getName() != null ? (userService.findUserByEmail(auth.getName()) != null ? userService.findUserByEmail(auth.getName()) : userService.findUserByUsername(auth.getName())) : null);
+        }
+        if (user == null) return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+
         List<User> rate3v3 = userService.findAll();
-        rate3v3.sort((User o1, User o2) -> (int) (o2.getRating()- o1.getRating()));
-        List<User> rate1v1 = new ArrayList<>();
-        rate1v1.addAll(rate3v3);
-        rate1v1.sort((User o1, User o2) -> (int) (o2.getRating_1v1()- o1.getRating_1v1()));
-        int rating = 999;
-        for(int i=0; i< rate3v3.size(); i++){
-            //System.out.println("hit");
-            //System.out.println(user.getEmail());
-            //System.out.println(rate3v3.get(i).getEmail());
-            if(rate3v3.get(i).getEmail().equals(user.getEmail())){ //TODO npe here
-                rating = i+1;
-            }
+        rate3v3.sort((o1, o2) -> Double.compare(o2.getRating(), o1.getRating()));
+        List<User> rate1v1 = new ArrayList<>(rate3v3);
+        rate1v1.sort((o1, o2) -> Double.compare(o2.getRating_1v1(), o1.getRating_1v1()));
+
+        return new ResponseEntity<>(new UserResponse(user, findUserRank(rate3v3, user.getEmail()), findUserRank(rate1v1, user.getEmail())), HttpStatus.OK);
+    }
+
+    private int findUserRank(List<User> list, String email) {
+        if (email == null) return 999;
+        for (int i = 0; i < list.size(); i++) {
+            if (email.equals(list.get(i).getEmail())) return i + 1;
         }
-        int rating1v1 = 999;
-        for(int i=0; i< rate1v1.size(); i++){
-            if(rate1v1.get(i).getEmail().equals(user.getEmail())){
-                rating1v1 = i+1;
-            }
-        }
-        return new ResponseEntity<>(new UserResponse(user, rating, rating1v1), HttpStatus.OK);
+        return 999;
     }
 
     @PostMapping(value = "/register", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)

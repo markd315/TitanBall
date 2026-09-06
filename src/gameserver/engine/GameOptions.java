@@ -11,9 +11,11 @@ public class GameOptions   {
     @JsonProperty
     public int playerIndex, bestOfIndex, goalieIndex,
             playToIndex, winByIndex, hardWinIndex, suddenDeathIndex, tieIndex, aiDifficultyIndex;
+    @JsonProperty
+    public boolean isHybrid = false;
 
 
-    protected static final int[] playersVal = {3,4,5,0,1,2,6,7,8,2,3,4};
+    protected static final int[] playersVal = {3,4,5,0,1,2,6,7,8,2,3,4,5};
     protected static final int[] goalieVal = {1, 0, 2};
     protected static final int[] bestOfVal = {1, 3, 5, 7, 9};
     protected static final int[] playToVal = {5, 10, 20, 30, 50, 100, 1};
@@ -21,7 +23,7 @@ public class GameOptions   {
     protected static final int[] hardWinVal = {9999, 5, 10, 20, 30, 50, 100};
     protected static final int[] suddenDeathVal = {10, 12, 15, 18, 20, 25, 30, 35, 60, 9999, 3, 5};
     protected static final int[] tieVal = {12, 15, 18, 20, 25, 30, 35, 60, 9999, 3, 5, 10};
-    protected static final String[] playersDisp = {"3v3", "4v4", "5v5 (sep goalie)", "Single-player", "1v1", "2v2", "6v6", "7v7", "8v8", "2v0 Coop vs AI", "3v0 Coop vs AI", "4v0 Coop vs AI"};
+    protected static final String[] playersDisp = {"3v3", "4v4", "5v5 (sep goalie)", "Single-player", "1v1", "2v2", "6v6", "7v7", "8v8", "2v0 Coop vs AI", "3v0 Coop vs AI", "4v0 Coop vs AI", "5v0 Coop vs AI"};
     protected static final String[] goalieDisp = {"Goalies on", "Goalies off", "Permanent goalies"};
     protected static final String[] bestOfDisp = {"Best of 1", "Best of 3", "Best of 5", "Best of 7", "Best of 9"} ;
     protected static final String[] playToDisp = {"Play to 5", "Play to 10", "Play to 20", "Play to 30", "Play to 50", "Play to 100", "Play to 1"};
@@ -34,7 +36,11 @@ public class GameOptions   {
     }
 
     public boolean isCoopVsAi() {
-        return playerIndex >= 9 && playerIndex <= 11;
+        return playerIndex >= 9 && playerIndex <= 12;
+    }
+
+    public boolean isHybrid() {
+        return isHybrid;
     }
 
     public int getAiReactionTimeMinMs() {
@@ -83,6 +89,9 @@ public class GameOptions   {
         this.tieIndex = Integer.parseInt(split[8]);
         if (split.length >= 10) {
             this.aiDifficultyIndex = Integer.parseInt(split[9]);
+        }
+        if (split.length >= 11) {
+            this.isHybrid = "1".equals(split[10]) || "true".equalsIgnoreCase(split[10]);
         }
     }
 
@@ -171,6 +180,8 @@ public class GameOptions   {
         sb.append(tieIndex);
         sb.append("/");
         sb.append(aiDifficultyIndex);
+        sb.append("/");
+        sb.append(isHybrid ? 1 : 0);
         return new String(sb);
     }
 

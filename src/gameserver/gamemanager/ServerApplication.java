@@ -33,15 +33,32 @@ public class ServerApplication {
 
     static Properties prop;
     static String appSecret;
+    public static boolean excludeAiMatchesFromStats = true;
 
     static {
         try {
             prop = new Properties();
             prop.load(new FileInputStream(new File("application.properties")));
             appSecret = prop.getProperty("app.jwtSecret");
+            String p = prop.getProperty("stats.excludeAiMatches", "true").trim();
+            if (p.startsWith("${") && p.endsWith("}")) {
+                String[] parts = p.substring(2, p.length() - 1).split(":", 2);
+                String envVal = System.getenv(parts[0]);
+                excludeAiMatchesFromStats = Boolean.parseBoolean(envVal != null ? envVal : (parts.length > 1 ? parts[1] : "true"));
+            } else {
+                excludeAiMatchesFromStats = Boolean.parseBoolean(p);
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public static boolean isExcludeAiMatchesFromStats() {
+        return excludeAiMatchesFromStats;
+    }
+
+    public static void setExcludeAiMatchesFromStats(boolean exclude) {
+        excludeAiMatchesFromStats = exclude;
     }
 
     public static void addNewGame(String id, GameOptions op, Collection<String> gameFor) {
@@ -169,7 +186,14 @@ public class ServerApplication {
                     val.terminateConnections(val.stateRef);
 
                     boolean isTutorial = (id != null && id.startsWith("tutorial-"));
-                    if (!isTutorial && persistenceManager != null && val.options != null) {
+                    boolean isAiMatch = val.options != null && (val.options.isHybrid() || val.options.isCoopVsAi());
+                    boolean skipStats = isTutorial || (isAiMatch && excludeAiMatchesFromStats);
+
+                    if (isAiMatch && excludeAiMatchesFromStats) {
+                        System.out.println("Skipping postgame stats database write for hybrid/coop AI match: " + id);
+                    }
+
+                    if (!skipStats && persistenceManager != null && val.options != null) {
                         boolean is1v1 = (val.options.playerIndex == 4 
                                 || "/1/1/1/5/2/9999/10/12".equals(val.options.toStringSrv())
                                 || "/4/1/1/5/2/9999/10/12".equals(val.options.toStringSrv())
@@ -226,6 +250,9 @@ public class ServerApplication {
         for (PlayerDivider pl : state.clients) {
             if (pl.email == null) continue;
             User persistence = persistenceManager.userService.findUserByEmail(pl.email);
+            if (persistence == null) {
+                persistence = persistenceManager.userService.findUserByUsername(pl.email);
+            }
             if (persistence == null) continue;
             int totalGames = (persistence.getLosses() != null ? persistence.getLosses() : 0) + (persistence.getWins() != null ? persistence.getWins() : 0);
             Rating<User> oldRating = new Rating<>(persistence, totalGames);
@@ -257,6 +284,9 @@ public class ServerApplication {
         for (PlayerDivider pl : state.clients) {
             if (pl.email == null) continue;
             User persistence = persistenceManager.userService.findUserByEmail(pl.email);
+            if (persistence == null) {
+                persistence = persistenceManager.userService.findUserByUsername(pl.email);
+            }
             if (persistence == null) continue;
             int totalGames = (persistence.getLosses_1v1() != null ? persistence.getLosses_1v1() : 0) + (persistence.getWins_1v1() != null ? persistence.getWins_1v1() : 0);
             Rating<User> oldRating = new Rating<>(persistence, totalGames);

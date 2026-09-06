@@ -21,7 +21,13 @@ public class PersistenceManager {
 
     public void postgameStats(String email, StatEngine stats, String className, int wasVictorious, double newRating) throws Exception {
         User user = userService.findUserByEmail(email);
-        if (user == null) return;
+        if (user == null) {
+            user = userService.findUserByUsername(email);
+        }
+        if (user == null) {
+            System.err.println("[PersistenceManager] User not found for email/username: " + email);
+            return;
+        }
         ClassStat classStat = classService.findStatsTrackerByRole(className);
         ObjectNode toAdd = stats.statsOf(email);
         if(wasVictorious == 1){
@@ -120,7 +126,13 @@ public class PersistenceManager {
     }
     public void postgameStats1v1(String email, StatEngine stats, String className, int wasVictorious, double newRating) throws Exception {
         User user = userService.findUserByEmail(email);
-        if (user == null) return;
+        if (user == null) {
+            user = userService.findUserByUsername(email);
+        }
+        if (user == null) {
+            System.err.println("[PersistenceManager 1v1] User not found for email/username: " + email);
+            return;
+        }
         ClassStat classStat = classService.findStatsTrackerByRole(className);
         JsonNode toAdd = stats.statsOf(email);
         if(wasVictorious == 1){

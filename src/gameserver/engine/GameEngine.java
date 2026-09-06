@@ -44,6 +44,13 @@ public class GameEngine extends Game {
     @com.fasterxml.jackson.annotation.JsonIgnore
     private transient Titan activeLobThrower = null;
 
+    // Tracks the active sidegoal scorers until a center goal is cashed in (combo goal)
+    // or the ghost points are rounded away by the enemy team.
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    public transient final List<PlayerDivider> activeHomeSidegoalScorers = new ArrayList<>();
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    public transient final List<PlayerDivider> activeAwaySidegoalScorers = new ArrayList<>();
+
     // ── Performance: ObjectMapper is heavyweight and thread-safe; share one instance
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -177,17 +184,17 @@ public class GameEngine extends Game {
         Map<Integer, Integer> oldToNewIndex = new HashMap<>();
         int newIndex = 1;
         
-        if (options != null && options.isCoopVsAi()) {
+        if (options != null && (options.isCoopVsAi() || options.isHybrid())) {
             int teamSize = 2;
             int[] vals = GameOptions.getPlayersVal();
             if (options.playerIndex >= 0 && options.playerIndex < vals.length) {
                 teamSize = vals[options.playerIndex];
             }
-            int numFieldNeeded = teamSize - 1;
+            int numFieldNeeded = options.goaliesDisabled() ? teamSize : teamSize - 1;
 
             for (int i = 0; i < players.length; i++) {
                 boolean found = false;
-                if (i == 0 || i == 1) { // Goalies
+                if (!options.goaliesDisabled() && (i == 0 || i == 1)) { // Goalies
                     found = true;
                 } else if (i >= 2 && i < 2 + numFieldNeeded) { // Home field
                     found = true;
@@ -384,12 +391,18 @@ public class GameEngine extends Game {
                     continue;
                 }
                 Team enemy, us;
+                List<PlayerDivider> ourSideScorers;
+                List<PlayerDivider> enemySideScorers;
                 if (goal.team == TeamAffiliation.HOME) {
                     us = this.away;
                     enemy = this.home;
+                    ourSideScorers = this.activeAwaySidegoalScorers;
+                    enemySideScorers = this.activeHomeSidegoalScorers;
                 } else { //(goal.team == TeamAffiliation.AWAY)
                     us = this.home;
                     enemy = this.away;
+                    ourSideScorers = this.activeHomeSidegoalScorers;
+                    enemySideScorers = this.activeAwaySidegoalScorers;
                 }
                 goal.trigger();
                 Titan defGoalie = (goal.team == TeamAffiliation.HOME) ? players[0] : players[1];
@@ -398,18 +411,28 @@ public class GameEngine extends Game {
                 PlayerDivider scorer = (attackerId != null) ? clientFromTitan(titanByID(attackerId.toString()).orElse(null)) : getPossessorOrThrower();
                 if (scorer != null) {
                     stats.grant(scorer, StatEngine.StatEnum.SIDEGOALS);
-                    stats.grant(scorer, StatEngine.StatEnum.POINTS, .25);
+                    ourSideScorers.add(scorer);
                 }
                 if (us.score % 1.0 == .75) {
                     goal.freeze();
                 }
                 us.score += .25;
+                // If 4 sidegoals have accumulated without a center goal, each sidegoal scorer gets 0.25 pts (1 full team point)
+                if (ourSideScorers.size() >= 4) {
+                    for (int sIdx = 0; sIdx < 4 && !ourSideScorers.isEmpty(); sIdx++) {
+                        PlayerDivider s = ourSideScorers.remove(0);
+                        if (s != null) {
+                            stats.grant(s, StatEngine.StatEnum.POINTS, 0.25);
+                        }
+                    }
+                }
                 checkWinCondition(false);//somewhat intentional to check condition before ghost removal
                 boolean saveProgress = (enemy == this.home)
                     ? homeGoaliePurchasedUpgrades.contains("siege.t5.saveprogress")
                     : awayGoaliePurchasedUpgrades.contains("siege.t5.saveprogress");
                 if (!saveProgress) {
                     enemy.score = Math.floor(enemy.score); //Reset any of the other teams ghostpoints.
+                    enemySideScorers.clear(); // Sidegoals rounded away: 0 points credit
                 }
             }
         }
@@ -421,12 +444,18 @@ public class GameEngine extends Game {
                     continue;
                 }
                 Team us, enemy;
+                List<PlayerDivider> ourSideScorers;
+                List<PlayerDivider> enemySideScorers;
                 if (goal.team == TeamAffiliation.HOME) {
                     us = this.away;
                     enemy = this.home;
+                    ourSideScorers = this.activeAwaySidegoalScorers;
+                    enemySideScorers = this.activeHomeSidegoalScorers;
                 } else { //(goal.team == TeamAffiliation.AWAY)
                     us = this.home;
                     enemy = this.away;
+                    ourSideScorers = this.activeHomeSidegoalScorers;
+                    enemySideScorers = this.activeAwaySidegoalScorers;
                 }
                 goal.trigger();
                 Titan defGoalieHi = (goal.team == TeamAffiliation.HOME) ? players[0] : players[1];
@@ -434,14 +463,25 @@ public class GameEngine extends Game {
                 //Cash in all ghost/combo points for a full point
                 long iPart = (long) us.score;
                 double fPart = us.score - iPart;
+                int nSidegoals = (int) Math.round(fPart * 4.0);
                 us.score = Math.floor(us.score);
                 us.score += fPart * 4 + 1;
                 UUID attackerIdHi = (us.which == TeamAffiliation.HOME) ? lastHomePossessor : lastAwayPossessor;
                 PlayerDivider scorerHi = (attackerIdHi != null) ? clientFromTitan(titanByID(attackerIdHi.toString()).orElse(null)) : getPossessorOrThrower();
                 if (scorerHi != null) {
                     stats.grant(scorerHi, StatEngine.StatEnum.GOALS);
-                    stats.grant(scorerHi, StatEngine.StatEnum.POINTS, fPart * 4 + 1);
+                    // Combo goal credit: 1 + (0.5 * n) points credit goes to center goal scorer
+                    double centerPoints = 1.0 + (0.5 * nSidegoals);
+                    stats.grant(scorerHi, StatEngine.StatEnum.POINTS, centerPoints);
                 }
+                // 0.5 points credit goes to each active sidegoal scorer as an assist in the combo goal
+                for (int sIdx = 0; sIdx < nSidegoals && !ourSideScorers.isEmpty(); sIdx++) {
+                    PlayerDivider sideScorer = ourSideScorers.remove(0);
+                    if (sideScorer != null) {
+                        stats.grant(sideScorer, StatEngine.StatEnum.POINTS, 0.5);
+                    }
+                }
+                ourSideScorers.clear();
                 checkWinCondition(false);
                 //reset enemy team ghost points
                 boolean saveProgressHi = (enemy == this.home)
@@ -449,6 +489,7 @@ public class GameEngine extends Game {
                     : awayGoaliePurchasedUpgrades.contains("siege.t5.saveprogress");
                 if (!saveProgressHi) {
                     enemy.score = Math.floor(enemy.score);
+                    enemySideScorers.clear();
                 }
                 us.hasBall = true;
                 enemy.hasBall = false;
@@ -2397,8 +2438,8 @@ public class GameEngine extends Game {
         double pCY = possessor.Y + possessor.height / 2.0;
         double dist = Math.hypot(pCX - aiCX, pCY - aiCY);
 
-        double shortRange = Math.max(50.0, ai.stealRad * ai.rangeFactor);
-        double maxRange = 200.0;
+        double shortRange = Math.max(25.0, (ai.stealRad * ai.rangeFactor) * 0.5);
+        double maxRange = 100.0;
 
         double stealProb;
         if (dist <= shortRange) {
@@ -3529,7 +3570,26 @@ public class GameEngine extends Game {
         return over;
     }
 
+    private void resolveEndGameSidegoals() {
+        // Condition 1: Game end. Any remaining uncashed sidegoals still active when game ends
+        // are credited as 0.25 points to each sidegoal scorer.
+        for (PlayerDivider s : activeHomeSidegoalScorers) {
+            if (s != null) {
+                stats.grant(s, StatEngine.StatEnum.POINTS, 0.25);
+            }
+        }
+        activeHomeSidegoalScorers.clear();
+
+        for (PlayerDivider s : activeAwaySidegoalScorers) {
+            if (s != null) {
+                stats.grant(s, StatEngine.StatEnum.POINTS, 0.25);
+            }
+        }
+        activeAwaySidegoalScorers.clear();
+    }
+
     void triggerWin(Team winner) {
+        resolveEndGameSidegoals();
         for (PlayerDivider p : clients) {
             int winDex = p.selection;
             if (winner.which.equals(players[winDex - 1].team)) {
@@ -3543,6 +3603,7 @@ public class GameEngine extends Game {
     }
 
     void triggerTie(Team winner) {
+        resolveEndGameSidegoals();
         for (PlayerDivider p : clients) {
             int winDex = p.selection;
             if (winner.which.equals(players[winDex - 1].team)) {

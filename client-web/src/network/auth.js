@@ -36,14 +36,37 @@ export async function login(usernameOrEmail, password) {
   const data = await res.json();
   sessionStorage.setItem('accessToken', data.accessToken);
   sessionStorage.setItem('refreshToken', data.refreshToken);
+  if (usernameOrEmail && usernameOrEmail.includes('@')) {
+    sessionStorage.setItem('email', usernameOrEmail);
+  }
+  sessionStorage.setItem('usernameOrEmail', usernameOrEmail);
   setServerWarmed(true);
   return data;
 }
 
-export async function joinQueue(tournamentCode = '', classSelection = '', partners = '', preferredLane = '') {
+export async function fetchUserStats() {
+  const token = sessionStorage.getItem('accessToken');
+  if (!token) return null;
+  const email = sessionStorage.getItem('email') || '';
+  const username = sessionStorage.getItem('username') || '';
+  const res = await fetch('/pages/titanball/api/stat', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({ email, username })
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch stats: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function joinQueue(tournamentCode = '', classSelection = '', partners = '', preferredLane = '', fillWithAi = false, aiDifficulty = 0) {
   const token = sessionStorage.getItem('accessToken');
   const laneParam = preferredLane || sessionStorage.getItem('preferredLane') || 'TOP';
-  const url = `/pages/titanball/api/join?tournamentCode=${encodeURIComponent(tournamentCode)}&classSelection=${encodeURIComponent(classSelection)}&preferredLane=${encodeURIComponent(laneParam)}&partners=${encodeURIComponent(partners)}`;
+  const url = `/pages/titanball/api/join?tournamentCode=${encodeURIComponent(tournamentCode)}&classSelection=${encodeURIComponent(classSelection)}&preferredLane=${encodeURIComponent(laneParam)}&partners=${encodeURIComponent(partners)}&fillWithAi=${encodeURIComponent(fillWithAi)}&aiDifficulty=${encodeURIComponent(aiDifficulty)}`;
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${token}` }

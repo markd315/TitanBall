@@ -29,7 +29,7 @@ public class UserResponse implements Serializable {
         this.losses = user.getLosses();
         this.ties = user.getTies();
         this.rating = user.getRating();
-        this.goals = user.getSidegoals();
+        this.goals = user.getGoals();
         this.points = user.getPoints();
         this.sidegoals = user.getSidegoals();
         this.blocks = user.getBlocks();
@@ -41,7 +41,7 @@ public class UserResponse implements Serializable {
         this.wins_1v1 = user.getWins_1v1();
         this.losses_1v1 = user.getLosses_1v1();
         this.rating_1v1 = user.getRating_1v1();
-        this.goals_1v1 = user.getSidegoals_1v1();
+        this.goals_1v1 = user.getGoals_1v1();
         this.points_1v1 = user.getPoints_1v1();
         this.sidegoals_1v1 = user.getSidegoals_1v1();
         this.blocks_1v1 = user.getBlocks_1v1();

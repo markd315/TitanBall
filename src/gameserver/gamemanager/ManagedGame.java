@@ -103,6 +103,42 @@ public class ManagedGame {
             return;
         }
 
+        if (op != null && op.isHybrid()) {
+            availableSlots.clear();
+            authserver.matchmaking.Matchmaker mm = null;
+            try {
+                mm = authserver.SpringContextBridge.services().getMatchmaker();
+            } catch (Exception ignored) {}
+
+            int numFieldSlots = op.goaliesDisabled() ? teamSize : teamSize - 1;
+
+            if (op.goaliesDisabled()) {
+                availableSlots.add(3);
+                availableSlots.add(11);
+                if (gameFor != null && !gameFor.isEmpty()) {
+                    List<String> teamHome = new ArrayList<>();
+                    List<String> teamAway = new ArrayList<>();
+                    partitionTeams(new ArrayList<>(gameFor), teamHome, teamAway, 1);
+                    if (!teamHome.isEmpty()) preAssignedSlots.put(teamHome.get(0), 3);
+                    if (!teamAway.isEmpty()) preAssignedSlots.put(teamAway.get(0), 11);
+                }
+            } else {
+                availableSlots.add(1);
+                availableSlots.add(2);
+                for (int i = 0; i < numFieldSlots; i++) availableSlots.add(3 + i);
+                for (int i = 0; i < numFieldSlots; i++) availableSlots.add(11 + i);
+
+                if (gameFor != null && !gameFor.isEmpty()) {
+                    List<String> teamHome = new ArrayList<>();
+                    List<String> teamAway = new ArrayList<>();
+                    partitionTeams(new ArrayList<>(gameFor), teamHome, teamAway, teamSize);
+                    assignHybridTeamSlots(teamHome, 1, 3, numFieldSlots, mm);
+                    assignHybridTeamSlots(teamAway, 2, 11, numFieldSlots, mm);
+                }
+            }
+            return;
+        }
+
         if (gameFor != null && !gameFor.isEmpty()) {
             teamSize = gameFor.size() / 2;
         }
@@ -202,6 +238,64 @@ public class ManagedGame {
         return slotIdx < lanes.length ? lanes[slotIdx] : "DEFENSIVE";
     }
 
+    private void assignHybridTeamSlots(List<String> team, int goalieSlot, int fieldSlotStart, int numFieldSlots, authserver.matchmaking.Matchmaker mm) {
+        String goalie = null;
+        if (mm != null) {
+            for (String email : team) {
+                if ("GOALIE".equalsIgnoreCase(mm.playerClasses.getOrDefault(email, "WARRIOR"))) {
+                    goalie = email;
+                    break;
+                }
+            }
+        }
+        if (goalie == null && team.size() >= 1 + numFieldSlots && !team.isEmpty()) {
+            goalie = team.get(0);
+        }
+        if (goalie != null) {
+            preAssignedSlots.put(goalie, goalieSlot);
+        }
+
+        List<String> fieldPlayers = new ArrayList<>();
+        for (String email : team) {
+            if (!email.equals(goalie)) {
+                fieldPlayers.add(email);
+            }
+        }
+
+        String[] assigned = new String[numFieldSlots];
+        boolean[] usedPlayer = new boolean[fieldPlayers.size()];
+
+        for (int slotIdx = 0; slotIdx < numFieldSlots; slotIdx++) {
+            String targetLane = getTargetLaneForSlot(slotIdx, numFieldSlots);
+            for (int p = 0; p < fieldPlayers.size(); p++) {
+                if (!usedPlayer[p]) {
+                    String pref = mm != null ? mm.playerPreferredLanes.get(fieldPlayers.get(p)) : null;
+                    if (pref != null && targetLane.equalsIgnoreCase(pref)) {
+                        assigned[slotIdx] = fieldPlayers.get(p);
+                        usedPlayer[p] = true;
+                        break;
+                    }
+                }
+            }
+        }
+        for (int slotIdx = 0; slotIdx < numFieldSlots; slotIdx++) {
+            if (assigned[slotIdx] == null) {
+                for (int p = 0; p < fieldPlayers.size(); p++) {
+                    if (!usedPlayer[p]) {
+                        assigned[slotIdx] = fieldPlayers.get(p);
+                        usedPlayer[p] = true;
+                        break;
+                    }
+                }
+            }
+        }
+        for (int slotIdx = 0; slotIdx < numFieldSlots; slotIdx++) {
+            if (assigned[slotIdx] != null) {
+                preAssignedSlots.put(assigned[slotIdx], fieldSlotStart + slotIdx);
+            }
+        }
+    }
+
     private void partitionTeams(List<String> selectedPlayers, List<String> teamHome, List<String> teamAway, int teamSize) {
         int n = selectedPlayers.size();
         if (n <= 1) {
@@ -214,8 +308,20 @@ public class ManagedGame {
             mm = authserver.SpringContextBridge.services().getMatchmaker();
         } catch (Exception ignored) {}
 
+        int targetHome = Math.min(teamSize, (n + 1) / 2);
         List<List<Integer>> combinations = new ArrayList<>();
-        generateCombinations(combinations, new ArrayList<>(), 1, n - 1, teamSize - 1);
+        generateCombinations(combinations, new ArrayList<>(), 1, n - 1, targetHome - 1);
+
+        if (combinations.isEmpty()) {
+            for (int i = 0; i < n; i++) {
+                if (i < targetHome) {
+                    teamHome.add(selectedPlayers.get(i));
+                } else {
+                    teamAway.add(selectedPlayers.get(i));
+                }
+            }
+            return;
+        }
 
         List<Integer> bestHome = null;
         int bestBrokenMutual = Integer.MAX_VALUE;
@@ -388,7 +494,10 @@ public class ManagedGame {
     boolean lobbyFull(List<WebSocketPlayerConnection> queue) {
         Set<String> uniqueEmails = new HashSet<>();
         for (WebSocketPlayerConnection p : queue) {
-            uniqueEmails.add(p.getEmail());
+            if (p.getEmail() != null) uniqueEmails.add(p.getEmail());
+        }
+        if (preAssignedSlots != null && !preAssignedSlots.isEmpty()) {
+            return uniqueEmails.containsAll(preAssignedSlots.keySet());
         }
         return uniqueEmails.size() == availableSlots.size();
     }

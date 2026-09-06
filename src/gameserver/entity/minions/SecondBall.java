@@ -149,15 +149,32 @@ public class SecondBall extends Entity implements Tickable, Collidable, Serializ
                 // Cash in all ghost/combo points for a full point
                 long iPart = (long) us.score;
                 double fPart = us.score - iPart;
+                int nSidegoals = (int) Math.round(fPart * 4.0);
                 us.score = Math.floor(us.score);
                 us.score += fPart * 4 + 1;
                 
+                // Credit combo assists if sidegoals were cashed in
+                java.util.List<networking.PlayerDivider> ourSideScorers = (us.which == TeamAffiliation.HOME)
+                    ? context.activeHomeSidegoalScorers
+                    : context.activeAwaySidegoalScorers;
+                for (int sIdx = 0; sIdx < nSidegoals && !ourSideScorers.isEmpty(); sIdx++) {
+                    networking.PlayerDivider sideScorer = ourSideScorers.remove(0);
+                    if (sideScorer != null) {
+                        context.stats.grant(sideScorer, gameserver.engine.StatEngine.StatEnum.POINTS, 0.5);
+                    }
+                }
+                ourSideScorers.clear();
+
                 // Reset enemy team ghost points
                 boolean saveProgressHi = (enemy == context.home)
                     ? context.homeGoaliePurchasedUpgrades.contains("siege.t5.saveprogress")
                     : context.awayGoaliePurchasedUpgrades.contains("siege.t5.saveprogress");
                 if (!saveProgressHi) {
                     enemy.score = Math.floor(enemy.score);
+                    java.util.List<networking.PlayerDivider> enemySideScorers = (enemy.which == TeamAffiliation.HOME)
+                        ? context.activeHomeSidegoalScorers
+                        : context.activeAwaySidegoalScorers;
+                    enemySideScorers.clear();
                 }
                 
                 us.hasBall = true;
