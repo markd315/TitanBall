@@ -79,12 +79,15 @@ public class BallPortal extends Entity implements Collidable, Serializable {
     private RetObj oldestP(List<Entity> pool, Titan player){
         BallPortal oldestP = null;
         int currentBallPortals = 0;
+        if (player == null || player.id == null) {
+            return new RetObj(null, 0);
+        }
         for (Entity e : pool) {
             if (e instanceof BallPortal && e.getHealth() > 0) {
                 BallPortal p = (BallPortal) e;
                 if (player.id.equals(p.createdById)) {
                     currentBallPortals += 1;
-                    if (oldestP == null || p.createdAt.isBefore(oldestP.createdAt)) {
+                    if (oldestP == null || (p.createdAt != null && oldestP.createdAt != null && p.createdAt.isBefore(oldestP.createdAt))) {
                         oldestP = p;
                     }
                 }
@@ -94,6 +97,9 @@ public class BallPortal extends Entity implements Collidable, Serializable {
     }
 
     private boolean isPlaceableRangeCheck(GameEngine context, UUID creator){
+        if (creator == null) {
+            return true;
+        }
         Optional<BallPortal> friendly = findFriendlyBallPortal(context, creator);
         if(!friendly.isPresent()){
             return true;
@@ -104,6 +110,9 @@ public class BallPortal extends Entity implements Collidable, Serializable {
     }
 
     private Optional<BallPortal> findFriendlyBallPortal(GameEngine context, UUID creator) {
+        if (creator == null) {
+            return Optional.empty();
+        }
         for (Entity e : context.entityPool) {
             if (e instanceof BallPortal) {
                 BallPortal p = (BallPortal) e;

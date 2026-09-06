@@ -257,10 +257,7 @@ public class TutorialOverrides extends GameEngine   {
                         t.fuel = 100.0;
                     }
                 }
-                boolean canRun = !effectPool.isRooted(t) &&
-                        ((t.actionState == Titan.TitanState.IDLE) ||
-                        ((t.actionState == Titan.TitanState.SHOOT || t.actionState == Titan.TitanState.LOB) &&
-                         t.actionFrame >= (int) (t.kickingFrames * c.SHOT_FREEZE_RATIO)));
+                boolean canRun = !effectPool.isRooted(t) && isActionMovementUnlocked(t);
                 if (canRun) {
                     if (t.runRight == 1) runRightCtrl(t);
                     if (t.runLeft == 1) runLeftCtrl(t);

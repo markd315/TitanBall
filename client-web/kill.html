@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>TitanBall - Server De-warm / Kill</title>
+    <!-- Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body, html {
+        margin: 0;
+        padding: 0;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+        background-color: #0b1a13;
+        color: #e2e8f0;
+        font-family: 'Outfit', sans-serif;
+      }
+      #app {
+        position: relative;
+        width: 100vw;
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background-image: 
+          radial-gradient(circle at center, transparent 30%, rgba(255, 71, 87, 0.05) 100%),
+          linear-gradient(rgba(27, 77, 62, 0.2) 2px, transparent 2px),
+          linear-gradient(90deg, rgba(27, 77, 62, 0.2) 2px, transparent 2px);
+        background-size: 100% 100%, 80px 80px, 80px 80px;
+        padding: 20px;
+      }
+      .card {
+        background: rgba(15, 30, 24, 0.85);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 71, 87, 0.3);
+        border-radius: 16px;
+        width: 100%;
+        max-width: 520px;
+        padding: 32px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 20px rgba(255, 71, 87, 0.15);
+        text-align: center;
+      }
+      .icon-badge {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        background: rgba(255, 71, 87, 0.15);
+        border: 2px solid #ff4757;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 20px auto;
+        font-size: 28px;
+        box-shadow: 0 0 15px rgba(255, 71, 87, 0.3);
+      }
+      h1 {
+        font-size: 26px;
+        font-weight: 800;
+        margin: 0 0 8px 0;
+        letter-spacing: 0.5px;
+        color: #ffffff;
+      }
+      p.subtitle {
+        color: #94a3b8;
+        font-size: 14px;
+        margin: 0 0 24px 0;
+        line-height: 1.5;
+      }
+      .status-box {
+        background: rgba(0, 0, 0, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 24px;
+        min-height: 70px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        transition: all 0.3s ease;
+      }
+      .status-text {
+        font-size: 15px;
+        font-weight: 600;
+        color: #cbd5e1;
+      }
+      .status-box.sending {
+        border-color: rgba(245, 158, 11, 0.5);
+        background: rgba(245, 158, 11, 0.08);
+      }
+      .status-box.sending .status-text {
+        color: #fbbf24;
+      }
+      .status-box.success {
+        border-color: rgba(16, 185, 129, 0.5);
+        background: rgba(16, 185, 129, 0.08);
+      }
+      .status-box.success .status-text {
+        color: #34d399;
+      }
+      .status-box.error {
+        border-color: rgba(239, 68, 68, 0.5);
+        background: rgba(239, 68, 68, 0.08);
+      }
+      .status-box.error .status-text {
+        color: #f87171;
+      }
+      .response-log {
+        font-family: monospace;
+        font-size: 12px;
+        color: #94a3b8;
+        margin-top: 8px;
+        word-break: break-all;
+        max-height: 120px;
+        overflow-y: auto;
+        text-align: left;
+        width: 100%;
+        padding: 8px;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 4px;
+        display: none;
+      }
+      .btn-kill {
+        background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 14px 28px;
+        font-size: 16px;
+        font-weight: 700;
+        cursor: pointer;
+        width: 100%;
+        transition: all 0.2s ease;
+        box-shadow: 0 4px 15px rgba(220, 38, 38, 0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+      .btn-kill:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(220, 38, 38, 0.6);
+        background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+      }
+      .btn-kill:active:not(:disabled) {
+        transform: translateY(0);
+      }
+      .btn-kill:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        box-shadow: none;
+      }
+      .nav-links {
+        margin-top: 20px;
+      }
+      .nav-links a {
+        color: #64748b;
+        text-decoration: none;
+        font-size: 13px;
+        transition: color 0.2s ease;
+      }
+      .nav-links a:hover {
+        color: #38bdf8;
+      }
+      .spinner {
+        width: 18px;
+        height: 18px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-top-color: #ffffff;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        display: inline-block;
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <div class="card">
+        <div class="icon-badge">⚡</div>
+        <h1>Server De-warm</h1>
+        <p class="subtitle">Sends a kill signal to scale the ECS Fargate cluster down to 0 desired tasks.</p>
+
+        <div id="status-box" class="status-box">
+          <div id="status-text" class="status-text">Ready</div>
+          <pre id="response-log" class="response-log"></pre>
+        </div>
+
+        <button id="kill-btn" class="btn-kill" onclick="sendKillSignal()">
+          <span>De-warm ECS Cluster</span>
+        </button>
+
+        <div class="nav-links">
+          <a href="home.html">← Back to TitanBall Home</a>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      async function sendKillSignal() {
+        const btn = document.getElementById('kill-btn');
+        const statusBox = document.getElementById('status-box');
+        const statusText = document.getElementById('status-text');
+        const responseLog = document.getElementById('response-log');
+
+        btn.disabled = true;
+        btn.innerHTML = `<span class="spinner"></span> <span>Sending Signal...</span>`;
+
+        statusBox.className = 'status-box sending';
+        statusText.innerHTML = 'Sending kill payload to PilotLight Lambda...';
+        responseLog.style.display = 'none';
+
+        try {
+          const res = await fetch('/pages/titanball/api/warm', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ kill: true })
+          });
+
+          const data = await res.json();
+          responseLog.textContent = JSON.stringify(data, null, 2);
+          responseLog.style.display = 'block';
+
+          if (res.ok && data.status === 'stopped') {
+            statusBox.className = 'status-box success';
+            statusText.innerHTML = '✓ ECS cluster de-warmed (scaled to 0)';
+            btn.innerHTML = '<span>De-warmed Successfully</span>';
+          } else {
+            statusBox.className = 'status-box error';
+            statusText.innerHTML = '⚠ Response: ' + (data.message || data.error || 'Unexpected status');
+            btn.disabled = false;
+            btn.innerHTML = '<span>Retry De-warm</span>';
+          }
+        } catch (err) {
+          console.error('Failed to send kill payload:', err);
+          responseLog.textContent = String(err);
+          responseLog.style.display = 'block';
+          statusBox.className = 'status-box error';
+          statusText.innerHTML = '❌ Request failed: ' + err.message;
+          btn.disabled = false;
+          btn.innerHTML = '<span>Retry De-warm</span>';
+        }
+      }
+
+      // Support auto-trigger via query parameter ?auto=true
+      window.addEventListener('DOMContentLoaded', () => {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('auto') === 'true') {
+          sendKillSignal();
+        }
+      });
+    </script>
+  </body>
+</html>

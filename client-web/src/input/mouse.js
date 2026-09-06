@@ -1,6 +1,6 @@
 import { gameState, clientUI } from '../state.js';
 import { currentConfig, actionMap } from './keyboard.js';
-import { CONSTANTS } from '../constants.js';
+import { CONSTANTS, GamePhase } from '../constants.js';
 import { AssetManager } from '../assets/sprites.js';
 import {
     TREE_NODES, ANALYSIS_IMG_WIDTH, ANALYSIS_IMG_HEIGHT,
@@ -136,6 +136,14 @@ export function initMouse() {
 
     canvas.addEventListener('mousemove', updateCoordinates);
     canvas.addEventListener('mousedown', (e) => {
+        const isGameEnded = gameState.phase === GamePhase.ENDED ||
+                            gameState.phase === 'ENDED' ||
+                            (gameState.game && (gameState.game.ended || gameState.game.phase === 'ENDED'));
+        if (isGameEnded) {
+            window.location.reload();
+            e.preventDefault();
+            return;
+        }
         updateCoordinates(e);
         // First: UI click check
         if (handleUIClick(gameState.mouseX, gameState.mouseY)) {

@@ -1,13 +1,42 @@
+import { setServerWarmed } from './warm.js';
+
 export async function login(usernameOrEmail, password) {
-  const res = await fetch('/pages/titanball/api/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ usernameOrEmail, password })
-  });
-  if (!res.ok) throw new Error('Login failed');
+  let res;
+  try {
+    res = await fetch('/pages/titanball/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ usernameOrEmail, password })
+    });
+  } catch (netErr) {
+    console.error("[Auth Observability] Login network error (server offline/unreachable):", netErr);
+    setServerWarmed(false);
+    const err = new Error('Server is offline or unreachable');
+    err.code = 'SERVER_DOWN';
+    err.cause = netErr;
+    throw err;
+  }
+
+  if (!res.ok) {
+    console.warn(`[Auth Observability] Login HTTP status: ${res.status}`);
+    if (res.status === 401 || res.status === 400 || res.status === 403) {
+      const err = new Error('Invalid username/email or password');
+      err.code = 'INVALID_CREDENTIALS';
+      err.status = res.status;
+      throw err;
+    } else {
+      setServerWarmed(false);
+      const err = new Error(`Server returned error status ${res.status}`);
+      err.code = 'SERVER_DOWN';
+      err.status = res.status;
+      throw err;
+    }
+  }
+
   const data = await res.json();
   sessionStorage.setItem('accessToken', data.accessToken);
   sessionStorage.setItem('refreshToken', data.refreshToken);
+  setServerWarmed(true);
   return data;
 }
 

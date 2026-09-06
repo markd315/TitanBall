@@ -410,4 +410,139 @@ public class UnilateralScoringTest {
         Assert.assertTrue("Non-Guardian walking ball into own goal triggers own goal for enemy",
                 engine.away.score > initialAwayScore);
     }
+
+    /**
+     * Test 10: Shot vs Lob Castlag Frames.
+     * Shot has 20 frames of castlag before movement unlocks.
+     * Lob has 15 frames of castlag before movement unlocks.
+     */
+    @Test
+    public void testShotAndLobCastLagFrames() {
+        GameEngine engine = createStandardGame();
+        Titan titan = engine.players[2];
+
+        Assert.assertEquals("Shot castlag config is 20 frames", 20, engine.c.SHOT_CASTLAG_FRAMES);
+        Assert.assertEquals("Lob castlag config is 15 frames", 15, engine.c.LOB_CASTLAG_FRAMES);
+
+        // Test Shot castlag: movement locked for frames 0..19, unlocked at frame 20
+        titan.actionState = Titan.TitanState.SHOOT;
+        for (int frame = 0; frame < 20; frame++) {
+            titan.actionFrame = frame;
+            Assert.assertFalse("Shot movement locked at frame " + frame, engine.isActionMovementUnlocked(titan));
+        }
+        titan.actionFrame = 20;
+        Assert.assertTrue("Shot movement unlocked at frame 20", engine.isActionMovementUnlocked(titan));
+
+        // Test Lob castlag: movement locked for frames 0..14, unlocked at frame 15
+        titan.actionState = Titan.TitanState.LOB;
+        for (int frame = 0; frame < 15; frame++) {
+            titan.actionFrame = frame;
+            Assert.assertFalse("Lob movement locked at frame " + frame, engine.isActionMovementUnlocked(titan));
+        }
+        for (int frame = 15; frame <= 20; frame++) {
+            titan.actionFrame = frame;
+            Assert.assertTrue("Lob movement unlocked at frame " + frame, engine.isActionMovementUnlocked(titan));
+        }
+    }
+
+    /**
+     * Test 11: AI Titan steals ball from stationary ball carrier when in solid contact.
+     * Titans are solid with a 20x52 core. When touching vertically or horizontally,
+     * the AI must recognize steal range and execute the T-key steal codepath.
+     */
+    @Test
+    public void testAiStealsBallWhenCarrierStandsStill() {
+        GameEngine engine = createStandardGame();
+        Titan humanCarrier = engine.players[2]; // Home Warrior
+        humanCarrier.setType(TitanType.WARRIOR);
+        humanCarrier.team = TeamAffiliation.HOME;
+        humanCarrier.X = 500;
+        humanCarrier.Y = 300;
+        humanCarrier.possession = 1;
+        engine.home.hasBall = true;
+        engine.away.hasBall = false;
+        engine.ball.X = humanCarrier.X + humanCarrier.centerDist - engine.ball.centerDist;
+        engine.ball.Y = humanCarrier.Y + humanCarrier.centerDist - engine.ball.centerDist;
+        engine.ballVisible = true;
+
+        // Away AI Titan touching humanCarrier vertically (above, touching solid core dy=52)
+        Titan aiTitan = engine.players[6]; // Away Warrior
+        aiTitan.setType(TitanType.WARRIOR);
+        aiTitan.team = TeamAffiliation.AWAY;
+        aiTitan.X = 500;
+        aiTitan.Y = 300 - 52; // Touching humanCarrier's solid core from above
+        aiTitan.possession = 0;
+        aiTitan.actionState = Titan.TitanState.IDLE;
+
+        // Move all other players far away so they don't interfere with this 1v1 test
+        for (int i = 0; i < engine.players.length; i++) {
+            if (i != 2 && i != 6) {
+                engine.players[i].X = 999900;
+                engine.players[i].Y = 999900;
+            }
+        }
+
+        // Only humanCarrier (slot 3, index 2) has a connected client; aiTitan (slot 7, index 6) is an AI titan
+        PlayerDivider humanClient = new PlayerDivider(Arrays.asList(3));
+        humanClient.selection = 3;
+        engine.clients = new ArrayList<>(Arrays.asList(humanClient));
+
+        // Verify solid core distance is 0 (touching) and within steal range
+        Assert.assertTrue("AI is within steal range when in contact with ball carrier",
+                engine.isWithinStealRange(aiTitan, humanCarrier));
+
+        // Execute AI tactics tick
+        engine.yourPlayerTactics();
+
+        // Verify AI successfully stole the ball
+        Assert.assertEquals("AI gained possession", 1, aiTitan.possession);
+        Assert.assertEquals("Human lost possession", 0, humanCarrier.possession);
+        Assert.assertTrue("AI steal is put on cooldown",
+                engine.effectPool.hasEffect(aiTitan, EffectId.COOLDOWN_STEAL));
+    }
+
+    /**
+     * Test 12: AI Titan uses abilities against nearby enemy when not in steal range.
+     * When enemy is within ability combat range, AI casts ability, sets cooldown, and deals damage.
+     */
+    @Test
+    public void testAiUsesAbilityWhenInCombatRange() {
+        GameEngine engine = createStandardGame();
+        Titan humanEnemy = engine.players[2]; // Home Warrior
+        humanEnemy.setType(TitanType.WARRIOR);
+        humanEnemy.team = TeamAffiliation.HOME;
+        humanEnemy.X = 500;
+        humanEnemy.Y = 300;
+        humanEnemy.possession = 0;
+        double initialHp = humanEnemy.getHealth();
+
+        Titan aiRanger = engine.players[6]; // Away Ranger
+        aiRanger.setType(TitanType.RANGER);
+        aiRanger.team = TeamAffiliation.AWAY;
+        aiRanger.X = 650; // 150px away, well within arrow range (320px)
+        aiRanger.Y = 300;
+        aiRanger.possession = 0;
+        aiRanger.actionState = Titan.TitanState.IDLE;
+        // Move all other players far away so they don't interfere with this 1v1 test
+        for (int i = 0; i < engine.players.length; i++) {
+            if (i != 2 && i != 6) {
+                engine.players[i].X = 999900;
+                engine.players[i].Y = 999900;
+            }
+        }
+
+        PlayerDivider humanClient = new PlayerDivider(Arrays.asList(3));
+        humanClient.selection = 3;
+        engine.clients = new ArrayList<>(Arrays.asList(humanClient));
+
+        // Execute AI tactics tick
+        engine.yourPlayerTactics();
+
+        // Verify AI Ranger cast Q (Arrow) targeting the enemy
+        Assert.assertTrue("AI Ranger put Q on cooldown",
+                engine.effectPool.hasEffect(aiRanger, EffectId.COOLDOWN_Q));
+        Assert.assertTrue("Human enemy took damage from AI Ranger arrow",
+                humanEnemy.getHealth() < initialHp);
+    }
 }
+

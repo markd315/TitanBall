@@ -444,8 +444,8 @@ public class GuardianAbilities implements Serializable {
                 }
             }
 
-            // Forward Medics (compact 160x160 continuous healing zone in opponent's third)
-            if (e instanceof Fire && e.team == team && e.width == 160) {
+            // Forward Medics (continuous healing zone)
+            if (e instanceof Fire && e.team == team && (e.width == 680 || e.width == 160)) {
                 double hps = context.c.getD("guardian.forwardmedics.hps");
                 double healPerTick = hps / (1000.0 / context.c.GAMETICK_MS);
                 for (Titan t : context.players) {
@@ -879,10 +879,10 @@ public class GuardianAbilities implements Serializable {
     }
 
     private void spawnForwardMedics(GameEngine context, Titan goalie) {
-        int midHoopCY = (int) (context.c.getI("goal.hi.y") + context.c.getI("goal.hi.height") / 2.0);
-        int mx = (team == TeamAffiliation.HOME) ? 1600 : 400;
-        int mHeight = 160;
-        int my = midHoopCY - mHeight / 2;
+        int mx = (team == TeamAffiliation.HOME) ? 1368 : 0;
+        int mWidth = 680;
+        int mHeight = 988;
+        int my = 0;
         Fire medics = new Fire(goalie, mx, my) {
             @Override
             public void triggerCollide(GameEngine context, gameserver.entity.Box box) {
@@ -890,7 +890,7 @@ public class GuardianAbilities implements Serializable {
             }
         };
         medics.team = team;
-        medics.width = 160;
+        medics.width = mWidth;
         medics.height = mHeight;
         medics.health = 99999;
         medics.maxHealth = 99999;

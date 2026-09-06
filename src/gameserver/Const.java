@@ -15,7 +15,9 @@ public class Const extends ConstOperations   {
     public final int STEAL_CD = getI("titan.steal.cdms");
     public final int STOLEN_STUN = getI("titan.steal.effectms");
     public final int GAMETICK_MS = getI("globals.gametick.ms");
-    public final double SHOT_FREEZE_RATIO = getD("globals.shot.caststun");
+    public final double SHOT_FREEZE_RATIO = hasKey("globals.shot.caststun") ? getD("globals.shot.caststun") : 1.0;
+    public final int SHOT_CASTLAG_FRAMES = hasKey("globals.shot.castlag") ? getI("globals.shot.castlag") : 20;
+    public final int LOB_CASTLAG_FRAMES = hasKey("globals.lob.castlag") ? getI("globals.lob.castlag") : 15;
     public boolean GOALIE_DISABLED = getB("globals.goalie.disabled");
     public final double BALL_X = getD("ball.x");
     public final double BALL_Y = getD("ball.y");

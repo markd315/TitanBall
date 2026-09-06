@@ -91,3 +91,23 @@ curl -X POST <LambdaFunctionUrl>
 
 ### B. Auto-Shutdown
 After 4 hours without warming pings, the EventBridge reaper sets `TitanballService` desired count to `0`.
+
+### C. Manual De-warming (`kill.html` & API)
+To immediately scale down the ECS Fargate cluster to 0 tasks:
+
+1. **Web Page**: Navigate to `https://blockforger.net/pages/titanball/kill.html` and click **De-warm ECS Cluster**.
+2. **API Endpoint**:
+```bash
+curl -X POST https://blockforger.net/pages/titanball/api/warm \
+  -H "Content-Type: application/json" \
+  -d '{"kill": true}'
+```
+
+**Expected Response:**
+```json
+{
+  "status": "stopped",
+  "message": "ECS service de-warmed and scaled to 0"
+}
+```
+

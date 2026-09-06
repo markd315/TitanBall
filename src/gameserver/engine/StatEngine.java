@@ -20,19 +20,24 @@ public class StatEngine  {
     private static final ObjectMapper mapper = new ObjectMapper();
 
     public boolean statConditionalMet(PlayerDivider pl, StatEnum category, double threshold){
+        if (pl == null || pl.email == null || category == null) return false;
+        if (gamestats == null || gamestats.size() <= category.index) return false;
         Map<String, Double> statmap = gamestats.get(category.index);
-        if(statmap.containsKey(pl.email)){
+        if(statmap != null && statmap.containsKey(pl.email)){
             return statmap.get(pl.email) >= threshold;
         }
         return false;
     }
 
     public void grant(PlayerDivider pl, StatEnum en, double amount) {
-        if (pl != null) {
+        if (pl != null && pl.email != null && en != null) {
+            if (gamestats == null || gamestats.size() <= en.index) {
+                reset();
+            }
             Map<String, Double> statmap = gamestats.get(en.index);
             if (statmap != null) {
                 double previous = statmap.getOrDefault(pl.email, 0.0);
-                gamestats.get(en.index).put(pl.email, previous + amount);
+                statmap.put(pl.email, previous + amount);
                 //System.out.println("incremented " + pl.email + " " + en.toString());
             }
         }

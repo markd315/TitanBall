@@ -54,8 +54,72 @@ public class AbilityStrategy    {
         this.caster = caster;
         this.c = context.c;
         int clientIndex = context.clientIndex(caster);
-        x = context.lastControlPacket[clientIndex].posX + context.lastControlPacket[clientIndex].camX;
-        y = context.lastControlPacket[clientIndex].posY + context.lastControlPacket[clientIndex].camY;
+        if (clientIndex >= 0 && context.lastControlPacket != null && clientIndex < context.lastControlPacket.length && context.lastControlPacket[clientIndex] != null) {
+            x = context.lastControlPacket[clientIndex].posX + context.lastControlPacket[clientIndex].camX;
+            y = context.lastControlPacket[clientIndex].posY + context.lastControlPacket[clientIndex].camY;
+        } else {
+            resolveAiTargetCoords();
+        }
+    }
+
+    private void resolveAiTargetCoords() {
+        if (caster == null || context == null) return;
+
+        // 1. If Support, target injured ally or self
+        if (caster.getType() == TitanType.SUPPORT) {
+            Titan mostInjuredAlly = null;
+            double lowestHealth = Double.MAX_VALUE;
+            for (Titan t : context.players) {
+                if (t != null && t.team == caster.team && !context.effectPool.hasEffect(t, EffectId.DEAD)) {
+                    if (t.getHealth() < t.maxHealth && t.getHealth() < lowestHealth) {
+                        double d = Math.hypot(t.X - caster.X, t.Y - caster.Y);
+                        if (d <= 250.0) {
+                            lowestHealth = t.getHealth();
+                            mostInjuredAlly = t;
+                        }
+                    }
+                }
+            }
+            if (mostInjuredAlly != null) {
+                x = (int) (mostInjuredAlly.X + mostInjuredAlly.width / 2.0);
+                y = (int) (mostInjuredAlly.Y + mostInjuredAlly.height / 2.0);
+                return;
+            }
+        }
+
+        // 2. Target enemy ball carrier if one exists
+        TeamAffiliation enemyTeam = (caster.team == TeamAffiliation.HOME) ? TeamAffiliation.AWAY : TeamAffiliation.HOME;
+        java.util.Optional<Titan> possessorOpt = context.titanInPossession();
+        if (possessorOpt.isPresent() && possessorOpt.get().team == enemyTeam && !context.effectPool.hasEffect(possessorOpt.get(), EffectId.DEAD)) {
+            Titan tip = possessorOpt.get();
+            x = (int) (tip.X + tip.width / 2.0);
+            y = (int) (tip.Y + tip.height / 2.0);
+            return;
+        }
+
+        // 3. Target nearest alive enemy
+        Titan nearestEnemy = context.findNearestEnemy(caster, enemyTeam);
+        if (nearestEnemy != null) {
+            x = (int) (nearestEnemy.X + nearestEnemy.width / 2.0);
+            y = (int) (nearestEnemy.Y + nearestEnemy.height / 2.0);
+            return;
+        }
+
+        // 4. Fallback to AI target or marching orders or self center
+        if (caster.aiTargetX >= 0 && caster.aiTargetY >= 0) {
+            x = (int) caster.aiTargetX;
+            y = (int) caster.aiTargetY;
+            return;
+        }
+
+        if (caster.marchingOrderX != 0 || caster.marchingOrderY != 0) {
+            x = caster.marchingOrderX;
+            y = caster.marchingOrderY;
+            return;
+        }
+
+        x = (int) (caster.X + caster.width / 2.0);
+        y = (int) (caster.Y + caster.height / 2.0);
     }
 
      public void goOnCooldown(Titan caster, String cdKey, char qOrW) {
@@ -488,14 +552,14 @@ public class AbilityStrategy    {
                     }
                 }
                 if (!isOccupyingParapet) {
-                    double cCtrX = caster.X + caster.width / 2;
-                    double cCtrY = caster.Y + caster.height / 2;
-                    if (context.ball.intersectCircle(cCtrX, cCtrY, caster.stealRad) && context.ballVisible) {
-                        context.stats.grant(context, tip, StatEngine.StatEnum.TURNOVERS);
-                        context.stats.grant(context, caster, StatEngine.StatEnum.STEALS);
+                    if (context.isWithinStealRange(caster, tip) && context.ballVisible) {
+                        try {
+                            context.stats.grant(context, tip, StatEngine.StatEnum.TURNOVERS);
+                            context.stats.grant(context, caster, StatEngine.StatEnum.STEALS);
+                        } catch (Exception ignored) {}
                         tip.possession = 0;
-                    eff = new EmptyEffect((int) (c.STOLEN_STUN * caster.durationsFactor), tip, EffectId.STEAL);
-                    context.effectPool.addStackingEffect(caster, eff);
+                        eff = new EmptyEffect((int) (c.STOLEN_STUN * caster.durationsFactor), tip, EffectId.STEAL);
+                        context.effectPool.addStackingEffect(caster, eff);
 
                         context.ball.X = caster.X + caster.centerDist - context.ball.centerDist;
                         context.ball.Y = caster.Y + caster.centerDist - context.ball.centerDist;

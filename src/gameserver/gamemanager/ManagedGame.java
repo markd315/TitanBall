@@ -32,7 +32,7 @@ public class ManagedGame {
 
     public GameEngine state;
     public String gameId;
-    List<WebSocketPlayerConnection> clients = new ArrayList<>();
+    List<WebSocketPlayerConnection> clients = new java.util.concurrent.CopyOnWriteArrayList<>();
     public List<Integer> availableSlots = new ArrayList<>();
     public Map<String, Integer> preAssignedSlots = new HashMap<>();
     
@@ -40,6 +40,7 @@ public class ManagedGame {
     private final Map<String, Integer> claimedSlotsByEmail = new HashMap<>();
     private final Object slotLock = new Object();
     
+    private final long creationTimeMs = System.currentTimeMillis();
     final AtomicReference<Game> stateRef = new AtomicReference<>(state);
     ScheduledExecutorService exec;
 
@@ -79,6 +80,27 @@ public class ManagedGame {
             }
         } catch (Exception e) {
             e.printStackTrace();
+        }
+
+        if (op != null && op.isCoopVsAi()) {
+            availableSlots.clear();
+            if (gameFor != null && !gameFor.isEmpty()) {
+                authserver.matchmaking.Matchmaker mm = null;
+                try {
+                    mm = authserver.SpringContextBridge.services().getMatchmaker();
+                } catch (Exception ignored) {}
+                assignTeamSlots(new ArrayList<>(gameFor), 1, 3, mm);
+                availableSlots.addAll(preAssignedSlots.values());
+            } else {
+                teamSize = Math.max(1, GameOptions.getPlayersVal()[op.playerIndex]);
+                if (op.goaliesDisabled()) {
+                    for (int i = 0; i < teamSize; i++) availableSlots.add(3 + i);
+                } else {
+                    availableSlots.add(1); 
+                    for (int i = 0; i < teamSize - 1; i++) availableSlots.add(3 + i); 
+                }
+            }
+            return;
         }
 
         if (gameFor != null && !gameFor.isEmpty()) {
@@ -297,6 +319,12 @@ public class ManagedGame {
     }
 
     public void delegatePacket(WebSocketPlayerConnection connection, ClientPacket request) {
+        if (connection != null && request != null && request.token != null && !request.token.isEmpty()) {
+            String email = Util.jwtExtractEmail(request.token);
+            if (email != null && !email.isEmpty()) {
+                connection.setEmail(email);
+            }
+        }
         if (state == null || (state.phase != GamePhase.INGAME && state.phase != GamePhase.SCORE_FREEZE && state.phase != GamePhase.TUTORIAL)) {
             addOrReplaceNewClient(connection, clients, request.token);
         }
@@ -317,19 +345,24 @@ public class ManagedGame {
                         pd.setEmail(email);
                     }
                 }
+            }
+
+            if (request != null && request.token != null && !request.token.isEmpty()) {
+                String email = Util.jwtExtractEmail(request.token);
                 boolean foundInClients = false;
                 for (WebSocketPlayerConnection pc : clients) {
-                    if (pc.getEmail().equals(email)) {
+                    if (pc.getEmail() != null && pc.getEmail().equals(email)) {
                         pc.setClient(connection);
                         foundInClients = true;
+                        break;
                     }
                 }
                 if (!foundInClients && pd != null) {
-                    // FIX: Replaced invalid `pd.titanId` with `pd.getPossibleSelection()` for strictly bijective 1:1 lists
                     WebSocketPlayerConnection newConn = new WebSocketPlayerConnection(pd.getPossibleSelection(), connection, email);
                     clients.add(newConn);
                 }
             }
+
             state.processClientPacket(pd, request);
         }
     }
@@ -383,7 +416,7 @@ public class ManagedGame {
                     queue.add(new WebSocketPlayerConnection(Collections.singletonList(slot), c, email));
                 }
             }
-            shouldStart = lobbyFull(queue);
+            shouldStart = lobbyFull(queue) || (System.currentTimeMillis() - creationTimeMs >= 2500);
         }
         
         if (shouldStart) {
@@ -407,8 +440,26 @@ public class ManagedGame {
         }
 
         List<PlayerDivider> players = new ArrayList<>();
+        Set<String> includedEmails = new HashSet<>();
         for (WebSocketPlayerConnection pc : gameIncludedClients) {
             players.add(new PlayerDivider(pc));
+            if (pc.getEmail() != null && !pc.getEmail().isEmpty()) {
+                includedEmails.add(pc.getEmail());
+            }
+        }
+
+        // Include pre-assigned players who haven't connected yet so their slot is reserved in state.clients
+        if (preAssignedSlots != null && !preAssignedSlots.isEmpty()) {
+            for (Map.Entry<String, Integer> entry : preAssignedSlots.entrySet()) {
+                String preEmail = entry.getKey();
+                int slot = entry.getValue();
+                if (!includedEmails.contains(preEmail)) {
+                    PlayerDivider prePd = new PlayerDivider(Collections.singletonList(slot));
+                    prePd.setEmail(preEmail);
+                    players.add(prePd);
+                    includedEmails.add(preEmail);
+                }
+            }
         }
 
         if (gameId != null && gameId.startsWith("tutorial-")) {
@@ -676,8 +727,11 @@ public class ManagedGame {
 
     public boolean gameContainsEmail(Collection<String> gameFor) {
         for (String searchFor : gameFor) {
+            if (preAssignedSlots != null && preAssignedSlots.containsKey(searchFor)) {
+                return true;
+            }
             for (WebSocketPlayerConnection matches : this.clients) {
-                if (matches.email.equals(searchFor)) {
+                if (matches != null && matches.email != null && matches.email.equals(searchFor)) {
                     return true;
                 }
             }

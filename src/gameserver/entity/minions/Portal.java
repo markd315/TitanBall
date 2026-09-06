@@ -62,12 +62,15 @@ public class Portal extends gameserver.entity.Entity implements Collidable, Seri
     private RetObj oldestP(List<Entity> pool, Titan player){
         Portal oldestP = null;
         int currentBallPortals = 0;
+        if (player == null || player.id == null) {
+            return new RetObj(null, 0);
+        }
         for (Entity e : pool) {
             if (e instanceof Portal && e.getHealth() > 0) {
                 Portal p = (Portal) e;
                 if (player.id.equals(p.createdById)) {
                     currentBallPortals += 1;
-                    if (oldestP == null || p.createdAt.isBefore(oldestP.createdAt)) {
+                    if (oldestP == null || (p.createdAt != null && oldestP.createdAt != null && p.createdAt.isBefore(oldestP.createdAt))) {
                         oldestP = p;
                     }
                 }
@@ -77,6 +80,9 @@ public class Portal extends gameserver.entity.Entity implements Collidable, Seri
     }
 
     private boolean isPlaceableRangeCheck(GameEngine context, UUID creator){
+        if (creator == null) {
+            return true;
+        }
         Optional<Portal> friendly = findFriendlyPortal(context, creator);
         if(!friendly.isPresent()){
             return true;
@@ -87,6 +93,9 @@ public class Portal extends gameserver.entity.Entity implements Collidable, Seri
     }
 
     private Optional<Portal> findFriendlyPortal(GameEngine context, UUID creator) {
+        if (creator == null) {
+            return Optional.empty();
+        }
         for (Entity e : context.entityPool) {
             if (e instanceof Portal) {
                 Portal p = (Portal) e;
@@ -105,6 +114,9 @@ public class Portal extends gameserver.entity.Entity implements Collidable, Seri
     @Override
     public void triggerCollide(GameEngine context, Box entity) {
         if (!this.isCooldown(new Instant(context.nowEpochMs))) {
+            if (this.createdById == null) {
+                return;
+            }
             Optional<Portal> p = findFriendlyPortal(context, this.createdById);
             if (p.isPresent() && !p.get().isCooldown(new Instant(context.nowEpochMs))
                     && entity instanceof Titan && ((Titan) entity).team == p.get().team) {
@@ -114,8 +126,10 @@ public class Portal extends gameserver.entity.Entity implements Collidable, Seri
                 int y = (int)p.get().getY() + 25 - 35;
                 entity.setX(x);
                 entity.setY(y);
-                while (entity.collidesSolid(context, context.allSolids)) {
+                int limit = 0;
+                while (entity.collidesSolid(context, context.allSolids) && limit < 100) {
                     entity.Y += 3;
+                    limit++;
                 }
             }
         }

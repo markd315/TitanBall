@@ -319,7 +319,36 @@ Resources:
           def handler(event,context):
            if "RequestType" in event:return handle_cfn_router(event,context)
            elif event.get("source")=="aws.events":return handle_reap(event,context)
+           body_json={}
+           if isinstance(event,dict):
+            if event.get("kill") is True:body_json=event
+            elif "body" in event and event["body"]:
+             try:
+              b=event["body"]
+              if event.get("isBase64Encoded"):
+               import base64
+               b=base64.b64decode(b).decode('utf-8')
+              body_json=json.loads(b)
+             except Exception:pass
+           if body_json.get("kill") is True:return handle_kill(event,context)
            return handle_warm(event,context)
+          def handle_kill(event,context):
+           cluster=os.environ.get("ECS_CLUSTER","TitanballCluster").split('/')[-1]
+           service=os.environ.get("ECS_SERVICE","TitanballService").split('/')[-1]
+           try:
+            try:
+             desc=ecs.describe_services(cluster=cluster,services=[service])
+             svcs=[s for s in desc.get('services',[]) if s.get('status')=='ACTIVE']
+            except ClientError as ce:
+             if ce.response['Error']['Code'] in ['ClusterNotFoundException','ServiceNotFoundException','InvalidParameterException']:svcs=[]
+             else:raise
+            if svcs:
+             ecs.update_service(cluster=cluster,service=service,desiredCount=0)
+             try:ecs.tag_resource(resourceArn=svcs[0]['serviceArn'],tags=[{'key':'ExpirationTime','value':'0'}])
+             except Exception:pass
+            return {"statusCode":200,"headers":{"Access-Control-Allow-Origin":"*","Content-Type":"application/json"},"body":json.dumps({"status":"stopped","message":"ECS service de-warmed and scaled to 0"})}
+           except Exception as e:
+            return {"statusCode":200,"headers":{"Access-Control-Allow-Origin":"*","Content-Type":"application/json"},"body":json.dumps({"status":"error","error":str(e)})}
           def handle_warm(event,context):
            cluster=os.environ.get("ECS_CLUSTER","TitanballCluster").split('/')[-1]
            service=os.environ.get("ECS_SERVICE","TitanballService").split('/')[-1]

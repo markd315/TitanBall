@@ -22,6 +22,7 @@ public class Matchmaker {
 
     private Map<String, String> waitingPool = new HashMap<>();//user emails -> tournament code
     private Map<String, String> gameMap = new HashMap<>();//user emails -> game id
+    private Map<String, Long> queueEntryTime = new java.util.concurrent.ConcurrentHashMap<>();
     public Map<String, String> playerClasses = new java.util.concurrent.ConcurrentHashMap<>();
     public Map<String, String> playerPreferredLanes = new java.util.concurrent.ConcurrentHashMap<>();
     public Map<String, Set<String>> partnerPool = new java.util.concurrent.ConcurrentHashMap<>();
@@ -74,7 +75,9 @@ public class Matchmaker {
                 int[] vals = GameOptions.getPlayersVal();
                 if (op.playerIndex >= 0 && op.playerIndex < vals.length) {
                     int teamSize = vals[op.playerIndex];
-                    if (teamSize == 0) {
+                    if (op.isCoopVsAi()) {
+                        players = teamSize;
+                    } else if (teamSize == 0) {
                         players = 1; // Single-player
                     } else {
                         players = teamSize * 2;
@@ -86,12 +89,28 @@ public class Matchmaker {
 
             List<String> pool = new ArrayList<>();
             for (Map.Entry<String, String> entry : waitingPool.entrySet()) {
-                if (entry.getValue().equals(val) && !gameFor.contains(entry.getKey())) {
+                if (isSameQueueType(entry.getValue(), val) && !gameFor.contains(entry.getKey())) {
                     pool.add(entry.getKey());
                 }
             }
 
-            while (pool.size() >= players) {
+            int minToStart = players;
+            long nowMs = System.currentTimeMillis();
+            if (op != null && op.isCoopVsAi()) {
+                boolean hasTimedOutPlayer = false;
+                for (String email : pool) {
+                    Long entryTime = queueEntryTime.get(email);
+                    if (entryTime != null && (nowMs - entryTime >= 8000)) {
+                        hasTimedOutPlayer = true;
+                        break;
+                    }
+                }
+                if (hasTimedOutPlayer) {
+                    minToStart = 1;
+                }
+            }
+
+            while (pool.size() >= minToStart) {
                 List<String> selectedPlayers = new ArrayList<>();
                 // Form match prioritizing grouping mutual partners
                 for (String candidate : pool) {
@@ -118,7 +137,7 @@ public class Matchmaker {
                     }
                 }
 
-                if (selectedPlayers.size() == players) {
+                if (!selectedPlayers.isEmpty() && (selectedPlayers.size() == players || (op != null && op.isCoopVsAi()))) {
                     gameFor.addAll(selectedPlayers);
                     pool.removeAll(selectedPlayers);
                     spawnGame(selectedPlayers, op);
@@ -130,6 +149,7 @@ public class Matchmaker {
         //only to avoid comod exception
         for (String s : gameFor) {
             waitingPool.remove(s);
+            queueEntryTime.remove(s);
             System.out.println("WAITING POOL SIZE: " + waitingPool.size());
         }
     }
@@ -184,13 +204,38 @@ public class Matchmaker {
     }
 
     private String normalizeTournamentCode(String code) {
-        if (code == null || code.isEmpty() || code.equals("3v3") || code.equals("/3v3")) {
+        if (code == null || code.isEmpty() || code.equalsIgnoreCase("3v3") || code.equalsIgnoreCase("/3v3")) {
             return "/0/0/1/5/2/9999/10/12"; // 3v3 is index 0
         }
-        if (code.equals("1v1") || code.equals("/1v1")) {
+        if (code.equalsIgnoreCase("1v1") || code.equalsIgnoreCase("/1v1")) {
             return "/4/1/1/5/2/9999/10/12"; // 1v1 is index 4
         }
+        if (code.equalsIgnoreCase("2v0") || code.equalsIgnoreCase("/2v0")) {
+            return "/9/0/1/5/2/9999/10/12/0"; // 2v0 is index 9
+        }
+        if (code.equalsIgnoreCase("3v0") || code.equalsIgnoreCase("/3v0")) {
+            return "/10/0/1/5/2/9999/10/12/0"; // 3v0 is index 10
+        }
+        if (code.equalsIgnoreCase("4v0") || code.equalsIgnoreCase("/4v0")) {
+            return "/11/0/1/5/2/9999/10/12/0"; // 4v0 is index 11
+        }
+        if (!code.startsWith("/")) {
+            code = "/" + code;
+        }
         return code;
+    }
+
+    private boolean isSameQueueType(String code1, String code2) {
+        if (code1 == null || code2 == null) return false;
+        if (code1.equals(code2)) return true;
+        try {
+            GameOptions op1 = new GameOptions(code1);
+            GameOptions op2 = new GameOptions(code2);
+            if (op1.isCoopVsAi() && op2.isCoopVsAi() && op1.playerIndex == op2.playerIndex) {
+                return true;
+            }
+        } catch (Exception ignored) {}
+        return false;
     }
 
     public synchronized void registerIntent(Authentication login, String tournamentCode, String teamname, String classSelection, String preferredLane, String partners) {
@@ -228,16 +273,8 @@ public class Matchmaker {
             partnerPool.remove(email);
         }
 
-        boolean contains = false;
-        for (String e : waitingPool.keySet()) {
-            if (e.equals(email)) { //check by email in case some other attr changed
-                contains = true;
-            }
-        }
-        if (!contains) {
-            waitingPool.put(email, tournamentCode);
-            makeMatches();
-        }
+        waitingPool.put(email, tournamentCode);
+        makeMatches();
     }
 
     public synchronized void registerIntent(Authentication login, String tournamentCode, String teamname, String classSelection, String partners) {

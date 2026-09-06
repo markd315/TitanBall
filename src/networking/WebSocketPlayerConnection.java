@@ -40,8 +40,9 @@ public class WebSocketPlayerConnection extends PlayerDivider {
                 if (session != null && session.isOpen()) {
                     session.sendMessage(new TextMessage(json));
                 }
-            } catch (IOException e) {
-                e.printStackTrace();
+            } catch (Exception e) {
+                // Ignore disconnect / closed session errors (e.g. Tomcat permessage-deflate closed)
+                // to avoid flooding logs during routine client disconnections.
             }
         }
     }
@@ -52,8 +53,8 @@ public class WebSocketPlayerConnection extends PlayerDivider {
                 if (session != null && session.isOpen()) {
                     session.close();
                 }
-            } catch (IOException e) {
-                e.printStackTrace();
+            } catch (Exception e) {
+                // Ignore errors when closing an already closing/closed session.
             }
         }
     }

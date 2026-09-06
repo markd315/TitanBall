@@ -21,6 +21,7 @@ import { drawClassStatsOverlay, formatClassTooltip, CLASS_INFO, computeStatWithM
 import { login, joinQueue, checkGame, register, startTutorial } from './network/auth.js';
 import { connectGame, disconnectGame } from './network/socket.js';
 import { warmServer, recordUserActivity } from './network/warm.js';
+import { initFullscreenListeners, requestFullscreen, isMobileDevice, isFullscreenActive, checkOrientation } from './util/fullscreen.js';
 
 let ctx;
 let lastTime = 0;
@@ -32,6 +33,7 @@ let idleStart = null;
 window.warmExpired = false;
 
 function updateOverlays() {
+  checkOrientation();
   if (gameState.phase === lastPhase && currentScreen === lastScreen) return;
   lastPhase = gameState.phase;
   lastScreen = currentScreen;
@@ -101,8 +103,9 @@ async function checkAndRejoinActiveGame() {
     if (status && status !== 'NOT QUEUED') {
       if (status === 'WAITING') {
         const lastQueueSize = sessionStorage.getItem('lastQueueSize') || '4';
+        const isCoop = typeof lastQueueSize === 'string' && lastQueueSize.endsWith('v0');
         const modeLabel = document.getElementById('queue-mode-label');
-        if (modeLabel) modeLabel.textContent = `${lastQueueSize}v${lastQueueSize}`;
+        if (modeLabel) modeLabel.textContent = isCoop ? `${lastQueueSize} Coop vs AI` : `${lastQueueSize}v${lastQueueSize}`;
         gameState.phase = GamePhase.WAIT_FOR_GAME;
         startQueuePolling();
       } else {
@@ -140,9 +143,15 @@ function initUIListeners() {
         gameState.phase = GamePhase.SHOW_GAME_MODES;
         checkAndRejoinActiveGame();
       } catch (err) {
-        console.error(err);
+        console.error('[Login Failure]', err);
         if (errorDiv) {
-          errorDiv.textContent = 'Invalid credentials or server offline.';
+          if (err.code === 'INVALID_CREDENTIALS') {
+            errorDiv.textContent = 'Invalid credentials. Please check your username/email and password.';
+          } else if (err.code === 'SERVER_DOWN') {
+            errorDiv.textContent = 'Server down or unreachable. Servers warming up, wait 1-2 mins.';
+          } else {
+            errorDiv.textContent = err.message || 'Login failed.';
+          }
           errorDiv.style.display = 'block';
         }
       }
@@ -226,7 +235,35 @@ function initUIListeners() {
   }
 
   // Selected Match Size state
-  let selectedMatchSize = parseInt(sessionStorage.getItem('lastQueueSize') || '4');
+  const MODES_LIST = [2, 3, 4, 5, 6, 7, 8, '2v0', '3v0', '4v0'];
+  let savedModeRaw = sessionStorage.getItem('lastQueueSize') || '4';
+  let savedMode = (savedModeRaw === '2v0' || savedModeRaw === '3v0' || savedModeRaw === '4v0') ? savedModeRaw : parseInt(savedModeRaw);
+  let currentModeIdx = MODES_LIST.indexOf(savedMode);
+  if (currentModeIdx === -1) currentModeIdx = 2; // 4v4 default
+
+  function updateMatchSizeUI() {
+    const mode = MODES_LIST[currentModeIdx];
+    const sizeDisplay = document.getElementById('match-size-display');
+    const aiDiffContainer = document.getElementById('ai-difficulty-container');
+    if (sizeDisplay) {
+      if (typeof mode === 'string' && mode.endsWith('v0')) {
+        sizeDisplay.textContent = `${mode} AI`;
+        sizeDisplay.style.fontSize = '13px';
+      } else {
+        sizeDisplay.textContent = `${mode}v${mode}`;
+        sizeDisplay.style.fontSize = '16px';
+      }
+    }
+    if (aiDiffContainer) {
+      if (typeof mode === 'string' && mode.endsWith('v0')) {
+        aiDiffContainer.style.display = '';
+      } else {
+        aiDiffContainer.style.display = 'none';
+      }
+    }
+    sessionStorage.setItem('lastQueueSize', mode);
+    updateLaneSelectState();
+  }
 
   function updateLaneSelectState() {
     const classSelect = document.getElementById('class-select');
@@ -240,7 +277,10 @@ function initUIListeners() {
       return;
     }
 
-    if (selectedMatchSize <= 2) {
+    const mode = MODES_LIST[currentModeIdx];
+    const numericSize = (typeof mode === 'string') ? parseInt(mode[0]) : mode;
+
+    if (numericSize <= 2) {
       if (inputGroup) inputGroup.style.display = 'none';
       sessionStorage.setItem('preferredLane', 'MID');
       return;
@@ -248,9 +288,9 @@ function initUIListeners() {
 
     if (inputGroup) inputGroup.style.display = '';
 
-    const validLanes = selectedMatchSize >= 5
+    const validLanes = numericSize >= 5
       ? ['TOP', 'MID', 'BOT', 'DEFENSIVE']
-      : (selectedMatchSize === 3 ? ['TOP', 'BOT'] : ['TOP', 'MID', 'BOT']);
+      : (numericSize === 3 ? ['TOP', 'BOT'] : ['TOP', 'MID', 'BOT']);
     const laneLabels = { TOP: 'Top Lane', MID: 'Mid Lane', BOT: 'Bot Lane', DEFENSIVE: 'Defensive' };
 
     laneSelect.innerHTML = '';
@@ -283,25 +323,19 @@ function initUIListeners() {
   const sizeDownBtn = document.getElementById('size-down-btn');
   const sizeUpBtn = document.getElementById('size-up-btn');
 
-  if (sizeDisplay) {
-    sizeDisplay.textContent = `${selectedMatchSize}v${selectedMatchSize}`;
-  }
+  updateMatchSizeUI();
   
   if (sizeDownBtn && sizeUpBtn && sizeDisplay) {
     sizeDownBtn.addEventListener('click', () => {
-      if (selectedMatchSize > 2) {
-        selectedMatchSize--;
-        sizeDisplay.textContent = `${selectedMatchSize}v${selectedMatchSize}`;
-        sessionStorage.setItem('lastQueueSize', selectedMatchSize);
-        updateLaneSelectState();
+      if (currentModeIdx > 0) {
+        currentModeIdx--;
+        updateMatchSizeUI();
       }
     });
     sizeUpBtn.addEventListener('click', () => {
-      if (selectedMatchSize < 8) {
-        selectedMatchSize++;
-        sizeDisplay.textContent = `${selectedMatchSize}v${selectedMatchSize}`;
-        sessionStorage.setItem('lastQueueSize', selectedMatchSize);
-        updateLaneSelectState();
+      if (currentModeIdx < MODES_LIST.length - 1) {
+        currentModeIdx++;
+        updateMatchSizeUI();
       }
     });
   }
@@ -379,15 +413,18 @@ function initUIListeners() {
   
   renderPartners();
 
-  function getPlayerIndexForSize(size) {
-    if (size === 3) return 0;
-    if (size === 4) return 1;
-    if (size === 5) return 2;
-    if (size === 1) return 4;
-    if (size === 2) return 5;
-    if (size === 6) return 6;
-    if (size === 7) return 7;
-    if (size === 8) return 8;
+  function getPlayerIndexForSize(mode) {
+    if (mode === 3) return 0;
+    if (mode === 4) return 1;
+    if (mode === 5) return 2;
+    if (mode === 1) return 4;
+    if (mode === 2) return 5;
+    if (mode === 6) return 6;
+    if (mode === 7) return 7;
+    if (mode === 8) return 8;
+    if (mode === '2v0') return 9;
+    if (mode === '3v0') return 10;
+    if (mode === '4v0') return 11;
     return 1; // fallback
   }
 
@@ -411,15 +448,28 @@ function initUIListeners() {
 
         if (classError) classError.style.display = 'none';
         
+        if (isMobileDevice() && !isFullscreenActive()) {
+          requestFullscreen();
+        }
+
+        const currentMode = MODES_LIST[currentModeIdx];
+        const isCoopAi = typeof currentMode === 'string' && currentMode.endsWith('v0');
+        const modeText = isCoopAi ? `${currentMode} Coop vs AI` : `${currentMode}v${currentMode}`;
+
         const modeLabel = document.getElementById('queue-mode-label');
-        if (modeLabel) modeLabel.textContent = `${selectedMatchSize}v${selectedMatchSize}`;
+        if (modeLabel) modeLabel.textContent = modeText;
         const lobbyTitle = document.querySelector('#lobby-overlay h2');
         if (lobbyTitle) lobbyTitle.textContent = 'Searching Match';
         const lobbyStatus = document.querySelector('#lobby-overlay .stat-value[style*="pulse"]');
-        if (lobbyStatus) lobbyStatus.textContent = 'FINDING PLAYERS...';
+        if (lobbyStatus) lobbyStatus.textContent = isCoopAi ? 'STARTING COOP VS AI...' : 'FINDING PLAYERS...';
         
-        const playerIndex = getPlayerIndexForSize(selectedMatchSize);
-        const code = `/${playerIndex}/0/1/10/2/9999/10/12`;
+        const playerIndex = getPlayerIndexForSize(currentMode);
+        let code = `/${playerIndex}/0/1/5/2/9999/10/12`;
+        if (isCoopAi) {
+          const aiDiffSelect = document.getElementById('ai-difficulty-select');
+          const aiDiff = aiDiffSelect ? aiDiffSelect.value : '0';
+          code += `/${aiDiff}`;
+        }
         const partnersCsv = partners.join(',');
         const preferredLane = sessionStorage.getItem('preferredLane') || 'TOP';
         await joinQueue(code, classSel, partnersCsv, preferredLane);
@@ -460,6 +510,10 @@ function initUIListeners() {
 
         if (classError) classError.style.display = 'none';
         
+        if (isMobileDevice() && !isFullscreenActive()) {
+          requestFullscreen();
+        }
+
         const modeLabel = document.getElementById('queue-mode-label');
         if (modeLabel) modeLabel.textContent = 'Scrimmage';
         const lobbyTitle = document.querySelector('#lobby-overlay h2');
@@ -502,6 +556,10 @@ function initUIListeners() {
     tutorialBtn.addEventListener('click', async () => {
       try {
         gameState.is3v3 = false;
+
+        if (isMobileDevice() && !isFullscreenActive()) {
+          requestFullscreen();
+        }
 
         // Pre-unlock narration audios to avoid browser autoplay policy blocks
         for (let i = 0; i <= 4; i++) {
@@ -816,8 +874,8 @@ function drawIngame(ctx, dt) {
   
   drawGoals(ctx, game, camX, camY);
   drawAllPseudotextures(ctx, game, camX, camY);
-  drawPlayers(ctx, game, camX, camY);
   drawMinions(ctx, game, camX, camY);
+  drawPlayers(ctx, game, camX, camY);
   drawAimAndRangeIndicators(ctx, game, gameState.controlsHeld, camX, camY);
   drawEffectIcons(ctx, game, camX, camY);
   drawHealthBars(ctx, game, camX, camY);
@@ -1358,7 +1416,7 @@ function drawDraftShowcase(ctx) {
     players.forEach((p, idx) => {
       const origIdx = game.players.indexOf(p);
       const client = game.clients ? game.clients.find(c => c.selection === origIdx + 1) : null;
-      const displayName = client && client.email ? client.email.split('@')[0] : `Slot ${idx + 1}: Player`;
+      const displayName = client && client.email ? client.email.split('@')[0] : `AI #${idx + 1}`;
       const isLocalUser = Boolean(
         (game.underControl && (p === game.underControl || p.id === game.underControl.id)) ||
         (client && client.email && myEmail && client.email.toLowerCase() === myEmail.toLowerCase())
@@ -1441,6 +1499,7 @@ export function start() {
   initKeyboard();
   initMouse();
   initMobileControls();
+  initFullscreenListeners();
   initUIListeners();
   
   // Track user interaction to reset 4-hour idle timer

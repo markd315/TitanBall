@@ -58,6 +58,25 @@ public class Titan extends Entity   {
     public int queuedClickY = -1;
     public int queuedCamX = 0;
     public int queuedCamY = 0;
+
+    @JsonIgnore
+    public transient long aiLastDecisionTimeMs = 0;
+    @JsonIgnore
+    public transient long aiReactionDelayMs = 0;
+    @JsonIgnore
+    public transient double aiTargetX = -1;
+    @JsonIgnore
+    public transient double aiTargetY = -1;
+    @JsonIgnore
+    public transient int aiTargetAction = 0;
+    @JsonIgnore
+    public transient UUID aiTargetTitanId = null;
+    public transient List<String> aiGoalieBuildOrder = null;
+    public transient int aiGoalieBuildIndex = 0;
+    @JsonIgnore
+    public transient int aiDefenseMode = 0; // 0 = CONCEDE_SPACE, 1 = AGGRESSIVE_STEAL_CHARGE
+    @JsonIgnore
+    public transient long aiDefenseModeSwitchTimeMs = 0;
     public boolean resurrecting = false;
     public double baseSpeed = 5;
     public double baseThrowPower = 1.0;

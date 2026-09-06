@@ -10,10 +10,10 @@ public class GameOptions   {
     //Updating these defaults? ALSO CHANGE ServerApplication:107 default!
     @JsonProperty
     public int playerIndex, bestOfIndex, goalieIndex,
-            playToIndex, winByIndex, hardWinIndex, suddenDeathIndex, tieIndex;
+            playToIndex, winByIndex, hardWinIndex, suddenDeathIndex, tieIndex, aiDifficultyIndex;
 
 
-    protected static final int[] playersVal = {3,4,5,0,1,2,6,7,8};
+    protected static final int[] playersVal = {3,4,5,0,1,2,6,7,8,2,3,4};
     protected static final int[] goalieVal = {1, 0, 2};
     protected static final int[] bestOfVal = {1, 3, 5, 7, 9};
     protected static final int[] playToVal = {5, 10, 20, 30, 50, 100, 1};
@@ -21,7 +21,7 @@ public class GameOptions   {
     protected static final int[] hardWinVal = {9999, 5, 10, 20, 30, 50, 100};
     protected static final int[] suddenDeathVal = {10, 12, 15, 18, 20, 25, 30, 35, 60, 9999, 3, 5};
     protected static final int[] tieVal = {12, 15, 18, 20, 25, 30, 35, 60, 9999, 3, 5, 10};
-    protected static final String[] playersDisp = {"3v3", "4v4", "5v5 (sep goalie)", "Single-player", "1v1", "2v2", "6v6", "7v7", "8v8"};
+    protected static final String[] playersDisp = {"3v3", "4v4", "5v5 (sep goalie)", "Single-player", "1v1", "2v2", "6v6", "7v7", "8v8", "2v0 Coop vs AI", "3v0 Coop vs AI", "4v0 Coop vs AI"};
     protected static final String[] goalieDisp = {"Goalies on", "Goalies off", "Permanent goalies"};
     protected static final String[] bestOfDisp = {"Best of 1", "Best of 3", "Best of 5", "Best of 7", "Best of 9"} ;
     protected static final String[] playToDisp = {"Play to 5", "Play to 10", "Play to 20", "Play to 30", "Play to 50", "Play to 100", "Play to 1"};
@@ -31,6 +31,28 @@ public class GameOptions   {
     protected static final String[] tieDisp = {"Draw at 12:00", "Draw at 15:00", "Draw at 18:00", "Draw at 20:00", "Draw at 25:00", "Draw at 30:00", "Draw at 35:00", "Draw at 60:00", "Draw OFF", "Draw at 3:00", "Draw at 5:00", "Draw at 10:00"};
 
     public GameOptions() {
+    }
+
+    public boolean isCoopVsAi() {
+        return playerIndex >= 9 && playerIndex <= 11;
+    }
+
+    public int getAiReactionTimeMinMs() {
+        switch (aiDifficultyIndex) {
+            case 0: return 950;  // Easy: 950-1100ms
+            case 1: return 550;  // Medium: 550-950ms
+            case 2: return 250;  // Hard: 250-550ms
+            default: return 950;
+        }
+    }
+
+    public int getAiReactionTimeMaxMs() {
+        switch (aiDifficultyIndex) {
+            case 0: return 1100; // Easy: 950-1100ms
+            case 1: return 950;  // Medium: 550-950ms
+            case 2: return 550;  // Hard: 250-550ms
+            default: return 1100;
+        }
     }
 
     /** 1v1 scrimmage is the only mode where guardians may be omitted. */
@@ -43,9 +65,12 @@ public class GameOptions   {
     }
 
     public GameOptions(String tournamentCode) {
-        String[] split = tournamentCode.split("/");
-        if(split.length != 9){
-            throw new IllegalArgumentException("invalid tournament code (options)");
+        if (tournamentCode != null && !tournamentCode.startsWith("/")) {
+            tournamentCode = "/" + tournamentCode;
+        }
+        String[] split = tournamentCode != null ? tournamentCode.split("/") : new String[0];
+        if (split.length < 9) {
+            throw new IllegalArgumentException("invalid tournament code (options): " + tournamentCode);
         }
         //Indexes are set to literals on serverside
         this.playerIndex = Integer.parseInt(split[1]);
@@ -56,6 +81,9 @@ public class GameOptions   {
         this.hardWinIndex = Integer.parseInt(split[6]);
         this.suddenDeathIndex = Integer.parseInt(split[7]);
         this.tieIndex = Integer.parseInt(split[8]);
+        if (split.length >= 10) {
+            this.aiDifficultyIndex = Integer.parseInt(split[9]);
+        }
     }
 
     public String disp(int optionLine){
@@ -128,9 +156,9 @@ public class GameOptions   {
         sb.append("/");
         sb.append(playerIndex);
         sb.append("/");
-        sb.append(bestOfIndex);
-        sb.append("/");
         sb.append(goalieIndex);
+        sb.append("/");
+        sb.append(bestOfIndex);
         sb.append("/");
         sb.append(playToIndex);
         sb.append("/");
@@ -141,6 +169,8 @@ public class GameOptions   {
         sb.append(suddenDeathIndex);
         sb.append("/");
         sb.append(tieIndex);
+        sb.append("/");
+        sb.append(aiDifficultyIndex);
         return new String(sb);
     }
 

@@ -80,7 +80,7 @@ public class Ability    {
                     break;
             }
             injectColliders(context, strat, caster);
-            return true;
+            return context.effectPool.hasEffect(caster, EffectId.COOLDOWN_Q);
         }
         return false;
     }
@@ -147,7 +147,7 @@ public class Ability    {
                     break;
             }
             injectColliders(context, strat, caster);
-            return true;
+            return context.effectPool.hasEffect(caster, EffectId.COOLDOWN_W);
         }
         return false;
     }

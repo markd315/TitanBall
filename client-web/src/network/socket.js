@@ -13,7 +13,13 @@ const MAX_RECONNECT_ATTEMPTS = 20;
 
 export function connectGame(gameID) {
   if (socket) {
-    socket.close();
+    const oldSocket = socket;
+    socket = null;
+    oldSocket.onclose = null;
+    oldSocket.onerror = null;
+    try {
+      oldSocket.close();
+    } catch (e) {}
   }
 
   const token = sessionStorage.getItem('accessToken');
@@ -21,9 +27,10 @@ export function connectGame(gameID) {
   const url = `${protocol}//${window.location.host}/pages/titanball/game`;
   
   console.log("Connecting to WebSocket:", url);
-  socket = new WebSocket(url);
+  const thisSocket = new WebSocket(url);
+  socket = thisSocket;
   
-  socket.onopen = () => {
+  thisSocket.onopen = () => {
     console.log("WebSocket connected");
     reconnectAttempts = 0;
     // Reset build order pointer for fresh game
@@ -83,6 +90,14 @@ export function connectGame(gameID) {
 
         // Construct control packet copy to send to backend
         const controlsToSend = { ...gameState.controlsHeld };
+        if (gameState.pendingShotBtn) {
+          controlsToSend.shotBtn = true;
+          gameState.pendingShotBtn = false;
+        }
+        if (gameState.pendingLobBtn) {
+          controlsToSend.lobBtn = true;
+          gameState.pendingLobBtn = false;
+        }
 
         // STRICTLY PROHIBIT sending ability activation to server if target is out of range (or no valid target in range)
         if (isECasting && (!selectedTarget || !isTargetInRange)) {
@@ -124,25 +139,16 @@ export function connectGame(gameID) {
         if (_diagSendCount <= 3) {
           console.log(`[DIAG] WS send #${_diagSendCount}: classSelection='${controls.classSelection}' masteries=`, controls.masteries);
         }
-        socket.send(JSON.stringify(controls));
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify(controls));
+        }
       }
     }, 25);
-
-    // Start periodic ping loop for latency tracking
-    //pingInterval = setInterval(() => {
-    //  if (socket && socket.readyState === WebSocket.OPEN) {
-     //   socket.send(JSON.stringify({ type: 'ping', sent: Date.now() }));
-     // }
-    //}, 2000);
   };
   
-  socket.onmessage = (event) => {
+  thisSocket.onmessage = (event) => {
+    if (socket !== thisSocket) return;
     const update = JSON.parse(event.data);
-    //if (update.type === 'pong') {
-    //  const latency = Date.now() - update.sent;
-    //  console.log(`[PING LOG] Round-Trip Latency: ${latency}ms`);
-    //  return;
-    //}
     _diagMsgCount++;
     
     // Log the first 3 messages in detail and any phase transition
@@ -214,20 +220,23 @@ export function connectGame(gameID) {
     gameState.prevAwayScore = update.away ? update.away.score : 0;
   };
   
-  socket.onclose = () => {
+  thisSocket.onclose = () => {
+    if (socket !== thisSocket) return;
     console.log("WebSocket closed");
     if (updateInterval) {
       clearInterval(updateInterval);
       updateInterval = null;
     }
     
-    const wasIngame = (gameState.phase === 'INGAME' || gameState.phase === 'SCORE_FREEZE');
+    const wasIngame = (gameState.phase === 'INGAME' || gameState.phase === 'SCORE_FREEZE' || gameState.phase === 'COUNTDOWN');
     const isGameFinished = gameState.phase === 'ENDED' || (gameState.game && gameState.game.ended);
     if (wasIngame && !isGameFinished && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
       reconnectAttempts++;
       console.log(`WebSocket disconnected mid-game. Attempting reconnect ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS} in 500ms...`);
       setTimeout(() => {
-        connectGame(gameID);
+        if (socket === thisSocket || !socket) {
+          connectGame(gameID);
+        }
       }, 500);
     } else {
       gameState.phase = 'ENDED';
@@ -239,7 +248,8 @@ export function connectGame(gameID) {
     }
   };
   
-  socket.onerror = (error) => {
+  thisSocket.onerror = (error) => {
+    if (socket !== thisSocket) return;
     console.error("WebSocket error:", error);
   };
 }
