@@ -22,7 +22,35 @@ let aimJoystickZone = null;
 let aimJoystickBase = null;
 let aimJoystickStick = null;
 let btnShot = null;
+let btnCall = null;
 let mobileButtonsZone = null;
+
+export function isHybridGame(game) {
+  if (!game) return false;
+  if (game.options) {
+    if (game.options.isHybrid === true || game.options.isHybrid === 1 || game.options.isHybrid === '1' || game.options.isHybrid === 'true') return true;
+    if (game.options.hybrid === true || game.options.hybrid === 1 || game.options.hybrid === '1') return true;
+    if (game.options.isCoopVsAi === true || game.options.isCoopVsAi === 1 || game.options.isCoopVsAi === '1') return true;
+  }
+  if (game.gameId) {
+    if (game.gameId.startsWith('tutorial-') || game.gameId.includes('coop') || game.gameId.includes('ai')) return true;
+  }
+  const lastQueueSize = sessionStorage.getItem('lastQueueSize');
+  if (typeof lastQueueSize === 'string' && lastQueueSize.endsWith('v0')) return true;
+  if (game.players && game.clients) {
+    const myTitan = getControlledTitan(game);
+    if (myTitan) {
+      for (let i = 0; i < game.players.length; i++) {
+        const p = game.players[i];
+        if (p && p.team === myTitan.team && p.id !== myTitan.id) {
+          const isHuman = game.clients.some(c => c.selection === (i + 1));
+          if (!isHuman) return true;
+        }
+      }
+    }
+  }
+  return false;
+}
 
 let isDragging = false;
 let startX = 0;
@@ -200,6 +228,7 @@ export function initMobileControls() {
   aimJoystickBase = document.getElementById('aim-joystick-base');
   aimJoystickStick = document.getElementById('aim-joystick-stick');
   btnShot = document.getElementById('btn-shot');
+  btnCall = document.getElementById('btn-call');
   mobileButtonsZone = document.getElementById('mobile-buttons-zone');
 
   const canvas = document.getElementById('gameCanvas');
@@ -343,6 +372,26 @@ export function initMobileControls() {
     e.preventDefault();
     e.stopPropagation();
   }, { passive: false });
+
+  // Button Call for Ball (hybrid human/AI games)
+  if (btnCall) {
+    const handleCallStart = (e) => {
+      gameState.controlsHeld.callForBall = true;
+      gameState.controlsHeld.E = true;
+      if (e.cancelable) e.preventDefault();
+      e.stopPropagation();
+    };
+    const handleCallEnd = (e) => {
+      gameState.controlsHeld.callForBall = false;
+      gameState.controlsHeld.E = false;
+      if (e.cancelable) e.preventDefault();
+      e.stopPropagation();
+    };
+    btnCall.addEventListener('touchstart', handleCallStart, { passive: false });
+    btnCall.addEventListener('touchend', handleCallEnd, { passive: false });
+    btnCall.addEventListener('mousedown', handleCallStart);
+    btnCall.addEventListener('mouseup', handleCallEnd);
+  }
 
   // Canvas screen tap shooting/passing (only used in mobile-single)
   canvas.addEventListener('touchstart', handleCanvasTouchStart, { passive: false });
@@ -722,6 +771,12 @@ function updateMobileButtonStates(game, myTitan) {
     btnShot.classList.toggle('disabled', disabled);
   }
 
+  // Call for Ball
+  if (btnCall) {
+    const disabled = isDead;
+    btnCall.classList.toggle('disabled', disabled);
+  }
+
   // Boost Switch
   if (boostSwitch) {
     const cannotBoost = isDead || (myTitan.fuel !== undefined && myTitan.fuel < 1.0) || (myTitan.possession === 1 && myTitan.type !== 'DASHER');
@@ -764,6 +819,8 @@ export function updateMobileControls(game) {
 
     const myTitan = getControlledTitan(game);
     const isGoalie = myTitan && myTitan.type === 'GOALIE';
+    const isHybrid = isHybridGame(game);
+    const hasPossession = myTitan && myTitan.possession === 1;
 
     if (joystickBase && joystickBase.style.display !== '') {
       joystickBase.style.display = '';
@@ -781,13 +838,30 @@ export function updateMobileControls(game) {
       }
     }
 
+    // Call for Ball button (only in hybrid games when player does NOT have the ball)
+    if (btnCall) {
+      if (isHybrid && !hasPossession) {
+        if (btnCall.style.display !== 'flex') btnCall.style.display = 'flex';
+      } else {
+        if (btnCall.style.display !== 'none') btnCall.style.display = 'none';
+        gameState.controlsHeld.callForBall = false;
+      }
+    }
+
     // Toggle single vs double joystick specific layout/UI elements
     if (currentPreset === 'mobile-double') {
       if (aimJoystickZone && aimJoystickZone.style.display !== 'flex') {
         aimJoystickZone.style.display = 'flex';
       }
-      if (btnShot && btnShot.style.display !== 'flex') {
-        btnShot.style.display = 'flex';
+      // When without ball in hybrid games, btnCall occupies the slot; otherwise btnShot is shown
+      if (isHybrid && !hasPossession) {
+        if (btnShot && btnShot.style.display !== 'none') {
+          btnShot.style.display = 'none';
+        }
+      } else {
+        if (btnShot && btnShot.style.display !== 'flex') {
+          btnShot.style.display = 'flex';
+        }
       }
       if (mobileButtonsZone && !mobileButtonsZone.classList.contains('double-joy')) {
         mobileButtonsZone.classList.add('double-joy');
@@ -894,6 +968,7 @@ export function updateMobileControls(game) {
       gameState.controlsHeld.lobBtn = false;
       gameState.controlsHeld.STEAL = false;
       gameState.controlsHeld.shotBtn = false;
+      gameState.controlsHeld.callForBall = false;
       gameState.controlsHeld.MV_CLICK = false;
       setBoostState(false);
     }

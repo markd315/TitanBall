@@ -65,6 +65,13 @@ public class AbilityStrategy    {
     private void resolveAiTargetCoords() {
         if (caster == null || context == null) return;
 
+        if (context.c != null && !context.c.AI_OMNISCIENCE_ENABLED
+                && context.effectPool != null && context.effectPool.hasEffect(caster, EffectId.BLIND)) {
+            x = (int) (caster.X + caster.width / 2.0);
+            y = (int) (caster.Y + caster.height / 2.0);
+            return;
+        }
+
         // 1. If Support, target injured ally or self
         if (caster.getType() == TitanType.SUPPORT) {
             Titan mostInjuredAlly = null;
@@ -92,9 +99,11 @@ public class AbilityStrategy    {
         java.util.Optional<Titan> possessorOpt = context.titanInPossession();
         if (possessorOpt.isPresent() && possessorOpt.get().team == enemyTeam && !context.effectPool.hasEffect(possessorOpt.get(), EffectId.DEAD)) {
             Titan tip = possessorOpt.get();
-            x = (int) (tip.X + tip.width / 2.0);
-            y = (int) (tip.Y + tip.height / 2.0);
-            return;
+            if (context.isTitanVisibleTo(caster, tip)) {
+                x = (int) (tip.X + tip.width / 2.0);
+                y = (int) (tip.Y + tip.height / 2.0);
+                return;
+            }
         }
 
         // 3. Target nearest alive enemy
@@ -185,7 +194,7 @@ public class AbilityStrategy    {
                 context.effectPool.addStackingEffect(caster, new EmptyEffect(5000, e, EffectId.ATTACKED));
             }
             context.effectPool.addUniqueEffect(new CooldownW((int) (cd * 1000), caster), context);
-            context.effectPool.addStackingEffect(new FlareEffect((int) (dur * 1000), e, initialD, recurringD));
+            context.effectPool.addStackingEffect(caster, new FlareEffect((int) (dur * 1000), e, initialD, recurringD, caster));
         }
     }
 
@@ -202,7 +211,7 @@ public class AbilityStrategy    {
         context.effectPool.addUniqueEffect(new CooldownQ((int) (cdMs * caster.cooldownFactor), caster), context);
         for (Entity e : appliedTo) {
             context.effectPool.addStackingEffect(caster, new EmptyEffect(5000, e, EffectId.ATTACKED));
-            e.damage(context, dmg);
+            e.damage(context, dmg, caster);
         }
         caster.pushMove();
     }
@@ -535,7 +544,7 @@ public class AbilityStrategy    {
         goOnCooldown(caster, "titan.arrow.cdms", 'Q');
         for (Entity e : appliedTo) {
             context.effectPool.addStackingEffect(caster, new EmptyEffect(5000, e, EffectId.ATTACKED));
-            e.damage(context, dmg);
+            e.damage(context, dmg, caster);
         }
     }
 
@@ -566,6 +575,7 @@ public class AbilityStrategy    {
                         caster.actionState = Titan.TitanState.IDLE;
                         caster.actionFrame = 0;
                         caster.possession = 1;
+                        context.resetAiReactionAfterPossession(caster);
                         return true;
                     }
                 }
@@ -593,9 +603,9 @@ public class AbilityStrategy    {
         for (Entity e : appliedTo) {
             context.effectPool.addStackingEffect(caster, new EmptyEffect(5000, e, EffectId.ATTACKED));
             if (e instanceof Titan) {
-                e.damage(context, dmgChamp);
+                e.damage(context, dmgChamp, caster);
             } else {
-                e.damage(context, dmgMinion);
+                e.damage(context, dmgMinion, caster);
             }
         }
 

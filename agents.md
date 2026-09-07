@@ -3,6 +3,7 @@
 ## Server Builds & Testing
 - **DO NOT** run `mvn` or `maven` commands directly on the host / Windows machine.
 - If you need to build or run tests for the Java backend, run them inside a Docker container (e.g. `docker-compose up --build -d` or `docker run --rm ... maven:... mvn test`) or do not run them directly at all.
+- `git diff`, `git stat`, and `git status` are read-only inspection commands and are always approved.
 
 ## Web client development
 

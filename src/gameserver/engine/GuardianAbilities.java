@@ -382,6 +382,7 @@ public class GuardianAbilities implements Serializable {
         }
 
         // Retrieve zone behaviors: No-Fly Zone, Barrages, Medics, Rush Lane, etc.
+        Titan goalie = getGoalie(context);
         for (Entity e : context.entityPool) {
             if (e.getHealth() <= 0.0) continue;
 
@@ -394,7 +395,10 @@ public class GuardianAbilities implements Serializable {
                 // Apply damage & effects to enemy Titans and Minions overlapping the zone
                 for (Titan t : context.players) {
                     if (t.team != team && t.health > 0.0 && e.asBounds().intersects(t.asBounds())) {
-                        t.damage(context, dmg);
+                        if (goalie != null && context.effectPool != null) {
+                            context.effectPool.addStackingEffect(goalie, new EmptyEffect(5000, t, EffectId.ATTACKED));
+                        }
+                        t.damage(context, dmg, goalie);
                         applyBarrageRegionEffects(context, t, bType);
                     }
                 }
@@ -412,7 +416,10 @@ public class GuardianAbilities implements Serializable {
                 double dmg = context.c.getD("guardian.barrage.dmg") * 0.75;
                 for (Titan t : context.players) {
                     if (t.team != team && t.health > 0.0 && e.asBounds().intersects(t.asBounds())) {
-                        t.damage(context, dmg);
+                        if (goalie != null && context.effectPool != null) {
+                            context.effectPool.addStackingEffect(goalie, new EmptyEffect(5000, t, EffectId.ATTACKED));
+                        }
+                        t.damage(context, dmg, goalie);
                         if (isIncendiary) {
                             context.effectPool.addUniqueEffect(new RatioEffect(1200, t, EffectId.BURN, 1.0), context);
                         }
@@ -434,7 +441,10 @@ public class GuardianAbilities implements Serializable {
                 double range = 180.0;
                 for (Titan t : context.players) {
                     if (t.team != team && t.health > 0.0 && util.Util.dist(e.X + 12, e.Y + 60, t.X + 35, t.Y + 35) <= range) {
-                        t.damage(context, context.c.getD("guardian.outpost.dmg"));
+                        if (goalie != null && context.effectPool != null) {
+                            context.effectPool.addStackingEffect(goalie, new EmptyEffect(5000, t, EffectId.ATTACKED));
+                        }
+                        t.damage(context, context.c.getD("guardian.outpost.dmg"), goalie);
                     }
                 }
                 for (Entity mn : context.entityPool) {
@@ -511,6 +521,16 @@ public class GuardianAbilities implements Serializable {
             }
         }
         applyRosterStatBoosts(context);
+    }
+
+    private Titan getGoalie(GameEngine context) {
+        if (context == null || context.players == null) return null;
+        for (Titan t : context.players) {
+            if (t.team == this.team && t.getType() == TitanType.GOALIE) {
+                return t;
+            }
+        }
+        return null;
     }
 
     private void applyBarrageRegionEffects(GameEngine context, Entity target, String bType) {

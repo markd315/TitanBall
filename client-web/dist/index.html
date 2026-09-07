@@ -378,8 +378,8 @@
         line-height: 1;
       }
       .inline-rank-img {
-        width: 21px;
-        height: 21px;
+        width: 32px;
+        height: 32px;
         object-fit: contain;
         image-rendering: pixelated;
       }
@@ -527,6 +527,189 @@
         border-color: #38bdf8;
         color: #ffffff;
         box-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
+      }
+      .help-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        border: 1px solid rgba(46, 213, 115, 0.4);
+        background: rgba(46, 213, 115, 0.12);
+        color: #2ed573;
+        font-family: 'Outfit', sans-serif;
+        font-size: 13px;
+        font-weight: 800;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        padding: 0;
+        line-height: 1;
+        outline: none;
+      }
+      .help-btn:hover {
+        background: rgba(46, 213, 115, 0.25);
+        border-color: #2ed573;
+        color: #ffffff;
+        transform: scale(1.12);
+        box-shadow: 0 0 10px rgba(46, 213, 115, 0.45);
+      }
+      .help-btn:active {
+        transform: scale(0.95);
+      }
+      .tournament-btn {
+        border-color: rgba(255, 159, 28, 0.4);
+        background: rgba(255, 159, 28, 0.12);
+        color: #ff9f1c;
+        font-size: 11px;
+      }
+      .tournament-btn:hover {
+        background: rgba(255, 159, 28, 0.25);
+        border-color: #ff9f1c;
+        color: #ffffff;
+        transform: scale(1.12);
+        box-shadow: 0 0 10px rgba(255, 159, 28, 0.45);
+      }
+      .tournament-btn:active {
+        transform: scale(0.95);
+      }
+      .preset-chip {
+        padding: 4px 10px;
+        background: rgba(255, 159, 28, 0.1);
+        border: 1px solid rgba(255, 159, 28, 0.3);
+        border-radius: 6px;
+        color: #ff9f1c;
+        font-family: inherit;
+        font-size: 11px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      .preset-chip:hover {
+        background: rgba(255, 159, 28, 0.25);
+        border-color: #ff9f1c;
+        color: #ffffff;
+      }
+      .preset-chip.active {
+        background: #ff9f1c;
+        color: #0b1a13;
+        font-weight: 700;
+      }
+      .controls-guide-container {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .controls-section {
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(45, 140, 100, 0.22);
+        border-radius: 12px;
+        padding: 10px 14px;
+      }
+      .controls-section-title {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1.2px;
+        color: #ff9f1c;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .controls-row {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 6px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        font-size: 13px;
+      }
+      .controls-row:last-child {
+        border-bottom: none;
+      }
+      .controls-desc {
+        color: #cbd5e1;
+        flex: 1;
+        line-height: 1.35;
+      }
+      .controls-key {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        flex-shrink: 0;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+      .key-kbd {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 6px;
+        padding: 2px 7px;
+        font-size: 11px;
+        font-weight: 700;
+        color: #34d399;
+        font-family: monospace;
+        letter-spacing: 0.5px;
+        box-shadow: 0 2px 0 rgba(0, 0, 0, 0.4);
+      }
+      .range-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 7px;
+        border-radius: 5px;
+        font-size: 10px;
+        font-weight: 700;
+        margin-left: 6px;
+        vertical-align: middle;
+      }
+      .range-tag-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: inline-block;
+        flex-shrink: 0;
+      }
+      .range-tag-split {
+        width: 14px;
+        height: 8px;
+        border-radius: 2px;
+        display: inline-block;
+        flex-shrink: 0;
+        background: linear-gradient(90deg, #ffe600 0%, #ffe600 22%, #0050ff 22%, #0050ff 78%, #ffe600 78%, #ffe600 100%);
+        border: 1px solid rgba(255,255,255,0.3);
+      }
+      .tag-shot {
+        background: rgba(180, 0, 0, 0.22);
+        border: 1px solid rgba(180, 0, 0, 0.6);
+        color: #fca5a5;
+      }
+      .tag-lob {
+        background: rgba(0, 80, 255, 0.22);
+        border: 1px solid rgba(0, 80, 255, 0.6);
+        color: #93c5fd;
+      }
+      .tag-a1 {
+        background: rgba(0, 255, 0, 0.15);
+        border: 1px solid rgba(0, 255, 0, 0.5);
+        color: #86efac;
+      }
+      .tag-a2 {
+        background: rgba(128, 0, 128, 0.25);
+        border: 1px solid rgba(168, 85, 247, 0.55);
+        color: #d8b4fe;
+      }
+      .tag-steal {
+        background: rgba(64, 224, 208, 0.18);
+        border: 1px solid rgba(64, 224, 208, 0.55);
+        color: #99f6e4;
+      }
+      .controls-row.color-coded {
+        border-radius: 8px;
+        padding: 7px 10px;
+        margin: 4px 0;
       }
       .stats-tiles-grid {
         display: grid;
@@ -1027,8 +1210,9 @@
         display: grid;
         grid-template-columns: repeat(2, auto);
         grid-template-areas: 
-          "pos upg"
-          "ab1 ab2";
+          "shot pos"
+          "ab1 ab2"
+          "upg .";
         gap: 0.5vh 0.4vw;
         box-sizing: border-box;
         justify-items: end;
@@ -1124,6 +1308,18 @@
         border-color: rgba(220, 38, 38, 0.8);
         box-shadow: 0 0 2.5vmin rgba(220, 38, 38, 0.45);
       }
+      #btn-call {
+        grid-area: shot;
+        font-size: clamp(8px, 0.9vw, 11px);
+        background: rgba(46, 213, 115, 0.22);
+        border-color: rgba(46, 213, 115, 0.85);
+        color: #a7f3d0;
+        box-shadow: 0 0 2.5vmin rgba(46, 213, 115, 0.4);
+      }
+      #btn-call:active {
+        background: rgba(46, 213, 115, 0.42);
+        box-shadow: 0 0 3.5vmin rgba(46, 213, 115, 0.8);
+      }
       .mobile-action-btn.disabled, .mobile-switch.disabled {
         opacity: 0.35;
         filter: grayscale(0.85);
@@ -1213,7 +1409,7 @@
         90%, 100% { transform: rotate(0deg); }
       }
     </style>
-    <script type="module" crossorigin src="./assets/main-c4623c23.js"></script>
+    <script type="module" crossorigin src="./assets/main-25137969.js"></script>
   </head>
   <body>
     <div id="app">
@@ -1265,6 +1461,7 @@
           <div id="mobile-buttons-zone">
             <button id="btn-upgrade" class="mobile-action-btn">UPGRADE</button>
             <button id="btn-shot" class="mobile-action-btn" style="display: none;">SHOT</button>
+            <button id="btn-call" class="mobile-action-btn" style="display: none;">CALL</button>
             <button id="btn-ability-1" class="mobile-action-btn">1</button>
             <button id="btn-ability-2" class="mobile-action-btn">2</button>
             <button id="btn-possession" class="mobile-action-btn">STEAL</button>
@@ -1381,7 +1578,13 @@
             <div id="class-select-error" class="error-msg" style="display: none; color: #ef4444; font-size: 14px; margin-top: 8px; font-weight: bold; text-align: center;"></div>
           </div>
           <div class="input-group">
-            <label for="controls-select">Controls Layout</label>
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <label for="controls-select" style="margin: 0;">Controls Layout</label>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <button id="tournament-code-btn" type="button" class="help-btn tournament-btn" title="Custom Tournament Code & Queue" aria-label="Tournament Code">🏆</button>
+                <button id="controls-help-btn" type="button" class="help-btn" title="View controls guide" aria-label="Controls Guide">?</button>
+              </div>
+            </div>
             <select id="controls-select">
               <option value="rts">RTS Style (Click to Move + Ability Hotkeys)</option>
               <option value="keyboard">Keyboard Style (WASD + Mouse Aim/Shoot)</option>
@@ -1507,6 +1710,97 @@
 
           <div class="actions-container" style="margin-top: 15px;">
             <button id="stats-modal-done-btn" class="btn">Close</button>
+          </div>
+        </div>
+
+        <!-- Controls Guide Modal Overlay -->
+        <div id="controls-modal" class="glass-card" style="display: none; position: absolute; z-index: 100; width: min(520px, calc(100vw - 24px)); max-width: 100%; max-height: 90vh; overflow-y: auto; box-sizing: border-box;">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 20px;">🎮</span>
+              <h2 id="controls-modal-title" style="margin: 0; font-size: 1.35rem; text-align: left;">Controls Guide</h2>
+            </div>
+            <button id="controls-modal-close-btn" class="modal-close-btn" title="Close controls">✕</button>
+          </div>
+
+          <!-- Preset Switcher Tabs -->
+          <div id="controls-preset-tabs" class="stats-mode-tabs" style="margin: 12px 0 10px 0;">
+            <button type="button" class="stats-tab-btn" data-preset="rts">RTS Style</button>
+            <button type="button" class="stats-tab-btn" data-preset="keyboard">Keyboard</button>
+            <button type="button" class="stats-tab-btn" data-preset="mobile-single">Mobile 1-Joy</button>
+            <button type="button" class="stats-tab-btn" data-preset="mobile-double">Mobile 2-Joy</button>
+          </div>
+
+          <!-- Active preset info banner -->
+          <div id="controls-preset-banner" style="display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; background: rgba(46, 213, 115, 0.1); border: 1px solid rgba(46, 213, 115, 0.25); border-radius: 8px; margin-bottom: 10px;">
+            <span id="controls-preset-banner-text" style="font-size: 12px; color: #a7f3d0; font-weight: 600;">Active Layout</span>
+            <button id="controls-apply-btn" type="button" class="btn btn-secondary" style="padding: 2px 8px; font-size: 11px; margin: 0; display: none;">Use This Layout</button>
+          </div>
+
+          <!-- Dynamic Controls Content Area -->
+          <div id="controls-modal-body">
+            <!-- Populated dynamically by controls.js -->
+          </div>
+
+          <div class="actions-container" style="margin-top: 14px;">
+            <button id="controls-modal-done-btn" class="btn">Close</button>
+          </div>
+        </div>
+
+        <!-- Tournament Code Modal Overlay -->
+        <div id="tournament-modal" class="glass-card" style="display: none; position: absolute; z-index: 100; width: min(520px, calc(100vw - 24px)); max-width: 100%; max-height: 90vh; overflow-y: auto; box-sizing: border-box;">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 20px;">🏆</span>
+              <h2 id="tournament-modal-title" style="margin: 0; font-size: 1.35rem; text-align: left;">Tournament Code</h2>
+            </div>
+            <button id="tournament-modal-close-btn" class="modal-close-btn" title="Close tournament modal">✕</button>
+          </div>
+
+          <div style="font-size: 12px; color: #94a3b8; line-height: 1.4; margin-top: 2px;">
+            Enter a custom tournament code and optional password to create or join a private match. Players with matching passwords and rules will be grouped together.
+          </div>
+
+          <!-- Code Input (Supports optional password prefix: [password]/playerIndex/...) -->
+          <div class="input-group" style="gap: 6px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <label for="tournament-code-input" style="margin: 0;">Tournament String Code</label>
+              <button id="tournament-code-reset-btn" type="button" class="btn btn-secondary" style="padding: 2px 10px; margin: 0; font-size: 11px;" title="Reset to standard 4v4">Reset Default</button>
+            </div>
+            <input type="text" id="tournament-code-input" placeholder="[password]/1/0/1/10/2/9999/10/20" value="/1/0/1/10/2/9999/10/20" style="font-family: monospace; font-size: 14px; letter-spacing: 0.5px; padding: 10px 14px;">
+            <span style="font-size: 11px; color: #94a3b8;">Prefix with password for private matches (e.g. <code>mypassword/1/0/...</code>). Leave leading slash for public.</span>
+          </div>
+
+          <!-- Live Rule Breakdown Card -->
+          <div class="input-group" style="gap: 6px;">
+            <label style="margin: 0; color: #38bdf8;">Match Rules</label>
+            <div id="tournament-breakdown-card" style="background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 12px; padding: 12px; font-size: 12px; line-height: 1.5; color: #e2e8f0;">
+              <!-- Populated dynamically by tournament.js -->
+            </div>
+          </div>
+
+          <!-- Hybrid / AI Fill Queue Options -->
+          <div style="display: flex; flex-direction: column; gap: 8px; padding: 10px; background: rgba(16, 36, 30, 0.5); border: 1px solid rgba(45, 140, 100, 0.25); border-radius: 10px;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <label for="tournament-fill-ai" style="margin: 0; font-size: 11px; cursor: pointer; color: #2ed573;">Fill with AI if queue is empty</label>
+              <input type="checkbox" id="tournament-fill-ai" style="width: 18px; height: 18px; cursor: pointer; accent-color: #2ed573; margin: 0;">
+            </div>
+            <div id="tournament-ai-diff-row" style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+              <span style="font-size: 11px; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">AI Difficulty</span>
+              <select id="tournament-ai-difficulty" style="padding: 4px 8px; font-size: 12px; border-radius: 6px; background: rgba(0,0,0,0.5); border: 1px solid rgba(45,140,100,0.4); color: white;">
+                <option value="0">Easy (1200-1700ms)</option>
+                <option value="1" selected>Medium (500-1200ms)</option>
+                <option value="2">Hard (200-700ms)</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="tournament-modal-error" class="error-msg" style="display: none; color: #ef4444; font-size: 13px; font-weight: bold; text-align: center;"></div>
+
+          <!-- Action Buttons -->
+          <div class="actions-container" style="margin-top: 10px; display: flex; gap: 10px;">
+            <button id="tournament-queue-btn" class="btn" style="flex: 2; margin: 0;">Queue Custom Match</button>
+            <button id="tournament-modal-cancel-btn" class="btn btn-secondary" style="flex: 1; margin: 0;">Cancel</button>
           </div>
         </div>
 

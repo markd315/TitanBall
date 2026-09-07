@@ -2,6 +2,8 @@ import { gameState, clientUI } from './state.js';
 import { initCanvas, clearScreen, drawImageCam } from './render/canvas.js';
 import { initMasteries, loadMasteriesForTitan, validateMasteries } from './screens/masteries.js';
 import { initBuildOrderPlanner, updatePlanBuildButtonVisibility } from './screens/buildOrderPlanner.js';
+import { initControlsModal } from './screens/controls.js';
+import { initTournamentModal } from './screens/tournament.js';
 import { initStatsScreen, refreshUserStats, updateStatsBanner } from './screens/stats.js';
 import { drawCredits } from './screens/credits.js';
 import { initKeyboard, setControlPreset } from './input/keyboard.js';
@@ -164,7 +166,7 @@ async function checkAndRejoinActiveGame() {
         const modeLabel = document.getElementById('queue-mode-label');
         if (modeLabel) modeLabel.textContent = isCoop ? `${lastQueueSize} Coop vs AI` : `${lastQueueSize}v${lastQueueSize}`;
         const pIdx = getPlayerIndexForSize(isCoop ? lastQueueSize : parseInt(lastQueueSize, 10));
-        activeQueueTournamentCode = `/${pIdx}/0/1/5/2/9999/10/12`;
+        activeQueueTournamentCode = `/${pIdx}/0/1/10/2/9999/10/20`;
         activeQueueClass = sessionStorage.getItem('classSelection') || 'WARRIOR';
         activeQueuePartners = sessionStorage.getItem('partners') || '';
         activeQueueLane = sessionStorage.getItem('preferredLane') || 'TOP';
@@ -514,7 +516,7 @@ function initUIListeners() {
         if (lobbyStatus) lobbyStatus.textContent = isCoopAi ? 'STARTING COOP VS AI...' : 'FINDING PLAYERS...';
         
         const playerIndex = getPlayerIndexForSize(currentMode);
-        let code = `/${playerIndex}/0/1/5/2/9999/10/12`;
+        let code = `/${playerIndex}/0/1/10/2/9999/10/20`;
         if (isCoopAi) {
           const aiDiffSelect = document.getElementById('ai-difficulty-select');
           const aiDiff = aiDiffSelect ? aiDiffSelect.value : '0';
@@ -585,7 +587,7 @@ function initUIListeners() {
         if (lobbyStatus) lobbyStatus.textContent = 'FINDING PLAYERS...';
         
         const preferredLane = sessionStorage.getItem('preferredLane') || 'TOP';
-        activeQueueTournamentCode = '/4/1/1/5/2/9999/10/12';
+        activeQueueTournamentCode = '/4/1/1/5/2/9999/10/20';
         activeQueueClass = classSel;
         activeQueuePartners = '';
         activeQueueLane = preferredLane;
@@ -598,7 +600,7 @@ function initUIListeners() {
           lobbyStatus.textContent = 'SEARCHING (FILL WITH AI ACTIVE)...';
         }
 
-        await joinQueue('/4/1/1/5/2/9999/10/12', classSel, '', preferredLane, fillAi, aiDiff); // index 4 is 1v1, goalieIndex 1 is off
+        await joinQueue('/4/1/1/5/2/9999/10/20', classSel, '', preferredLane, fillAi, aiDiff); // index 4 is 1v1, goalieIndex 1 is off
         gameState.is3v3 = false;
         gameState.phase = GamePhase.WAIT_FOR_GAME;
         startQueuePolling();
@@ -607,6 +609,55 @@ function initUIListeners() {
       }
     });
   }
+
+  // Custom Tournament Code queueing
+  initTournamentModal(async ({ tournamentCode, parsed, fillAi, aiDiff, selectedClass }) => {
+    const classError = document.getElementById('class-select-error');
+    const activeMasteries = gameState.controlsHeld.masteries;
+    if (!validateMasteries(activeMasteries)) {
+      if (classError) {
+        classError.textContent = `Error: Invalid masteries for ${selectedClass}! You must allocate exactly 10 points before queuing.`;
+        classError.style.display = 'block';
+      }
+      throw new Error(`Invalid masteries for ${selectedClass}! You must allocate exactly 10 points before queuing.`);
+    }
+
+    if (classError) classError.style.display = 'none';
+
+    if (isMobileDevice() && !isFullscreenActive()) {
+      requestFullscreen();
+    }
+
+    const modeLabel = document.getElementById('queue-mode-label');
+    if (modeLabel) {
+      modeLabel.textContent = parsed.password
+        ? `Custom: ${parsed.modeName} (🔒 ${parsed.password})`
+        : `Custom: ${parsed.modeName}`;
+    }
+    const lobbyTitle = document.querySelector('#lobby-overlay h2');
+    if (lobbyTitle) lobbyTitle.textContent = 'Searching Match';
+    const lobbyStatus = document.querySelector('#lobby-overlay .stat-value[style*="pulse"]');
+    if (lobbyStatus) {
+      lobbyStatus.textContent = parsed.isCoopAi ? 'STARTING COOP VS AI...' : (fillAi ? 'SEARCHING (FILL WITH AI ACTIVE)...' : 'FINDING PLAYERS...');
+    }
+
+    const partnersCsv = partners.join(',');
+    const preferredLane = sessionStorage.getItem('preferredLane') || 'TOP';
+    activeQueueTournamentCode = tournamentCode;
+    activeQueueClass = selectedClass;
+    activeQueuePartners = partnersCsv;
+    activeQueueLane = preferredLane;
+
+    const queueFillAiCheckbox = document.getElementById('queue-fill-ai-checkbox');
+    const queueAiDiffSelect = document.getElementById('queue-ai-difficulty-select');
+    if (queueFillAiCheckbox) queueFillAiCheckbox.checked = fillAi;
+    if (queueAiDiffSelect) queueAiDiffSelect.value = String(aiDiff);
+
+    await joinQueue(tournamentCode, selectedClass, partnersCsv, preferredLane, fillAi, aiDiff);
+    gameState.is3v3 = parsed.playerIndex !== 4;
+    gameState.phase = GamePhase.WAIT_FOR_GAME;
+    startQueuePolling();
+  });
 
   // Leave queue click
   const leaveBtn = document.getElementById('leave-queue-btn');
@@ -1611,6 +1662,7 @@ export function start() {
   initAssets();
   initMasteries();
   initBuildOrderPlanner();
+  initControlsModal();
   initKeyboard();
   initMouse();
   initMobileControls();

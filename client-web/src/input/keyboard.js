@@ -3,7 +3,8 @@ import { GamePhase } from '../constants.js';
 import { returnToMainMenu } from '../main.js';
 import {
     TREE_SHORT_NAME, NODE_DEFS,
-    getNodeDef, getNodeConfigKey, isNodeUnlocked, getTreeState
+    getNodeDef, getNodeConfigKey, isNodeUnlocked, getTreeState,
+    isBuildOrderManaNode, HARDCODED_COSTS
 } from '../render/hud.js';
 
 export let currentConfig = {};
@@ -161,10 +162,25 @@ export function initKeyboard() {
       }
     }
 
+    // Physical 'E' key — Call for Ball
+    if (e.key === 'e' || e.key === 'E' || e.code === 'KeyE') {
+      gameState.controlsHeld.callForBall = true;
+    }
+
     const action = getActionForKey(e);
     if (action && actionMap[action]) {
       const field = actionMap[action];
       
+      // If action is LOB or SHOT, only allow holding the button if we actually have possession (or goalie)
+      if (field === 'lobBtn' || field === 'shotBtn') {
+        const game = gameState.game;
+        const myTitan = game?.underControl;
+        if (myTitan && myTitan.type !== 'GOALIE' && myTitan.possession !== 1) {
+          e.preventDefault();
+          return;
+        }
+      }
+
       if (field === 'E' && !gameState.controlsHeld.E) {
         const game = gameState.game;
         if (game && game.underControl) {
@@ -197,6 +213,10 @@ export function initKeyboard() {
       return;
     }
 
+    if (e.key === 'e' || e.key === 'E' || e.code === 'KeyE') {
+      gameState.controlsHeld.callForBall = false;
+    }
+
     const action = getActionForKey(e);
     if (action && actionMap[action]) {
       const field = actionMap[action];
@@ -214,56 +234,107 @@ export function executeNextBuildOrder(game) {
   }
 
   const team = game.underControl.team;
-  let i = gameState.buildOrderIndex || 0;
+  const isHome = team === 'HOME';
+  const goldAmt = Math.floor(isHome ? (game.homeGoalieCurrency || 0) : (game.awayGoalieCurrency || 0));
+  const manaAmt = Math.floor(isHome ? (game.homeGoalieMana    || 0) : (game.awayGoalieMana    || 0));
 
-  while (i < order.length) {
-    const item      = order[i];
+  let candidateGold = null;
+  let candidateMana = null;
+
+  // 1. Find next unpurchased Gold candidate
+  for (let idx = 0; idx < order.length; idx++) {
+    const item = order[idx];
+    if (isBuildOrderManaNode(order, item)) continue;
     const activeKey = item.tree;
-    const targetKey = item.nodeKey;   // base key stored in planner
-
-    const treeState = getTreeState(game, team, activeKey);
     const defs      = NODE_DEFS[activeKey];
     const shortName = TREE_SHORT_NAME[activeKey];
+    if (!defs || !shortName) continue;
 
-    if (!defs || !shortName) { i++; continue; }
-
-    // Find the node index by matching the stored base key
     let nodeIdx = -1;
     for (let j = 0; j < defs.length; j++) {
-      if (`${shortName}.${defs[j].tier}.${defs[j].name}` === targetKey) {
+      if (`${shortName}.${defs[j].tier}.${defs[j].name}` === item.nodeKey) {
         nodeIdx = j; break;
       }
     }
-    if (nodeIdx === -1) { i++; continue; }
+    if (nodeIdx === -1) continue;
 
-    const def         = getNodeDef(activeKey, nodeIdx);
-    if (!def) { i++; continue; }
+    const def = getNodeDef(activeKey, nodeIdx);
+    if (!def) continue;
 
-    // Resolve actual key (handles focusedtraining → focusedtraining2)
+    const treeState = getTreeState(game, team, activeKey);
     const resolvedKey = getNodeConfigKey(activeKey, nodeIdx, treeState.purchased);
-    const purchased   = def.kind === 'cost' && treeState.purchased.has(resolvedKey);
-    const unlocked    = isNodeUnlocked(activeKey, nodeIdx, treeState);
+    const isPurchased = def.kind === 'cost' && treeState.purchased.has(resolvedKey);
 
-    if (purchased) {
-      // Already bought — skip this slot permanently
-      i++;
-      gameState.buildOrderIndex = i;
-      continue;
-    }
+    if (isPurchased) continue;
 
+    const unlocked = isNodeUnlocked(activeKey, nodeIdx, treeState);
     if (!unlocked) {
-      // Tier prerequisites not yet met — stop
-      break;
+      break; // blocked by prerequisites in gold track
     }
 
-    // Fire the purchase via the standard pending-buy pipe
-    gameState.pendingGoalieBuy  = { tree: activeKey, nodeKey: resolvedKey };
-    gameState.buildOrderIndex   = i + 1;
+    const costData = HARDCODED_COSTS[resolvedKey] || HARDCODED_COSTS[item.nodeKey] || {};
+    const amount = costData.use !== undefined ? costData.use : (costData.cost !== undefined ? costData.cost : 0);
+    const affordable = amount > 0 && goldAmt >= amount;
+    candidateGold = { item, resolvedKey, index: idx, affordable };
+    break;
+  }
+
+  // 2. Find next unpurchased Mana candidate
+  for (let idx = 0; idx < order.length; idx++) {
+    const item = order[idx];
+    if (!isBuildOrderManaNode(order, item)) continue;
+    const activeKey = item.tree;
+    const defs      = NODE_DEFS[activeKey];
+    const shortName = TREE_SHORT_NAME[activeKey];
+    if (!defs || !shortName) continue;
+
+    let nodeIdx = -1;
+    for (let j = 0; j < defs.length; j++) {
+      if (`${shortName}.${defs[j].tier}.${defs[j].name}` === item.nodeKey) {
+        nodeIdx = j; break;
+      }
+    }
+    if (nodeIdx === -1) continue;
+
+    const def = getNodeDef(activeKey, nodeIdx);
+    if (!def) continue;
+
+    const treeState = getTreeState(game, team, activeKey);
+    const resolvedKey = getNodeConfigKey(activeKey, nodeIdx, treeState.purchased);
+    const isPurchased = def.kind === 'cost' && treeState.purchased.has(resolvedKey);
+
+    if (isPurchased) continue;
+
+    const isPollinated = treeState.purchased.has('cultivation.t5.manapollinate') && def.tier === 't5' && activeKey !== 'GOALIE_TREE_CULTIVATION';
+    const unlocked = isPollinated || isNodeUnlocked(activeKey, nodeIdx, treeState);
+    if (!unlocked) {
+      break; // blocked by prerequisites in mana track
+    }
+
+    const costData = HARDCODED_COSTS[resolvedKey] || HARDCODED_COSTS[item.nodeKey] || {};
+    const amount = costData.use !== undefined ? costData.use : (costData.cost !== undefined ? costData.cost : 0);
+    const affordable = amount > 0 && manaAmt >= amount;
+    candidateMana = { item, resolvedKey, index: idx, affordable };
+    break;
+  }
+
+  // 3. Choose candidate to purchase
+  let chosen = null;
+  if (candidateGold && candidateGold.affordable && candidateMana && candidateMana.affordable) {
+    // Both affordable: pick whichever appeared earlier in the build order
+    chosen = candidateGold.index <= candidateMana.index ? candidateGold : candidateMana;
+  } else if (candidateGold && candidateGold.affordable) {
+    chosen = candidateGold;
+  } else if (candidateMana && candidateMana.affordable) {
+    chosen = candidateMana;
+  }
+
+  if (chosen) {
+    gameState.pendingGoalieBuy = { tree: chosen.item.tree, nodeKey: chosen.resolvedKey };
     return;
   }
 
-  // Build order exhausted (or blocked by locks) — repeat the last 'use' node in the list.
-  // Scan backward; no state changes, lists are short.
+  // 4. Fallback: if build order exhausted or both blocked, repeat the last affordable 'use' node
   for (let j = order.length - 1; j >= 0; j--) {
     const item      = order[j];
     const activeKey = item.tree;
@@ -279,7 +350,13 @@ export function executeNextBuildOrder(game) {
     if (!isNodeUnlocked(activeKey, nodeIdx, treeState)) continue;
 
     const resolvedKey = getNodeConfigKey(activeKey, nodeIdx, treeState.purchased);
-    gameState.pendingGoalieBuy = { tree: activeKey, nodeKey: resolvedKey };
-    return;
+    const costData = HARDCODED_COSTS[resolvedKey] || HARDCODED_COSTS[item.nodeKey] || {};
+    const amount = costData.use !== undefined ? costData.use : (costData.cost !== undefined ? costData.cost : 0);
+    const isMana = isBuildOrderManaNode(order, item);
+    const balance = isMana ? manaAmt : goldAmt;
+    if (amount > 0 && balance >= amount) {
+      gameState.pendingGoalieBuy = { tree: activeKey, nodeKey: resolvedKey };
+      return;
+    }
   }
 }

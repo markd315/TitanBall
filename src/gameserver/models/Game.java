@@ -83,6 +83,8 @@ public class Game   {
     public double awayGoalieMana = 0.0;
     public Set<String> homeGoaliePurchasedUpgrades = new HashSet<String>();
     public Set<String> awayGoaliePurchasedUpgrades = new HashSet<String>();
+    public Set<String> homeGoalieAllPurchasedUpgrades = new HashSet<String>();
+    public Set<String> awayGoalieAllPurchasedUpgrades = new HashSet<String>();
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class RecentPurchase {

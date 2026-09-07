@@ -73,7 +73,7 @@ public class ServerApplication {
         instantiateSpringContext();
         System.out.println("adding new tutorial, id " + id + " for " + email);
         cleanupCorruptStates(Collections.singletonList(email));
-        GameOptions op = new GameOptions("/1/1/1/5/2/9999/10/12");
+        GameOptions op = new GameOptions("/1/1/1/5/2/9999/10/20");
         ManagedGame mg = new ManagedGame(id, op);
         mg.availableSlots = new ArrayList<>();
         // Enforce bijective mapping: availableSlots is now a flat List<Integer>
@@ -197,6 +197,8 @@ public class ServerApplication {
                         boolean is1v1 = (val.options.playerIndex == 4 
                                 || "/1/1/1/5/2/9999/10/12".equals(val.options.toStringSrv())
                                 || "/4/1/1/5/2/9999/10/12".equals(val.options.toStringSrv())
+                                || "/1/1/1/5/2/9999/10/20".equals(val.options.toStringSrv())
+                                || "/4/1/1/5/2/9999/10/20".equals(val.options.toStringSrv())
                                 || val.options.allowsNoGoalie());
                         
                         if (is1v1) {
@@ -222,10 +224,35 @@ public class ServerApplication {
                                     if (t != null && player.email != null) {
                                         String className = t.getType() != null ? t.getType().toString() : "WARRIOR";
                                         persistenceManager.postgameStats(player.email, val.state.stats, className, player.wasVictorious, player.newRating);
+                                        if (t.masteries != null) {
+                                            for (String mName : t.masteries.getPlusThreeMasteryNames()) {
+                                                persistenceManager.recordMasteryStats(val.state.stats, player.email, className + "_" + mName, player.wasVictorious);
+                                            }
+                                        }
                                     }
                                 } catch (Exception e) {
                                     e.printStackTrace();
                                 }
+                            }
+                            try {
+                                PlayerDivider homeGoalie = null;
+                                PlayerDivider awayGoalie = null;
+                                for (PlayerDivider p : val.state.clients) {
+                                    if (p.selection == 1) homeGoalie = p;
+                                    else if (p.selection == 2) awayGoalie = p;
+                                }
+                                if (homeGoalie != null && val.state.homeGoalieAllPurchasedUpgrades != null) {
+                                    for (String up : val.state.homeGoalieAllPurchasedUpgrades) {
+                                        persistenceManager.recordUpgradeStats(val.state.stats, homeGoalie.email, up, homeGoalie.wasVictorious);
+                                    }
+                                }
+                                if (awayGoalie != null && val.state.awayGoalieAllPurchasedUpgrades != null) {
+                                    for (String up : val.state.awayGoalieAllPurchasedUpgrades) {
+                                        persistenceManager.recordUpgradeStats(val.state.stats, awayGoalie.email, up, awayGoalie.wasVictorious);
+                                    }
+                                }
+                            } catch (Exception e) {
+                                e.printStackTrace();
                             }
                         }
                     }

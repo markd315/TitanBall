@@ -21,10 +21,14 @@ public class GoalHoop  {
     }
 
     public void trigger() {
+        trigger(1800);
+    }
+
+    public void trigger(int cdMs) {
         onCooldown = true;
 
         Instant now = Instant.now();
-        nextAvailable = now.plus(1000);
+        nextAvailable = now.plus(cdMs);
     }
 
     public void freeze() {

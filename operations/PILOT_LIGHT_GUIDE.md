@@ -39,17 +39,34 @@ docker push 720291373173.dkr.ecr.us-east-1.amazonaws.com/titanball:latest
 
 ## 2. Deploy the CloudFormation Stack
 
-The stack is self-contained (building a VPC, public subnet, security groups, ECS Cluster, Fargate 2-container Task Definition, ECS Service, and Pilot Light Lambda):
+The stack is self-contained (building a VPC, public subnet, security groups, ECS Cluster, Fargate 2-container Task Definition, ECS Service, and Pilot Light Lambda).
 
+> [!TIP]
+> The template includes a custom resource that automatically resolves the latest available image digest in your ECR repository (`titanball`) and pins the exact immutable SHA-256 digest in the ECS Task Definition. Pass `DeploymentNonce` (e.g. timestamp) to ensure CloudFormation queries ECR on every stack update.
+
+**Bash / Linux / macOS:**
 ```bash
 aws cloudformation deploy \
   --template-file operations/pilot-light-stack.yaml \
   --stack-name titanball-pilot-light \
   --capabilities CAPABILITY_IAM \
   --parameter-overrides \
+      DeploymentNonce=$(date +%s) \
       CloudFrontDistributionId=E250EEB1SQKL1Z \
-      ECRImageUri=720291373173.dkr.ecr.us-east-1.amazonaws.com/titanball:latest \
       DatabaseRootPassword=yoursecurepassword \
+      ExpirationHours=4
+```
+
+**PowerShell (Windows):**
+```powershell
+aws cloudformation deploy `
+  --template-file operations/pilot-light-stack.yaml `
+  --stack-name titanball-pilot-light `
+  --capabilities CAPABILITY_IAM `
+  --parameter-overrides `
+      DeploymentNonce=$((Get-Date).Ticks) `
+      CloudFrontDistributionId=E250EEB1SQKL1Z `
+      DatabaseRootPassword=yoursecurepassword `
       ExpirationHours=4
 ```
 

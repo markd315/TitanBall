@@ -7,10 +7,20 @@ Parameters:
     Default: E250EEB1SQKL1Z
     Description: The ID of your existing CloudFront distribution (e.g., E250EEB1SQKL1Z) for blockforger.net.
 
+  ECRRepositoryName:
+    Type: String
+    Default: titanball
+    Description: The ECR repository name for the Titanball game server.
+
   ECRImageUri:
     Type: String
     Default: '720291373173.dkr.ecr.us-east-1.amazonaws.com/titanball:latest'
-    Description: The ECR Docker Image URI for the Titanball game server.
+    Description: Fallback ECR Docker Image URI if repository cannot be queried.
+
+  DeploymentNonce:
+    Type: String
+    Default: 'default'
+    Description: Optional nonce or timestamp to force CloudFormation to re-resolve the latest ECR image during stack update.
 
   DatabaseRootPassword:
     Type: String
@@ -161,7 +171,7 @@ Resources:
       TaskRoleArn: !Ref EcsTaskRole
       ContainerDefinitions:
         - Name: game-server
-          Image: !Ref ECRImageUri
+          Image: !GetAtt LatestEcrImage.ImageUri
           Cpu: 3584
           Memory: 6144
           PortMappings:
@@ -263,6 +273,15 @@ Resources:
                   - ecs:CreateCluster
                   - ecs:CreateService
                   - ecs:ListTaskDefinitions
+                  - ecs:DescribeTaskDefinition
+                  - ecs:RegisterTaskDefinition
+                Resource: '*'
+              # ECR Operations (Image resolution)
+              - Effect: Allow
+                Action:
+                  - ecr:DescribeImages
+                  - ecr:ListImages
+                  - ecr:BatchGetImage
                 Resource: '*'
               # ENI network interface resolution for Public IP
               - Effect: Allow
@@ -311,13 +330,17 @@ Resources:
           ECS_TASK_FAMILY: TitanballTask
           ECS_SUBNET: !Ref PublicSubnet
           ECS_SECURITY_GROUP: !Ref ServerSecurityGroup
+          ECR_REPOSITORY: !Ref ECRRepositoryName
       Code:
         ZipFile: |
           import os,json,datetime,urllib.request,boto3,time
           from botocore.exceptions import ClientError
-          ecs,ec2,cloudfront,route53=boto3.client('ecs'),boto3.client('ec2'),boto3.client('cloudfront'),boto3.client('route53')
+          ecs,ec2,cloudfront,route53,ecr=boto3.client('ecs'),boto3.client('ec2'),boto3.client('cloudfront'),boto3.client('route53'),boto3.client('ecr')
           def handler(event,context):
-           if "RequestType" in event:return handle_cfn_router(event,context)
+           if "RequestType" in event:
+            if event.get("ResourceType")=="Custom::LatestEcrImage" or "RepositoryName" in event.get("ResourceProperties",{}):
+             return handle_cfn_ecr(event,context)
+            return handle_cfn_router(event,context)
            elif event.get("source")=="aws.events":return handle_reap(event,context)
            body_json={}
            if isinstance(event,dict):
@@ -378,9 +401,21 @@ Resources:
              status,msg="starting","ECS service creation in progress"
             else:
              svc=active[0]
-             if svc.get('desiredCount',0)!=1:
-              ecs.update_service(cluster=cluster,service=service,desiredCount=1)
-              status,msg="starting","ECS service scaling to 1 initiated"
+             family=os.environ.get('ECS_TASK_FAMILY','TitanballTask')
+             repo=os.environ.get('ECR_REPOSITORY','titanball')
+             latest_task,image_changed=None,False
+             try:
+              latest_task,image_changed=sync_task_with_ecr(family,repo)
+             except Exception as te:print("Sync ECR task err:",te)
+             if not latest_task:
+              task_arns=ecs.list_task_definitions(familyPrefix=family,status='ACTIVE',sort='DESC',maxResults=1).get('taskDefinitionArns',[])
+              latest_task=task_arns[0] if task_arns else None
+             needs_update=svc.get('desiredCount',0)!=1 or image_changed or (latest_task and svc.get('taskDefinition')!=latest_task)
+             if needs_update:
+              u_kwargs={'cluster':cluster,'service':service,'desiredCount':1,'forceNewDeployment':True}
+              if latest_task:u_kwargs['taskDefinition']=latest_task
+              ecs.update_service(**u_kwargs)
+              status,msg="starting","ECS service updated with latest image and scaled to 1"
              else:
               status,msg="running","ECS service is running"
              try:ecs.tag_resource(resourceArn=svc['serviceArn'],tags=[{'key':'ExpirationTime','value':exp}])
@@ -501,6 +536,55 @@ Resources:
            except Exception as e:
             print("Router err:",e)
             send_cfn(event,context,"FAILED",{"Message":str(e)},phys_id,reason=f"Err: {str(e)[:180]}")
+          def handle_cfn_ecr(event,context):
+           req_type,props=event.get("RequestType"),event.get("ResourceProperties",{})
+           repo=props.get("RepositoryName","titanball")
+           tag=props.get("Tag","latest")
+           default_uri=props.get("DefaultImageUri","")
+           phys_id=event.get("PhysicalResourceId") or f"{repo}-latest"
+           if req_type=="Delete":return send_cfn(event,context,"SUCCESS",{},phys_id)
+           try:
+            desc=ecr.describe_images(repositoryName=repo)
+            images=desc.get('imageDetails',[])
+            matched=[img for img in images if tag in img.get('imageTags',[])]
+            if matched:target=sorted(matched,key=lambda x:x['imagePushedAt'],reverse=True)[0]
+            elif images:target=sorted(images,key=lambda x:x['imagePushedAt'],reverse=True)[0]
+            else:
+             if default_uri:return send_cfn(event,context,"SUCCESS",{"ImageUri":default_uri,"ImageDigest":""},phys_id)
+             raise Exception(f"No images in ECR repository '{repo}'")
+            digest=target['imageDigest']
+            reg_id=target.get('registryId') or (context.invoked_function_arn.split(':')[4] if hasattr(context,'invoked_function_arn') else '720291373173')
+            region=os.environ.get('AWS_REGION') or os.environ.get('AWS_DEFAULT_REGION','us-east-1')
+            resolved_uri=f"{reg_id}.dkr.ecr.{region}.amazonaws.com/{repo}@{digest}"
+            phys_id=f"{repo}@{digest}"
+            return send_cfn(event,context,"SUCCESS",{"ImageUri":resolved_uri,"ImageDigest":digest},phys_id)
+           except Exception as e:
+            print("ECR resolve err:",e)
+            if default_uri:return send_cfn(event,context,"SUCCESS",{"ImageUri":default_uri,"ImageDigest":""},phys_id)
+            return send_cfn(event,context,"FAILED",{"Message":str(e)},phys_id,reason=f"Err: {str(e)[:180]}")
+          def sync_task_with_ecr(family,repo):
+           desc_ecr=ecr.describe_images(repositoryName=repo)
+           images=desc_ecr.get('imageDetails',[])
+           matched=[img for img in images if 'latest' in img.get('imageTags',[])]
+           target=sorted(matched or images,key=lambda x:x['imagePushedAt'],reverse=True)[0]
+           digest=target['imageDigest']
+           reg_id=target.get('registryId') or '720291373173'
+           region=os.environ.get('AWS_REGION') or os.environ.get('AWS_DEFAULT_REGION','us-east-1')
+           target_uri=f"{reg_id}.dkr.ecr.{region}.amazonaws.com/{repo}@{digest}"
+           desc_td=ecs.describe_task_definition(taskDefinition=family)
+           td=desc_td['taskDefinition']
+           c_game=next((c for c in td.get('containerDefinitions',[]) if c['name']=='game-server'),None)
+           if c_game and c_game.get('image')==target_uri:return td['taskDefinitionArn'],False
+           for c in td['containerDefinitions']:
+            if c['name']=='game-server':c['image']=target_uri
+            for k in list(c.keys()):
+             if c[k]==[] and k in ['links','entryPoint','command','dnsServers','dnsSearchDomains','extraHosts','dockerSecurityOptions','dockerLabels','ulimits','systemControls','secrets','environmentFiles']:
+              del c[k]
+           reg_params={'family':family,'containerDefinitions':td['containerDefinitions'],'networkMode':td.get('networkMode','awsvpc'),'requiresCompatibilities':td.get('requiresCompatibilities',['FARGATE']),'cpu':td.get('cpu','4096'),'memory':td.get('memory','8192')}
+           for k in ['taskRoleArn','executionRoleArn','volumes','runtimePlatform','ephemeralStorage']:
+            if td.get(k):reg_params[k]=td[k]
+           new_td=ecs.register_task_definition(**reg_params)
+           return new_td['taskDefinition']['taskDefinitionArn'],True
           def send_cfn(event,context,status,data,phys_id,reason=None):
            body=json.dumps({"Status":status,"Reason":reason or f"Logs: {getattr(context,'log_stream_name','none')}","PhysicalResourceId":phys_id,"StackId":event.get("StackId"),"RequestId":event.get("RequestId"),"LogicalResourceId":event.get("LogicalResourceId"),"Data":data}).encode('utf-8')
            req=urllib.request.Request(event["ResponseURL"],data=body,headers={"content-type":"","content-length":str(len(body))},method="PUT")
@@ -549,6 +633,18 @@ Resources:
       SourceArn: !GetAtt ReaperScheduleRule.Arn
 
   # ==========================================
+  # DYNAMIC ECR IMAGE RESOLVER CUSTOM RESOURCE
+  # ==========================================
+  LatestEcrImage:
+    Type: Custom::LatestEcrImage
+    Properties:
+      ServiceToken: !GetAtt PilotLightLambda.Arn
+      RepositoryName: !Ref ECRRepositoryName
+      Tag: latest
+      DefaultImageUri: !Ref ECRImageUri
+      DeploymentNonce: !Ref DeploymentNonce
+
+  # ==========================================
   # CLOUDFRONT ROUTING CUSTOM RESOURCE
   # ==========================================
   CloudFrontRouter:
@@ -563,3 +659,7 @@ Outputs:
   LambdaFunctionUrl:
     Description: URL to manually test server warming
     Value: !GetAtt PilotLightLambdaUrl.FunctionUrl
+
+  ResolvedImageUri:
+    Description: Exact immutable ECR image URI resolved and used by the task definition
+    Value: !GetAtt LatestEcrImage.ImageUri

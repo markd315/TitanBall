@@ -77,6 +77,99 @@ CREATE TABLE classstat (
     manaspent INT DEFAULT 0
 );
 
+-- Mastery stat pairs (e.g. MARKSMAN_SPEED, ARTISAN_HEALTH)
+CREATE TABLE IF NOT EXISTS masteriesstat (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    role VARCHAR(64) UNIQUE,
+    wins INT DEFAULT 0,
+    losses INT DEFAULT 0,
+    ties INT DEFAULT 0,
+    goals INT DEFAULT 0,
+    points DOUBLE DEFAULT 0.0,
+    sidegoals INT DEFAULT 0,
+    blocks INT DEFAULT 0,
+    steals INT DEFAULT 0,
+    passes INT DEFAULT 0,
+    kills INT DEFAULT 0,
+    deaths INT DEFAULT 0,
+    turnovers INT DEFAULT 0,
+    killassists INT DEFAULT 0,
+    goalassists INT DEFAULT 0,
+    rebounds INT DEFAULT 0,
+    saves INT DEFAULT 0,
+    lasthits INT DEFAULT 0,
+    miniondamage DOUBLE DEFAULT 0.0,
+    upgradesgold INT DEFAULT 0,
+    consumablesgold INT DEFAULT 0,
+    sidegoalsaves INT DEFAULT 0,
+    centergoalsaves INT DEFAULT 0,
+    sidegoalsconceded INT DEFAULT 0,
+    goalsconceded INT DEFAULT 0,
+    manaspent INT DEFAULT 0
+);
+
+-- Upgrade class stats for goalie purchases
+CREATE TABLE IF NOT EXISTS upgradeclassstat (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    upgrade VARCHAR(128) UNIQUE,
+    wins INT DEFAULT 0,
+    losses INT DEFAULT 0,
+    ties INT DEFAULT 0,
+    goals INT DEFAULT 0,
+    points DOUBLE DEFAULT 0.0,
+    sidegoals INT DEFAULT 0,
+    blocks INT DEFAULT 0,
+    steals INT DEFAULT 0,
+    passes INT DEFAULT 0,
+    kills INT DEFAULT 0,
+    deaths INT DEFAULT 0,
+    turnovers INT DEFAULT 0,
+    killassists INT DEFAULT 0,
+    goalassists INT DEFAULT 0,
+    rebounds INT DEFAULT 0,
+    saves INT DEFAULT 0,
+    lasthits INT DEFAULT 0,
+    miniondamage DOUBLE DEFAULT 0.0,
+    upgradesgold INT DEFAULT 0,
+    consumablesgold INT DEFAULT 0,
+    sidegoalsaves INT DEFAULT 0,
+    centergoalsaves INT DEFAULT 0,
+    sidegoalsconceded INT DEFAULT 0,
+    goalsconceded INT DEFAULT 0,
+    manaspent INT DEFAULT 0
+);
+
+-- Build order stats (for headless txt build order winrates)
+CREATE TABLE IF NOT EXISTS buildorderstat (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    buildname VARCHAR(128) UNIQUE,
+    wins INT DEFAULT 0,
+    losses INT DEFAULT 0,
+    ties INT DEFAULT 0,
+    goals INT DEFAULT 0,
+    points DOUBLE DEFAULT 0.0,
+    sidegoals INT DEFAULT 0,
+    blocks INT DEFAULT 0,
+    steals INT DEFAULT 0,
+    passes INT DEFAULT 0,
+    kills INT DEFAULT 0,
+    deaths INT DEFAULT 0,
+    turnovers INT DEFAULT 0,
+    killassists INT DEFAULT 0,
+    goalassists INT DEFAULT 0,
+    rebounds INT DEFAULT 0,
+    saves INT DEFAULT 0,
+    lasthits INT DEFAULT 0,
+    miniondamage DOUBLE DEFAULT 0.0,
+    upgradesgold INT DEFAULT 0,
+    consumablesgold INT DEFAULT 0,
+    sidegoalsaves INT DEFAULT 0,
+    centergoalsaves INT DEFAULT 0,
+    sidegoalsconceded INT DEFAULT 0,
+    goalsconceded INT DEFAULT 0,
+    manaspent INT DEFAULT 0
+);
+
 -- Premade team stats
 CREATE TABLE premadestats (
     id INT AUTO_INCREMENT PRIMARY KEY,

@@ -33,6 +33,16 @@ public class GameOptions   {
     protected static final String[] tieDisp = {"Draw at 12:00", "Draw at 15:00", "Draw at 18:00", "Draw at 20:00", "Draw at 25:00", "Draw at 30:00", "Draw at 35:00", "Draw at 60:00", "Draw OFF", "Draw at 3:00", "Draw at 5:00", "Draw at 10:00"};
 
     public GameOptions() {
+        this.playerIndex = 1;         // 4v4
+        this.goalieIndex = 0;         // Goalies on
+        this.bestOfIndex = 1;         // Best of 1
+        this.playToIndex = 10;        // Play to 10 points
+        this.winByIndex = 2;          // Win by 2
+        this.hardWinIndex = 9999;     // Hard win off
+        this.suddenDeathIndex = 10;   // Sudden death at 10:00
+        this.tieIndex = 12;           // Draw at 12:00
+        this.aiDifficultyIndex = 2;   // Hard AI
+        this.isHybrid = false;
     }
 
     public boolean isCoopVsAi() {
@@ -90,7 +100,7 @@ public class GameOptions   {
         if (split.length < 9) {
             throw new IllegalArgumentException("invalid tournament code (options): " + tournamentCode);
         }
-        //Indexes are set to literals on serverside
+        // Indexes are set to literals on serverside
         this.playerIndex = Integer.parseInt(split[1]);
         this.goalieIndex = Integer.parseInt(split[2]);
         this.bestOfIndex = Integer.parseInt(split[3]);
@@ -104,6 +114,23 @@ public class GameOptions   {
         }
         if (split.length >= 11) {
             this.isHybrid = "1".equals(split[10]) || "true".equalsIgnoreCase(split[10]);
+        }
+
+        // Defensive cleanup: Ensure literal win conditions are never non-positive (which causes instant 1-tick match completion)
+        if (this.playToIndex <= 0) {
+            this.playToIndex = 10;
+        }
+        if (this.winByIndex <= 0) {
+            this.winByIndex = 2;
+        }
+        if (this.hardWinIndex <= 0) {
+            this.hardWinIndex = 9999;
+        }
+        if (this.suddenDeathIndex <= 0) {
+            this.suddenDeathIndex = 10;
+        }
+        if (this.tieIndex <= 0) {
+            this.tieIndex = 12;
         }
     }
 
