@@ -1,0 +1,12 @@
+empowerment.t1.combinecontract
+empowerment.t3.marksmanship
+empowerment.t3.grit
+empowerment.t3.discipline
+empowerment.t4.fuelreserves
+empowerment.t4.forecheck
+empowerment.t5.clutchgene
+empowerment.t5.focusedtraining
+empowerment.t6.dragonsbreath
+empowerment.t6.bannerofcommand
+empowerment.t5.energysurge
+empowerment.t5.secondwind

@@ -15,6 +15,7 @@ public class PlayerDivider {
     public int selection;
     public List<Integer> possibleSelection = new ArrayList<>();
     public int wasVictorious = 0;
+    public boolean isAi = false;
 
     public PlayerDivider(List<Integer> possibleSelection) {
         setPossibleSelectionSafe(possibleSelection);

@@ -6,7 +6,7 @@ import com.fasterxml.jackson.annotation.*;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class KeyDifferences   {
     public int UP = 0, LEFT = 0, DOWN = 0, RIGHT = 0, E = 0, R = 0, CAM = 0,
-            STEAL = 0, TAB = 0, SWITCH = 0, BOOST =0, BOOST_LOCK =0, MV_CLICK=0, MV_BALL=0;
+            STEAL = 0, TAB = 0, SWITCH = 0, BOOST =0, BOOST_LOCK =0, MV_CLICK=0, MV_BALL=0, callForBall = 0;
 
     public KeyDifferences(){
 
@@ -39,6 +39,9 @@ public class KeyDifferences   {
         }
         if (act.SWITCH) {
             SWITCH++;
+        }
+        if (act.callForBall) {
+            callForBall++;
         }
         if(act.BOOST){
             BOOST++;
@@ -73,6 +76,9 @@ public class KeyDifferences   {
             }
             if (old.SWITCH) {
                 SWITCH--;
+            }
+            if (old.callForBall) {
+                callForBall--;
             }
             if (old.BOOST) {
                 BOOST--;

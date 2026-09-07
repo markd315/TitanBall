@@ -410,7 +410,11 @@ public class ManagedGame {
             if (pm != null && pm.userService != null) {
                 authserver.models.User u = pm.userService.findUserByEmail(email);
                 if (u != null) {
-                    Double r = (options != null && (options.playerIndex == 4 || "/1/1/1/5/2/9999/10/12".equals(options.toStringSrv())))
+                    Double r = (options != null && (options.playerIndex == 4 
+                            || options.allowsNoGoalie()
+                            || "/1/1/1/5/2/9999/10/12".equals(options.toStringSrv())
+                            || "/1/1/1/5/2/9999/10/20".equals(options.toStringSrv())
+                            || "/4/1/1/5/2/9999/10/20".equals(options.toStringSrv())))
                             ? u.getRating_1v1()
                             : u.getRating();
                     if (r != null) return r;

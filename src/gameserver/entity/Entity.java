@@ -37,6 +37,11 @@ public class Entity extends Box   {
     public double healReduce = 1.0;
     public double painReduction = 1.0;
 
+    @JsonIgnore
+    public transient Titan lastAttacker;
+    @JsonIgnore
+    public transient long lastAttackerTimeMs;
+
     public Entity() {
     }
 
@@ -60,6 +65,10 @@ public class Entity extends Box   {
     }
 
     public void damage(GameEngine context, double health) {
+        damage(context, health, null);
+    }
+
+    public void damage(GameEngine context, double health, Titan attacker) {
         double currentArmor = this.armorRatio;
         if (this instanceof Titan t) {
             java.util.Set<String> purchased = (t.team == TeamAffiliation.HOME) ? context.homeGoaliePurchasedUpgrades : context.awayGoaliePurchasedUpgrades;
@@ -68,13 +77,27 @@ public class Entity extends Box   {
             }
         }
         health /= currentArmor;
+        if (attacker != null && this instanceof Titan && attacker.team != this.team) {
+            this.lastAttacker = attacker;
+            this.lastAttackerTimeMs = System.currentTimeMillis();
+            if (context != null && context.effectPool != null) {
+                context.effectPool.addStackingEffect(attacker, new gameserver.effects.effects.EmptyEffect(5000, this, EffectId.ATTACKED));
+            }
+        }
         this.health -= health;
-        if (this.health < 0.0)
+        if (this.health <= 0.0)
             this.die(context);
     }
 
     private void die(GameEngine context) {
-        context.effectPool.addUniqueEffect(new DeadEffect(3000, this, context), context);
+        int respawnMs = 4750;
+        if (context != null && context.c != null) {
+            int cfgMs = context.c.getI("globals.titan.respawn.ms");
+            if (cfgMs > 0) {
+                respawnMs = cfgMs;
+            }
+        }
+        context.effectPool.addUniqueEffect(new DeadEffect(respawnMs, this, context), context);
     }
 
     public void setHealth(int health) {

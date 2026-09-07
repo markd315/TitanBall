@@ -4,10 +4,10 @@ const STORAGE_KEY = 'titanMasteryPages';
 
 const MASTERY_KEYS = [
   { key: 'health', name: 'Health', desc: 'Increases max health (+8% per point)' },
-  { key: 'shot', name: 'Shooting', desc: 'Increases throw power (+4% per point)' },
+  { key: 'shot', name: 'Shooting', desc: 'Increases throw power (+3% per point)' },
   { key: 'damage', name: 'Damage', desc: 'Increases ability damage (+10% per point)' },
-  { key: 'speed', name: 'Speed', desc: 'Increases movement speed (+3% per point)' },
-  { key: 'cooldowns', name: 'Cooldowns', desc: 'Reduces ability cooldowns (+10% CD speed per point)' },
+  { key: 'speed', name: 'Speed', desc: 'Increases movement speed (+2.5% per point)' },
+  { key: 'cooldowns', name: 'Cooldowns', desc: 'Reduces ability cooldowns (+12% CD speed per point)' },
   { key: 'effectDuration', name: 'Effect Duration', desc: 'Increases status effect durations (+15% per point)' },
   { key: 'stealRadius', name: 'Steal Range', desc: 'Increases ball stealing radius (+1px per point)' },
   { key: 'abilityRange', name: 'Ability Range', desc: 'Increases ability casting range (+4% per point)' },

@@ -1,0 +1,12 @@
+cultivation.t1.manawell
+cultivation.t3.manacompounding
+cultivation.t3.highermanacap
+cultivation.t2.manainfusion
+cultivation.t4.manafrenzy
+fortress.t1.homeward
+fortress.t3.biggermodels
+fortress.t3.snaretrap
+fortress.t4.barrage
+fortress.t5.icebarrage
+fortress.t6.deepfreeze
+fortress.t5.emergencybarrier

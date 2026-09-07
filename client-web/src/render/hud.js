@@ -164,6 +164,22 @@ export const HARDCODED_COSTS = {
     "cultivation.t6.iceportal": { cost: 250, isMana: true }
 };
 
+export function isBuildOrderManaNode(order, item) {
+    if (!item || !item.nodeKey) return false;
+    const costData = HARDCODED_COSTS[item.nodeKey] || {};
+    if (costData.isMana) return true;
+    if (item.nodeKey.includes('.t5.') && !item.nodeKey.startsWith('cultivation.') && Array.isArray(order)) {
+        const pollinateIdx = order.findIndex(it => it && it.nodeKey === 'cultivation.t5.manapollinate');
+        const nodeIdx = order.indexOf(item);
+        if (pollinateIdx !== -1 && nodeIdx > pollinateIdx) {
+            const shortName = TREE_SHORT_NAME[item.tree];
+            const hasT1 = order.some(it => it && it.nodeKey && it.nodeKey.startsWith(`${shortName}.t1.`));
+            if (!hasT1) return true;
+        }
+    }
+    return false;
+}
+
 const DEBUG_MODE = false; // true = flat grey boxes over every node, no lock/star logic.
 export const ANALYSIS_IMG_WIDTH = 1024;
 export const ANALYSIS_IMG_HEIGHT = 559;
@@ -750,44 +766,66 @@ export function drawHud(ctx, game, state) {
             const purchasedArray = Array.from(purchasedSet);
             const hasMana = purchasedArray.some(key => key.startsWith('cultivation.'));
 
-            // ── Auto-advance buildOrderIndex past already-purchased cost nodes ──
-            // Handles the case where the player buys an upgrade manually (without X).
-            const order = gameState.buildOrder;
-            while (
-                gameState.buildOrderIndex < order.length
-            ) {
-                const item = order[gameState.buildOrderIndex];
-                const itemDefs     = NODE_DEFS[item.tree];
-                const itemShort    = TREE_SHORT_NAME[item.tree];
-                if (!itemDefs || !itemShort) { gameState.buildOrderIndex++; continue; }
+            // ── Forked Build Order: Determine next Gold & Mana upgrades for flash ──
+            const order = gameState.buildOrder || [];
+            let flashGold = false;
+            let flashMana = false;
+            const goldAmt = Math.floor(isHome ? (game.homeGoalieCurrency || 0) : (game.awayGoalieCurrency || 0));
+            const manaAmt = Math.floor(isHome ? (game.homeGoalieMana    || 0) : (game.awayGoalieMana    || 0));
+
+            // Find next unpurchased Gold node
+            for (let idx = 0; idx < order.length; idx++) {
+                const item = order[idx];
+                if (isBuildOrderManaNode(order, item)) continue;
+                const itemDefs  = NODE_DEFS[item.tree];
+                const itemShort = TREE_SHORT_NAME[item.tree];
+                if (!itemDefs || !itemShort) continue;
                 const itemDef = itemDefs.find(d => `${itemShort}.${d.tier}.${d.name}` === item.nodeKey);
-                if (!itemDef || itemDef.kind !== 'cost') break; // 'use' nodes never auto-skip
-                // Resolve actual key (handles focusedtraining→focusedtraining2)
+                if (!itemDef) continue;
                 let resolvedNodeKey = item.nodeKey;
                 if (itemDef.name === 'focusedtraining' && purchasedSet.has('empowerment.t5.focusedtraining') && !purchasedSet.has('empowerment.t5.focusedtraining2')) {
                     resolvedNodeKey = 'empowerment.t5.focusedtraining2';
                 }
-                if (purchasedSet.has(resolvedNodeKey)) {
-                    gameState.buildOrderIndex++; // permanently skip
-                } else {
-                    break; // next unpurchased cost node found
+                if (itemDef.kind === 'cost' && purchasedSet.has(resolvedNodeKey)) {
+                    continue; // already purchased
                 }
+                const nodeIdx = itemDefs.indexOf(itemDef);
+                const treeState = getTreeState(game, game.underControl.team, item.tree);
+                if (!isNodeUnlocked(item.tree, nodeIdx, treeState)) {
+                    break; // blocked by prerequisites in gold track
+                }
+                const costData = HARDCODED_COSTS[resolvedNodeKey] || HARDCODED_COSTS[item.nodeKey] || {};
+                const amount = costData.use !== undefined ? costData.use : (costData.cost !== undefined ? costData.cost : 0);
+                if (amount > 0 && goldAmt >= amount) {
+                    flashGold = true;
+                }
+                break; // Found head of gold track
             }
 
-            // ── Determine if next BO upgrade is affordable (for flash) ──
-            let flashGold = false;
-            let flashMana = false;
-            if (gameState.buildOrderIndex < order.length) {
-                const nextItem = order[gameState.buildOrderIndex];
-                const costData = HARDCODED_COSTS[nextItem.nodeKey] || {};
-                const amount   = costData.use !== undefined ? costData.use : (costData.cost !== undefined ? costData.cost : 0);
-                const isManaNext = !!(costData.isMana);
-                if (amount > 0) {
-                    const goldAmt = Math.floor(isHome ? (game.homeGoalieCurrency || 0) : (game.awayGoalieCurrency || 0));
-                    const manaAmt = Math.floor(isHome ? (game.homeGoalieMana    || 0) : (game.awayGoalieMana    || 0));
-                    if (isManaNext && manaAmt >= amount) flashMana = true;
-                    if (!isManaNext && goldAmt >= amount) flashGold = true;
+            // Find next unpurchased Mana node
+            for (let idx = 0; idx < order.length; idx++) {
+                const item = order[idx];
+                if (!isBuildOrderManaNode(order, item)) continue;
+                const itemDefs  = NODE_DEFS[item.tree];
+                const itemShort = TREE_SHORT_NAME[item.tree];
+                if (!itemDefs || !itemShort) continue;
+                const itemDef = itemDefs.find(d => `${itemShort}.${d.tier}.${d.name}` === item.nodeKey);
+                if (!itemDef) continue;
+                if (itemDef.kind === 'cost' && purchasedSet.has(item.nodeKey)) {
+                    continue; // already purchased
                 }
+                const nodeIdx = itemDefs.indexOf(itemDef);
+                const treeState = getTreeState(game, game.underControl.team, item.tree);
+                const isPollinated = purchasedSet.has('cultivation.t5.manapollinate') && itemDef.tier === 't5' && item.tree !== 'GOALIE_TREE_CULTIVATION';
+                if (!isPollinated && !isNodeUnlocked(item.tree, nodeIdx, treeState)) {
+                    break; // blocked by prerequisites in mana track
+                }
+                const costData = HARDCODED_COSTS[item.nodeKey] || {};
+                const amount = costData.use !== undefined ? costData.use : (costData.cost !== undefined ? costData.cost : 0);
+                if (amount > 0 && manaAmt >= amount) {
+                    flashMana = true;
+                }
+                break; // Found head of mana track
             }
 
             // Pulse: 0→1→0 on ~1.2 s cycle

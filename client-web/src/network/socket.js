@@ -99,6 +99,15 @@ export function connectGame(gameID) {
           controlsToSend.lobBtn = true;
           gameState.pendingLobBtn = false;
         }
+        controlsToSend.callForBall = !!gameState.controlsHeld.callForBall;
+
+        // Debounce / possession safety: do NOT send shotBtn or lobBtn if field titan is not in possession
+        if (myTitan && myTitan.type !== 'GOALIE' && myTitan.possession !== 1) {
+          controlsToSend.shotBtn = false;
+          controlsToSend.lobBtn = false;
+          gameState.controlsHeld.shotBtn = false;
+          gameState.controlsHeld.lobBtn = false;
+        }
 
         // STRICTLY PROHIBIT sending ability activation to server if target is out of range (or no valid target in range)
         if (isECasting && (!selectedTarget || !isTargetInRange)) {

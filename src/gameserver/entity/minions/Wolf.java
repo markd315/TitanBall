@@ -1,6 +1,7 @@
 package gameserver.entity.minions;
 
 import gameserver.Const;
+import gameserver.effects.EffectId;
 import gameserver.engine.GameEngine;
 import gameserver.engine.TeamAffiliation;
 import gameserver.entity.Titan;
@@ -59,18 +60,29 @@ public class Wolf extends gameserver.entity.Entity implements Tickable, Serializ
         }
     }
 
+    private Titan getCaster(GameEngine context) {
+        if (createdById != null && context != null) {
+            return context.titanByID(createdById.toString()).orElse(null);
+        }
+        return null;
+    }
+
     private void bite(GameEngine context, Titan nearest) {
+        Titan caster = getCaster(context);
+        if (caster != null && context != null && context.effectPool != null) {
+            context.effectPool.addStackingEffect(caster, new gameserver.effects.effects.EmptyEffect(5000, nearest, EffectId.ATTACKED));
+        }
         if(this.wolfPower == 1){
-            nearest.damage(context, c.getD("wolf.dmg.1"));
+            nearest.damage(context, c.getD("wolf.dmg.1"), caster);
         }
         if(this.wolfPower > 1 && this.wolfPower < 3){
-            nearest.damage(context, c.getD("wolf.dmg.2"));
+            nearest.damage(context, c.getD("wolf.dmg.2"), caster);
         }
         if(this.wolfPower >= 3 && this.wolfPower < 5){
-            nearest.damage(context, c.getD("wolf.dmg.3"));
+            nearest.damage(context, c.getD("wolf.dmg.3"), caster);
         }
         if(this.wolfPower >= 5){
-            nearest.damage(context, this.wolfPower);
+            nearest.damage(context, this.wolfPower, caster);
         }
     }
 
@@ -86,6 +98,12 @@ public class Wolf extends gameserver.entity.Entity implements Tickable, Serializ
         Titan ret = null;//should never return this
         for(Titan t : context.players){
             if(t.team != this.team) {
+                if (context.c != null && !context.c.AI_OMNISCIENCE_ENABLED
+                        && context.effectPool != null
+                        && context.effectPool.hasEffect(t, EffectId.STEALTHED)
+                        && !context.effectPool.hasEffect(t, EffectId.FLARE)) {
+                    continue;
+                }
                 double cmp = Util.dist(this.getX() + (this.width / 2.0),
                         this.getY() + (this.height / 2.0),
                         t.X + 35,

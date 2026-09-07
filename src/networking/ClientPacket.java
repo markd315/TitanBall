@@ -12,6 +12,7 @@ public class ClientPacket  {
     }
     public boolean UP = false, LEFT = false, DOWN = false, RIGHT= false;
     public boolean E= false, R= false, CAM= false, STEAL= false, SWITCH= false;
+    public boolean callForBall = false;
     public boolean BOOST = false;
     public boolean BOOST_LOCK = false;
     public boolean MV_CLICK = false, MV_BALL = false;

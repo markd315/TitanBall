@@ -1,6 +1,7 @@
 import { drawImageCam } from './canvas.js';
 import { AssetManager } from '../assets/sprites.js';
 import { CONSTANTS } from '../constants.js';
+import { getControlledTitan } from '../input/mobile.js';
 
 let ballFrameCounter = 0;
 
@@ -14,13 +15,39 @@ function ballLobMode(game) {
     return false;
 }
 
+function isHome(entity) {
+    return Boolean(entity && (entity.team === 'HOME' || entity.team === 0));
+}
+
+function isAway(entity) {
+    return Boolean(entity && (entity.team === 'AWAY' || entity.team === 1));
+}
+
+function isSameTeam(a, b) {
+    if (!a || !b) return false;
+    if (a.team !== undefined && b.team !== undefined) {
+        if (a.team === b.team) return true;
+        return (isHome(a) && isHome(b)) || (isAway(a) && isAway(b));
+    }
+    return false;
+}
+
+function isLocalPlayer(player, myTitan) {
+    if (!player || !myTitan) return false;
+    if (player.id !== undefined && myTitan.id !== undefined) {
+        return player.id.toString() === myTitan.id.toString();
+    }
+    return player === myTitan;
+}
+
 export function drawBall(ctx, game, camX, camY) {
-    if (!game || !game.ballVisible) return;
+    if (!game || !game.ballVisible || !game.ball) return;
 
     ballFrameCounter = (ballFrameCounter + 1) % 20;
     const isFrameB = ballFrameCounter > 10;
 
-    const anyPoss = game.players && game.players.some(p => p.possession === 1);
+    const holder = game.players && game.players.find(p => p.possession === 1);
+    const anyPoss = Boolean(holder);
     const isLob = ballLobMode(game);
     
     let imgKey = 'ballA';
@@ -30,11 +57,42 @@ export function drawBall(ctx, game, camX, camY) {
         imgKey = isFrameB ? 'ballFB' : 'ballFA';
     }
 
+    const size = isLob ? 45 : 30;
+    const offset = isLob ? -7.5 : 0;
+    const drawX = Math.floor(game.ball.X + offset - camX);
+    const drawY = Math.floor(game.ball.Y + offset - camY);
+
     if (AssetManager.images[imgKey]) {
         const img = AssetManager.images[imgKey];
-        const size = isLob ? 45 : 30;
-        const offset = isLob ? -7.5 : 0;
-        ctx.drawImage(img, Math.floor(game.ball.X + offset - camX), Math.floor(game.ball.Y + offset - camY), size, size);
+        ctx.drawImage(img, drawX, drawY, size, size);
+    }
+
+    if (holder) {
+        const myTitan = game.underControl || getControlledTitan(game);
+        let borderColor = null;
+        if (myTitan) {
+            if (isLocalPlayer(holder, myTitan)) {
+                borderColor = '#ffff00'; // yellow when you have it
+            } else if (isSameTeam(holder, myTitan)) {
+                borderColor = '#22c55e'; // green when an ally has it
+            } else {
+                borderColor = '#ef4444'; // red when an enemy has it
+            }
+        }
+
+        if (borderColor) {
+            ctx.save();
+            ctx.globalAlpha = 1.0;
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = borderColor;
+            ctx.beginPath();
+            const radius = size / 2;
+            const centerX = drawX + radius;
+            const centerY = drawY + radius;
+            ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+        }
     }
 }
 

@@ -43,5 +43,7 @@ export const gameState = {
     prevGoalVisible: false,
     goalComboType: null,
     buildOrder: [],
-    buildOrderIndex: 0
+    buildOrderIndex: 0,
+    buildOrderGoldIndex: 0,
+    buildOrderManaIndex: 0
 };

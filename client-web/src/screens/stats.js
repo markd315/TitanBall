@@ -103,7 +103,7 @@ function renderAdvancedStatsPane() {
   if (eloEl) eloEl.textContent = `${elo} ELO`;
 
   if (totalMatches >= 10) {
-    if (avatarEl) avatarEl.innerHTML = `<img src="${tier.badge}" alt="${tier.name}" style="width: 44px; height: 44px; object-fit: contain; filter: drop-shadow(0 0 10px ${tier.glow});">`;
+    if (avatarEl) avatarEl.innerHTML = `<img src="${tier.badge}" alt="${tier.name}" style="width: 32px; height: 32px; object-fit: contain; filter: drop-shadow(0 0 8px ${tier.glow}); image-rendering: pixelated;">`;
     if (tierEl) { tierEl.textContent = tier.name; tierEl.style.color = tier.color; }
     if (placeEl) placeEl.textContent = `Leaderboard: ${rankStr}`;
   } else {

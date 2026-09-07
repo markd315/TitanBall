@@ -111,57 +111,79 @@ public class StatEngine  {
     }
 
     public void grantKillAssists(GameEngine context, Titan dead, EffectPool effectPool) {
-        HashMap<String, Double> attackTimeMap = new HashMap();
-        for (int i = 0; i < effectPool.getEffects().size(); i++) {
-            Effect eff = effectPool.getEffects().get(i);
-            Titan castBy = effectPool.getCastBy().get(i);
-            //TODO Make sure caster is set by whatever call we do!
-            if (castBy == null) {
-                continue;
-            }
-            for (Titan t : context.players) {
-                if (castBy != null) {
-                    System.out.println("" + castBy.getType().toString());
-                    if (eff.on.id.equals(dead.id) &&
-                            eff.effect.toString().equals(EffectId.ATTACKED.toString())) {
-                        attackTimeMap.put(castBy.id.toString(),
-                                eff.getPercentLeft());
+        if (context == null || dead == null) {
+            return;
+        }
+        Map<String, Double> attackTimeMap = new HashMap<>();
+        if (effectPool != null && effectPool.getEffects() != null && effectPool.getCastBy() != null) {
+            int count = Math.min(effectPool.getEffects().size(), effectPool.getCastBy().size());
+            for (int i = 0; i < count; i++) {
+                Effect eff = effectPool.getEffects().get(i);
+                Titan castBy = effectPool.getCastBy().get(i);
+                if (eff == null || castBy == null || eff.on == null || eff.on.id == null) {
+                    continue;
+                }
+                // Must be an attack targeting the dead titan, from an enemy team (not self and not friendly)
+                if (eff.on.id.equals(dead.id) &&
+                        castBy.team != dead.team &&
+                        !castBy.id.equals(dead.id) &&
+                        EffectId.ATTACKED.equals(eff.getEffect())) {
+                    double percent = eff.getPercentLeft();
+                    String casterIdStr = castBy.id.toString();
+                    double prev = attackTimeMap.getOrDefault(casterIdStr, -1.0);
+                    if (percent > prev) {
+                        attackTimeMap.put(casterIdStr, percent);
                     }
                 }
             }
-            double mostRecentTime = 0.0;
-            String killRecipientId = null;
-            double secMostRecent = -1.0;
-            String assistRecipientId = null;
-            for (String titanKey : attackTimeMap.keySet()) {
-                double percent = attackTimeMap.get(titanKey);
-                if (percent > mostRecentTime) {
-                    assistRecipientId = killRecipientId;
-                    killRecipientId = titanKey;
-                    secMostRecent = mostRecentTime;
-                    mostRecentTime = percent;
-                } else if (percent > secMostRecent) {
-                    secMostRecent = percent;
-                    assistRecipientId = titanKey;
-                }
-            }
-            System.out.println("kr " + killRecipientId);
-            System.out.println("ar " + assistRecipientId);
+        }
 
-            if (killRecipientId != null) {
-                Optional<Titan> killer = context.titanByID(killRecipientId);
-                if(killer.isPresent()){
-                    grant(context, killer.get(), StatEnum.KILLS);
-                }
-            }
+        double mostRecentTime = -1.0;
+        String killRecipientId = null;
+        double secMostRecent = -1.0;
+        String assistRecipientId = null;
 
-            if (assistRecipientId != null) {
-                Optional<Titan> assister = context.titanByID(killRecipientId);
-                if(assister.isPresent()) {
-                    grant(context, assister.get(), StatEnum.KILLASSISTS);
-                }
+        for (Map.Entry<String, Double> entry : attackTimeMap.entrySet()) {
+            double percent = entry.getValue();
+            String titanKey = entry.getKey();
+            if (percent > mostRecentTime) {
+                secMostRecent = mostRecentTime;
+                assistRecipientId = killRecipientId;
+                mostRecentTime = percent;
+                killRecipientId = titanKey;
+            } else if (percent > secMostRecent) {
+                secMostRecent = percent;
+                assistRecipientId = titanKey;
             }
         }
+
+        // Prioritize dead.lastAttacker if they delivered lethal damage from the enemy team
+        if (dead.lastAttacker != null && dead.lastAttacker.team != dead.team && !dead.lastAttacker.id.equals(dead.id)) {
+            String lethalAttackerId = dead.lastAttacker.id.toString();
+            if (killRecipientId == null) {
+                killRecipientId = lethalAttackerId;
+            } else if (!lethalAttackerId.equals(killRecipientId)) {
+                assistRecipientId = killRecipientId;
+                killRecipientId = lethalAttackerId;
+            }
+        }
+
+        if (killRecipientId != null) {
+            Optional<Titan> killer = context.titanByID(killRecipientId);
+            if (killer.isPresent()) {
+                grant(context, killer.get(), StatEnum.KILLS);
+            }
+        }
+
+        if (assistRecipientId != null && !assistRecipientId.equals(killRecipientId)) {
+            Optional<Titan> assister = context.titanByID(assistRecipientId);
+            if (assister.isPresent()) {
+                grant(context, assister.get(), StatEnum.KILLASSISTS);
+            }
+        }
+
+        dead.lastAttacker = null;
+        dead.lastAttackerTimeMs = 0L;
     }
 
     public enum StatEnum {
