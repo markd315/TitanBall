@@ -76,4 +76,13 @@ public class SerializationTest {
 
         System.out.println("[SerializationTest] DeepClone test passed successfully!");
     }
+
+    @Test
+    public void testGameEngineJsonSerialization() throws Exception {
+        GameEngine gameEngine = new GameEngine();
+        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        String json = mapper.writeValueAsString(gameEngine);
+        assertNotNull("JSON string should not be null", json);
+        assertFalse("GoalieBuildOrderManager should not be serialized into JSON", json.contains("goalieBuildOrderManager"));
+    }
 }

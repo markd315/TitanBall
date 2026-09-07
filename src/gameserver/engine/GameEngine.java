@@ -1,6 +1,7 @@
 package gameserver.engine;
 
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import gameserver.TutorialOverrides;
@@ -50,6 +51,10 @@ public class GameEngine extends Game {
     public transient final List<PlayerDivider> activeHomeSidegoalScorers = new ArrayList<>();
     @com.fasterxml.jackson.annotation.JsonIgnore
     public transient final List<PlayerDivider> activeAwaySidegoalScorers = new ArrayList<>();
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    public transient java.util.function.Consumer<GameEngine> onGameEnded = null;
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    public transient int customTickIntervalMs = -1;
 
     // ── Performance: ObjectMapper is heavyweight and thread-safe; share one instance
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -404,7 +409,7 @@ public class GameEngine extends Game {
                     ourSideScorers = this.activeHomeSidegoalScorers;
                     enemySideScorers = this.activeAwaySidegoalScorers;
                 }
-                goal.trigger();
+                goal.trigger(c != null ? c.HOOP_SIDEGOAL_CD_MS : 1800);
                 Titan defGoalie = (goal.team == TeamAffiliation.HOME) ? players[0] : players[1];
                 stats.grant(this, defGoalie, StatEngine.StatEnum.SIDEGOALS_CONCEDED);
                 UUID attackerId = (us.which == TeamAffiliation.HOME) ? lastHomePossessor : lastAwayPossessor;
@@ -503,22 +508,35 @@ public class GameEngine extends Game {
         }
     }
 
-    protected void minorHoopBounce() {
+    public void minorHoopBounce() {
         gameserver.engine.CollisionMath.Bounds ballBounds = ball.asBounds();
         for (GoalHoop goal : this.lowGoals) {
             gameserver.engine.CollisionMath.EllipseData ell = goal.ellipseData();
             gameserver.engine.CollisionMath.Bounds ellBounds = new gameserver.engine.CollisionMath.Bounds(ell.centerX() - ell.radiusX(), ell.centerY() - ell.radiusY(), ell.radiusX() * 2, ell.radiusY() * 2);
+            boolean bounced = false;
+            double dx = 0;
+            double dy = 0;
             while (ellBounds.intersects(ballBounds)) {
+                bounced = true;
                 ballBounds = ball.asBounds();
                 double ang = Util.degreesFromCoords(
                         ell.centerX() - ball.X - ball.centerDist,
                         ell.centerY() - ball.Y - ball.centerDist
                 );
                 ang += 180; //Kick it away, not towards
-                double dx = Math.cos(Math.toRadians((ang)));
-                double dy = Math.sin(Math.toRadians((ang)));
+                dx = Math.cos(Math.toRadians((ang)));
+                dy = Math.sin(Math.toRadians((ang)));
                 ball.X += dx;
                 ball.Y += dy;
+            }
+            if (bounced) {
+                int extraKick = (c != null) ? c.HOOP_BOUNCE_EXTRA_KICK : 30;
+                ball.X += dx * extraKick;
+                ball.Y += dy * extraKick;
+                if (c != null) {
+                    ball.X = Math.max(c.MIN_X, Math.min(c.MAX_X, ball.X));
+                    ball.Y = Math.max(c.MIN_Y, Math.min(c.MAX_Y, ball.Y));
+                }
             }
         }
     }
@@ -539,9 +557,14 @@ public class GameEngine extends Game {
         away.hasBall = false;
         goalVisible = false;
         ballVisible = true;
-        List<TitanType> playableTypes = Arrays.stream(TitanType.values())
-            .filter(t -> t != TitanType.GOALIE && t != TitanType.ANY && t != TitanType.NOT_GUARDIAN && t != TitanType.ANY_ENTITY)
-            .collect(Collectors.toList());
+        List<TitanType> playableTypes;
+        if (c != null && c.AI_INCLUDED_TITANS != null && c.AI_INCLUDED_TITANS.length > 0) {
+            playableTypes = Arrays.asList(c.AI_INCLUDED_TITANS);
+        } else {
+            playableTypes = Arrays.stream(TitanType.values())
+                .filter(t -> t != TitanType.GOALIE && t != TitanType.ANY && t != TitanType.NOT_GUARDIAN && t != TitanType.ANY_ENTITY)
+                .collect(Collectors.toList());
+        }
         java.util.Random rng = new java.util.Random();
         for (int i = 0; i < players.length; i++) {
             Titan t = players[i];
@@ -556,8 +579,8 @@ public class GameEngine extends Game {
         for (int i = 0; i < 2; i++) {
             Titan goalie = players[i];
             if (!anyClientSelected(i + 1)) {
-                goalie.aiGoalieBuildOrder = GOALIE_BUILD_PRESETS.get(rng.nextInt(GOALIE_BUILD_PRESETS.size()));
-                goalie.aiGoalieBuildIndex = 0;
+                GoalieBuildOrderManager.BuildPreset preset = GOALIE_NAMED_BUILD_PRESETS.get(rng.nextInt(GOALIE_NAMED_BUILD_PRESETS.size()));
+                setAiGoalieBuildOrder(goalie, preset.name, preset.order);
             }
         }
         home.score = 0;
@@ -828,7 +851,7 @@ public class GameEngine extends Game {
 
     public boolean anyClientSelected(int n) {
         for (PlayerDivider p : clients) {
-            if (p.selection == n) {
+            if (!p.isAi && p.selection == n) {
                 return true;
             }
         }
@@ -928,11 +951,12 @@ public class GameEngine extends Game {
     public synchronized void kickoff() {
         if (!began) {
             began = true;
+            int interval = customTickIntervalMs > 0 ? customTickIntervalMs : GAMETICK_MS;
             ScheduledExecutorService exec = Executors.newScheduledThreadPool(1);
             TerminableExecutor terminableExecutor = new TerminableExecutor(this, exec);
-            exec.scheduleAtFixedRate(terminableExecutor, 0, GAMETICK_MS, TimeUnit.MILLISECONDS);
+            exec.scheduleAtFixedRate(terminableExecutor, 0, interval, TimeUnit.MILLISECONDS);
 
-            System.out.println("gametick kickoff should only run once");
+            System.out.println("gametick kickoff should only run once (interval: " + interval + "ms)");
         }
     }
 
@@ -963,7 +987,7 @@ public class GameEngine extends Game {
         }
     }
 
-    private static final Map<String, String> TREE_SHORT_NAME = Map.of(
+    static final Map<String, String> TREE_SHORT_NAME = Map.of(
         "GOALIE_TREE_SIEGE", "siege",
         "GOALIE_TREE_FORTRESS", "fortress",
         "GOALIE_TREE_EMPOWERMENT", "empowerment",
@@ -977,7 +1001,7 @@ public class GameEngine extends Game {
         "cultivation", new int[]{1, 0, 2, 1, 1}
     );
 
-    private boolean tierPrereqMet(String shortName, String tier, Set<String> purchased) {
+    boolean tierPrereqMet(String shortName, String tier, Set<String> purchased) {
         int n = Integer.parseInt(tier.substring(1)); // "t3" -> 3
         if (n <= 1) return true; // t1 has no prereq
 
@@ -988,7 +1012,7 @@ public class GameEngine extends Game {
         return countInTier(purchased, shortName, prevTier) >= required;
     }
 
-    private void handleGoalieTreePurchase(Titan t, String treeKey, String nodeKey) {
+    void handleGoalieTreePurchase(Titan t, String treeKey, String nodeKey) {
         if (treeKey == null || nodeKey == null) return;
         String shortName = TREE_SHORT_NAME.get(treeKey);
         if (shortName == null || !nodeKey.startsWith(shortName + ".")) return;
@@ -1056,6 +1080,11 @@ public class GameEngine extends Game {
         if (hasCost) {
             purchased.add(nodeKey);
         }
+        if (isHome) {
+            homeGoalieAllPurchasedUpgrades.add(nodeKey);
+        } else {
+            awayGoalieAllPurchasedUpgrades.add(nodeKey);
+        }
         
         if (isHome) {
             homeGoalieAbilities.purchaseOrUse(this, t, nodeKey);
@@ -1080,70 +1109,29 @@ public class GameEngine extends Game {
         return count;
     }
 
-    public static final List<List<String>> GOALIE_BUILD_PRESETS = List.of(
-        List.of("siege.t1.siegedoctrine", "siege.t3.ballportal", "siege.t3.vanguards", "siege.t4.accumulators", "siege.t5.saveprogress", "siege.t6.forwardmedics", "empowerment.t1.combinecontract", "empowerment.t3.marksmanship", "empowerment.t3.footwork", "empowerment.t4.heroportals", "empowerment.t5.clutchgene", "empowerment.t6.apexform", "siege.t5.wallsdown"),
-        List.of("cultivation.t1.manawell", "cultivation.t3.manacompounding", "cultivation.t3.highermanacap", "cultivation.t2.manainfusion", "cultivation.t4.manafrenzy", "fortress.t1.homeward", "fortress.t3.biggermodels", "fortress.t3.snaretrap", "fortress.t4.barrage", "fortress.t5.icebarrage", "fortress.t6.deepfreeze", "fortress.t5.emergencybarrier"),
-        List.of("cultivation.t1.manawell", "cultivation.t3.manacompounding", "cultivation.t3.highermanacap", "cultivation.t2.manainfusion", "cultivation.t4.manavines", "cultivation.t5.manapollinate", "siege.t5.phalanx", "cultivation.t6.uninhibitedportal", "cultivation.t5.manasummon", "cultivation.t5.manasummon", "cultivation.t5.manasummon")
-    );
+    public static final List<GoalieBuildOrderManager.BuildPreset> GOALIE_NAMED_BUILD_PRESETS = GoalieBuildOrderManager.GOALIE_NAMED_BUILD_PRESETS;
+    public static final List<List<String>> GOALIE_BUILD_PRESETS = GoalieBuildOrderManager.GOALIE_BUILD_PRESETS;
+    @JsonIgnore
+    public transient GoalieBuildOrderManager goalieBuildOrderManager = new GoalieBuildOrderManager();
 
-    private static String getTreeKeyForNode(String nodeKey) {
-        if (nodeKey == null) return null;
-        if (nodeKey.startsWith("siege.")) return "GOALIE_TREE_SIEGE";
-        if (nodeKey.startsWith("fortress.")) return "GOALIE_TREE_FORTRESS";
-        if (nodeKey.startsWith("empowerment.")) return "GOALIE_TREE_EMPOWERMENT";
-        if (nodeKey.startsWith("cultivation.")) return "GOALIE_TREE_CULTIVATION";
-        return null;
+    public static String getTreeKeyForNode(String nodeKey) {
+        return GoalieBuildOrderManager.getTreeKeyForNode(nodeKey);
     }
 
-    private void tickAiGoalieBuildOrder(Titan ai) {
-        if (ai.aiGoalieBuildOrder == null) {
-            java.util.Random r = new java.util.Random();
-            ai.aiGoalieBuildOrder = GOALIE_BUILD_PRESETS.get(r.nextInt(GOALIE_BUILD_PRESETS.size()));
-            ai.aiGoalieBuildIndex = 0;
-        }
-        if (ai.aiGoalieBuildIndex >= ai.aiGoalieBuildOrder.size()) {
-            return;
-        }
-        String nodeKey = ai.aiGoalieBuildOrder.get(ai.aiGoalieBuildIndex);
-        String treeKey = getTreeKeyForNode(nodeKey);
-        if (treeKey == null) {
-            ai.aiGoalieBuildIndex++;
-            return;
-        }
-        boolean isHome = (ai.team == TeamAffiliation.HOME);
-        Set<String> purchased = isHome ? homeGoaliePurchasedUpgrades : awayGoaliePurchasedUpgrades;
-        boolean hasCost = costs.hasKey(nodeKey + ".cost") || costs.hasKey(nodeKey + ".cost.mana");
-        if (hasCost && purchased.contains(nodeKey)) {
-            ai.aiGoalieBuildIndex++;
-            return;
-        }
-        boolean isMana = costs.hasKey(nodeKey + ".cost.mana") || costs.hasKey(nodeKey + ".use.mana");
-        String costKey = hasCost
-            ? (isMana ? (costs.hasKey(nodeKey + ".cost.mana") ? nodeKey + ".cost.mana" : nodeKey + ".cost") : (costs.hasKey(nodeKey + ".cost") ? nodeKey + ".cost" : nodeKey + ".cost.mana"))
-            : (isMana ? (costs.hasKey(nodeKey + ".use.mana") ? nodeKey + ".use.mana" : nodeKey + ".use") : (costs.hasKey(nodeKey + ".use") ? nodeKey + ".use" : nodeKey + ".use.mana"));
-        if (!costs.hasKey(costKey)) {
-            ai.aiGoalieBuildIndex++;
-            return;
-        }
-        double cost = costs.getD(costKey);
-        double currentBalance = isMana
-            ? (isHome ? homeGoalieMana : awayGoalieMana)
-            : (isHome ? homeGoalieCurrency : awayGoalieCurrency);
+    public boolean isManaBuildNode(List<String> order, String nodeKey) {
+        return GoalieBuildOrderManager.isManaBuildNode(this, order, nodeKey);
+    }
 
-        if (currentBalance < cost) {
-            return; // Wait for gold or mana to accumulate before buying
-        }
+    public void setAiGoalieBuildOrder(Titan ai, String buildName, List<String> order) {
+        GoalieBuildOrderManager.setAiGoalieBuildOrder(this, ai, buildName, order);
+    }
 
-        double balanceBefore = currentBalance;
-        handleGoalieTreePurchase(ai, treeKey, nodeKey);
+    public void setAiGoalieBuildOrder(Titan ai, List<String> order) {
+        GoalieBuildOrderManager.setAiGoalieBuildOrder(this, ai, order);
+    }
 
-        double balanceAfter = isMana
-            ? (isHome ? homeGoalieMana : awayGoalieMana)
-            : (isHome ? homeGoalieCurrency : awayGoalieCurrency);
-
-        if (balanceAfter < balanceBefore || purchased.contains(nodeKey)) {
-            ai.aiGoalieBuildIndex++;
-        }
+    public void tickAiGoalieBuildOrder(Titan ai) {
+        GoalieBuildOrderManager.tickAiGoalieBuildOrder(this, ai);
     }
 
 
@@ -1888,6 +1876,7 @@ public class GameEngine extends Game {
                     away.hasBall = false;
                     players[numSel - 1].possession = 1;
                     lastPossessed = players[numSel - 1].id;
+                    resetAiReactionAfterPossession(players[numSel - 1]);
                     updateBallIfPossessed(t, numSel);
                 }
             }
@@ -2087,32 +2076,91 @@ public class GameEngine extends Game {
         }
     }
 
+    public boolean isTitanVisibleTo(Titan observer, Titan target) {
+        if (observer == null || target == null) return false;
+        if (observer.id != null && observer.id.equals(target.id)) return true;
+        if (c != null && c.AI_OMNISCIENCE_ENABLED) return true;
+        if (effectPool != null && effectPool.hasEffect(observer, EffectId.BLIND)) return false;
+        if (observer.team != target.team && effectPool != null
+                && effectPool.hasEffect(target, EffectId.STEALTHED)
+                && !effectPool.hasEffect(target, EffectId.FLARE)) {
+            return false;
+        }
+        return true;
+    }
+
+    public void resetAiReactionAfterPossession(Titan t) {
+        if (t == null) return;
+        boolean isGoalie = (t.getType() == TitanType.GOALIE);
+        int minDelay = (options != null) ? options.getAiReactionTimeMinMs(isGoalie) : (isGoalie ? 480 : 1200);
+        int maxDelay = (options != null) ? options.getAiReactionTimeMaxMs(isGoalie) : (isGoalie ? 680 : 1700);
+        t.aiLastDecisionTimeMs = System.currentTimeMillis();
+        t.aiReactionDelayMs = minDelay + (long)(Math.random() * (maxDelay - minDelay + 1));
+        t.aiTargetAction = 0;
+        t.aiStealTargetStartMs = 0;
+    }
+
+    protected void updateAiBoostDecision(Titan ai) {
+        if (ai.fuel <= 0) {
+            ai.isBoosting = false;
+            return;
+        }
+        if (ai.possession == 1 && ai.getType() != TitanType.DASHER) {
+            ai.isBoosting = false;
+            return;
+        }
+        if (ai.aiTargetAction == 10) { // 10 = TRANSITION_BOOST
+            return;
+        }
+        if (ai.aiTargetX >= 0 && ai.aiTargetY >= 0) {
+            double currentCenterX = ai.X + ai.width / 2.0;
+            double currentCenterY = ai.Y + ai.height / 2.0;
+            double dist = Math.hypot(ai.aiTargetX - currentCenterX, ai.aiTargetY - currentCenterY);
+            ai.isBoosting = (dist > 100.0);
+        } else {
+            ai.isBoosting = false;
+        }
+    }
+
     protected void tickAiTitan(Titan ai, long nowMs) {
         if (effectPool.isRooted(ai) || effectPool.isStunned(ai)) return;
+        if (c != null && !c.AI_OMNISCIENCE_ENABLED && effectPool.hasEffect(ai, EffectId.BLIND)) {
+            ai.isBoosting = false;
+        }
 
-        // 1. STEAL PRIORITY: If enemy has the ball and AI is in steal range, RUN THAT T-KEY CODE!
+        // 1. STEAL PRIORITY: Governed by 40% anticipation reaction timer (experiential timing feel)
         Optional<Titan> possessorOpt = titanInPossession();
         if (possessorOpt.isPresent() && possessorOpt.get().team != ai.team && ai.possession == 0 && ballVisible) {
             Titan tip = possessorOpt.get();
-            if (isWithinStealRange(ai, tip)) {
-                executeAiSteal(ai);
-                if (ai.possession == 1 || ai.actionState == Titan.TitanState.STEAL) {
-                    return;
+            if (isTitanVisibleTo(ai, tip) && isWithinStealRange(ai, tip)) {
+                if (ai.aiStealTargetStartMs == 0) {
+                    ai.aiStealTargetStartMs = nowMs;
+                    int stealMin = (options != null) ? options.getAiReactionTimeMinMs(true) : 480;
+                    int stealMax = (options != null) ? options.getAiReactionTimeMaxMs(true) : 680;
+                    ai.aiStealReactionDelayMs = stealMin + (long)(Math.random() * (stealMax - stealMin + 1));
                 }
+                if (nowMs - ai.aiStealTargetStartMs >= ai.aiStealReactionDelayMs) {
+                    executeAiSteal(ai);
+                    ai.aiStealTargetStartMs = 0;
+                    if (ai.possession == 1 || ai.actionState == Titan.TitanState.STEAL) {
+                        return;
+                    }
+                }
+            } else {
+                ai.aiStealTargetStartMs = 0;
             }
-        }
-
-        // 2. Abilities check: If in combat range of an enemy, use abilities!
-        tryUseAbilities(ai);
-        if (ai.actionState != Titan.TitanState.IDLE) {
-            return;
+        } else {
+            ai.aiStealTargetStartMs = 0;
         }
 
         boolean isGoalie = (ai.getType() == TitanType.GOALIE);
+        if (isGoalie) {
+            tickAiGoalieMinionFarming(ai);
+        }
         int minDelay = (options != null) ? options.getAiReactionTimeMinMs(isGoalie) : (isGoalie ? 480 : 1200);
         int maxDelay = (options != null) ? options.getAiReactionTimeMaxMs(isGoalie) : (isGoalie ? 680 : 1700);
 
-        // 3. Movement target re-evaluation strictly governed by difficulty reaction delay timer.
+        // 2. Movement target re-evaluation strictly governed by difficulty reaction delay timer.
         if (ai.aiReactionDelayMs == 0 || (nowMs - ai.aiLastDecisionTimeMs >= ai.aiReactionDelayMs)) {
             evaluateAiDecision(ai);
             ai.aiLastDecisionTimeMs = nowMs;
@@ -2127,10 +2175,8 @@ public class GameEngine extends Game {
             double dy = ai.aiTargetY - currentCenterY;
             double distToTarget = Math.hypot(dx, dy);
 
-            // Boost logic: If > 100px away from target destination, boost to reach it faster
-            if (distToTarget > 100.0 && ai.fuel > 0) {
-                ai.isBoosting = true;
-            } else if (distToTarget <= 100.0 || ai.fuel <= 0) {
+            // Safety shutoff: If fuel is depleted or within close proximity of target, stop boosting
+            if (ai.fuel <= 0 || distToTarget <= 30.0) {
                 if (ai.aiTargetAction != 10) { // 10 = TRANSITION_BOOST
                     ai.isBoosting = false;
                 }
@@ -2192,6 +2238,18 @@ public class GameEngine extends Game {
             return;
         }
 
+        if (c != null && !c.AI_OMNISCIENCE_ENABLED && effectPool != null && effectPool.hasEffect(ai, EffectId.BLIND)) {
+            ai.isBoosting = false;
+            ai.aiTargetAction = 0;
+            return;
+        }
+
+        // Abilities check: Evaluated on reaction delay timer
+        tryUseAbilities(ai);
+        if (ai.actionState != Titan.TitanState.IDLE) {
+            return;
+        }
+
         TeamAffiliation myTeam = ai.team;
         TeamAffiliation enemyTeam = (myTeam == TeamAffiliation.HOME) ? TeamAffiliation.AWAY : TeamAffiliation.HOME;
 
@@ -2213,30 +2271,35 @@ public class GameEngine extends Game {
                 ai.aiTargetY = ballCenterY;
             }
             ai.aiTargetAction = 0;
+            updateAiBoostDecision(ai);
             return;
         }
 
         // If AI has the ball
         if (possessor != null && possessor.id.equals(ai.id)) {
             evaluateOnBallOffense(ai, enemyTeam);
+            updateAiBoostDecision(ai);
             return;
         }
 
         // If teammate has the ball
         if (possessor != null && possessor.team == myTeam) {
             evaluateOffBallOffense(ai, possessor, enemyTeam);
+            updateAiBoostDecision(ai);
             return;
         }
 
         // If enemy has the ball
         if (possessor != null && possessor.team == enemyTeam) {
             evaluateDefense(ai, possessor, myTeam, enemyTeam);
+            updateAiBoostDecision(ai);
             return;
         }
     }
 
     protected void tryUseAbilities(Titan ai) {
         if (ai.actionState != Titan.TitanState.IDLE || effectPool.isStunned(ai)) return;
+        if (c != null && !c.AI_OMNISCIENCE_ENABLED && effectPool != null && effectPool.hasEffect(ai, EffectId.BLIND)) return;
 
         // Do not use abilities if in steal range of enemy ball carrier - steal has absolute priority
         Optional<Titan> possessorOpt = titanInPossession();
@@ -2281,6 +2344,7 @@ public class GameEngine extends Game {
     protected boolean hasTargetForAbility(Titan ai, boolean isQ) {
         TitanType type = ai.getType();
         if (type == null) return false;
+        if (c != null && !c.AI_OMNISCIENCE_ENABLED && effectPool != null && effectPool.hasEffect(ai, EffectId.BLIND)) return false;
 
         TeamAffiliation enemyTeam = (ai.team == TeamAffiliation.HOME) ? TeamAffiliation.AWAY : TeamAffiliation.HOME;
         Titan nearestEnemy = findNearestEnemy(ai, enemyTeam);
@@ -2341,7 +2405,89 @@ public class GameEngine extends Game {
         }
     }
 
-    protected void evaluateGoalieDecision(Titan ai) {
+    public void tickAiGoalieMinionFarming(Titan ai) {
+        if (effectPool.hasEffect(ai, EffectId.COOLDOWN_GOALIE)) {
+            return;
+        }
+        if (c != null && !c.AI_OMNISCIENCE_ENABLED && effectPool != null && effectPool.hasEffect(ai, EffectId.BLIND)) {
+            return;
+        }
+
+        // The goalie clicks to lasthit and push whenever his team has the ball
+        Optional<Titan> possessorOpt = titanInPossession();
+        if (!possessorOpt.isPresent() || possessorOpt.get().team != ai.team) {
+            return;
+        }
+
+        double gx = ai.X + ai.width / 2.0;
+        double gy = ai.Y + ai.height / 2.0;
+        double rangeX = c.getI("titan.goalie.rangex") * ai.rangeFactor;
+        double rangeY = c.getI("titan.goalie.rangey") * ai.rangeFactor;
+
+        double baseDmg = (c != null && c.hasKey("goalie.click.damage")) ? c.getD("goalie.click.damage") : 5.0;
+        GuardianAbilities ga = (ai.team == TeamAffiliation.HOME) ? homeGoalieAbilities : awayGoalieAbilities;
+        Set<String> purchased = (ai.team == TeamAffiliation.HOME) ? homeGoaliePurchasedUpgrades : awayGoaliePurchasedUpgrades;
+
+        Entity bestTarget = null;
+        int bestTier = 999;
+        double bestScore = Double.MAX_VALUE;
+
+        for (Entity e : entityPool) {
+            if (e.getHealth() <= 0.0) continue;
+
+            if (e instanceof gameserver.entity.minions.Dragon d) {
+                double dx = (d.X + d.width / 2.0) - gx;
+                double dy = (d.Y + d.height / 2.0) - gy;
+                if ((dx * dx) / (rangeX * rangeX) + (dy * dy) / (rangeY * rangeY) <= 1.0) {
+                    if (d.getHealth() <= baseDmg) {
+                        bestTarget = d;
+                        bestTier = 0;
+                        break;
+                    }
+                }
+                continue;
+            }
+
+            if (e instanceof LaneMinion m && m.team != ai.team) {
+                double dx = m.X - gx;
+                double dy = m.Y - gy;
+                if ((dx * dx) / (rangeX * rangeX) + (dy * dy) / (rangeY * rangeY) <= 1.0) {
+                    double effectiveDmg = baseDmg;
+                    if (purchased != null && purchased.contains("siege.t3.rushlane") && ga != null && ga.airSupportLane == m.laneIndex) {
+                        effectiveDmg *= 1.40;
+                    }
+
+                    int tier;
+                    double score;
+                    if (m.getHealth() <= effectiveDmg) {
+                        // Tier 1: Guaranteed Last Hit!
+                        tier = 1;
+                        score = m.getHealth(); // lowest health first
+                    } else if (m.getHealth() <= effectiveDmg * 2.0) {
+                        // Tier 2: Setup Kill
+                        tier = 2;
+                        score = m.getHealth();
+                    } else {
+                        // Tier 3: Wave Push
+                        tier = 3;
+                        score = Math.abs(m.X - gx); // frontmost enemy minion in lane
+                    }
+
+                    if (tier < bestTier || (tier == bestTier && score < bestScore)) {
+                        bestTier = tier;
+                        bestScore = score;
+                        bestTarget = m;
+                    }
+                }
+            }
+        }
+
+        if (bestTarget != null) {
+            handleGoalieAttackClick("", bestTarget.X, bestTarget.Y, ai.team, ai);
+        }
+    }
+
+    public void evaluateGoalieDecision(Titan ai) {
         tickAiGoalieBuildOrder(ai);
 
         GoalHoop myGoal = (ai.team == TeamAffiliation.HOME) ? homeHiGoal : awayHiGoal;
@@ -2358,6 +2504,14 @@ public class GameEngine extends Game {
         int YMIN = c.GOALIE_Y_MIN;
         int XMAX = (ai.team == TeamAffiliation.AWAY ? c.GOALIE_XA_MAX : c.GOALIE_XH_MAX);
         int XMIN = (ai.team == TeamAffiliation.AWAY ? c.GOALIE_XA_MIN : c.GOALIE_XH_MIN);
+
+        if (c != null && !c.AI_OMNISCIENCE_ENABLED && effectPool != null && effectPool.hasEffect(ai, EffectId.BLIND)) {
+            double holdX = (ai.team == TeamAffiliation.HOME) ? (hoopLeft + c.GOALIE_INTERCEPT_W / 2.0) : (hoopRight - c.GOALIE_INTERCEPT_W / 2.0);
+            ai.aiTargetX = Math.max(XMIN, Math.min(XMAX, holdX));
+            ai.aiTargetY = Math.max(YMIN, Math.min(YMAX, hoopCY + 10.0));
+            ai.aiTargetAction = 0;
+            return;
+        }
 
         if (ai.possession == 1) {
             Titan openTeammate = findBestPassTarget(ai);
@@ -2385,126 +2539,126 @@ public class GameEngine extends Game {
         Optional<Titan> possessorOpt = titanInPossession();
         boolean teamOnOffense = possessorOpt.isPresent() && possessorOpt.get().team == ai.team;
 
-        // The goalie only farms lanes when their team is on offense
-        if (teamOnOffense) {
-            int[] enemyMinionsPerLane = new int[3];
-            LaneMinion[] closestMinionPerLane = new LaneMinion[3];
-            double[] closestDistPerLane = new double[]{Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE};
-
-            for (Entity e : entityPool) {
-                if (e instanceof LaneMinion && e.getHealth() > 0.0 && e.team != ai.team) {
-                    LaneMinion lm = (LaneMinion) e;
-                    int lane = lm.laneIndex;
-                    if (lane >= 0 && lane < 3) {
-                        enemyMinionsPerLane[lane]++;
-                        double d = Math.hypot(lm.X - ai.X, lm.Y - ai.Y);
-                        if (d < closestDistPerLane[lane]) {
-                            closestDistPerLane[lane] = d;
-                            closestMinionPerLane[lane] = lm;
-                        }
-                    }
-                }
-            }
-
-            int bestLane = -1;
-            int maxMinions = 0;
-            for (int l = 0; l < 3; l++) {
-                if (enemyMinionsPerLane[l] > maxMinions) {
-                    maxMinions = enemyMinionsPerLane[l];
-                    bestLane = l;
-                }
-            }
-
-            if (bestLane != -1 && maxMinions > 0) {
-                double[] laneYs = laneCenterYs();
-                double targetY = laneYs[bestLane];
-                LaneMinion targetMinion = closestMinionPerLane[bestLane];
-                double targetX = (targetMinion != null) ? targetMinion.X : (ai.team == TeamAffiliation.HOME ? XMAX : XMIN);
-
-                ai.aiTargetX = Math.max(XMIN, Math.min(XMAX, targetX));
-                ai.aiTargetY = Math.max(YMIN, Math.min(YMAX, targetY));
-                ai.aiTargetAction = 0;
-
-                // Goalie is bounded by the exact same elliptical range restrictions as a human player
-                if (targetMinion != null) {
-                    double gx = ai.X + ai.width / 2.0;
-                    double gy = ai.Y + ai.height / 2.0;
-                    double rangeX = c.getI("titan.goalie.rangex") * ai.rangeFactor;
-                    double rangeY = c.getI("titan.goalie.rangey") * ai.rangeFactor;
-                    double dx = targetMinion.X - gx;
-                    double dy = targetMinion.Y - gy;
-                    if ((dx * dx) / (rangeX * rangeX) + (dy * dy) / (rangeY * rangeY) <= 1.0) {
-                        handleGoalieAttackClick("", targetMinion.X, targetMinion.Y, ai.team, ai);
-                    }
-                }
-                return;
-            }
-        }
-
-        // Defensive objective: defend the outermost part of the hoop closest to the ball, not the center of the hoop.
-        // The rectangular intercept collider (90x50) must cover the hoop without leaving any part uncovered.
-        double ballCX = ball.X + ball.width / 2.0;
-        double ballCY = ball.Y + ball.height / 2.0;
-        double vx = ballCX - hoopCX;
-        double vy = ballCY - hoopCY;
-        double len = Math.hypot(vx, vy);
-        if (len < 0.001) { vx = (ai.team == TeamAffiliation.HOME ? 1.0 : -1.0); vy = 0; len = 1.0; }
-
-        double ux = vx / len;
-        double uy = vy / len;
-
-        // Outermost point on the hoop's elliptical perimeter closest to the ball
-        double invDenom = Math.hypot(ux / rx, uy / ry);
-        double k = (invDenom > 0.0001) ? (1.0 / invDenom) : rx;
-        double outerHoopX = hoopCX + k * ux;
-        double outerHoopY = hoopCY + k * uy;
-
         int colliderW = c.GOALIE_INTERCEPT_W; // 90
         int colliderH = c.GOALIE_INTERCEPT_H; // 50
 
-        // In Y: Center collider on outerHoopY, clamped so the collider never extends into empty space outside the hoop,
-        // ensuring no part of the hoop is left uncovered.
-        double minColliderCY = hoopTop + colliderH / 2.0;
-        double maxColliderCY = hoopBottom - colliderH / 2.0;
-        double desiredColliderCY = Math.max(minColliderCY, Math.min(maxColliderCY, outerHoopY));
-        // Goalie sprite center Y is offset +10px from collider center Y (aiCenterY = ai.Y + 35, colliderCY = ai.Y + 25)
-        double targetY = desiredColliderCY + 10.0;
+        double ballCX = ball.X + ball.width / 2.0;
+        double ballCY = ball.Y + ball.height / 2.0;
 
-        // In X: Cover from hoop back through outerHoopX towards the incoming ball.
-        double desiredColliderCX;
-        if (ai.team == TeamAffiliation.HOME) {
-            // Home hoop is [256, 326]. Collider spans [256, 346] with center at 301, completely covering the hoop and extending 20px out
-            desiredColliderCX = hoopLeft + colliderW / 2.0;
+        double targetX;
+        double targetY;
+
+        if (teamOnOffense) {
+            // Priorities 3 & 4: Friendly team has possession
+            // Priority 3: Minion last-hitting and upgrade spending is performed every tick by tickAiGoalieMinionFarming & tickAiGoalieBuildOrder
+            // Priority 4: Leave the centergoal area only once friendly team has advanced ball across midfield (max 60px from crease line)
+            double desiredColliderCX = (ai.team == TeamAffiliation.HOME) ? (hoopLeft + colliderW / 2.0) : (hoopRight - colliderW / 2.0);
+            targetX = desiredColliderCX;
+
+            double midfieldX = (c.MAX_X + c.MIN_X) / 2.0;
+            boolean ballAcrossMidfield = (ai.team == TeamAffiliation.HOME) ? (ball.X > midfieldX) : (ball.X < midfieldX);
+
+            if (!ballAcrossMidfield) {
+                // Ball not yet across midfield: goalie holds the primary crease line
+                targetY = hoopCY + 10.0;
+            } else {
+                // Ball is across midfield: goalie may shift vertically to optimize 2-lane farm reach,
+                // but cannot wander beyond 60px from the crease line.
+                double creaseTop = hoopTop - 60.0;
+                double creaseBottom = hoopBottom + 60.0;
+
+                int topMinions = 0;
+                int botMinions = 0;
+                for (Entity e : entityPool) {
+                    if (e instanceof LaneMinion m && m.getHealth() > 0.0 && m.team != ai.team) {
+                        if (m.laneIndex == 0) topMinions++;
+                        else if (m.laneIndex == 2) botMinions++;
+                    }
+                }
+
+                if (topMinions > botMinions) {
+                    targetY = creaseTop + 10.0;
+                } else if (botMinions > topMinions) {
+                    targetY = creaseBottom - 10.0;
+                } else {
+                    targetY = hoopCY + 10.0;
+                }
+                targetY = Math.max(creaseTop, Math.min(creaseBottom, targetY));
+            }
         } else {
-            // Away hoop is [1786, 1856]. Collider spans [1766, 1856] with center at 1811, completely covering the hoop and extending 20px out
-            desiredColliderCX = hoopRight - colliderW / 2.0;
+            // Opponent possession or loose/flying ball: Defend center goal hoop
+            // Lock horizontal position to front/back edge of the center goal hoop nearest the ball
+            boolean ballInFrontOfHoop = (ai.team == TeamAffiliation.HOME) ? (ballCX >= hoopCX) : (ballCX <= hoopCX);
+            double desiredColliderCX;
+            if (ai.team == TeamAffiliation.HOME) {
+                desiredColliderCX = ballInFrontOfHoop ? (hoopLeft + colliderW / 2.0) : (hoopRight - colliderW / 2.0);
+            } else {
+                desiredColliderCX = ballInFrontOfHoop ? (hoopRight - colliderW / 2.0) : (hoopLeft + colliderW / 2.0);
+            }
+            targetX = desiredColliderCX;
+
+            // Defend nearest edge in Y on the center goal hoop's perimeter, clamped so the collider
+            // stays strictly on the center goal hoop and never vacates it.
+            double vx = ballCX - hoopCX;
+            double vy = ballCY - hoopCY;
+            double len = Math.hypot(vx, vy);
+            if (len < 0.001) {
+                vx = (ai.team == TeamAffiliation.HOME ? 1.0 : -1.0);
+                vy = 0;
+                len = 1.0;
+            }
+
+            double ux = vx / len;
+            double uy = vy / len;
+
+            double invDenom = Math.hypot(ux / rx, uy / ry);
+            double k = (invDenom > 0.0001) ? (1.0 / invDenom) : rx;
+            double outerHoopY = hoopCY + k * uy;
+
+            // Strictly clamped within the center goal hoop boundaries:
+            double minColliderCY = hoopTop + colliderH / 2.0;
+            double maxColliderCY = hoopBottom - colliderH / 2.0;
+            double desiredColliderCY = Math.max(minColliderCY, Math.min(maxColliderCY, outerHoopY));
+            targetY = desiredColliderCY + 10.0;
         }
-        double targetX = desiredColliderCX;
 
         ai.aiTargetX = Math.max(XMIN, Math.min(XMAX, targetX));
         ai.aiTargetY = Math.max(YMIN, Math.min(YMAX, targetY));
         ai.aiTargetAction = 0;
-
-        if (possessorOpt.isPresent() && possessorOpt.get().team != ai.team && ballVisible) {
-            Titan tip = possessorOpt.get();
-            if (isWithinStealRange(ai, tip)) {
-                executeAiSteal(ai);
-            }
-        }
     }
 
     protected void evaluateDefense(Titan ai, Titan possessor, TeamAffiliation myTeam, TeamAffiliation enemyTeam) {
+        boolean carrierVisible = isTitanVisibleTo(ai, possessor);
         double aiCX = ai.X + ai.width / 2.0;
         double aiCY = ai.Y + ai.height / 2.0;
-        double pCX = possessor.X + possessor.width / 2.0;
-        double pCY = possessor.Y + possessor.height / 2.0;
+
+        double pCX, pCY;
+        if (!carrierVisible) {
+            if (ballVisible) {
+                pCX = ball.X + ball.width / 2.0;
+                pCY = ball.Y + ball.height / 2.0;
+            } else {
+                // Completely invisible (carrier stealthed + ball hidden): fall back to guarding hoop
+                GoalHoop defendingGoal = (myTeam == TeamAffiliation.HOME) ? homeHiGoal : awayHiGoal;
+                ai.aiTargetX = defendingGoal.x + defendingGoal.w / 2.0;
+                ai.aiTargetY = defendingGoal.y + defendingGoal.h / 2.0;
+                ai.aiTargetAction = 0;
+                ai.aiDefenseMode = 0;
+                return;
+            }
+        } else {
+            pCX = possessor.X + possessor.width / 2.0;
+            pCY = possessor.Y + possessor.height / 2.0;
+        }
         double dist = Math.hypot(pCX - aiCX, pCY - aiCY);
 
         double shortRange = Math.max(25.0, (ai.stealRad * ai.rangeFactor) * 0.5);
         double maxRange = 100.0;
 
         double stealProb;
-        if (dist <= shortRange) {
+        if (!carrierVisible) {
+            stealProb = 0.0;
+        } else if (dist <= shortRange) {
             stealProb = 1.0;
         } else if (dist >= maxRange) {
             stealProb = 0.0;
@@ -2534,10 +2688,6 @@ public class GameEngine extends Game {
                 ai.aiTargetX = pCX;
                 ai.aiTargetY = pCY;
                 ai.aiTargetAction = 0;
-
-                if (ballVisible && isWithinStealRange(ai, possessor)) {
-                    executeAiSteal(ai);
-                }
             } else {
                 // BLOCK on-ball defense: position between carrier and our defending goal hoop
                 GoalHoop defendingGoal = (myTeam == TeamAffiliation.HOME) ? homeHiGoal : awayHiGoal;
@@ -2572,6 +2722,7 @@ public class GameEngine extends Game {
             List<Titan> otherEnemies = new ArrayList<>();
             for (Titan t : players) {
                 if (t != null && t.team == enemyTeam && t != possessor && t.getType() != TitanType.GOALIE && !effectPool.hasEffect(t, EffectId.DEAD)) {
+                    if (c != null && !c.AI_OMNISCIENCE_ENABLED && !isTitanVisibleTo(ai, t)) continue;
                     otherEnemies.add(t);
                 }
             }
@@ -2625,6 +2776,7 @@ public class GameEngine extends Game {
         double closestDist = Double.MAX_VALUE;
         for (Titan t : players) {
             if (t != null && t.team == enemyTeam && !effectPool.hasEffect(t, EffectId.DEAD)) {
+                if (c != null && !c.AI_OMNISCIENCE_ENABLED && !isTitanVisibleTo(ai, t)) continue;
                 double dx = (t.X + t.width / 2.0) - aiCX, dy = (t.Y + t.height / 2.0) - aiCY;
                 double fwdDist = dx * fwdDir;
                 if (fwdDist > -25.0 && fwdDist < 170.0 && Math.abs(dy) < 75.0) {
@@ -2862,6 +3014,11 @@ public class GameEngine extends Game {
     protected boolean isPassPathBlocked(double x1, double y1, double x2, double y2, TeamAffiliation enemyTeam) {
         for (Titan enemy : players) {
             if (enemy != null && enemy.team == enemyTeam && !effectPool.hasEffect(enemy, EffectId.DEAD)) {
+                if (c != null && !c.AI_OMNISCIENCE_ENABLED && effectPool != null
+                        && effectPool.hasEffect(enemy, EffectId.STEALTHED)
+                        && !effectPool.hasEffect(enemy, EffectId.FLARE)) {
+                    continue;
+                }
                 double eCX = enemy.X + enemy.width / 2.0;
                 double eCY = enemy.Y + enemy.height / 2.0;
                 if (distToSegment(eCX, eCY, x1, y1, x2, y2) < 45.0) {
@@ -2905,6 +3062,9 @@ public class GameEngine extends Game {
 
         for (Titan t : players) {
             if (t != null && !effectPool.hasEffect(t, EffectId.DEAD)) {
+                if (t.team != ai.team && c != null && !c.AI_OMNISCIENCE_ENABLED && !isTitanVisibleTo(ai, t)) {
+                    continue;
+                }
                 double cx = t.X + t.width / 2.0;
                 double cy = t.Y + t.height / 2.0;
                 double d = Math.hypot(cx - targetX, cy - targetY);
@@ -3053,6 +3213,7 @@ public class GameEngine extends Game {
         List<Titan> enemies = new ArrayList<>();
         for (Titan t : players) {
             if (t != null && t.team != ai.team && !effectPool.hasEffect(t, EffectId.DEAD) && t.getType() != TitanType.GOALIE) {
+                if (c != null && !c.AI_OMNISCIENCE_ENABLED && !isTitanVisibleTo(ai, t)) continue;
                 enemies.add(t);
             }
         }
@@ -3065,13 +3226,17 @@ public class GameEngine extends Game {
         return enemies.get(aiIndex % enemies.size());
     }
 
-
-
-    protected Titan findNearestEnemy(Titan ai, TeamAffiliation enemyTeam) {
+    public Titan findNearestEnemy(Titan ai, TeamAffiliation enemyTeam) {
+        if (ai != null && c != null && !c.AI_OMNISCIENCE_ENABLED && effectPool != null && effectPool.hasEffect(ai, EffectId.BLIND)) {
+            return null;
+        }
         Titan nearest = null;
         double minD = Double.MAX_VALUE;
         for (Titan t : players) {
             if (t != null && t.team == enemyTeam && !effectPool.hasEffect(t, EffectId.DEAD)) {
+                if (ai != null && c != null && !c.AI_OMNISCIENCE_ENABLED && !isTitanVisibleTo(ai, t)) {
+                    continue;
+                }
                 double d = Math.hypot(t.X - ai.X, t.Y - ai.Y);
                 if (d < minD) {
                     minD = d;
@@ -3092,6 +3257,9 @@ public class GameEngine extends Game {
             boolean blocked = false;
             for (Titan enemy : players) {
                 if (enemy != null && enemy.team == enemyTeam && !effectPool.hasEffect(enemy, EffectId.DEAD)) {
+                    if (ai != null && c != null && !c.AI_OMNISCIENCE_ENABLED && !isTitanVisibleTo(ai, enemy)) {
+                        continue;
+                    }
                     double distToLine = distToSegment(enemy.X + enemy.width / 2.0, enemy.Y + enemy.height / 2.0, ai.X + ai.width / 2.0, ai.Y + ai.height / 2.0, gx, gy);
                     if (distToLine < 40.0) {
                         blocked = true;
@@ -3823,6 +3991,13 @@ public class GameEngine extends Game {
             }
         }
         this.ended = true;
+        if (onGameEnded != null) {
+            try {
+                onGameEnded.accept(this);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
         gameserver.gamemanager.ServerApplication.triggerGameExpiry();
     }
 
@@ -3837,6 +4012,13 @@ public class GameEngine extends Game {
             }
         }
         this.ended = true;
+        if (onGameEnded != null) {
+            try {
+                onGameEnded.accept(this);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
         gameserver.gamemanager.ServerApplication.triggerGameExpiry();
     }
 

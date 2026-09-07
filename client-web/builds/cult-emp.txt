@@ -1,0 +1,17 @@
+cultivation.t1.manawell
+cultivation.t3.manacompounding
+cultivation.t3.highermanacap
+empowerment.t1.combinecontract
+empowerment.t3.marksmanship
+empowerment.t3.footwork
+empowerment.t4.heroportals
+empowerment.t5.clutchgene
+empowerment.t6.apexform
+cultivation.t4.manavines
+cultivation.t5.riskadjustedreturn
+cultivation.t6.wallportals
+cultivation.t6.iceportal
+cultivation.t5.manasurge
+empowerment.t2.sharpshooter
+empowerment.t5.focusedtraining2
+empowerment.t5.heistcamp

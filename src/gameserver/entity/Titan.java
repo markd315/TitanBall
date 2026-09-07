@@ -43,6 +43,7 @@ public class Titan extends Entity   {
     public int marchingOrderY = 0;
     public int stealRad = 11;
     public boolean typeAndMasteriesLocked = false;
+    public gameserver.engine.Masteries masteries;
     public double damageFactor = 1.0;
     public double cooldownFactor = 1.0;
     public double durationsFactor = 1.0;
@@ -64,6 +65,10 @@ public class Titan extends Entity   {
     @JsonIgnore
     public transient long aiReactionDelayMs = 0;
     @JsonIgnore
+    public transient long aiStealTargetStartMs = 0;
+    @JsonIgnore
+    public transient long aiStealReactionDelayMs = 0;
+    @JsonIgnore
     public transient double aiTargetX = -1;
     @JsonIgnore
     public transient double aiTargetY = -1;
@@ -71,8 +76,20 @@ public class Titan extends Entity   {
     public transient int aiTargetAction = 0;
     @JsonIgnore
     public transient UUID aiTargetTitanId = null;
+    @JsonIgnore
+    public transient String aiGoalieBuildName = null;
+    @JsonIgnore
     public transient List<String> aiGoalieBuildOrder = null;
+    @JsonIgnore
     public transient int aiGoalieBuildIndex = 0;
+    @JsonIgnore
+    public transient List<String> aiGoalieGoldOrder = null;
+    @JsonIgnore
+    public transient int aiGoalieGoldIndex = 0;
+    @JsonIgnore
+    public transient List<String> aiGoalieManaOrder = null;
+    @JsonIgnore
+    public transient int aiGoalieManaIndex = 0;
     @JsonIgnore
     public transient int aiDefenseMode = 0; // 0 = CONCEDE_SPACE, 1 = AGGRESSIVE_STEAL_CHARGE
     @JsonIgnore
@@ -311,6 +328,8 @@ public class Titan extends Entity   {
     public void resurrect(GameEngine context) {
         this.actionState = TitanState.IDLE;
         this.resurrecting = false;
+        this.lastAttacker = null;
+        this.lastAttackerTimeMs = 0L;
         if (this.team == TeamAffiliation.HOME) {
             this.X = context.homeHiGoal.x + (context.homeHiGoal.w / 2);
             this.Y = context.homeHiGoal.y + (context.homeHiGoal.h / 2);

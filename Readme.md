@@ -109,7 +109,7 @@ docker push 720291373173.dkr.ecr.us-east-1.amazonaws.com/titanball
 
 ### 3. CloudFormation Pilot Light Stack (Optional / Infrastructure)
 
-To deploy or update the server infrastructure stack:
+To deploy or update the server infrastructure stack (the stack automatically resolves and uses the latest ECR image available):
 
 ```bash
 aws cloudformation deploy \
@@ -117,12 +117,30 @@ aws cloudformation deploy \
   --stack-name titanball-pilot-light \
   --capabilities CAPABILITY_IAM \
   --parameter-overrides \
-    DeploymentType=ECS \
+    DeploymentNonce=$(date +%s) \
     CloudFrontDistributionId=E250EEB1SQKL1Z \
-    ECRImageUri=720291373173.dkr.ecr.us-east-1.amazonaws.com/titanball:latest \
     DatabaseRootPassword=yoursecurepassword
 ```
 
 For more detailed pilot-light architecture information, see [PILOT_LIGHT_GUIDE.md](file:///operations/PILOT_LIGHT_GUIDE.md).
 
+---
 
+## Tournament Strings & Match Options
+
+TitanBall matches are configured using slash-delimited tournament codes (e.g. `"/1/0/1/10/2/9999/10/12/2/1"`), parsed into `GameOptions`:
+
+| Token Index | Field | Type | Description |
+| :--- | :--- | :--- | :--- |
+| `split[1]` | `playerIndex` | Array Index | Team sizing (`0` = 3v3, `1` = 4v4, `4` = 1v1). |
+| `split[2]` | `goalieIndex` | Array Index | Goalie configuration (`0` = Goalies on, `1` = Goalies off, `2` = Permanent goalies). |
+| `split[3]` | `bestOfIndex` | Array Index | Match series (`1` = Best of 1). |
+| `split[4]` | `playToIndex` | **Literal Value** | Soft target score needed to win (e.g. `10` = first to 10). Must not be 0. |
+| `split[5]` | `winByIndex` | **Literal Value** | Win margin required (e.g. `2` = win by 2). |
+| `split[6]` | `hardWinIndex` | **Literal Value** | Blowout / mercy score cutoff (`9999` = disabled). |
+| `split[7]` | `suddenDeathIndex` | **Literal Minutes** | Minutes elapsed until sudden death triggers (e.g. `10` = 10 minutes). Must not be 0. |
+| `split[8]` | `tieIndex` | **Literal Minutes** | Minutes elapsed until draw is declared (e.g. `12` = 12 minutes). |
+| `split[9]` | `aiDifficultyIndex` | Array Index | Optional. AI reaction time (`0` = Easy, `1` = Medium, `2` = Hard 200–700ms). |
+| `split[10]` | `isHybrid` | Boolean (`0`/`1`) | Optional. Enables bot slot reservation and AI tactics. |
+
+**Key Gotcha**: While `playerIndex`, `goalieIndex`, and `bestOfIndex` index into option arrays, `playToIndex`, `winByIndex`, `hardWinIndex`, `suddenDeathIndex`, and `tieIndex` are parsed directly as **literal numbers**. Passing zeroes for these thresholds triggers immediate win conditions and premature game termination.

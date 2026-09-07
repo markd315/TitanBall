@@ -1,0 +1,13 @@
+siege.t1.siegedoctrine
+siege.t3.ballportal
+siege.t3.vanguards
+siege.t4.accumulators
+siege.t5.saveprogress
+siege.t6.forwardmedics
+empowerment.t1.combinecontract
+empowerment.t3.marksmanship
+empowerment.t3.footwork
+empowerment.t4.heroportals
+empowerment.t5.clutchgene
+empowerment.t6.apexform
+siege.t5.wallsdown

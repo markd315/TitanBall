@@ -13,20 +13,35 @@ const STORAGE_KEY_SLOTS = 'titan_build_orders';
 const STORAGE_KEY_ACTIVE = 'titan_active_build_slot';
 
 const DEFAULT_PRESET_NAMES = [
+    'Siege-Fort',
     'Siege-Emp',
+    'Siege-Cult',
+    'Fort-Emp',
     'Cult-Fort',
-    'Cult-Spam',
-    'Slot 4',
-    'Slot 5',
-    'Slot 6',
-    'Slot 7',
-    'Slot 8',
-    'Slot 9',
-    'Slot 10'
+    'Cult-Emp',
+    'Iron-Bastion',
+    'Blitz-Siege',
+    'Titan-Apex',
+    'Cult-Spam'
 ];
 
 const PRESET_TEXTS = {
     0: `siege.t1.siegedoctrine
+siege.t3.vanguards
+siege.t3.forwardmines
+siege.t4.accumulators
+siege.t4.parapet
+siege.t5.phalanx
+fortress.t1.homeward
+fortress.t3.snaretrap
+fortress.t3.biggermodels
+fortress.t4.bastionprotocol
+fortress.t4.barrage
+fortress.t5.icebarrage
+fortress.t6.deepfreeze
+siege.t6.forwardmedics
+fortress.t5.emergencybarrier`,
+    1: `siege.t1.siegedoctrine
 siege.t3.ballportal
 siege.t3.vanguards
 siege.t4.accumulators
@@ -39,7 +54,38 @@ empowerment.t4.heroportals
 empowerment.t5.clutchgene
 empowerment.t6.apexform
 siege.t5.wallsdown`,
-    1: `cultivation.t1.manawell
+    2: `cultivation.t1.manawell
+cultivation.t3.manacompounding
+cultivation.t3.highermanacap
+cultivation.t2.manainfusion
+siege.t1.siegedoctrine
+siege.t3.rushlane
+siege.t3.vanguards
+siege.t4.accumulators
+siege.t5.phalanx
+cultivation.t4.manavines
+cultivation.t4.manafrenzy
+siege.t6.maximumpressure
+cultivation.t6.uninhibitedportal
+cultivation.t5.manasummon
+siege.t5.callsiegeminion`,
+    3: `fortress.t1.homeward
+fortress.t3.snaretrap
+fortress.t3.biggermodels
+empowerment.t1.combinecontract
+empowerment.t3.grit
+empowerment.t3.marksmanship
+fortress.t4.bastionprotocol
+fortress.t4.barrage
+empowerment.t4.fuelreserves
+empowerment.t4.forecheck
+fortress.t5.icebarrage
+empowerment.t5.clutchgene
+fortress.t6.impenetrable
+empowerment.t6.bannerofcommand
+fortress.t5.emergencybarrier
+empowerment.t5.secondwind`,
+    4: `cultivation.t1.manawell
 cultivation.t3.manacompounding
 cultivation.t3.highermanacap
 cultivation.t2.manainfusion
@@ -51,7 +97,55 @@ fortress.t4.barrage
 fortress.t5.icebarrage
 fortress.t6.deepfreeze
 fortress.t5.emergencybarrier`,
-    2: `cultivation.t1.manawell
+    5: `cultivation.t1.manawell
+cultivation.t3.manacompounding
+cultivation.t3.highermanacap
+empowerment.t1.combinecontract
+empowerment.t3.marksmanship
+empowerment.t3.footwork
+empowerment.t4.heroportals
+empowerment.t5.clutchgene
+empowerment.t6.apexform
+cultivation.t4.manavines
+cultivation.t5.riskadjustedreturn
+cultivation.t6.wallportals
+cultivation.t6.iceportal
+cultivation.t5.manasurge`,
+    6: `fortress.t1.homeward
+fortress.t3.snaretrap
+fortress.t3.biggermodels
+fortress.t4.bastionprotocol
+fortress.t4.deadwalls
+fortress.t5.noflyzoneperm
+fortress.t5.icebarrage
+fortress.t6.impenetrable
+fortress.t6.deepfreeze
+fortress.t5.emergencybarrier
+fortress.t5.repairdrone`,
+    7: `siege.t1.siegedoctrine
+siege.t3.rushlane
+siege.t3.vanguards
+siege.t3.forwardmines
+siege.t4.accumulators
+siege.t4.parapet
+siege.t5.forwardoutpost
+siege.t5.incendiarymines
+siege.t6.maximumpressure
+siege.t6.multiball
+siege.t5.callsiegeminion`,
+    8: `empowerment.t1.combinecontract
+empowerment.t3.marksmanship
+empowerment.t3.grit
+empowerment.t3.discipline
+empowerment.t4.fuelreserves
+empowerment.t4.forecheck
+empowerment.t5.clutchgene
+empowerment.t5.focusedtraining
+empowerment.t6.dragonsbreath
+empowerment.t6.bannerofcommand
+empowerment.t5.energysurge
+empowerment.t5.secondwind`,
+    9: `cultivation.t1.manawell
 cultivation.t3.manacompounding
 cultivation.t3.highermanacap
 cultivation.t2.manainfusion

@@ -6,8 +6,7 @@ import gameserver.entity.Titan;
 import util.ConstOperations;
 
 import com.fasterxml.jackson.annotation.*;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Masteries   {
@@ -139,56 +138,129 @@ public class Masteries   {
         return ret;
     }
 
+    public void zeroAll() {
+        this.health = 0;
+        this.shot = 0;
+        this.damage = 0;
+        this.speed = 0;
+        this.cooldowns = 0;
+        this.effectDuration = 0;
+        this.stealRadius = 0;
+        this.abilityRange = 0;
+        this.abilityLag = 0;
+        this.painReduction = 0;
+        this.boost = 0;
+    }
+
+    public void setByIndex(int idx, int val) {
+        switch (idx) {
+            case 0: this.health = val; break;
+            case 1: this.shot = val; break;
+            case 2: this.damage = val; break;
+            case 3: this.speed = val; break;
+            case 4: this.cooldowns = val; break;
+            case 5: this.effectDuration = val; break;
+            case 6: this.stealRadius = val; break;
+            case 7: this.abilityRange = val; break;
+            case 8: this.abilityLag = val; break;
+            case 9: this.painReduction = val; break;
+            case 10: this.boost = val; break;
+        }
+    }
+
+    public static Masteries createGoalieMasteries(Random rng) {
+        Masteries m = new Masteries();
+        m.zeroAll();
+        m.speed = 3;
+        m.boost = 3;
+        m.health = 3;
+
+        // Remaining 8 stats: shot (1), damage (2), cooldowns (4), effectDuration (5),
+        // stealRadius (6), abilityRange (7), abilityLag (8), painReduction (9)
+        int[] remaining = new int[] {1, 2, 4, 5, 6, 7, 8, 9};
+        int pick = remaining[rng.nextInt(remaining.length)];
+        m.setByIndex(pick, 1);
+        return m;
+    }
+
+    public static Masteries createRandom3331(Random rng) {
+        Masteries m = new Masteries();
+        m.zeroAll();
+        List<Integer> indices = new ArrayList<>();
+        for (int i = 0; i <= 10; i++) {
+            indices.add(i);
+        }
+        Collections.shuffle(indices, rng);
+        // 3 stats get 3 points
+        for (int i = 0; i < 3; i++) {
+            m.setByIndex(indices.get(i), 3);
+        }
+        // 1 stat gets 1 point
+        m.setByIndex(indices.get(3), 1);
+        // Remaining 7 stats are 0
+        return m;
+    }
+
+    public List<String> getPlusThreeMasteryNames() {
+        List<String> list = new ArrayList<>();
+        if (this.health == 3) list.add("HEALTH");
+        if (this.shot == 3) list.add("SHOT");
+        if (this.damage == 3) list.add("DAMAGE");
+        if (this.speed == 3) list.add("SPEED");
+        if (this.cooldowns == 3) list.add("COOLDOWNS");
+        if (this.effectDuration == 3) list.add("EFFECTDURATION");
+        if (this.stealRadius == 3) list.add("STEALRADIUS");
+        if (this.abilityRange == 3) list.add("ABILITYRANGE");
+        if (this.abilityLag == 3) list.add("ABILITYLAG");
+        if (this.painReduction == 3) list.add("PAINREDUCTION");
+        if (this.boost == 3) list.add("BOOST");
+        return list;
+    }
+
     public void applyMasteries(Titan t) {
-        if (t.getType() == null || t.getType() == gameserver.entity.TitanType.GOALIE) {
-            //System.out.println("[DIAG] applyMasteries SKIP: titan id=" + t.id
-            //        + " type=" + t.getType() + " locked=" + t.typeAndMasteriesLocked);
+        if (t == null || t.getType() == null) {
             return;
         }
         if (t.typeAndMasteriesLocked) {
-            //System.out.println("[DIAG] applyMasteries SKIP (already locked): titan id=" + t.id
-            //        + " type=" + t.getType());
             return;
         }
         if (this.validate() == -1) {
-            //System.out.println("[DIAG] applyMasteries SKIP (invalid mastery allocation): titan id="
-            //        + t.id + " type=" + t.getType() + " masteries=" + this.asMap());
             return;
         }
-        if (!t.typeAndMasteriesLocked) {
-            System.out.println("Mastery adjusted stats for " + t.getType().toString());
-            ConstOperations c = new Const("res/game.cfg");
-            t.speed *= (1.0 + (this.speed - 1) * (c.getD("masteries.speed.mult") - 1.0));
-            t.throwPower *= (1.0 + (this.shot - 1) * (c.getD("masteries.throw.mult") - 1.0));
-            t.rangeFactor *= (1.0 + (this.abilityRange - 1) * (c.getD("masteries.range.mult") - 1.0));
-            t.stealRad += (this.stealRadius - 1) * c.getI("masteries.stealRadius.flat");
-            t.maxHealth *= (1.0 + (this.health - 1) * (c.getD("masteries.health.mult") - 1.0));
-            t.damageFactor *= (1.0 + (this.damage - 1) * (c.getD("masteries.damage.mult") - 1.0));
-            t.cooldownFactor /= (1.0 + (this.cooldowns - 1) * (c.getD("masteries.cooldowns.mult") - 1.0));
-            t.durationsFactor *= (1.0 + (this.effectDuration - 1) * (c.getD("masteries.effectDuration.mult") - 1.0));
-            t.eCastFrames /= (1.0 + (this.abilityLag - 1) * (c.getD("masteries.eCastFrames.mult") - 1.0));
-            t.rCastFrames /= (1.0 + (this.abilityLag - 1) * (c.getD("masteries.rCastFrames.mult") - 1.0));
-            t.sCastFrames /= (1.0 + (this.abilityLag - 1) * (c.getD("masteries.stealCastFrames.mult") - 1.0));
-            t.painReduction *= (1.0 + (this.painReduction - 1) * (c.getD("masteries.painReduction.mult") - 1.0));
+        t.masteries = this;
+        System.out.println("Mastery adjusted stats for " + t.getType().toString());
+        ConstOperations c = new Const("res/game.cfg");
+        t.speed *= (1.0 + (this.speed - 1) * (c.getD("masteries.speed.mult") - 1.0));
+        t.throwPower *= (1.0 + (this.shot - 1) * (c.getD("masteries.throw.mult") - 1.0));
+        t.rangeFactor *= (1.0 + (this.abilityRange - 1) * (c.getD("masteries.range.mult") - 1.0));
+        t.stealRad += (this.stealRadius - 1) * c.getI("masteries.stealRadius.flat");
+        t.maxHealth *= (1.0 + (this.health - 1) * (c.getD("masteries.health.mult") - 1.0));
+        t.damageFactor *= (1.0 + (this.damage - 1) * (c.getD("masteries.damage.mult") - 1.0));
+        t.cooldownFactor /= (1.0 + (this.cooldowns - 1) * (c.getD("masteries.cooldowns.mult") - 1.0));
+        t.durationsFactor *= (1.0 + (this.effectDuration - 1) * (c.getD("masteries.effectDuration.mult") - 1.0));
+        t.eCastFrames /= (1.0 + (this.abilityLag - 1) * (c.getD("masteries.eCastFrames.mult") - 1.0));
+        t.rCastFrames /= (1.0 + (this.abilityLag - 1) * (c.getD("masteries.rCastFrames.mult") - 1.0));
+        t.sCastFrames /= (1.0 + (this.abilityLag - 1) * (c.getD("masteries.stealCastFrames.mult") - 1.0));
+        t.painReduction *= (1.0 + (this.painReduction - 1) * (c.getD("masteries.painReduction.mult") - 1.0));
 
-            double boostMult = 1.0 + (this.boost) * (c.getD("masteries.boost.mult") - 1.0);
-            t.boostMaxFactor *= boostMult;
-            t.boostRegenFactor *= boostMult;
+        double boostMult = 1.0 + (this.boost) * (c.getD("masteries.boost.mult") - 1.0);
+        t.boostMaxFactor *= boostMult;
+        t.boostRegenFactor *= boostMult;
 
-            System.out.println("speed, throw, range, steal, health, damage, cooldown, duration, eCast, rCast, sCast, boost");
-            System.out.println("[" + t.speed + "," + t.throwPower + "," + t.rangeFactor + "," + t.stealRad + "," + t.maxHealth + "," + t.damageFactor + "," + t.cooldownFactor + "," + t.durationsFactor + "," + t.eCastFrames + "," + t.rCastFrames + "," + t.sCastFrames + "," + boostMult + "]");
-            t.baseSpeed = t.speed;
-            t.baseThrowPower = t.throwPower;
-            t.baseRangeFactor = t.rangeFactor;
-            t.baseCooldownFactor = t.cooldownFactor;
-            t.baseDurationsFactor = t.durationsFactor;
-            t.baseMaxHealth = t.maxHealth;
-            t.basePainReduction = t.painReduction;
-            t.baseStealRad = t.stealRad;
-            t.baseDamageFactor = t.damageFactor;
-            t.baseBoostMaxFactor = t.boostMaxFactor;
-            t.baseBoostRegenFactor = t.boostRegenFactor;
-            t.typeAndMasteriesLocked = true;
-        }
+        t.health = t.maxHealth;
+        System.out.println("speed, throw, range, steal, health, damage, cooldown, duration, eCast, rCast, sCast, boost");
+        System.out.println("[" + t.speed + "," + t.throwPower + "," + t.rangeFactor + "," + t.stealRad + "," + t.maxHealth + "," + t.damageFactor + "," + t.cooldownFactor + "," + t.durationsFactor + "," + t.eCastFrames + "," + t.rCastFrames + "," + t.sCastFrames + "," + boostMult + "]");
+        t.baseSpeed = t.speed;
+        t.baseThrowPower = t.throwPower;
+        t.baseRangeFactor = t.rangeFactor;
+        t.baseCooldownFactor = t.cooldownFactor;
+        t.baseDurationsFactor = t.durationsFactor;
+        t.baseMaxHealth = t.maxHealth;
+        t.basePainReduction = t.painReduction;
+        t.baseStealRad = t.stealRad;
+        t.baseDamageFactor = t.damageFactor;
+        t.baseBoostMaxFactor = t.boostMaxFactor;
+        t.baseBoostRegenFactor = t.boostRegenFactor;
+        t.typeAndMasteriesLocked = true;
     }
 }

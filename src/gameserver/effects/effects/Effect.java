@@ -87,6 +87,14 @@ public abstract class Effect  {
     double percentLeft;
 
     public double getPercentLeft(){
+        if (begin != null && end != null) {
+            long total = subtract(end, begin);
+            if (total > 0) {
+                long elapsed = subtract(Instant.now(), begin);
+                double pct = 100.0 - (100.0 * elapsed / (double) total);
+                return Math.max(0.0, Math.min(100.0, pct));
+            }
+        }
         return percentLeft;
     }
 

@@ -15,10 +15,15 @@ public class Const extends ConstOperations   {
     public final int STEAL_CD = getI("titan.steal.cdms");
     public final int STOLEN_STUN = getI("titan.steal.effectms");
     public final int GAMETICK_MS = getI("globals.gametick.ms");
+    public final boolean HEADLESS_ENABLED = hasKey("headless.enabled") ? getB("headless.enabled") : false;
+    public final int HEADLESS_CONCURRENCY = hasKey("headless.concurrency") ? getI("headless.concurrency") : 100;
+    public final int HEADLESS_GAMETICK_MS = hasKey("headless.gametick.ms") ? getI("headless.gametick.ms") : 8;
     public final double SHOT_FREEZE_RATIO = hasKey("globals.shot.caststun") ? getD("globals.shot.caststun") : 1.0;
     public final int SHOT_CASTLAG_FRAMES = hasKey("globals.shot.castlag") ? getI("globals.shot.castlag") : 20;
     public final int LOB_CASTLAG_FRAMES = hasKey("globals.lob.castlag") ? getI("globals.lob.castlag") : 15;
     public boolean GOALIE_DISABLED = getB("globals.goalie.disabled");
+    public boolean AI_OMNISCIENCE_ENABLED = hasKey("globals.ai.omniscience.enabled") ? getB("globals.ai.omniscience.enabled") : false;
+    public final gameserver.entity.TitanType[] AI_INCLUDED_TITANS = initAiIncludedTitans();
     public final double BALL_X = getD("ball.x");
     public final double BALL_Y = getD("ball.y");
     public final int GOALIE_Y_MIN = getI("goalie.box.y");
@@ -41,6 +46,35 @@ public class Const extends ConstOperations   {
     public int E_MIN_Y = getI("min.ey");
     public final int DEFENSIVE_THIRD_X = 680;
     public final int ATTACKING_THIRD_X = 1368;
+    public final int HOOP_SIDEGOAL_CD_MS = hasKey("hoop.sidegoal.cdms") ? getI("hoop.sidegoal.cdms") : 1800;
+    public final int HOOP_BOUNCE_EXTRA_KICK = hasKey("hoop.bounce.extra.kick") ? getI("hoop.bounce.extra.kick") : 30;
+
+    private gameserver.entity.TitanType[] initAiIncludedTitans() {
+        if (hasKey("globals.ai.titans.included")) {
+            String raw = getS("globals.ai.titans.included");
+            if (raw != null && !raw.trim().isEmpty()) {
+                String[] tokens = raw.split(",");
+                java.util.List<gameserver.entity.TitanType> list = new java.util.ArrayList<>();
+                for (String token : tokens) {
+                    String clean = token.trim();
+                    if (!clean.isEmpty()) {
+                        try {
+                            gameserver.entity.TitanType type = gameserver.entity.TitanType.valueOf(clean.toUpperCase());
+                            list.add(type);
+                        } catch (Exception ignored) {}
+                    }
+                }
+                if (!list.isEmpty()) {
+                    return list.toArray(new gameserver.entity.TitanType[0]);
+                }
+            }
+        }
+        return new gameserver.entity.TitanType[]{
+            gameserver.entity.TitanType.WARRIOR, gameserver.entity.TitanType.RANGER, gameserver.entity.TitanType.DASHER, gameserver.entity.TitanType.MARKSMAN,
+            gameserver.entity.TitanType.STEALTH, gameserver.entity.TitanType.SUPPORT, gameserver.entity.TitanType.ARTISAN, gameserver.entity.TitanType.GOLEM,
+            gameserver.entity.TitanType.BUILDER, gameserver.entity.TitanType.HOUNDMASTER, gameserver.entity.TitanType.CAPTAIN, gameserver.entity.TitanType.SPIDER
+        };
+    }
 
     public Const() {//kryo
         super("res/game.cfg");

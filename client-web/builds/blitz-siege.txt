@@ -1,0 +1,11 @@
+siege.t1.siegedoctrine
+siege.t3.rushlane
+siege.t3.vanguards
+siege.t3.forwardmines
+siege.t4.accumulators
+siege.t4.parapet
+siege.t5.forwardoutpost
+siege.t5.incendiarymines
+siege.t6.maximumpressure
+siege.t6.multiball
+siege.t5.callsiegeminion

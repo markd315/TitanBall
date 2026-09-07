@@ -63,7 +63,12 @@ public class Dragon extends Entity implements Serializable {
 
     @Override
     public void damage(GameEngine context, double amount) {
-        damage(context, amount, null);
+        damage(context, amount, (TeamAffiliation) null);
+    }
+
+    @Override
+    public void damage(GameEngine context, double amount, Titan attacker) {
+        damage(context, amount, attacker != null ? attacker.team : (TeamAffiliation) null);
     }
 
     private TeamAffiliation findNearestPlayerTeam(GameEngine context) {

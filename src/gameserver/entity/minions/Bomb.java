@@ -63,20 +63,20 @@ public class Bomb extends Entity implements Tickable, Serializable {
                 if (context.players != null) {
                     for (Titan t : context.players) {
                         if (t != null && t.team != this.team && t.asBounds().intersects(bounds) && t.getHealth() > 0) {
-                            t.damage(context, dmg);
                             if (caster != null) {
                                 context.effectPool.addStackingEffect(caster, new EmptyEffect(5000, t, EffectId.ATTACKED));
                             }
+                            t.damage(context, dmg, caster);
                         }
                     }
                 }
                 if (context.entityPool != null) {
                     for (Entity e : context.entityPool) {
                         if (e != null && e.team != this.team && e.asBounds().intersects(bounds) && e.getHealth() > 0) {
-                            e.damage(context, dmg);
                             if (caster != null) {
                                 context.effectPool.addStackingEffect(caster, new EmptyEffect(5000, e, EffectId.ATTACKED));
                             }
+                            e.damage(context, dmg, caster);
                         }
                     }
                 }

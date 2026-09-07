@@ -222,10 +222,35 @@ public class ServerApplication {
                                     if (t != null && player.email != null) {
                                         String className = t.getType() != null ? t.getType().toString() : "WARRIOR";
                                         persistenceManager.postgameStats(player.email, val.state.stats, className, player.wasVictorious, player.newRating);
+                                        if (t.masteries != null) {
+                                            for (String mName : t.masteries.getPlusThreeMasteryNames()) {
+                                                persistenceManager.recordMasteryStats(val.state.stats, player.email, className + "_" + mName, player.wasVictorious);
+                                            }
+                                        }
                                     }
                                 } catch (Exception e) {
                                     e.printStackTrace();
                                 }
+                            }
+                            try {
+                                PlayerDivider homeGoalie = null;
+                                PlayerDivider awayGoalie = null;
+                                for (PlayerDivider p : val.state.clients) {
+                                    if (p.selection == 1) homeGoalie = p;
+                                    else if (p.selection == 2) awayGoalie = p;
+                                }
+                                if (homeGoalie != null && val.state.homeGoalieAllPurchasedUpgrades != null) {
+                                    for (String up : val.state.homeGoalieAllPurchasedUpgrades) {
+                                        persistenceManager.recordUpgradeStats(val.state.stats, homeGoalie.email, up, homeGoalie.wasVictorious);
+                                    }
+                                }
+                                if (awayGoalie != null && val.state.awayGoalieAllPurchasedUpgrades != null) {
+                                    for (String up : val.state.awayGoalieAllPurchasedUpgrades) {
+                                        persistenceManager.recordUpgradeStats(val.state.stats, awayGoalie.email, up, awayGoalie.wasVictorious);
+                                    }
+                                }
+                            } catch (Exception e) {
+                                e.printStackTrace();
                             }
                         }
                     }
