@@ -97,4 +97,12 @@ public class ConstOperations  implements Serializable {
         }
         return s.toLowerCase().equals("true");
     }
+
+    public boolean getB(String key, boolean defaultVal){
+        String s = getS(key);
+        if(s == null || s.equals("")){
+            return defaultVal;
+        }
+        return s.toLowerCase().equals("true");
+    }
 }

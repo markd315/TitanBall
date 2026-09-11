@@ -1240,6 +1240,7 @@ public class GuardianAbilities implements Serializable {
             if (t.team == team && t.getType() != TitanType.GOALIE) {
                 t.width = (int) (70 * 1.25);
                 t.height = (int) (70 * 1.25);
+                t.centerDist = (t.width + t.height) / 4;
             }
         }
     }
@@ -1297,16 +1298,28 @@ public class GuardianAbilities implements Serializable {
     private void spawnWallPortals(GameEngine context, Titan goalie) {
         int cd = context.c.getI("guardian.wallportals.cooldown");
         if (cd <= 0) cd = 2000;
-        int count = 10;
+        int count = context.c.hasKey("guardian.wallportals.count") ? context.c.getI("guardian.wallportals.count") : 15;
+        if (count <= 0) count = 15;
+        int midfieldCount = 1;
+        if (context.c.hasKey("guardian.wallportals.midfield.count")) {
+            midfieldCount = context.c.getI("guardian.wallportals.midfield.count");
+        } else if (context.c.hasKey("guardian.wallportals.vertical.count")) {
+            midfieldCount = context.c.getI("guardian.wallportals.vertical.count");
+        }
+        if (midfieldCount < 0) midfieldCount = 0;
         int pSize = 40;
 
         // Remove existing wall portals for this team to avoid duplication
         context.entityPool.removeIf(e -> e instanceof BallPortal && e.team == team && e.health >= 99999 && ((BallPortal) e).destinationX != null);
 
         int topY = context.c.MIN_Y; // 232
-        int botY = context.c.MAX_Y - pSize; // 988 - 40 = 948
+        // MAX_Y is max ball.Y (988) where ball bottom is at 1018 (bottom wall line).
+        // Align bottom wall portal flush with bottom wall line (1018 - pSize = 978).
+        int ballH = context.c.hasKey("ball.h") ? context.c.getI("ball.h") : 30;
+        int botY = context.c.hasKey("guardian.wallportals.bottom.y") ? context.c.getI("guardian.wallportals.bottom.y")
+                : (context.c.MAX_Y - pSize + ballH); // 988 - 40 + 30 = 978
         int startY = context.c.MIN_Y; // 232
-        int endY = context.c.MAX_Y - pSize; // 948
+        int endY = botY; // 978
 
         if (team == TeamAffiliation.HOME) {
             // HOME goalie purchased upgrade -> Affects opponent side (AWAY half)
@@ -1315,9 +1328,9 @@ public class GuardianAbilities implements Serializable {
             int backX = 1970;
             int midX = 1024;
 
-            // 1. Top-to-Bottom Pairing (10 sets = 20 portals)
+            // 1. Top-to-Bottom Pairing (densely packed along X axis)
             for (int i = 0; i < count; i++) {
-                int xVal = (int) (startX + i * (endX - startX) / (count - 1.0));
+                int xVal = (count == 1) ? (startX + endX) / 2 : (int) (startX + i * (endX - startX) / (count - 1.0));
 
                 BallPortal pTop = new BallPortal(team, xVal, topY, pSize, pSize, cd);
                 BallPortal pBot = new BallPortal(team, xVal, botY, pSize, pSize, cd);
@@ -1334,9 +1347,9 @@ public class GuardianAbilities implements Serializable {
                 context.entityPool.add(pBot);
             }
 
-            // 2. Backwall-to-Midfield Pairing (10 sets = 20 portals)
-            for (int i = 0; i < count; i++) {
-                int yVal = (int) (startY + i * (endY - startY) / (count - 1.0));
+            // 2. Backwall-to-Midfield Pairing (strategic assets spaced out evenly)
+            for (int i = 0; i < midfieldCount; i++) {
+                int yVal = (midfieldCount == 1) ? (startY + endY) / 2 : (int) (startY + i * (endY - startY) / (midfieldCount - 1.0));
 
                 BallPortal pBack = new BallPortal(team, backX, yVal, pSize, pSize, cd);
                 BallPortal pMid = new BallPortal(team, midX, yVal, pSize, pSize, cd);
@@ -1359,9 +1372,9 @@ public class GuardianAbilities implements Serializable {
             int backX = 40;
             int midX = 980;
 
-            // 1. Top-to-Bottom Pairing (10 sets = 20 portals)
+            // 1. Top-to-Bottom Pairing (densely packed along X axis)
             for (int i = 0; i < count; i++) {
-                int xVal = (int) (startX + i * (endX - startX) / (count - 1.0));
+                int xVal = (count == 1) ? (startX + endX) / 2 : (int) (startX + i * (endX - startX) / (count - 1.0));
 
                 BallPortal pTop = new BallPortal(team, xVal, topY, pSize, pSize, cd);
                 BallPortal pBot = new BallPortal(team, xVal, botY, pSize, pSize, cd);
@@ -1378,9 +1391,9 @@ public class GuardianAbilities implements Serializable {
                 context.entityPool.add(pBot);
             }
 
-            // 2. Backwall-to-Midfield Pairing (10 sets = 20 portals)
-            for (int i = 0; i < count; i++) {
-                int yVal = (int) (startY + i * (endY - startY) / (count - 1.0));
+            // 2. Backwall-to-Midfield Pairing (strategic assets spaced out evenly)
+            for (int i = 0; i < midfieldCount; i++) {
+                int yVal = (midfieldCount == 1) ? (startY + endY) / 2 : (int) (startY + i * (endY - startY) / (midfieldCount - 1.0));
 
                 BallPortal pBack = new BallPortal(team, backX, yVal, pSize, pSize, cd);
                 BallPortal pMid = new BallPortal(team, midX, yVal, pSize, pSize, cd);

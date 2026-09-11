@@ -18,6 +18,7 @@ public class Const extends ConstOperations   {
     public final boolean HEADLESS_ENABLED = hasKey("headless.enabled") ? getB("headless.enabled") : false;
     public final int HEADLESS_CONCURRENCY = hasKey("headless.concurrency") ? getI("headless.concurrency") : 100;
     public final int HEADLESS_GAMETICK_MS = hasKey("headless.gametick.ms") ? getI("headless.gametick.ms") : 8;
+    public final boolean HEADLESS_BUILDORDERS_ENABLED = hasKey("headless.buildorders.enabled") ? getB("headless.buildorders.enabled") : false;
     public final double SHOT_FREEZE_RATIO = hasKey("globals.shot.caststun") ? getD("globals.shot.caststun") : 1.0;
     public final int SHOT_CASTLAG_FRAMES = hasKey("globals.shot.castlag") ? getI("globals.shot.castlag") : 20;
     public final int LOB_CASTLAG_FRAMES = hasKey("globals.lob.castlag") ? getI("globals.lob.castlag") : 15;

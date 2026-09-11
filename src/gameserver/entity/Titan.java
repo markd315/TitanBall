@@ -91,6 +91,10 @@ public class Titan extends Entity   {
     @JsonIgnore
     public transient int aiGoalieManaIndex = 0;
     @JsonIgnore
+    public transient String aiGoalieTargetGoldUpgrade = null;
+    @JsonIgnore
+    public transient String aiGoalieTargetManaUpgrade = null;
+    @JsonIgnore
     public transient int aiDefenseMode = 0; // 0 = CONCEDE_SPACE, 1 = AGGRESSIVE_STEAL_CHARGE
     @JsonIgnore
     public transient long aiDefenseModeSwitchTimeMs = 0;
@@ -416,9 +420,10 @@ public class Titan extends Entity   {
         titanRange.put(TitanType.ARTISAN, artisan);
         titanRange.put(TitanType.HOUNDMASTER,  Collections.singleton(e(c.getI("titan.cage.range"))));
         titanRange.put(TitanType.GRENADIER, grenadier);
-        titanRange.put(TitanType.CAPTAIN, captain);
-        titanRange.put(TitanType.SPIDER, spider);
-        titanRange.put(TitanType.GOALIE, Collections.singleton(e(c.getI("titan.goalie.rangex"), c.getI("titan.goalie.rangey"))));
+        HashSet<RangeCircle> goalie = new HashSet<>();
+        goalie.add(new RangeCircle(1.0, 0.0, 0.0, 1.0, c.getI("titan.goalie.rangex"), c.getI("titan.goalie.rangey")));
+        goalie.add(r(c.getI("titan.goalie.slide.dist")));
+        titanRange.put(TitanType.GOALIE, goalie);
 
         titanText.put(TitanType.MAGE, "DAMAGE ignite enemies and warp players around the map with portals");
         titanText.put(TitanType.RANGER, "DAMAGE/DEFENSE take attacking enemies down from a distance");
@@ -450,7 +455,7 @@ public class Titan extends Entity   {
         titanEText.put(TitanType.HOUNDMASTER, "Spawn a cage with a hound");
         titanEText.put(TitanType.CAPTAIN, "Fire a rifle shot (5 dmg, 2x vs minions). Auto-reloads at 0 ammo");
         titanEText.put(TitanType.SPIDER, "Spawn a web trap that slows enemies and sticks the ball");
-        titanEText.put(TitanType.GOALIE, "Goalie Ability E");
+        titanEText.put(TitanType.GOALIE, "Block: For 2400ms, immediately catch any lobbed ball and expand ball intercept collider to 1.5x");
 
         titanRText.put(TitanType.MAGE, "Scald an enemy with powerful fire magic");
         titanRText.put(TitanType.RANGER, "Knock all nearby enemies back a short distance");
@@ -466,7 +471,7 @@ public class Titan extends Entity   {
         titanRText.put(TitanType.HOUNDMASTER, "Open all cages. More dogs means more damage");
         titanRText.put(TitanType.CAPTAIN, "Slide in direction and drop a 3s delayed 50-damage timebomb");
         titanRText.put(TitanType.SPIDER, "Cocoon for 1s then teleport to the opposite side of target hero's cast location");
-        titanRText.put(TitanType.GOALIE, "Goalie Ability R");
+        titanRText.put(TitanType.GOALIE, "Slide: Slide to destination. Ball bounces off like a wall during cast lag");
 
     }
     private static RangeCircle e(int x){

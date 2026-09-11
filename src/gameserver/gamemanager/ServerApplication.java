@@ -34,6 +34,7 @@ public class ServerApplication {
     static Properties prop;
     static String appSecret;
     public static boolean excludeAiMatchesFromStats = true;
+    public static boolean recordBotGamesStats = true;
 
     static {
         try {
@@ -48,6 +49,15 @@ public class ServerApplication {
             } else {
                 excludeAiMatchesFromStats = Boolean.parseBoolean(p);
             }
+
+            String rbg = prop.getProperty("stats.record.botgames", "true").trim();
+            if (rbg.startsWith("${") && rbg.endsWith("}")) {
+                String[] parts = rbg.substring(2, rbg.length() - 1).split(":", 2);
+                String envVal = System.getenv(parts[0]);
+                recordBotGamesStats = Boolean.parseBoolean(envVal != null ? envVal : (parts.length > 1 ? parts[1] : "true"));
+            } else {
+                recordBotGamesStats = Boolean.parseBoolean(rbg);
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -59,6 +69,14 @@ public class ServerApplication {
 
     public static void setExcludeAiMatchesFromStats(boolean exclude) {
         excludeAiMatchesFromStats = exclude;
+    }
+
+    public static boolean isRecordBotGamesStats() {
+        return recordBotGamesStats;
+    }
+
+    public static void setRecordBotGamesStats(boolean record) {
+        recordBotGamesStats = record;
     }
 
     public static void addNewGame(String id, GameOptions op, Collection<String> gameFor) {
@@ -187,10 +205,31 @@ public class ServerApplication {
 
                     boolean isTutorial = (id != null && id.startsWith("tutorial-"));
                     boolean isAiMatch = val.options != null && (val.options.isHybrid() || val.options.isCoopVsAi());
-                    boolean skipStats = isTutorial || (isAiMatch && excludeAiMatchesFromStats);
 
-                    if (isAiMatch && excludeAiMatchesFromStats) {
-                        System.out.println("Skipping postgame stats database write for hybrid/coop AI match: " + id);
+                    boolean hasBotTeam = isAiMatch;
+                    if (val.state != null && val.state.clients != null) {
+                        boolean homeHasHuman = false;
+                        boolean awayHasHuman = false;
+                        for (PlayerDivider pd : val.state.clients) {
+                            Titan t = val.state.titanSelected(pd);
+                            if (t != null) {
+                                if (t.team == TeamAffiliation.HOME) homeHasHuman = true;
+                                else if (t.team == TeamAffiliation.AWAY) awayHasHuman = true;
+                            }
+                        }
+                        if (!homeHasHuman || !awayHasHuman) {
+                            hasBotTeam = true;
+                        }
+                    }
+
+                    boolean recordBots = (val.state != null && val.state.c != null)
+                            ? val.state.c.getB("stats.record.botgames", recordBotGamesStats)
+                            : recordBotGamesStats;
+
+                    boolean skipStats = isTutorial || (hasBotTeam && !recordBots);
+
+                    if (hasBotTeam && !recordBots) {
+                        System.out.println("Skipping postgame stats database write for bot-included match: " + id);
                     }
 
                     if (!skipStats && persistenceManager != null && val.options != null) {
@@ -284,6 +323,7 @@ public class ServerApplication {
             int totalGames = (persistence.getLosses() != null ? persistence.getLosses() : 0) + (persistence.getWins() != null ? persistence.getWins() : 0);
             Rating<User> oldRating = new Rating<>(persistence, totalGames);
             double curRating = persistence.getRating() != null ? persistence.getRating() : 1000.0;
+            pl.newRating = curRating;
             Titan t = state.titanSelected(pl);
             if (t != null && t.team == TeamAffiliation.HOME) {
                 oldRating.setRating(curRating);
@@ -293,15 +333,24 @@ public class ServerApplication {
                 away.add(oldRating);
             }
         }
-        if (home.isEmpty() || away.isEmpty()) return;
-        Rating<String> homeRating = new Rating<>(home, "home", 0);
-        Rating<String> awayRating = new Rating<>(away, "away", 0);
+        if (home.isEmpty() && away.isEmpty()) return;
+
+        int aiTier = (state.options != null) ? state.options.aiDifficultyIndex : 1;
+        double botRatingVal = (aiTier == 0) ? 900.0 : (aiTier == 2 ? 1100.0 : 1000.0);
+
+        Rating<String> homeRating = home.isEmpty()
+                ? new Rating<>("home", botRatingVal, 10)
+                : new Rating<>(home, "home", 0);
+        Rating<String> awayRating = away.isEmpty()
+                ? new Rating<>("away", botRatingVal, 10)
+                : new Rating<>(away, "away", 0);
+
         double diff = (state.home != null && state.away != null) ? (state.home.score - state.away.score) : 0.0;
         Match<String> match = new Match<>(homeRating, awayRating, diff);
         match.injectAverage(home, away);
         for (PlayerDivider pl : state.clients) {
-            updatePlayerRating(pl, home);
-            updatePlayerRating(pl, away);
+            if (!home.isEmpty()) updatePlayerRating(pl, home);
+            if (!away.isEmpty()) updatePlayerRating(pl, away);
         }
     }
 
@@ -318,6 +367,7 @@ public class ServerApplication {
             int totalGames = (persistence.getLosses_1v1() != null ? persistence.getLosses_1v1() : 0) + (persistence.getWins_1v1() != null ? persistence.getWins_1v1() : 0);
             Rating<User> oldRating = new Rating<>(persistence, totalGames);
             double curRating = persistence.getRating_1v1() != null ? persistence.getRating_1v1() : 1000.0;
+            pl.newRating = curRating;
             Titan t = state.titanSelected(pl);
             if (t != null && t.team == TeamAffiliation.HOME) {
                 oldRating.setRating(curRating);
@@ -327,15 +377,24 @@ public class ServerApplication {
                 away.add(oldRating);
             }
         }
-        if (home.isEmpty() || away.isEmpty()) return;
-        Rating<String> homeRating = new Rating<>(home, "home", 0);
-        Rating<String> awayRating = new Rating<>(away, "away", 0);
+        if (home.isEmpty() && away.isEmpty()) return;
+
+        int aiTier = (state.options != null) ? state.options.aiDifficultyIndex : 1;
+        double botRatingVal = (aiTier == 0) ? 900.0 : (aiTier == 2 ? 1100.0 : 1000.0);
+
+        Rating<String> homeRating = home.isEmpty()
+                ? new Rating<>("home", botRatingVal, 10)
+                : new Rating<>(home, "home", 0);
+        Rating<String> awayRating = away.isEmpty()
+                ? new Rating<>("away", botRatingVal, 10)
+                : new Rating<>(away, "away", 0);
+
         double diff = (state.home != null && state.away != null) ? (state.home.score - state.away.score) : 0.0;
         Match<String> match = new Match<>(homeRating, awayRating, diff);
         match.injectAverage(home, away);
         for (PlayerDivider pl : state.clients) {
-            updatePlayerRating(pl, home);
-            updatePlayerRating(pl, away);
+            if (!home.isEmpty()) updatePlayerRating(pl, home);
+            if (!away.isEmpty()) updatePlayerRating(pl, away);
         }
     }
 

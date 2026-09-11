@@ -78,6 +78,9 @@ public class Ability    {
                 case SPIDER:
                     strat.spiderWeb();
                     break;
+                case GOALIE:
+                    strat.goalieBlock();
+                    break;
             }
             injectColliders(context, strat, caster);
             return context.effectPool.hasEffect(caster, EffectId.COOLDOWN_Q);
@@ -144,6 +147,9 @@ public class Ability    {
                     break;
                 case SPIDER:
                     strat.spiderCocoon();
+                    break;
+                case GOALIE:
+                    strat.goalieSlide();
                     break;
             }
             injectColliders(context, strat, caster);

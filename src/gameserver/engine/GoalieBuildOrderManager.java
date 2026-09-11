@@ -4,10 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreType;
 import gameserver.entity.Titan;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Manages AI goalie build orders, presets, currency classification,
@@ -151,7 +148,263 @@ public class GoalieBuildOrderManager {
         }
     }
 
+    public static final List<String> ALL_GOLD_UPGRADES = List.of(
+        // Fortress
+        "fortress.t1.homeward",
+        "fortress.t3.snaretrap", "fortress.t3.homehealamp", "fortress.t3.fastbreakinsurance", "fortress.t3.biggermodels",
+        "fortress.t4.deadwalls", "fortress.t4.bastionprotocol", "fortress.t4.barrage",
+        "fortress.t5.noflyzoneperm", "fortress.t5.dilators", "fortress.t5.icebarrage", "fortress.t5.firebarrage",
+        "fortress.t6.deepfreeze", "fortress.t6.impenetrable", "fortress.t6.hemmedin",
+        // Siege
+        "siege.t1.siegedoctrine",
+        "siege.t3.rushlane", "siege.t3.forwardmines", "siege.t3.ballportal", "siege.t3.vanguards", "siege.t3.pullgoalie",
+        "siege.t4.accumulators", "siege.t4.parapet",
+        "siege.t5.saveprogress", "siege.t5.incendiarymines", "siege.t5.forwardoutpost", "siege.t5.phalanx",
+        "siege.t6.forwardmedics", "siege.t6.maximumpressure", "siege.t6.multiball",
+        // Empowerment
+        "empowerment.t1.combinecontract",
+        "empowerment.t3.grit", "empowerment.t3.marksmanship", "empowerment.t3.footwork", "empowerment.t3.discipline",
+        "empowerment.t4.forecheck", "empowerment.t4.fuelreserves", "empowerment.t4.heroportals",
+        "empowerment.t5.focusedtraining", "empowerment.t5.focusedtraining2", "empowerment.t5.heistcamp", "empowerment.t5.clutchgene",
+        "empowerment.t6.dragonsbreath", "empowerment.t6.apexform", "empowerment.t6.bannerofcommand",
+        // Cultivation (Gold)
+        "cultivation.t1.manawell",
+        "cultivation.t3.manacompounding", "cultivation.t3.highermanacap", "cultivation.t3.tollcollector"
+    );
+
+    public static final List<String> ALL_MANA_UPGRADES = List.of(
+        "cultivation.t4.manavines", "cultivation.t4.manafrenzy",
+        "cultivation.t5.manapollinate", "cultivation.t5.riskadjustedreturn", "cultivation.t5.tripledown",
+        "cultivation.t6.wallportals", "cultivation.t6.uninhibitedportal", "cultivation.t6.iceportal"
+    );
+
+    public static String getTree(String nodeKey) {
+        if (nodeKey == null) return "";
+        int dot = nodeKey.indexOf('.');
+        return dot >= 0 ? nodeKey.substring(0, dot) : nodeKey;
+    }
+
+    public static String getTier(String nodeKey) {
+        if (nodeKey == null) return "";
+        int firstDot = nodeKey.indexOf('.');
+        if (firstDot < 0) return "";
+        String rest = nodeKey.substring(firstDot + 1);
+        int secondDot = rest.indexOf('.');
+        return secondDot >= 0 ? rest.substring(0, secondDot) : rest;
+    }
+
+    public static int getTierInt(String nodeKey) {
+        String tier = getTier(nodeKey);
+        if (tier.startsWith("t") && tier.length() > 1) {
+            try {
+                return Integer.parseInt(tier.substring(1));
+            } catch (NumberFormatException ignored) {}
+        }
+        return 1;
+    }
+
+    public static String rollNextGoldUpgrade(GameEngine engine, Titan ai, Random rng) {
+        boolean isHome = (ai.team == TeamAffiliation.HOME);
+        Set<String> purchased = isHome ? engine.homeGoaliePurchasedUpgrades : engine.awayGoaliePurchasedUpgrades;
+
+        Map<String, List<String>> purchasableByTree = new HashMap<>();
+        for (String nodeKey : ALL_GOLD_UPGRADES) {
+            if (purchased.contains(nodeKey)) continue;
+            String tree = getTree(nodeKey);
+            String tier = getTier(nodeKey);
+            if (engine.tierPrereqMet(tree, tier, purchased)) {
+                purchasableByTree.computeIfAbsent(tree, k -> new ArrayList<>()).add(nodeKey);
+            }
+        }
+
+        if (purchasableByTree.isEmpty()) {
+            return null;
+        }
+
+        List<String> existingTrees = new ArrayList<>();
+        List<String> newTrees = new ArrayList<>();
+        for (String tree : purchasableByTree.keySet()) {
+            boolean hasPurchasedInTree = purchased.stream().anyMatch(k -> k.startsWith(tree + "."));
+            if (hasPurchasedInTree) {
+                existingTrees.add(tree);
+            } else {
+                newTrees.add(tree);
+            }
+        }
+
+        float r = rng.nextFloat();
+
+        // 10% chance to rotate to a new tree (or 100% if no existing trees have been specced into yet)
+        if ((r >= 0.90f || existingTrees.isEmpty()) && !newTrees.isEmpty()) {
+            String selectedTree = newTrees.get(rng.nextInt(newTrees.size()));
+            List<String> nodes = purchasableByTree.get(selectedTree);
+            return nodes.get(rng.nextInt(nodes.size()));
+        }
+
+        if (existingTrees.isEmpty()) {
+            List<String> allAvailable = new ArrayList<>();
+            for (List<String> list : purchasableByTree.values()) allAvailable.addAll(list);
+            return allAvailable.get(rng.nextInt(allAvailable.size()));
+        }
+
+        String selectedTree = existingTrees.get(rng.nextInt(existingTrees.size()));
+        List<String> availableInTree = purchasableByTree.get(selectedTree);
+
+        int maxTier = availableInTree.stream().mapToInt(GoalieBuildOrderManager::getTierInt).max().orElse(1);
+        List<String> highestTierNodes = new ArrayList<>();
+        List<String> lowerTierNodes = new ArrayList<>();
+        for (String node : availableInTree) {
+            if (getTierInt(node) == maxTier) {
+                highestTierNodes.add(node);
+            } else {
+                lowerTierNodes.add(node);
+            }
+        }
+
+        // 20% chance to broaden to a lower tier of upgrade in the same tree
+        if (r >= 0.70f && r < 0.90f && !lowerTierNodes.isEmpty()) {
+            return lowerTierNodes.get(rng.nextInt(lowerTierNodes.size()));
+        }
+
+        // 70% chance (or fallback) to buy the highest tier of purchasable upgrade in the existing tree
+        return highestTierNodes.get(rng.nextInt(highestTierNodes.size()));
+    }
+
+    public static String rollNextManaUpgrade(GameEngine engine, Titan ai, Random rng) {
+        boolean isHome = (ai.team == TeamAffiliation.HOME);
+        Set<String> purchased = isHome ? engine.homeGoaliePurchasedUpgrades : engine.awayGoaliePurchasedUpgrades;
+
+        boolean hasCultivation = purchased.stream().anyMatch(k -> k.startsWith("cultivation."));
+        if (!hasCultivation) {
+            return null;
+        }
+
+        List<String> purchasableManaNodes = new ArrayList<>();
+        for (String nodeKey : ALL_MANA_UPGRADES) {
+            if (purchased.contains(nodeKey)) continue;
+            String tree = getTree(nodeKey);
+            String tier = getTier(nodeKey);
+            if (engine.tierPrereqMet(tree, tier, purchased)) {
+                purchasableManaNodes.add(nodeKey);
+            }
+        }
+
+        // Check if Mana Pollinate is active and allows buying a foreign T5 with mana
+        boolean pollinated = purchased.contains("cultivation.t5.manapollinate");
+        List<String> pollinatedOptions = new ArrayList<>();
+        if (pollinated) {
+            boolean alreadyPurchasedOtherT5 = false;
+            for (String key : purchased) {
+                if (key.contains(".t5.") && !key.startsWith("cultivation.")) {
+                    alreadyPurchasedOtherT5 = true;
+                    break;
+                }
+            }
+            if (!alreadyPurchasedOtherT5) {
+                for (String nodeKey : ALL_GOLD_UPGRADES) {
+                    if (nodeKey.contains(".t5.") && !nodeKey.startsWith("cultivation.") && !purchased.contains(nodeKey)) {
+                        pollinatedOptions.add(nodeKey);
+                    }
+                }
+            }
+        }
+
+        if (purchasableManaNodes.isEmpty() && pollinatedOptions.isEmpty()) {
+            return null;
+        }
+
+        float r = rng.nextFloat();
+
+        // 10% chance to rotate to a new tree (via pollinated foreign T5)
+        if (r >= 0.90f && !pollinatedOptions.isEmpty()) {
+            return pollinatedOptions.get(rng.nextInt(pollinatedOptions.size()));
+        }
+
+        if (purchasableManaNodes.isEmpty()) {
+            return pollinatedOptions.get(rng.nextInt(pollinatedOptions.size()));
+        }
+
+        int maxTier = purchasableManaNodes.stream().mapToInt(GoalieBuildOrderManager::getTierInt).max().orElse(4);
+        List<String> highestTier = new ArrayList<>();
+        List<String> lowerTier = new ArrayList<>();
+        for (String node : purchasableManaNodes) {
+            if (getTierInt(node) == maxTier) {
+                highestTier.add(node);
+            } else {
+                lowerTier.add(node);
+            }
+        }
+
+        // 20% chance to broaden to a lower tier
+        if (r >= 0.70f && r < 0.90f && !lowerTier.isEmpty()) {
+            return lowerTier.get(rng.nextInt(lowerTier.size()));
+        }
+
+        // 70% chance (or fallback) to highest tier
+        return highestTier.get(rng.nextInt(highestTier.size()));
+    }
+
+    public static void tickAiGoalieRandomizer(GameEngine engine, Titan ai) {
+        boolean isHome = (ai.team == TeamAffiliation.HOME);
+        Set<String> purchased = isHome ? engine.homeGoaliePurchasedUpgrades : engine.awayGoaliePurchasedUpgrades;
+        Random rng = new Random();
+
+        // ─── Gold Track ──────────────────────────────────────────
+        if (ai.aiGoalieTargetGoldUpgrade == null || purchased.contains(ai.aiGoalieTargetGoldUpgrade)) {
+            ai.aiGoalieTargetGoldUpgrade = rollNextGoldUpgrade(engine, ai, rng);
+        }
+
+        if (ai.aiGoalieTargetGoldUpgrade != null) {
+            String nodeKey = ai.aiGoalieTargetGoldUpgrade;
+            String treeKey = getTreeKeyForNode(nodeKey);
+            String costKey = nodeKey + ".cost";
+            if (engine.costs.hasKey(costKey)) {
+                double cost = engine.costs.getD(costKey);
+                double currentGold = isHome ? engine.homeGoalieCurrency : engine.awayGoalieCurrency;
+                if (currentGold >= cost) {
+                    engine.handleGoalieTreePurchase(ai, treeKey, nodeKey);
+                    if (purchased.contains(nodeKey)) {
+                        ai.aiGoalieTargetGoldUpgrade = null;
+                    }
+                }
+            } else {
+                ai.aiGoalieTargetGoldUpgrade = null;
+            }
+        }
+
+        // ─── Mana Track (if Cultivation specced into) ──────────────
+        boolean hasCultivation = purchased.stream().anyMatch(k -> k.startsWith("cultivation."));
+        if (hasCultivation) {
+            if (ai.aiGoalieTargetManaUpgrade == null || purchased.contains(ai.aiGoalieTargetManaUpgrade)) {
+                ai.aiGoalieTargetManaUpgrade = rollNextManaUpgrade(engine, ai, rng);
+            }
+
+            if (ai.aiGoalieTargetManaUpgrade != null) {
+                String nodeKey = ai.aiGoalieTargetManaUpgrade;
+                String treeKey = getTreeKeyForNode(nodeKey);
+                String costKey = engine.costs.hasKey(nodeKey + ".cost.mana") ? (nodeKey + ".cost.mana") : (nodeKey + ".cost");
+                if (engine.costs.hasKey(costKey)) {
+                    double cost = engine.costs.getD(costKey);
+                    double currentMana = isHome ? engine.homeGoalieMana : engine.awayGoalieMana;
+                    if (currentMana >= cost) {
+                        engine.handleGoalieTreePurchase(ai, treeKey, nodeKey);
+                        if (purchased.contains(nodeKey)) {
+                            ai.aiGoalieTargetManaUpgrade = null;
+                        }
+                    }
+                } else {
+                    ai.aiGoalieTargetManaUpgrade = null;
+                }
+            }
+        }
+    }
+
     public static void tickAiGoalieBuildOrder(GameEngine engine, Titan ai) {
+        if (engine.c != null && !engine.c.HEADLESS_BUILDORDERS_ENABLED) {
+            tickAiGoalieRandomizer(engine, ai);
+            return;
+        }
+
         if (ai.aiGoalieBuildOrder == null || ai.aiGoalieGoldOrder == null || ai.aiGoalieManaOrder == null) {
             Random r = new Random();
             BuildPreset preset = GOALIE_NAMED_BUILD_PRESETS.get(r.nextInt(GOALIE_NAMED_BUILD_PRESETS.size()));

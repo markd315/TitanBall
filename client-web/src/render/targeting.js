@@ -121,13 +121,16 @@ export function getEntityCollisionBounds(entity) {
 export function isValidTarget(caster, entity, slot = 'E') {
     if (!caster || !entity || !isSingleTargetAbility(caster, slot)) return false;
 
-    // Do not target self
-    if (entity.id !== undefined && caster.id !== undefined && entity.id.toString() === caster.id.toString()) {
+    const type = caster.type.toString().toUpperCase();
+    const slotKey = (slot === '1' || slot === 'Q' || slot === 'E') ? 'E' : 'R';
+    const isSelf = entity.id !== undefined && caster.id !== undefined && entity.id.toString() === caster.id.toString();
+
+    // Abilities that can target self (e.g. Support Heal)
+    const allowsSelf = (type === 'SUPPORT' && slotKey === 'R');
+    if (isSelf && !allowsSelf) {
         return false;
     }
 
-    const type = caster.type.toString().toUpperCase();
-    const slotKey = (slot === '1' || slot === 'Q' || slot === 'E') ? 'E' : 'R';
     const isTitan = entity.entityClass === 'Titan' || entity.type !== undefined;
     const isSameTeam = entity.team !== undefined && caster.team !== undefined && entity.team === caster.team;
 
@@ -180,7 +183,7 @@ export function updateRaycastTargeting(game, caster, rayOriginX, rayOriginY, aim
 
     const candidates = [];
     const checkCandidate = (candEntity) => {
-        if (!candEntity || candEntity.health <= 0 || candEntity.id === caster.id) return;
+        if (!candEntity || candEntity.health <= 0) return;
         if (!isValidTargetForAnySlot(caster, candEntity)) return;
 
         const bounds = getEntityCollisionBounds(candEntity);

@@ -579,8 +579,12 @@ public class GameEngine extends Game {
         for (int i = 0; i < 2; i++) {
             Titan goalie = players[i];
             if (!anyClientSelected(i + 1)) {
-                GoalieBuildOrderManager.BuildPreset preset = GOALIE_NAMED_BUILD_PRESETS.get(rng.nextInt(GOALIE_NAMED_BUILD_PRESETS.size()));
-                setAiGoalieBuildOrder(goalie, preset.name, preset.order);
+                if (c != null && !c.HEADLESS_BUILDORDERS_ENABLED) {
+                    goalie.aiGoalieBuildName = "randomizer";
+                } else {
+                    GoalieBuildOrderManager.BuildPreset preset = GOALIE_NAMED_BUILD_PRESETS.get(rng.nextInt(GOALIE_NAMED_BUILD_PRESETS.size()));
+                    setAiGoalieBuildOrder(goalie, preset.name, preset.order);
+                }
             }
         }
         home.score = 0;
@@ -827,11 +831,12 @@ public class GameEngine extends Game {
     }
 
     public void intersectAll() {
-        if(contactExemptBall()){
-            return;
-        }
+        boolean exempt = contactExemptBall();
         for (int n = players.length - 1; n >= 0; n--) {
-            intersectBall(n + 1, (int) players[n].X, (int) players[n].Y);
+            Titan p = players[n];
+            if (!exempt || (p.getType() == TitanType.GOALIE && effectPool.hasEffect(p, EffectId.BLOCK))) {
+                intersectBall(n + 1, (int) p.X, (int) p.Y);
+            }
         }
         Entity[] solids = (allSolids != null) ? allSolids : entityPool.toArray(new Entity[0]);
         ball.collidesSolid(this, solids);
@@ -1797,8 +1802,8 @@ public class GameEngine extends Game {
             int valuePlayerX = (int) t.X;
             int valuePlayerY = (int) t.Y;
             if (c.GOALIE_DISABLED || (numSel != 1 && numSel != 2)) {
-                ball.X = (valuePlayerX + 35 - ball.centerDist);
-                ball.Y = (valuePlayerY + 35 - ball.centerDist);
+                ball.X = (int) Math.round(valuePlayerX + t.width / 2.0 - ball.centerDist);
+                ball.Y = (int) Math.round(valuePlayerY + t.height / 2.0 - ball.centerDist);
             }
             if (!c.GOALIE_DISABLED) {
                 if (numSel == 1) {//guardian exceptions
@@ -1861,6 +1866,14 @@ public class GameEngine extends Game {
 
     public void intersectBall(int numSel, int valuePlayerX, int valuePlayerY) {
         Titan t = players[numSel - 1];
+        if (t.getType() == TitanType.GOALIE && t.actionState == Titan.TitanState.A2) {
+            CollisionMath.Bounds r1 = t.asBounds();
+            CollisionMath.Bounds r2 = ball.asBounds();
+            if (r1.intersects(r2)) {
+                bounceOffTitan(t, null);
+            }
+            return;
+        }
         CollisionMath.Bounds r1 = new CollisionMath.Bounds(
                 valuePlayerX + SPRITE_X_EMPTY / 2.0,
                 valuePlayerY + SPRITE_Y_EMPTY / 2.0,
@@ -1878,6 +1891,7 @@ public class GameEngine extends Game {
                         release.actionState = Titan.TitanState.IDLE;
                         release.actionFrame = 0;
                     }
+                    activeLobThrower = null;
                     changePossessionStats(release, t);
                     if (t.team == TeamAffiliation.HOME) {
                         lastHomePossessor = t.id;
@@ -1940,17 +1954,24 @@ public class GameEngine extends Game {
     }
 
     protected CollisionMath.Bounds goalieHitboxOverride(int numSel, CollisionMath.Bounds rect) {
-        if (numSel > 2 || c.GOALIE_DISABLED) {
+        if (numSel < 1 || numSel > players.length || c.GOALIE_DISABLED) {
             return rect;
         }
-        if (numSel == 1 || numSel == 2) {
-            Titan t = players[numSel - 1];
-            double xOffset = (t.width - c.GOALIE_INTERCEPT_W) / 2.0;
+        Titan t = players[numSel - 1];
+        if (t.getType() == TitanType.GOALIE || numSel == 1 || numSel == 2) {
+            double w = c.GOALIE_INTERCEPT_W;
+            double h = c.GOALIE_INTERCEPT_H;
+            if (effectPool.hasEffect(t, EffectId.BLOCK)) {
+                w *= 1.5;
+                h *= 1.5;
+            }
+            double xOffset = (t.width - w) / 2.0;
+            double yOffset = (t.height - h) / 2.0;
             return new CollisionMath.Bounds(
                     (int) t.X + xOffset,
-                    (int) t.Y,
-                    c.GOALIE_INTERCEPT_W,
-                    c.GOALIE_INTERCEPT_H
+                    (int) t.Y + yOffset,
+                    w,
+                    h
             );
         }
         return rect;
@@ -2379,6 +2400,7 @@ public class GameEngine extends Game {
                 case GRENADIER: return enemyDist <= 260.0;
                 case CAPTAIN: return ai.ammo > 0 && enemyDist <= 300.0;
                 case SPIDER: return enemyDist <= 250.0;
+                case GOALIE: return ai.possession == 0 && (activeLobThrower != null || Math.hypot(ball.X - ai.X, ball.Y - ai.Y) <= 300.0);
                 default: return false;
             }
         } else {
@@ -2413,6 +2435,17 @@ public class GameEngine extends Game {
                 case GRENADIER: return enemyDist <= 140.0;
                 case CAPTAIN: return enemyDist <= 200.0;
                 case SPIDER: return enemyDist <= 200.0;
+                case GOALIE: {
+                    if (ai.possession != 0) return false;
+                    if (ai.aiTargetX < 0 || ai.aiTargetY < 0) return false;
+                    GoalHoop centerHoop = (ai.team == TeamAffiliation.HOME) ? homeHiGoal : awayHiGoal;
+                    double hoopRadius = (centerHoop != null) ? Math.max(centerHoop.w, centerHoop.h) / 2.0 : (c.getI("goal.hi.width") / 2.0);
+                    double aiCenterX = ai.X + ai.width / 2.0;
+                    double aiCenterY = ai.Y + ai.height / 2.0;
+                    double dist = Math.hypot(ai.aiTargetX - aiCenterX, ai.aiTargetY - aiCenterY);
+                    double maxSlideDist = c.getI("titan.goalie.slide.dist") * ai.rangeFactor;
+                    return dist > hoopRadius && dist <= maxSlideDist;
+                }
                 default: return false;
             }
         }
@@ -2502,26 +2535,28 @@ public class GameEngine extends Game {
 
     public void evaluateGoalieDecision(Titan ai) {
         tickAiGoalieBuildOrder(ai);
+        tryUseAbilities(ai);
 
         GoalHoop myGoal = (ai.team == TeamAffiliation.HOME) ? homeHiGoal : awayHiGoal;
         double hoopCX = myGoal.x + myGoal.w / 2.0;
         double hoopCY = myGoal.y + myGoal.h / 2.0;
         double rx = myGoal.w / 2.0;
         double ry = myGoal.h / 2.0;
-        double hoopLeft = myGoal.x;
-        double hoopRight = myGoal.x + myGoal.w;
-        double hoopTop = myGoal.y;
-        double hoopBottom = myGoal.y + myGoal.h;
 
         int YMAX = c.GOALIE_Y_MAX;
         int YMIN = c.GOALIE_Y_MIN;
         int XMAX = (ai.team == TeamAffiliation.AWAY ? c.GOALIE_XA_MAX : c.GOALIE_XH_MAX);
         int XMIN = (ai.team == TeamAffiliation.AWAY ? c.GOALIE_XA_MIN : c.GOALIE_XH_MIN);
 
+        double minCenterX = XMIN + ai.width / 2.0;
+        double maxCenterX = XMAX + ai.width / 2.0;
+        double minCenterY = YMIN + ai.height / 2.0;
+        double maxCenterY = YMAX + ai.height / 2.0;
+
         if (c != null && !c.AI_OMNISCIENCE_ENABLED && effectPool != null && effectPool.hasEffect(ai, EffectId.BLIND)) {
-            double holdX = (ai.team == TeamAffiliation.HOME) ? (hoopLeft + c.GOALIE_INTERCEPT_W / 2.0) : (hoopRight - c.GOALIE_INTERCEPT_W / 2.0);
-            ai.aiTargetX = Math.max(XMIN, Math.min(XMAX, holdX));
-            ai.aiTargetY = Math.max(YMIN, Math.min(YMAX, hoopCY + 10.0));
+            double holdX = hoopCX + (ai.team == TeamAffiliation.HOME ? rx : -rx);
+            ai.aiTargetX = Math.max(minCenterX, Math.min(maxCenterX, holdX));
+            ai.aiTargetY = Math.max(minCenterY, Math.min(maxCenterY, hoopCY));
             ai.aiTargetAction = 0;
             return;
         }
@@ -2540,103 +2575,41 @@ public class GameEngine extends Game {
                     ai.aiTargetY = clearY;
                     ai.aiTargetAction = 1;
                 } else {
-                    double holdX = (ai.team == TeamAffiliation.HOME) ? (hoopLeft + c.GOALIE_INTERCEPT_W / 2.0) : (hoopRight - c.GOALIE_INTERCEPT_W / 2.0);
-                    ai.aiTargetX = Math.max(XMIN, Math.min(XMAX, holdX));
-                    ai.aiTargetY = Math.max(YMIN, Math.min(YMAX, hoopCY + 10.0));
+                    double holdX = hoopCX + (ai.team == TeamAffiliation.HOME ? rx : -rx);
+                    ai.aiTargetX = Math.max(minCenterX, Math.min(maxCenterX, holdX));
+                    ai.aiTargetY = Math.max(minCenterY, Math.min(maxCenterY, hoopCY));
                     ai.aiTargetAction = 0;
                 }
             }
             return;
         }
 
-        Optional<Titan> possessorOpt = titanInPossession();
-        boolean teamOnOffense = possessorOpt.isPresent() && possessorOpt.get().team == ai.team;
-
-        int colliderW = c.GOALIE_INTERCEPT_W; // 90
-        int colliderH = c.GOALIE_INTERCEPT_H; // 50
-
         double ballCX = ball.X + ball.width / 2.0;
         double ballCY = ball.Y + ball.height / 2.0;
 
-        double targetX;
-        double targetY;
+        // The center goal hoop is a planar circle shootable/dunkable from any 360-degree angle.
+        // The goalie stands straddling the edge of the hoop nearest the ball at all times.
+        double vx = ballCX - hoopCX;
+        double vy = ballCY - hoopCY;
+        double len = Math.hypot(vx, vy);
 
-        if (teamOnOffense) {
-            // Priorities 3 & 4: Friendly team has possession
-            // Priority 3: Minion last-hitting and upgrade spending is performed every tick by tickAiGoalieMinionFarming & tickAiGoalieBuildOrder
-            // Priority 4: Leave the centergoal area only once friendly team has advanced ball across midfield (max 60px from crease line)
-            double desiredColliderCX = (ai.team == TeamAffiliation.HOME) ? (hoopLeft + colliderW / 2.0) : (hoopRight - colliderW / 2.0);
-            targetX = desiredColliderCX;
-
-            double midfieldX = (c.MAX_X + c.MIN_X) / 2.0;
-            boolean ballAcrossMidfield = (ai.team == TeamAffiliation.HOME) ? (ball.X > midfieldX) : (ball.X < midfieldX);
-
-            if (!ballAcrossMidfield) {
-                // Ball not yet across midfield: goalie holds the primary crease line
-                targetY = hoopCY + 10.0;
-            } else {
-                // Ball is across midfield: goalie may shift vertically to optimize 2-lane farm reach,
-                // but cannot wander beyond 60px from the crease line.
-                double creaseTop = hoopTop - 60.0;
-                double creaseBottom = hoopBottom + 60.0;
-
-                int topMinions = 0;
-                int botMinions = 0;
-                for (Entity e : entityPool) {
-                    if (e instanceof LaneMinion m && m.getHealth() > 0.0 && m.team != ai.team) {
-                        if (m.laneIndex == 0) topMinions++;
-                        else if (m.laneIndex == 2) botMinions++;
-                    }
-                }
-
-                if (topMinions > botMinions) {
-                    targetY = creaseTop + 10.0;
-                } else if (botMinions > topMinions) {
-                    targetY = creaseBottom - 10.0;
-                } else {
-                    targetY = hoopCY + 10.0;
-                }
-                targetY = Math.max(creaseTop, Math.min(creaseBottom, targetY));
-            }
+        double ux, uy;
+        if (len < 0.001) {
+            ux = (ai.team == TeamAffiliation.HOME ? 1.0 : -1.0);
+            uy = 0.0;
         } else {
-            // Opponent possession or loose/flying ball: Defend center goal hoop
-            // Lock horizontal position to front/back edge of the center goal hoop nearest the ball
-            boolean ballInFrontOfHoop = (ai.team == TeamAffiliation.HOME) ? (ballCX >= hoopCX) : (ballCX <= hoopCX);
-            double desiredColliderCX;
-            if (ai.team == TeamAffiliation.HOME) {
-                desiredColliderCX = ballInFrontOfHoop ? (hoopLeft + colliderW / 2.0) : (hoopRight - colliderW / 2.0);
-            } else {
-                desiredColliderCX = ballInFrontOfHoop ? (hoopRight - colliderW / 2.0) : (hoopLeft + colliderW / 2.0);
-            }
-            targetX = desiredColliderCX;
-
-            // Defend nearest edge in Y on the center goal hoop's perimeter, clamped so the collider
-            // stays strictly on the center goal hoop and never vacates it.
-            double vx = ballCX - hoopCX;
-            double vy = ballCY - hoopCY;
-            double len = Math.hypot(vx, vy);
-            if (len < 0.001) {
-                vx = (ai.team == TeamAffiliation.HOME ? 1.0 : -1.0);
-                vy = 0;
-                len = 1.0;
-            }
-
-            double ux = vx / len;
-            double uy = vy / len;
-
-            double invDenom = Math.hypot(ux / rx, uy / ry);
-            double k = (invDenom > 0.0001) ? (1.0 / invDenom) : rx;
-            double outerHoopY = hoopCY + k * uy;
-
-            // Strictly clamped within the center goal hoop boundaries:
-            double minColliderCY = hoopTop + colliderH / 2.0;
-            double maxColliderCY = hoopBottom - colliderH / 2.0;
-            double desiredColliderCY = Math.max(minColliderCY, Math.min(maxColliderCY, outerHoopY));
-            targetY = desiredColliderCY + 10.0;
+            ux = vx / len;
+            uy = vy / len;
         }
 
-        ai.aiTargetX = Math.max(XMIN, Math.min(XMAX, targetX));
-        ai.aiTargetY = Math.max(YMIN, Math.min(YMAX, targetY));
+        double invDenom = Math.hypot(ux / rx, uy / ry);
+        double k = (invDenom > 0.0001) ? (1.0 / invDenom) : rx;
+
+        double edgeX = hoopCX + k * ux;
+        double edgeY = hoopCY + k * uy;
+
+        ai.aiTargetX = Math.max(minCenterX, Math.min(maxCenterX, edgeX));
+        ai.aiTargetY = Math.max(minCenterY, Math.min(maxCenterY, edgeY));
         ai.aiTargetAction = 0;
     }
 
@@ -3788,8 +3761,60 @@ public class GameEngine extends Game {
     }
 
     protected void centerBall(Titan t) {
-        ball.X = t.getX() + 35 - ball.centerDist;
-        ball.Y = t.getY() + 35 - ball.centerDist;
+        ball.X = (int) Math.round(t.getX() + t.width / 2.0 - ball.centerDist);
+        ball.Y = (int) Math.round(t.getY() + t.height / 2.0 - ball.centerDist);
+    }
+
+    public void bounceOffTitan(Titan t, double[] vel) {
+        double curDx = (vel != null) ? vel[0] : (xKickPow != 0 ? xKickPow : 0);
+        double curDy = (vel != null) ? vel[1] : (-yKickPow);
+        CollisionMath.Bounds bBounds = ball.asBounds();
+        CollisionMath.Bounds oBounds = t.asBounds();
+        CollisionMath.CollisionSide side = CollisionMath.getCollisionSide(bBounds, oBounds, curDx, curDy);
+
+        if (side == CollisionMath.CollisionSide.LEFT) {
+            ball.X = oBounds.minX() - ball.width;
+            xKickPow = -Math.max(5.0, Math.abs(xKickPow));
+            if (vel != null) vel[0] = -Math.max(0.1, Math.abs(vel[0]));
+        } else if (side == CollisionMath.CollisionSide.RIGHT) {
+            ball.X = oBounds.minX() + oBounds.width();
+            xKickPow = Math.max(5.0, Math.abs(xKickPow));
+            if (vel != null) vel[0] = Math.max(0.1, Math.abs(vel[0]));
+        } else if (side == CollisionMath.CollisionSide.TOP) {
+            ball.Y = oBounds.minY() - ball.height;
+            yKickPow = Math.max(5.0, Math.abs(yKickPow));
+            if (vel != null) vel[1] = -Math.max(0.1, Math.abs(vel[1]));
+        } else if (side == CollisionMath.CollisionSide.BOTTOM) {
+            ball.Y = oBounds.minY() + oBounds.height();
+            yKickPow = -Math.max(5.0, Math.abs(yKickPow));
+            if (vel != null) vel[1] = Math.max(0.1, Math.abs(vel[1]));
+        } else {
+            double ballCX = ball.X + ball.width / 2.0;
+            double titanCX = t.X + t.width / 2.0;
+            double ballCY = ball.Y + ball.height / 2.0;
+            double titanCY = t.Y + t.height / 2.0;
+            if (Math.abs(ballCX - titanCX) > Math.abs(ballCY - titanCY)) {
+                if (ballCX < titanCX) {
+                    ball.X = oBounds.minX() - ball.width;
+                    xKickPow = -Math.max(5.0, Math.abs(xKickPow));
+                    if (vel != null) vel[0] = -Math.max(0.1, Math.abs(vel[0]));
+                } else {
+                    ball.X = oBounds.minX() + oBounds.width();
+                    xKickPow = Math.max(5.0, Math.abs(xKickPow));
+                    if (vel != null) vel[0] = Math.max(0.1, Math.abs(vel[0]));
+                }
+            } else {
+                if (ballCY < titanCY) {
+                    ball.Y = oBounds.minY() - ball.height;
+                    yKickPow = Math.max(5.0, Math.abs(yKickPow));
+                    if (vel != null) vel[1] = -Math.max(0.1, Math.abs(vel[1]));
+                } else {
+                    ball.Y = oBounds.minY() + oBounds.height();
+                    yKickPow = -Math.max(5.0, Math.abs(yKickPow));
+                    if (vel != null) vel[1] = Math.max(0.1, Math.abs(vel[1]));
+                }
+            }
+        }
     }
 
     /** Public entry-point used for one-off bounces (post-shot, etc.). Takes its own snapshot. */
@@ -3807,6 +3832,16 @@ public class GameEngine extends Game {
      * upon bounce.
      */
     public void bounceWalls(Entity[] wallEntities, double[] vel) {
+        // Check solid sliding goalies (behave as walls during slide cast lag)
+        for (Titan t : players) {
+            if (t != null && t.getType() == TitanType.GOALIE && t.actionState == Titan.TitanState.A2) {
+                if (t.asBounds().intersects(ball.asBounds())) {
+                    bounceOffTitan(t, vel);
+                    return;
+                }
+            }
+        }
+
         boolean homeDead = homeGoaliePurchasedUpgrades.contains("fortress.t4.deadwalls");
         boolean awayDead = awayGoaliePurchasedUpgrades.contains("fortress.t4.deadwalls");
 

@@ -167,6 +167,28 @@ export function initKeyboard() {
       gameState.controlsHeld.callForBall = true;
     }
 
+    // Arrow keys — Pan camera when camera lock is disabled
+    if (!gameState.camFollow) {
+      const panStep = 30;
+      if (e.key === 'ArrowLeft' || e.code === 'ArrowLeft') {
+        gameState.camX = Math.max(0, (gameState.camX || 0) - panStep);
+        e.preventDefault();
+        return;
+      } else if (e.key === 'ArrowRight' || e.code === 'ArrowRight') {
+        gameState.camX = Math.min(188, (gameState.camX || 0) + panStep);
+        e.preventDefault();
+        return;
+      } else if (e.key === 'ArrowUp' || e.code === 'ArrowUp') {
+        gameState.camY = Math.max(0, (gameState.camY || 130) - panStep);
+        e.preventDefault();
+        return;
+      } else if (e.key === 'ArrowDown' || e.code === 'ArrowDown') {
+        gameState.camY = Math.min(260, (gameState.camY || 130) + panStep);
+        e.preventDefault();
+        return;
+      }
+    }
+
     const action = getActionForKey(e);
     if (action && actionMap[action]) {
       const field = actionMap[action];

@@ -891,23 +891,12 @@ export function updateMobileControls(game) {
       }
     }
 
-    // Ability 1 and 2 buttons (hidden for Goalie as Goalie has no 1/2 abilities)
-    if (isGoalie) {
-      if (btnAbility1 && btnAbility1.style.display !== 'none') {
-        btnAbility1.style.display = 'none';
-        gameState.controlsHeld.E = false;
-      }
-      if (btnAbility2 && btnAbility2.style.display !== 'none') {
-        btnAbility2.style.display = 'none';
-        gameState.controlsHeld.R = false;
-      }
-    } else {
-      if (btnAbility1 && btnAbility1.style.display !== 'flex') {
-        btnAbility1.style.display = 'flex';
-      }
-      if (btnAbility2 && btnAbility2.style.display !== 'flex') {
-        btnAbility2.style.display = 'flex';
-      }
+    // Ability 1 and 2 buttons
+    if (btnAbility1 && btnAbility1.style.display !== 'flex') {
+      btnAbility1.style.display = 'flex';
+    }
+    if (btnAbility2 && btnAbility2.style.display !== 'flex') {
+      btnAbility2.style.display = 'flex';
     }
 
     // Dynamic possession button text & classes

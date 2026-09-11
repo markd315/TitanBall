@@ -72,6 +72,19 @@ public class AbilityStrategy    {
             return;
         }
 
+        if (caster.getType() == TitanType.GOALIE) {
+            if (caster.aiTargetX >= 0 && caster.aiTargetY >= 0) {
+                x = (int) caster.aiTargetX;
+                y = (int) caster.aiTargetY;
+                return;
+            }
+            if (context.ball != null) {
+                x = (int) (context.ball.X + context.ball.width / 2.0);
+                y = (int) (context.ball.Y + context.ball.height / 2.0);
+                return;
+            }
+        }
+
         // 1. If Support, target injured ally or self
         if (caster.getType() == TitanType.SUPPORT) {
             Titan mostInjuredAlly = null;
@@ -149,6 +162,20 @@ public class AbilityStrategy    {
         }
     }
 
+    public void goalieBlock() {
+        int cd = (int) (caster.cooldownFactor * c.getI("titan.goalie.block.cdms"));
+        int dur = (int) (caster.durationsFactor * c.getI("titan.goalie.block.dur"));
+        context.effectPool.addUniqueEffect(new CooldownQ(cd, caster), context);
+        context.effectPool.addUniqueEffect(new EmptyEffect(dur, caster, EffectId.BLOCK), context);
+    }
+
+    public void goalieSlide() {
+        if (caster.possession == 1) {
+            caster.possession = 0;
+        }
+        parameterizedFlash(c.getD("titan.goalie.slide.cds"), c.getI("titan.goalie.slide.dist"));
+    }
+
     public void parameterizedFlash(double cdSeconds, int dist) {
         int cd = (int) (caster.cooldownFactor * cdSeconds * 1000);
         dist *= caster.rangeFactor;
@@ -158,6 +185,15 @@ public class AbilityStrategy    {
         new Targeting(sel, champions, nearest, context)
                 .process(x, y, caster, (int) context.ball.X, (int) context.ball.Y);
         CollisionMath.Bounds re = sel.latestCollider;
+        if (re.minX() > caster.X + 35) {
+            caster.facing = 0;
+            caster.diagonalRunDir = 2;
+            caster.dirToBall = 2;
+        } else if (re.minX() < caster.X + 35) {
+            caster.facing = 180;
+            caster.diagonalRunDir = 1;
+            caster.dirToBall = 1;
+        }
         int limitt = 0;
         while (limitt < dist) {
             double ang = Util.degreesFromCoords(re.minX() - caster.X - 35, re.minY() - caster.Y - 35);
@@ -169,8 +205,8 @@ public class AbilityStrategy    {
             limitt++;
         }
         if (caster.possession == 1) {
-            context.ball.X = caster.X + 35 - context.ball.centerDist;
-            context.ball.Y = caster.Y + 35 - context.ball.centerDist;
+            context.ball.X = (int) Math.round(caster.X + caster.width / 2.0 - context.ball.centerDist);
+            context.ball.Y = (int) Math.round(caster.Y + caster.height / 2.0 - context.ball.centerDist);
         }
         caster.pushMove();
     }
@@ -570,8 +606,8 @@ public class AbilityStrategy    {
                         eff = new EmptyEffect((int) (c.STOLEN_STUN * caster.durationsFactor), tip, EffectId.STEAL);
                         context.effectPool.addStackingEffect(caster, eff);
 
-                        context.ball.X = caster.X + caster.centerDist - context.ball.centerDist;
-                        context.ball.Y = caster.Y + caster.centerDist - context.ball.centerDist;
+                        context.ball.X = (int) Math.round(caster.X + caster.width / 2.0 - context.ball.centerDist);
+                        context.ball.Y = (int) Math.round(caster.Y + caster.height / 2.0 - context.ball.centerDist);
                         caster.actionState = Titan.TitanState.IDLE;
                         caster.actionFrame = 0;
                         caster.possession = 1;

@@ -713,7 +713,13 @@ export function drawHud(ctx, game, state) {
                 }
 
                 if (eff.effect !== 'ATTACKED') {
-                    const iconImg = AssetManager.images[`EFFECT_${eff.effect}`];
+                    let spriteKey = `EFFECT_${eff.effect}`;
+                    if (eff.effect === 'COOLDOWN_GOALIE') {
+                        spriteKey = 'EFFECT_RELOAD';
+                    } else if (eff.effect === 'COOLDOWN_Q' && game.underControl.type === 'CAPTAIN' && game.underControl.ammo === 0) {
+                        spriteKey = 'EFFECT_RELOAD';
+                    }
+                    const iconImg = AssetManager.images[spriteKey];
                     if (iconImg) {
                         ctx.save();
                         ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';

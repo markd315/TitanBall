@@ -435,7 +435,9 @@ export const CLASS_INFO = {
     throwPower: '1.82 (575px)',
     stealRad: '25px',
     abilities: [
-      { slot: 'CLICK', name: 'Lane Minion Strike', label: 'Click Lane', desc: 'Click in any lane on the pitch to strike enemy minions and neutral dragons directly from your net.' },
+      { slot: 'E', name: 'Block', label: 'Ability 1', cdKey: 'titan.goalie.block.cdms', fallbackCd: 5500, desc: 'For 2400ms, immediately catch any lobbed ball and increase ball intercept collider to 1.5x.' },
+      { slot: 'R', name: 'Slide', label: 'Ability 2', cdKey: 'titan.goalie.slide.cdms', fallbackCd: 12000, desc: 'Slide to destination. During 15 frames of cast lag, incoming balls bounce off like a wall instead of being caught.' },
+      { slot: 'CLICK', name: 'Lane Minion Strike', label: 'Click Lane', desc: 'Click in any lane within your red range circle to strike enemy minions and neutral dragons directly from your net.' },
       { slot: 'TREE', name: 'Guardian Tech Tree', label: 'Upgrades', desc: 'Purchase and activate tactical upgrades: Reinforcements, Emergency Barriers, Wall Portals, Forward Medics, and Pull Goalie.' }
     ],
     passive: 'Massive health pool, largest steal radius, and ultimate clearance throw power.'

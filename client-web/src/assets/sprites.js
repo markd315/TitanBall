@@ -230,6 +230,42 @@ export function initAssets() {
         steal: ['stealL', 'stealR'],
     };
 
+    function loadGoalieAbilitySprite(abilityName, src) {
+        const img = new Image();
+        img.onload = () => {
+            const cR = document.createElement('canvas');
+            cR.width = 70;
+            cR.height = 70;
+            const ctxR = cR.getContext('2d');
+            ctxR.imageSmoothingEnabled = false;
+            ctxR.drawImage(img, 0, 0, 70, 70);
+            removeGridLines(ctxR, 70, 70);
+
+            const cL = document.createElement('canvas');
+            cL.width = 70;
+            cL.height = 70;
+            const ctxL = cL.getContext('2d');
+            ctxL.imageSmoothingEnabled = false;
+            ctxL.translate(70, 0);
+            ctxL.scale(-1, 1);
+            ctxL.drawImage(cR, 0, 0);
+
+            AssetManager.images[`GOALIE_${abilityName}R`] = cR;
+            AssetManager.images[`GOALIE_${abilityName}L`] = cL;
+            AssetManager.images[`GOALIE_${abilityName}`] = cR;
+
+            if (abilityName === 'block') {
+                AssetManager.images['GOALIE_atk1R'] = cR;
+                AssetManager.images['GOALIE_atk1L'] = cL;
+                AssetManager.images['EFFECT_BLOCK'] = cR;
+            } else if (abilityName === 'slide') {
+                AssetManager.images['GOALIE_atk2R'] = cR;
+                AssetManager.images['GOALIE_atk2L'] = cL;
+            }
+        };
+        img.src = src;
+    }
+
     function loadClassSprites(cName) {
         const dir = getDirectoryName(cName);
         const base = `res/${dir}/`;
@@ -240,6 +276,8 @@ export function initAssets() {
             for (const suffix of GUARDIAN_ANIMS) {
                 AssetManager.loadSprite(`${cName}_${suffix}`, base + `${suffix}.png`);
             }
+            loadGoalieAbilitySprite('block', base + 'block.png');
+            loadGoalieAbilitySprite('slide', base + 'slide.png');
         } else {
             for (const suffix of Object.values(ANIM_SETS).flat()) {
                 AssetManager.loadSprite(`${cName}_${suffix}`, base + `${suffix}.png`);
@@ -258,7 +296,9 @@ export function initAssets() {
     effectIds.forEach(effectId => {
       AssetManager.loadSprite(`EFFECT_${effectId}`, `res/Effects/${effectId}.png`);
     });
-    AssetManager.loadSprite('EFFECT_COOLDOWN_GOALIE', 'res/Effects/COOLDOWN_Q.png');
+    AssetManager.loadSprite('EFFECT_COOLDOWN_GOALIE', 'res/Effects/reload.png');
+    AssetManager.loadSprite('EFFECT_RELOAD', 'res/Effects/reload.png');
+    AssetManager.loadSprite('EFFECT_BLOCK', 'res/Effects/DEFENSE.png');
 
     AssetManager.loadAudio('shot', 'res/Sound/shotsound.wav');
     AssetManager.loadAudio('tut0', 'res/Sound/tut0.wav');

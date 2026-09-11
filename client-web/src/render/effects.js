@@ -33,7 +33,12 @@ export function drawEffectIcons(ctx, game, camX, camY) {
       offsetMap[en.id] = -33; // starting x offset relative to entity center
     }
     
-    const spriteKey = `EFFECT_${e.effect}`;
+    let spriteKey = `EFFECT_${e.effect}`;
+    if (e.effect === 'COOLDOWN_GOALIE') {
+      spriteKey = 'EFFECT_RELOAD';
+    } else if (e.effect === 'COOLDOWN_Q' && en.type === 'CAPTAIN' && en.ammo === 0) {
+      spriteKey = 'EFFECT_RELOAD';
+    }
     const img = AssetManager.images[spriteKey];
     
     const x = Math.floor(en.X + offsetMap[en.id] - camX);

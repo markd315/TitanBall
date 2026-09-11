@@ -182,7 +182,9 @@ export function connectGame(gameID) {
       }
       _diagLastPhase = update.phase;
     }
-    
+    if (!update.underControl) {
+      update.underControl = getControlledTitan(update);
+    }
     gameState.game = update;
     if (update.phase === 'ENDED' || update.ended) {
       gameState.phase = 'ENDED';

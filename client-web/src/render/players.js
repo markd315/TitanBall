@@ -237,13 +237,13 @@ export function drawPlayers(ctx, game, camX, camY) {
         let spriteKey = `${playerType}_${action}${facing}`;
         
         if (playerType === 'GOALIE') {
-            const goalieCdEffect = game.effectPool && game.effectPool.effects.find(ef => ef.effect === 'COOLDOWN_GOALIE' && ef.on && ef.on.id === t.id);
-            if (goalieCdEffect) {
-                if (goalieCdEffect.percentLeft > 90) {
-                    spriteKey = `GOALIE_atk1${facing}`;   // was GOALIE_shoot
-                } else {
-                    spriteKey = `GOALIE_atk2${facing}`;   // was GOALIE_reload
-                }
+            const hasBlock = (game.effectPool && game.effectPool.effects && game.effectPool.effects.some(ef => ef.effect === 'BLOCK' && ef.on && ef.on.id === t.id)) || action === 'atk1';
+            const isSliding = (t.actionState === 'A2') || action === 'atk2';
+
+            if (hasBlock) {
+                spriteKey = `GOALIE_block${facing}`;
+            } else if (isSliding) {
+                spriteKey = `GOALIE_slide${facing}`;
             } else {
                 spriteKey = `GOALIE_stand${facing}`;
             }

@@ -49,7 +49,7 @@ export async function refreshUserStats() {
 
 export function updateStatsBanner() {
   const stats = getCurrentUserStats();
-  const elo = Math.round(stats.rating || 1000), wins = Number(stats.wins || 0), losses = Number(stats.losses || 0), ties = Number(stats.ties || 0);
+  const elo = Math.round(stats.rating != null ? stats.rating : 1000), wins = Number(stats.wins || 0), losses = Number(stats.losses || 0), ties = Number(stats.ties || 0);
   const totalMatches = wins + losses + ties;
 
   const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
@@ -83,7 +83,7 @@ export const closeAdvancedStatsModal = () => setAdvancedStatsModal(false);
 
 function renderAdvancedStatsPane() {
   const stats = getCurrentUserStats(), is3v3 = activeStatsTab === '3v3';
-  const elo = Math.round(is3v3 ? (stats.rating || 1000) : (stats.rating_1v1 || 1000));
+  const elo = Math.round(is3v3 ? (stats.rating != null ? stats.rating : 1000) : (stats.rating_1v1 != null ? stats.rating_1v1 : 1000));
   const wins = Number(is3v3 ? (stats.wins || 0) : (stats.wins_1v1 || 0));
   const losses = Number(is3v3 ? (stats.losses || 0) : (stats.losses_1v1 || 0));
   const ties = Number(is3v3 ? (stats.ties || 0) : (stats.ties_1v1 || 0));

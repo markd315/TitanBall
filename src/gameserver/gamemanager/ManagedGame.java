@@ -629,7 +629,12 @@ public class ManagedGame {
                                     return "null";
                                 }
                             });
-                            String clientJson = finalBaseJson.replace("\"underControl\":null", "\"underControl\":" + titanJson);
+                            String clientJson = finalBaseJson;
+                            if (clientJson.contains("\"underControl\":null")) {
+                                clientJson = clientJson.replace("\"underControl\":null", "\"underControl\":" + titanJson);
+                            } else if (clientJson.contains("\"underControl\": null")) {
+                                clientJson = clientJson.replace("\"underControl\": null", "\"underControl\":" + titanJson);
+                            }
                             client.sendJson(clientJson);
                         } else {
                             client.sendJson(finalBaseJson);

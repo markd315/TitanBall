@@ -55,7 +55,9 @@ public class PersistenceManager {
             user.setTies(user.getTies() + 1);
             if (classStat != null) classStat.setTies(classStat.getTies() + 1);
         }
-        user.setRating(newRating);
+        if (newRating > 0.0) {
+            user.setRating(newRating);
+        }
         if(toAdd.has(StatEngine.StatEnum.GOALS.toString())){
             user.setGoals((user.getGoals() + toAdd.get(StatEngine.StatEnum.GOALS.toString()).asInt()));
             if (classStat != null) classStat.setGoals((classStat.getGoals() +  toAdd.get(StatEngine.StatEnum.GOALS.toString()).asInt()));
@@ -160,7 +162,9 @@ public class PersistenceManager {
             user.setTies_1v1(user.getTies_1v1() + 1);
             if (classStat != null) classStat.setTies(classStat.getTies() + 1);
         }
-        user.setRating_1v1(newRating);
+        if (newRating > 0.0) {
+            user.setRating_1v1(newRating);
+        }
         if(toAdd.has(StatEngine.StatEnum.GOALS.toString())){
             user.setGoals_1v1(user.getGoals_1v1() +  toAdd.get(StatEngine.StatEnum.GOALS.toString()).asInt());
             if (classStat != null) classStat.setGoals(classStat.getGoals() +  toAdd.get(StatEngine.StatEnum.GOALS.toString()).asInt());
