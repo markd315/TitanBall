@@ -379,6 +379,12 @@ export function openControlsModal(preset) {
   if (modeOverlay) {
     modeOverlay.style.pointerEvents = 'none';
   }
+
+  const backdrop = document.getElementById('modal-backdrop');
+  if (backdrop) {
+    backdrop.classList.add('active');
+    backdrop.style.display = 'block';
+  }
 }
 
 export function closeControlsModal() {
@@ -389,6 +395,18 @@ export function closeControlsModal() {
   }
   if (modeOverlay) {
     modeOverlay.style.pointerEvents = 'auto';
+  }
+
+  const backdrop = document.getElementById('modal-backdrop');
+  if (backdrop) {
+    const otherModalsOpen = ['stats-modal', 'tournament-modal', 'masteries-modal'].some(id => {
+      const el = document.getElementById(id);
+      return el && el.style.display !== 'none' && el.style.display !== '';
+    });
+    if (!otherModalsOpen) {
+      backdrop.classList.remove('active');
+      backdrop.style.display = 'none';
+    }
   }
 }
 

@@ -57,7 +57,7 @@ export const ABILITY_TOOLTIPS = {
     "empowerment.t3.footwork": { title: "Footwork", desc: "Passive. Grants a permanent +1 Speed to all friendly heroes." },
     "empowerment.t3.discipline": { title: "Discipline", desc: "Passive. Grants a permanent +1 Cooldown and +1 Effect Duration to friendly heroes." },
     "empowerment.t4.forecheck": { title: "Forecheck", desc: "Passive. Grants +3px steal radius to friendly units in the middle third." },
-    "empowerment.t4.fuelreserves": { title: "Fuel Reserves", desc: "Passive. Multiplies maximum speed boost (fuel) capacity by 1.5x." },
+    "empowerment.t4.fuelreserves": { title: "Fuel Reserves", desc: "Passive. Reduces speed boost (fuel) drain rate by 33% (1.5x boost duration)." },
     "empowerment.t4.heroportals": { title: "Hero Portals", desc: "Passive. Spawns repositioning node portals restricted to hero interactions." },
     "empowerment.t5.focusedtraining": { title: "Focused Training", desc: "Passive. Adds +2 points to your highest existing goalie mastery category." },
     "empowerment.t5.focusedtraining2": { title: "Focused Training II", desc: "Passive. Adds +2 points to your highest existing goalie mastery category." },
@@ -527,8 +527,10 @@ export function drawHealthBars(ctx, game, camX, camY) {
 
             if (e.entityClass !== 'Wall' && e.entityClass !== 'Trap') {
                 if (e.fuel !== undefined) {
-                    ctx.fillStyle = e.fuel > 25 ? 'rgb(128,128,255)' : 'darkred';
-                    ctx.fillRect(x, Math.floor(e.Y - 4 - camY), Math.floor(e.fuel), 3);
+                    const maxFuel = 100;
+                    const fuelRatio = Math.max(0, Math.min(1.0, e.fuel / maxFuel));
+                    ctx.fillStyle = fuelRatio > 0.25 ? 'rgb(128,128,255)' : 'darkred';
+                    ctx.fillRect(x, Math.floor(e.Y - 4 - camY), Math.floor(fuelRatio * 100), 3);
                 }
 
                 // Render 0-8 ammo dots above health bar for Captain

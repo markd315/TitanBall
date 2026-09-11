@@ -3,8 +3,8 @@ import { fetchUserStats } from '../network/auth.js';
 export const RANK_TIERS = [
   { name: 'Grandmaster', minElo: 2000, badge: 'res/Court/rnk/grandmaster.png', color: '#ff4757', glow: 'rgba(255, 71, 87, 0.45)' },
   { name: 'Master', minElo: 1800, badge: 'res/Court/rnk/master.png', color: '#c084fc', glow: 'rgba(192, 132, 252, 0.45)' },
-  { name: 'Diamond', minElo: 1600, badge: 'res/Court/rnk/diamond.png', color: '#38bdf8', glow: 'rgba(56, 189, 248, 0.45)' },
-  { name: 'Gold Halo', minElo: 1400, badge: 'res/Court/rnk/gold_halo.png', color: '#facc15', glow: 'rgba(250, 204, 21, 0.45)' },
+  { name: 'Diamond', minElo: 1600, badge: 'res/Court/rnk/diamond.png', color: '#38bdf8', glow: 'rgba(56, 189, 248, 0.45)', shimmerClass: 'rank-shimmer-diamond' },
+  { name: 'Gold Halo', minElo: 1400, badge: 'res/Court/rnk/gold_halo.png', color: '#facc15', glow: 'rgba(250, 204, 21, 0.45)', shimmerClass: 'rank-shimmer-gold-halo' },
   { name: 'Gold', minElo: 1200, badge: 'res/Court/rnk/gold.png', color: '#fbbf24', glow: 'rgba(251, 191, 36, 0.45)' },
   { name: 'Silver', minElo: 1000, badge: 'res/Court/rnk/silver.png', color: '#cbd5e1', glow: 'rgba(203, 213, 225, 0.45)' },
   { name: 'Bronze', minElo: 0, badge: 'res/Court/rnk/bronze.png', color: '#fb923c', glow: 'rgba(251, 146, 60, 0.45)' }
@@ -62,7 +62,9 @@ export function updateStatsBanner() {
   if (rankContainer) {
     if (totalMatches >= 10) {
       const tier = getRankTier(elo);
-      rankContainer.innerHTML = `<div class="inline-rank-badge" style="box-shadow: 0 0 8px ${tier.glow}; border-color: ${tier.color}55;"><img src="${tier.badge}" alt="${tier.name}" class="inline-rank-img"><span class="inline-rank-name" style="color: ${tier.color};">${tier.name}</span></div>`;
+      const shimmer = tier.shimmerClass ? ` ${tier.shimmerClass}` : '';
+      const colorStyle = tier.shimmerClass ? '' : `color: ${tier.color};`;
+      rankContainer.innerHTML = `<div class="inline-rank-badge" style="box-shadow: 0 0 8px ${tier.glow}; border-color: ${tier.color}55;"><img src="${tier.badge}" alt="${tier.name}" class="inline-rank-img"><span class="inline-rank-name${shimmer}" style="${colorStyle}">${tier.name}</span></div>`;
       rankContainer.title = `${tier.name} Tier (${elo} ELO) - Click for advanced stats`;
     } else {
       rankContainer.innerHTML = `<div class="inline-rank-badge unranked"><span class="inline-placement-icon">⏳</span><span class="inline-unranked-badge">Unranked</span><span class="inline-unranked-progress">(${totalMatches}/10)</span></div>`;
@@ -77,6 +79,23 @@ export function setAdvancedStatsModal(open) {
   if (open) renderAdvancedStatsPane();
   modal.style.display = open ? 'flex' : 'none';
   if (overlay) overlay.style.pointerEvents = open ? 'none' : 'auto';
+
+  const backdrop = document.getElementById('modal-backdrop');
+  if (backdrop) {
+    if (open) {
+      backdrop.classList.add('active');
+      backdrop.style.display = 'block';
+    } else {
+      const otherModalsOpen = ['controls-modal', 'tournament-modal', 'masteries-modal'].some(id => {
+        const el = document.getElementById(id);
+        return el && el.style.display !== 'none' && el.style.display !== '';
+      });
+      if (!otherModalsOpen) {
+        backdrop.classList.remove('active');
+        backdrop.style.display = 'none';
+      }
+    }
+  }
 }
 export const openAdvancedStatsModal = () => setAdvancedStatsModal(true);
 export const closeAdvancedStatsModal = () => setAdvancedStatsModal(false);
@@ -104,11 +123,19 @@ function renderAdvancedStatsPane() {
 
   if (totalMatches >= 10) {
     if (avatarEl) avatarEl.innerHTML = `<img src="${tier.badge}" alt="${tier.name}" style="width: 32px; height: 32px; object-fit: contain; filter: drop-shadow(0 0 8px ${tier.glow}); image-rendering: pixelated;">`;
-    if (tierEl) { tierEl.textContent = tier.name; tierEl.style.color = tier.color; }
+    if (tierEl) {
+      tierEl.textContent = tier.name;
+      tierEl.className = `stats-header-tier-text${tier.shimmerClass ? ` ${tier.shimmerClass}` : ''}`;
+      tierEl.style.color = tier.shimmerClass ? '' : tier.color;
+    }
     if (placeEl) placeEl.textContent = `Leaderboard: ${rankStr}`;
   } else {
     if (avatarEl) avatarEl.innerHTML = `<div style="font-size: 28px; filter: grayscale(0.5);">⏳</div>`;
-    if (tierEl) { tierEl.textContent = 'Placement Matches'; tierEl.style.color = '#94a3b8'; }
+    if (tierEl) {
+      tierEl.textContent = 'Placement Matches';
+      tierEl.className = 'stats-header-tier-text';
+      tierEl.style.color = '#cbd5e1';
+    }
     if (placeEl) placeEl.textContent = `${totalMatches} of 10 matches played`;
   }
 
@@ -138,19 +165,19 @@ function renderAdvancedStatsPane() {
         <div class="stats-split-row"><span class="metric-label">Rating</span><span class="stats-total-count">${totalMatches} matches</span></div>
         <div class="stats-split-row" style="margin-top: 2px;">
           <div class="stats-per-game"><span class="metric-val elo-blue">${elo}</span><span class="pg-unit">ELO</span></div>
-          <span class="stats-total-count" style="font-weight: 700; color: #cbd5e1;">${totalMatches >= 10 ? tier.name : 'Placement'} (${rankStr})</span>
+          <span class="stats-total-count" style="font-weight: 700; color: #cbd5e1;">${totalMatches >= 10 ? `<span class="${tier.shimmerClass || ''}" style="${tier.shimmerClass ? '' : `color: ${tier.color};`}">${tier.name}</span>` : 'Placement'} (${rankStr})</span>
         </div>
       </div>
       <div class="stats-metric-card">
         <div class="stats-split-row"><span class="metric-label">Record</span><span class="stats-total-count">Total Matches</span></div>
         <div class="stats-split-row" style="margin-top: 2px;">
-          <div class="stats-per-game"><span class="metric-val"><span style="color:#2ed573;">${wins}</span> - <span style="color:#ef4444;">${losses}</span><span style="color:#94a3b8; font-size:13px;"> - ${ties}</span></span></div>
+          <div class="stats-per-game"><span class="metric-val"><span style="color:#2ed573;">${wins}</span> - <span style="color:#ef4444;">${losses}</span><span style="color:#cbd5e1; font-size:13px;"> - ${ties}</span></span></div>
           <span class="stats-total-count" style="font-weight: 700; color: #cbd5e1;">${winRate}% Win Rate (${totalMatches})</span>
         </div>
       </div>
       <div class="stats-metric-card">
         <div class="stats-split-row"><span class="metric-label">Scoring</span><span class="stats-total-count">${goals} center · ${sidegoals} side</span></div>
-        <div class="stats-split-row" style="justify-content: space-between;"><span class="stats-sub-label" style="font-size: 10px; color: #64748b; font-weight: 600; text-transform: uppercase;">Center / Side</span><span class="stats-total-count">${points} pts</span></div>
+        <div class="stats-split-row" style="justify-content: space-between;"><span class="stats-sub-label" style="font-size: 10px; color: #cbd5e1; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Center / Side</span><span class="stats-total-count">${points} pts</span></div>
         <div class="stats-split-row" style="margin-top: 2px;">
           <div class="stats-per-game"><span class="metric-val"><span style="color:#fbbf24;">${cpg}</span> / <span style="color:#cbd5e1;">${spg}</span></span><span class="pg-unit">/g</span></div>
           <span class="stats-total-count">${ppg} pts/g</span>
@@ -159,16 +186,16 @@ function renderAdvancedStatsPane() {
       <div class="stats-metric-card">
         <div class="stats-split-row"><span class="metric-label">Combat</span><span class="stats-total-count">${kills} kills · ${deaths} deaths</span></div>
         <div class="stats-split-row" style="margin-top: 2px;">
-          <div class="stats-per-game"><span class="metric-val"><span style="color:#f87171;">${kpg}</span> / <span style="color:#64748b;">${dpg}</span></span><span class="pg-unit">/g</span></div>
+          <div class="stats-per-game"><span class="metric-val"><span style="color:#f87171;">${kpg}</span> / <span style="color:#cbd5e1;">${dpg}</span></span><span class="pg-unit">/g</span></div>
           <span class="stats-total-count">${kdRatio} K/D ${is3v3 ? `· ${assists} ast` : ''}</span>
         </div>
       </div>
       <div class="stats-metric-card">
         <div class="stats-split-row"><span class="metric-label">Ball Handling</span><span class="stats-total-count">${passes} passes · ${turnovers} to</span></div>
-        <div class="stats-split-row" style="justify-content: space-between;"><span class="stats-sub-label" style="font-size: 10px; color: #64748b; font-weight: 600; text-transform: uppercase;">Pass / Turnover</span><span class="stats-total-count">${rebounds} reb (${rebPg}/g)</span></div>
+        <div class="stats-split-row" style="justify-content: space-between;"><span class="stats-sub-label" style="font-size: 10px; color: #cbd5e1; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Pass / Turnover</span><span class="stats-total-count">${rebounds} reb (${rebPg}/g)</span></div>
         <div class="stats-split-row" style="margin-top: 2px;">
           <div class="stats-per-game"><span class="metric-val"><span style="color:#38bdf8;">${passPg}</span> / <span style="color:#f59e0b;">${toPg}</span></span><span class="pg-unit">/g</span></div>
-          <span class="stats-total-count" style="color: #64748b;">pass / to ratio ${turnovers > 0 ? (passes / turnovers).toFixed(1) : passes}</span>
+          <span class="stats-total-count" style="color: #cbd5e1;">pass / to ratio ${turnovers > 0 ? (passes / turnovers).toFixed(1) : passes}</span>
         </div>
       </div>
       <div class="stats-metric-card">

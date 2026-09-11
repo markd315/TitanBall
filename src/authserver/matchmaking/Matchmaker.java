@@ -136,16 +136,17 @@ public class Matchmaker {
                 }
                 if (allChecked && mostRecentJoinTime > 0 && (nowMs - mostRecentJoinTime >= 10000)) {
                     canStartHybrid = true;
-                    // Tally votes for AI difficulty
-                    int[] diffVotes = new int[3];
+                    // Tally votes for AI difficulty (tiers 0 to 5)
+                    int[] diffVotes = new int[6];
                     for (String email : pool) {
-                        int diff = aiDifficultyVotes.getOrDefault(email, 0);
-                        if (diff >= 0 && diff <= 2) {
+                        int diff = aiDifficultyVotes.getOrDefault(email, 2);
+                        if (diff >= 0 && diff <= 5) {
                             diffVotes[diff]++;
                         }
                     }
                     int maxVotes = -1;
-                    for (int d = 0; d < 3; d++) {
+                    winningDiff = 2; // Default Medium
+                    for (int d = 0; d < 6; d++) {
                         if (diffVotes[d] > maxVotes) {
                             maxVotes = diffVotes[d];
                             winningDiff = d;
@@ -338,19 +339,19 @@ public class Matchmaker {
     }
 
     public synchronized void registerIntent(Authentication login, String tournamentCode, String teamname, String classSelection, String preferredLane, String partners) {
-        registerIntent(login, tournamentCode, teamname, classSelection, preferredLane, partners, false, 0);
+        registerIntent(login, tournamentCode, teamname, classSelection, preferredLane, partners, false, 2);
     }
 
     public synchronized void registerIntent(Authentication login, String tournamentCode, String teamname, String classSelection, String partners) {
-        registerIntent(login, tournamentCode, teamname, classSelection, null, partners, false, 0);
+        registerIntent(login, tournamentCode, teamname, classSelection, null, partners, false, 2);
     }
 
     public synchronized void registerIntent(Authentication login, String tournamentCode, String teamname, String classSelection) {
-        registerIntent(login, tournamentCode, teamname, classSelection, null, null, false, 0);
+        registerIntent(login, tournamentCode, teamname, classSelection, null, null, false, 2);
     }
 
     public synchronized void registerIntent(Authentication login, String tournamentCode, String teamname) {
-        registerIntent(login, tournamentCode, teamname, "WARRIOR", null, null, false, 0);
+        registerIntent(login, tournamentCode, teamname, "WARRIOR", null, null, false, 2);
     }
 
     public synchronized void registerIntentTeam(Authentication login, String tournamentCode, String teamname) {

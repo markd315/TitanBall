@@ -1031,7 +1031,7 @@ public class GuardianAbilities implements Serializable {
     private void refillFuel(GameEngine context) {
         for (Titan t : context.players) {
             if (t.team == team && t.health > 0.0) {
-                t.fuel = getMaxFuel(context);
+                t.fuel = t.maxFuel;
             }
         }
     }
@@ -1058,11 +1058,10 @@ public class GuardianAbilities implements Serializable {
 
     private void manaSurge(GameEngine context) {
         resetCooldowns(context);
-        double maxFuel = getMaxFuel(context);
         for (Titan t : context.players) {
             if (t.team == team && t.health > 0.0) {
                 t.heal(t.maxHealth * 0.10);
-                t.fuel = Math.min(maxFuel, t.fuel + maxFuel * 0.25);
+                t.fuel = Math.min(t.maxFuel, t.fuel + t.maxFuel * 0.25);
             }
         }
     }
@@ -1203,8 +1202,9 @@ public class GuardianAbilities implements Serializable {
                 t.damageFactor = t.baseDamageFactor * (1.0 + damageCount * (context.c.getD("masteries.damage.mult") - 1.0));
 
                 double boostMult = 1.0 + boostCount * (context.c.getD("masteries.boost.mult") - 1.0);
-                t.boostMaxFactor = t.baseBoostMaxFactor * boostMult;
+                t.boostDrainFactor = t.baseBoostDrainFactor / boostMult;
                 t.boostRegenFactor = t.baseBoostRegenFactor * boostMult;
+                t.boostMaxFactor = 1.0;
             }
         }
     }
@@ -1253,8 +1253,12 @@ public class GuardianAbilities implements Serializable {
     }
 
     public double getMaxFuel(GameEngine context) {
+        return 100.0;
+    }
+
+    public double getBoostDrainMultiplier(GameEngine context) {
         Set<String> purchased = (team == TeamAffiliation.HOME) ? context.homeGoaliePurchasedUpgrades : context.awayGoaliePurchasedUpgrades;
-        return purchased.contains("empowerment.t4.fuelreserves") ? 150.0 : 100.0;
+        return purchased.contains("empowerment.t4.fuelreserves") ? (1.0 / 1.5) : 1.0;
     }
 
     private int countPurchases(Set<String> purchased, String prefix) {

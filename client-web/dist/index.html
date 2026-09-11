@@ -416,20 +416,50 @@
         flex: 1 1 auto;
       }
 
-      /* Advanced Stats Modal */
-      .stats-modal-dialog {
+      /* Shared Fullscreen Modal Backdrop */
+      .modal-backdrop {
         position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        z-index: 150;
-        width: min(540px, 94vw);
-        max-height: 90vh;
-        overflow-y: auto;
-        box-sizing: border-box;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        width: 100dvw;
+        height: 100vh;
+        height: 100dvh;
+        background: rgba(4, 12, 9, 0.78);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        z-index: 120;
+        pointer-events: auto;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.25s ease, visibility 0.25s ease;
+      }
+      .modal-backdrop.active {
+        opacity: 1;
+        visibility: visible;
+        display: block;
+      }
+
+      /* Shared Modal Dialog Base */
+      .modal-dialog {
+        position: fixed !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        z-index: 130 !important;
+        max-height: 90vh !important;
+        overflow-y: auto !important;
+        box-sizing: border-box !important;
+        pointer-events: auto !important;
         background: rgba(10, 24, 18, 0.96) !important;
-        backdrop-filter: blur(24px);
+        backdrop-filter: blur(24px) !important;
         border: 2px solid rgba(45, 140, 100, 0.4) !important;
+        box-shadow: 0 40px 100px rgba(0, 0, 0, 0.9), 0 0 60px rgba(255, 127, 17, 0.1) !important;
+      }
+
+      /* Advanced Stats Modal Dialog Specifics */
+      .stats-modal-dialog {
+        width: min(540px, 94vw);
         box-shadow: 0 40px 100px rgba(0, 0, 0, 0.9), 0 0 60px rgba(56, 189, 248, 0.12) !important;
       }
       .stats-modal-header {
@@ -480,6 +510,70 @@
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.5px;
+      }
+      /* Diagonal Font Shimmer for Diamond and Gold Halo ranks */
+      .rank-shimmer-diamond {
+        background: linear-gradient(
+          115deg,
+          #38bdf8 0%,
+          #38bdf8 36%,
+          #e0f2fe 46%,
+          #ffffff 50%,
+          #e0f2fe 54%,
+          #38bdf8 64%,
+          #38bdf8 100%
+        );
+        background-size: 220% 100%;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        display: inline-block;
+        animation: rankShimmer 3.2s ease-in-out infinite;
+        filter: drop-shadow(0 0 5px rgba(56, 189, 248, 0.45));
+      }
+      .rank-shimmer-gold-halo {
+        background: linear-gradient(
+          115deg,
+          #facc15 0%,
+          #facc15 36%,
+          #fef08a 46%,
+          #ffffff 50%,
+          #fef08a 54%,
+          #facc15 64%,
+          #facc15 100%
+        );
+        background-size: 220% 100%;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        display: inline-block;
+        animation: rankShimmer 3.2s ease-in-out infinite;
+        filter: drop-shadow(0 0 5px rgba(250, 204, 21, 0.45));
+      }
+      @keyframes rankShimmer {
+        0% {
+          background-position: 200% 0;
+        }
+        42% {
+          background-position: -120% 0;
+        }
+        100% {
+          background-position: -120% 0;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .rank-shimmer-diamond,
+        .rank-shimmer-gold-halo {
+          animation: none;
+          background: none;
+          -webkit-text-fill-color: initial;
+        }
+        .rank-shimmer-diamond {
+          color: #38bdf8;
+        }
+        .rank-shimmer-gold-halo {
+          color: #facc15;
+        }
       }
       .stats-header-subtext {
         color: #94a3b8;
@@ -532,46 +626,79 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 22px;
-        height: 22px;
+        width: 26px;
+        height: 26px;
         border-radius: 50%;
-        border: 1px solid rgba(46, 213, 115, 0.4);
-        background: rgba(46, 213, 115, 0.12);
+        border: 1.5px solid rgba(46, 213, 115, 0.45);
+        background: rgba(46, 213, 115, 0.14);
         color: #2ed573;
         font-family: 'Outfit', sans-serif;
-        font-size: 13px;
+        font-size: 14px;
         font-weight: 800;
         cursor: pointer;
         transition: all 0.2s ease;
         padding: 0;
         line-height: 1;
         outline: none;
+        position: relative;
+        user-select: none;
       }
       .help-btn:hover {
-        background: rgba(46, 213, 115, 0.25);
+        background: rgba(46, 213, 115, 0.3);
         border-color: #2ed573;
         color: #ffffff;
-        transform: scale(1.12);
-        box-shadow: 0 0 10px rgba(46, 213, 115, 0.45);
+        transform: scale(1.1);
+        box-shadow: 0 0 12px rgba(46, 213, 115, 0.5);
       }
       .help-btn:active {
         transform: scale(0.95);
       }
       .tournament-btn {
-        border-color: rgba(255, 159, 28, 0.4);
-        background: rgba(255, 159, 28, 0.12);
+        border-color: rgba(255, 159, 28, 0.45);
+        background: rgba(255, 159, 28, 0.14);
         color: #ff9f1c;
-        font-size: 11px;
+        font-size: 13px;
       }
       .tournament-btn:hover {
-        background: rgba(255, 159, 28, 0.25);
+        background: rgba(255, 159, 28, 0.3);
         border-color: #ff9f1c;
         color: #ffffff;
-        transform: scale(1.12);
-        box-shadow: 0 0 10px rgba(255, 159, 28, 0.45);
+        transform: scale(1.1);
+        box-shadow: 0 0 12px rgba(255, 159, 28, 0.5);
       }
       .tournament-btn:active {
         transform: scale(0.95);
+      }
+
+      /* Hover Tooltips for Icon-Only and Compact Buttons */
+      [data-tooltip] {
+        position: relative;
+      }
+      [data-tooltip]::after {
+        content: attr(data-tooltip);
+        position: absolute;
+        bottom: calc(100% + 8px);
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(5, 18, 12, 0.96);
+        color: #e2e8f0;
+        border: 1px solid rgba(45, 140, 100, 0.45);
+        padding: 4px 10px;
+        border-radius: 7px;
+        font-size: 11px;
+        font-weight: 600;
+        white-space: nowrap;
+        pointer-events: none;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.18s ease, transform 0.18s ease;
+        z-index: 1000;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.75);
+      }
+      [data-tooltip]:hover::after, [data-tooltip]:focus-visible::after {
+        opacity: 1;
+        visibility: visible;
+        transform: translateX(-50%) translateY(-2px);
       }
       .preset-chip {
         padding: 4px 10px;
@@ -737,11 +864,11 @@
         background: rgba(56, 189, 248, 0.06);
       }
       .stats-metric-card .metric-label {
-        font-size: 10px;
-        font-weight: 700;
-        color: #94a3b8;
+        font-size: 11px;
+        font-weight: 800;
+        color: #e2e8f0;
         text-transform: uppercase;
-        letter-spacing: 1px;
+        letter-spacing: 1.2px;
         text-decoration: underline;
         text-underline-offset: 3px;
       }
@@ -765,27 +892,31 @@
       .stats-per-game .pg-unit {
         font-size: 10px;
         font-weight: 600;
-        color: #94a3b8;
+        color: #cbd5e1;
         text-transform: uppercase;
         margin-left: 2px;
       }
+      .stats-sub-label {
+        color: #cbd5e1 !important;
+        font-weight: 600;
+      }
       .stats-total-count {
         font-size: 11px;
-        font-weight: 500;
-        color: #94a3b8;
+        font-weight: 600;
+        color: #cbd5e1;
         white-space: nowrap;
         text-align: right;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       }
       .stats-metric-card .metric-sub {
         font-size: 11px;
-        color: #64748b;
+        color: #cbd5e1;
         margin-top: 1px;
       }
       .class-filter-bar {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: clamp(4px, 1vh, 8px);
+        gap: 8px;
         margin-top: 6px;
         margin-bottom: 8px;
         width: 100%;
@@ -795,9 +926,9 @@
         background: rgba(255, 255, 255, 0.05);
         border: 1px solid rgba(45, 140, 100, 0.3);
         border-radius: 12px;
-        padding: clamp(6px, 1vh, 9px) clamp(6px, 1vw, 10px);
+        padding: 7px 10px;
         color: #cbd5e1;
-        font-size: clamp(11px, 1.4vh, 13px);
+        font-size: 13px;
         font-weight: 700;
         font-family: inherit;
         cursor: pointer;
@@ -808,26 +939,43 @@
         justify-content: center;
         text-align: center;
         white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        min-height: 32px;
+        min-height: 36px;
         box-sizing: border-box;
         touch-action: manipulation;
       }
       .filter-chip:hover {
-        background: rgba(255, 255, 255, 0.1);
-        border-color: rgba(255, 159, 28, 0.5);
+        background: rgba(46, 213, 115, 0.14);
+        border-color: rgba(46, 213, 115, 0.65);
         color: #ffffff;
         transform: translateY(-1px);
+        box-shadow: 0 0 10px rgba(46, 213, 115, 0.25);
       }
       .filter-chip:active {
         transform: translateY(0);
       }
       .filter-chip.active {
-        background: linear-gradient(135deg, rgba(255, 159, 28, 0.3), rgba(230, 92, 0, 0.45));
-        border-color: #ff9f1c;
-        color: #ffd700;
-        box-shadow: 0 0 12px rgba(255, 159, 28, 0.35);
+        background: linear-gradient(135deg, #ff9f1c, #e65c00) !important;
+        border-color: #ff9f1c !important;
+        color: #ffffff !important;
+        font-weight: 800 !important;
+        box-shadow: 0 0 14px rgba(255, 127, 17, 0.5) !important;
+      }
+      .filter-chip.active:hover {
+        filter: brightness(1.1);
+        transform: translateY(-1px);
+        box-shadow: 0 0 18px rgba(255, 127, 17, 0.65) !important;
+      }
+      input.input-error {
+        border-color: #ef4444 !important;
+        background: rgba(239, 68, 68, 0.08) !important;
+        box-shadow: 0 0 12px rgba(239, 68, 68, 0.35) !important;
+      }
+      .inline-input-error {
+        color: #f87171;
+        font-size: 11px;
+        font-weight: 600;
+        line-height: 1.35;
+        margin-top: 2px;
       }
       .tag-badge {
         display: inline-block;
@@ -1409,7 +1557,7 @@
         90%, 100% { transform: rotate(0deg); }
       }
     </style>
-    <script type="module" crossorigin src="./assets/main-0fcbe04b.js"></script>
+    <script type="module" crossorigin src="./assets/main-c31e59e4.js"></script>
   </head>
   <body>
     <div id="app">
@@ -1478,6 +1626,8 @@
       
       <!-- HTML UI Overlays -->
       <div id="ui-container">
+        <!-- Full-screen Shared Modal Dimming Backdrop -->
+        <div id="modal-backdrop" class="modal-backdrop"></div>
         
         <!-- Login Overlay -->
         <div id="login-overlay" class="glass-card" style="display: none;">
@@ -1574,15 +1724,15 @@
               <option value="SPIDER">Spider (Web Traps & Cocoon Teleport)</option>
               <option value="GOALIE">Goalie (RTS Lane Commander)</option>
             </select>
-            <div id="class-select-desc" style="margin-top: 8px; padding: 10px 12px; background: rgba(16, 36, 30, 0.7); border: 1px solid rgba(255, 215, 0, 0.3); border-radius: 6px; font-size: 12px; line-height: 1.4; color: #d0e5dd; text-align: left;"></div>
-            <div id="class-select-error" class="error-msg" style="display: none; color: #ef4444; font-size: 14px; margin-top: 8px; font-weight: bold; text-align: center;"></div>
           </div>
+
+          <!-- Controls Layout & Masteries Quick Access -->
           <div class="input-group">
             <div style="display: flex; align-items: center; justify-content: space-between;">
               <label for="controls-select" style="margin: 0;">Controls Layout</label>
               <div style="display: flex; align-items: center; gap: 6px;">
-                <button id="tournament-code-btn" type="button" class="help-btn tournament-btn" title="Custom Tournament Code & Queue" aria-label="Tournament Code">🏆</button>
-                <button id="controls-help-btn" type="button" class="help-btn" title="View controls guide" aria-label="Controls Guide">?</button>
+                <button id="tournament-code-btn" type="button" class="help-btn tournament-btn" data-tooltip="Tournament Code" title="Custom Tournament Code & Queue" aria-label="Tournament Code">🏆</button>
+                <button id="controls-help-btn" type="button" class="help-btn" data-tooltip="Controls Guide" title="View controls guide" aria-label="Controls Guide">?</button>
               </div>
             </div>
             <select id="controls-select">
@@ -1599,6 +1749,12 @@
           <!-- Plan Build Order Button (shown only when GOALIE is selected) -->
           <div class="input-group" id="plan-build-btn-container" style="display:none">
             <button id="plan-build-btn" class="btn btn-secondary" style="border-color:rgba(114,7,224,0.45);color:#a855f7;">Plan Build Order</button>
+          </div>
+
+          <!-- Titan Ability Description Block -->
+          <div class="input-group">
+            <div id="class-select-desc" style="padding: 10px 12px; background: rgba(16, 36, 30, 0.7); border: 1px solid rgba(255, 215, 0, 0.3); border-radius: 6px; font-size: 12px; line-height: 1.4; color: #d0e5dd; text-align: left;"></div>
+            <div id="class-select-error" class="error-msg" style="display: none; color: #ef4444; font-size: 14px; margin-top: 8px; font-weight: bold; text-align: center;"></div>
           </div>
           <!-- Partner List Section -->
           <div class="input-group" style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
@@ -1633,9 +1789,12 @@
             <div class="input-group" id="ai-difficulty-container" style="display: none; width: 50%; margin: 0 auto; text-align: center;">
               <label for="ai-difficulty-select" style="font-size: 12px; margin-bottom: 4px; display: block; color: #ff9f1c;">AI Difficulty</label>
               <select id="ai-difficulty-select" style="width: 100%; font-size: 12px; padding: 5px 8px; text-align: center;">
-                <option value="0">Easy (1200-1700ms Delay)</option>
-                <option value="1">Medium (500-1200ms Delay)</option>
-                <option value="2">Hard (200-700ms Delay)</option>
+                <option value="0">Beginner (2000-5000ms Delay - Unrated)</option>
+                <option value="1">Easy (1200-1700ms Delay - 900 ELO)</option>
+                <option value="2" selected>Medium (500-1200ms Delay - 1000 ELO)</option>
+                <option value="3">Hard (200-700ms Delay - 1100 ELO)</option>
+                <option value="4">Expert (0-200ms Delay - 1200 ELO)</option>
+                <option value="5">Perfect (0ms Delay - Unrated)</option>
               </select>
             </div>
             <button id="queue-1v1-btn" class="btn btn-secondary">Queue Scrimmage</button>
@@ -1645,7 +1804,7 @@
         </div>
 
         <!-- Masteries Modal Overlay -->
-        <div id="masteries-modal" class="glass-card" style="display: none; position: absolute; z-index: 100; width: min(480px, calc(100vw - 24px)); max-width: 100%; max-height: 90vh; overflow-y: auto; box-sizing: border-box;">
+        <div id="masteries-modal" class="glass-card modal-dialog" style="display: none; width: min(480px, calc(100vw - 24px));">
           <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
             <h2 id="masteries-modal-title" style="margin: 0; font-size: 1.4rem;">Titan Masteries</h2>
             <div style="display: flex; gap: 6px;">
@@ -1678,7 +1837,7 @@
         </div>
 
         <!-- Advanced Player Stats Modal Overlay -->
-        <div id="stats-modal" class="glass-card stats-modal-dialog" style="display: none;">
+        <div id="stats-modal" class="glass-card modal-dialog stats-modal-dialog" style="display: none;">
           <div class="stats-modal-header">
             <div class="stats-header-player-info">
               <div id="stats-player-avatar" class="stats-avatar-circle"></div>
@@ -1714,7 +1873,7 @@
         </div>
 
         <!-- Controls Guide Modal Overlay -->
-        <div id="controls-modal" class="glass-card" style="display: none; position: absolute; z-index: 100; width: min(520px, calc(100vw - 24px)); max-width: 100%; max-height: 90vh; overflow-y: auto; box-sizing: border-box;">
+        <div id="controls-modal" class="glass-card modal-dialog" style="display: none; width: min(520px, calc(100vw - 24px));">
           <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
             <div style="display: flex; align-items: center; gap: 8px;">
               <span style="font-size: 20px;">🎮</span>
@@ -1748,7 +1907,7 @@
         </div>
 
         <!-- Tournament Code Modal Overlay -->
-        <div id="tournament-modal" class="glass-card" style="display: none; position: absolute; z-index: 100; width: min(520px, calc(100vw - 24px)); max-width: 100%; max-height: 90vh; overflow-y: auto; box-sizing: border-box;">
+        <div id="tournament-modal" class="glass-card modal-dialog" style="display: none; width: min(520px, calc(100vw - 24px));">
           <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
             <div style="display: flex; align-items: center; gap: 8px;">
               <span style="font-size: 20px;">🏆</span>
@@ -1763,11 +1922,12 @@
 
           <!-- Code Input (Supports optional password prefix: [password]/playerIndex/...) -->
           <div class="input-group" style="gap: 6px;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <label for="tournament-code-input" style="margin: 0;">Tournament String Code</label>
-              <button id="tournament-code-reset-btn" type="button" class="btn btn-secondary" style="padding: 2px 10px; margin: 0; font-size: 11px;" title="Reset to standard 4v4">Reset Default</button>
+            <label for="tournament-code-input" style="margin: 0;">Tournament String Code</label>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <input type="text" id="tournament-code-input" placeholder="[password]/1/0/1/10/2/9999/10/20" value="/1/0/1/10/2/9999/10/20" style="flex: 1; min-width: 0; font-family: monospace; font-size: 14px; letter-spacing: 0.5px; padding: 10px 14px;">
+              <button id="tournament-code-reset-btn" type="button" class="btn btn-secondary" style="padding: 10px 14px; margin: 0; font-size: 11px; white-space: nowrap; flex-shrink: 0;" title="Reset to standard 4v4">Reset Default</button>
             </div>
-            <input type="text" id="tournament-code-input" placeholder="[password]/1/0/1/10/2/9999/10/20" value="/1/0/1/10/2/9999/10/20" style="font-family: monospace; font-size: 14px; letter-spacing: 0.5px; padding: 10px 14px;">
+            <div id="tournament-code-inline-error" class="inline-input-error" style="display: none;"></div>
             <span style="font-size: 11px; color: #94a3b8;">Prefix with password for private matches (e.g. <code>mypassword/1/0/...</code>). Leave leading slash for public.</span>
           </div>
 
@@ -1788,9 +1948,12 @@
             <div id="tournament-ai-diff-row" style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
               <span style="font-size: 11px; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">AI Difficulty</span>
               <select id="tournament-ai-difficulty" style="padding: 4px 8px; font-size: 12px; border-radius: 6px; background: rgba(0,0,0,0.5); border: 1px solid rgba(45,140,100,0.4); color: white;">
-                <option value="0">Easy (1200-1700ms)</option>
-                <option value="1" selected>Medium (500-1200ms)</option>
-                <option value="2">Hard (200-700ms)</option>
+                <option value="0">Beginner (2000-5000ms - Unrated)</option>
+                <option value="1">Easy (1200-1700ms - 900 ELO)</option>
+                <option value="2" selected>Medium (500-1200ms - 1000 ELO)</option>
+                <option value="3">Hard (200-700ms - 1100 ELO)</option>
+                <option value="4">Expert (0-200ms - 1200 ELO)</option>
+                <option value="5">Perfect (0ms - Unrated)</option>
               </select>
             </div>
           </div>
@@ -1824,9 +1987,12 @@
             <div id="queue-ai-diff-row" style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
               <label for="queue-ai-difficulty-select" style="font-size: 12px; color: #94a3b8; white-space: nowrap;">AI Difficulty:</label>
               <select id="queue-ai-difficulty-select" style="flex: 1; font-size: 12px; padding: 4px 8px; border-radius: 6px; background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(45, 140, 100, 0.4); color: #fff; font-family: inherit;">
-                <option value="0">Easy (1200-1700ms Delay)</option>
-                <option value="1" selected>Medium (500-1200ms Delay)</option>
-                <option value="2">Hard (200-700ms Delay)</option>
+                <option value="0">Beginner (2000-5000ms Delay - Unrated)</option>
+                <option value="1">Easy (1200-1700ms Delay - 900 ELO)</option>
+                <option value="2" selected>Medium (500-1200ms Delay - 1000 ELO)</option>
+                <option value="3">Hard (200-700ms Delay - 1100 ELO)</option>
+                <option value="4">Expert (0-200ms Delay - 1200 ELO)</option>
+                <option value="5">Perfect (0ms Delay - Unrated)</option>
               </select>
             </div>
           </div>

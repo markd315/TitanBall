@@ -177,4 +177,220 @@ public class AiOwnGoalAvoidanceTest {
         // Titan MUST have moved towards marchingOrderY, not blocked by any goal block
         Assert.assertTrue("Titan behind goal hoop with ball must move vertically towards goal Y", titan.Y > initialY);
     }
+
+    @Test
+    public void testGoalieHoldingBallNeverIntersectsFriendlyHoop() {
+        GameEngine engine = createStandardGame();
+
+        // 1. Home Goalie at various positions on and around Home hoops
+        Titan homeGoalie = engine.players[0];
+        homeGoalie.setType(TitanType.GOALIE);
+        homeGoalie.team = TeamAffiliation.HOME;
+        homeGoalie.possession = 1;
+
+        double[][] testPositionsHome = {
+                {256, 583}, // right on home hi goal
+                {200, 583}, // behind home hi goal
+                {305, 354}, // on top low goal
+                {305, 790}, // on bottom low goal
+        };
+
+        for (double[] pos : testPositionsHome) {
+            homeGoalie.X = pos[0];
+            homeGoalie.Y = pos[1];
+            engine.updateBallIfPossessed(homeGoalie, 1);
+
+            Assert.assertFalse("Home goalie ball must never intersect home hi goal at (" + pos[0] + ", " + pos[1] + ")",
+                    engine.ballIntersectsEllipse(engine.homeHiGoal));
+            Assert.assertFalse("Home goalie ball must never intersect home low goal 0 at (" + pos[0] + ", " + pos[1] + ")",
+                    engine.ballIntersectsEllipse(engine.lowGoals[0]));
+            Assert.assertFalse("Home goalie ball must never intersect home low goal 1 at (" + pos[0] + ", " + pos[1] + ")",
+                    engine.ballIntersectsEllipse(engine.lowGoals[1]));
+        }
+
+        // 2. Away Goalie at various positions on and around Away hoops
+        Titan awayGoalie = engine.players[1];
+        awayGoalie.setType(TitanType.GOALIE);
+        awayGoalie.team = TeamAffiliation.AWAY;
+        awayGoalie.possession = 1;
+
+        double[][] testPositionsAway = {
+                {1786, 583}, // on away hi goal
+                {1850, 583}, // behind away hi goal
+                {1775, 354}, // on away top low goal
+                {1775, 790}, // on away bottom low goal
+        };
+
+        for (double[] pos : testPositionsAway) {
+            awayGoalie.X = pos[0];
+            awayGoalie.Y = pos[1];
+            engine.updateBallIfPossessed(awayGoalie, 2);
+
+            Assert.assertFalse("Away goalie ball must never intersect away hi goal at (" + pos[0] + ", " + pos[1] + ")",
+                    engine.ballIntersectsEllipse(engine.awayHiGoal));
+            Assert.assertFalse("Away goalie ball must never intersect away low goal 2 at (" + pos[0] + ", " + pos[1] + ")",
+                    engine.ballIntersectsEllipse(engine.lowGoals[2]));
+            Assert.assertFalse("Away goalie ball must never intersect away low goal 3 at (" + pos[0] + ", " + pos[1] + ")",
+                    engine.ballIntersectsEllipse(engine.lowGoals[3]));
+        }
+    }
+
+    @Test
+    public void testGoalieClearingThroughOwnHoopNeverScores() throws Exception {
+        GameEngine engine = createStandardGame();
+
+        Titan homeGoalie = engine.players[0];
+        homeGoalie.setType(TitanType.GOALIE);
+        homeGoalie.team = TeamAffiliation.HOME;
+        homeGoalie.X = 256;
+        homeGoalie.Y = 583;
+        homeGoalie.possession = 1;
+
+        // Ball starts on the high goal
+        engine.ball.X = 256;
+        engine.ball.Y = 583;
+        double initialAwayScore = engine.away.score;
+
+        // Goalie shoots
+        homeGoalie.actionState = Titan.TitanState.SHOOT;
+        homeGoalie.actionFrame = 0;
+        engine.xKickPow = 1.0;
+        engine.yKickPow = 0.0;
+
+        engine.shootingBall(homeGoalie);
+
+        Assert.assertEquals("Defending goalie clearing ball must NEVER score an own goal",
+                initialAwayScore, engine.away.score, 0.001);
+    }
+
+    @Test
+    public void testGoalieWithPossessionNeverBackwardEvadesIntoOwnGoal() {
+        GameEngine engine = createStandardGame();
+
+        Titan homeGoalie = engine.players[0];
+        homeGoalie.setType(TitanType.GOALIE);
+        homeGoalie.team = TeamAffiliation.HOME;
+        homeGoalie.X = 350; // At forward crease limit
+        homeGoalie.Y = 583;
+        homeGoalie.possession = 1;
+
+        // Target is downfield (pass target)
+        homeGoalie.aiTargetX = 1200;
+        homeGoalie.aiTargetY = 583;
+        homeGoalie.aiTargetAction = 1; // pass
+        homeGoalie.aiStuckHorizontalTicks = 5; // Simulating stuck ticks
+
+        // Position all other titans far away
+        for (int i = 1; i < engine.players.length; i++) {
+            engine.players[i].X = 999000;
+            engine.players[i].Y = 999000;
+        }
+
+        engine.clients.clear(); // pure AI
+        engine.yourPlayerTactics();
+
+        // Goalie must not have backward evasion set into own net (marchingOrderX towards net)
+        Assert.assertFalse("Goalie must not be programmed to march backwards into own net",
+                homeGoalie.programmed && homeGoalie.marchingOrderX < homeGoalie.X);
+    }
+
+    @Test
+    public void testGoalieAiBoostsWhenMovingToAssignedDestination() {
+        GameEngine engine = createStandardGame();
+        Titan homeGoalie = engine.players[0];
+        homeGoalie.setType(TitanType.GOALIE);
+        homeGoalie.team = TeamAffiliation.HOME;
+        homeGoalie.possession = 0;
+        homeGoalie.fuel = 100.0;
+        homeGoalie.isBoosting = false;
+
+        // Position goalie near back of crease
+        homeGoalie.X = 256;
+        homeGoalie.Y = 625;
+
+        // Ball is out in field, so goalie target on hoop edge is around (291 + 42 = 333, 625), > 50px away
+        engine.ball.X = 800;
+        engine.ball.Y = 625;
+
+        engine.clients.clear();
+        engine.yourPlayerTactics();
+
+        Assert.assertTrue("Goalie AI should boost when destination is further than 0px away and has fuel",
+                homeGoalie.isBoosting);
+    }
+
+    @Test
+    public void testGoalieAiBoostsEvenForSmallMovementsDueToZeroThreshold() {
+        GameEngine engine = createStandardGame();
+        Titan homeGoalie = engine.players[0];
+        homeGoalie.setType(TitanType.GOALIE);
+        homeGoalie.team = TeamAffiliation.HOME;
+        homeGoalie.possession = 0;
+        homeGoalie.fuel = 100.0;
+        homeGoalie.isBoosting = false;
+
+        // Position goalie 5px away from assigned target
+        homeGoalie.X = 256;
+        homeGoalie.Y = 625;
+        homeGoalie.aiTargetX = homeGoalie.X + homeGoalie.width / 2.0 + 5.0; // only 5px away!
+        homeGoalie.aiTargetY = homeGoalie.Y + homeGoalie.height / 2.0;
+
+        engine.updateAiBoostDecision(homeGoalie);
+
+        Assert.assertTrue("Goalie AI should boost even for 5px movement because threshold is literally 0",
+                homeGoalie.isBoosting);
+    }
+
+    @Test
+    public void testGoalieAiStopsBoostingWhenNearTargetOrOutOfFuel() {
+        GameEngine engine = createStandardGame();
+        Titan homeGoalie = engine.players[0];
+        homeGoalie.setType(TitanType.GOALIE);
+        homeGoalie.team = TeamAffiliation.HOME;
+        homeGoalie.possession = 0;
+
+        // 1. When already at assigned destination (dist == 0px)
+        homeGoalie.fuel = 100.0;
+        engine.evaluateAiDecision(homeGoalie);
+        // Place goalie directly at assigned destination
+        homeGoalie.X = homeGoalie.aiTargetX - homeGoalie.width / 2.0;
+        homeGoalie.Y = homeGoalie.aiTargetY - homeGoalie.height / 2.0;
+        homeGoalie.isBoosting = true;
+
+        engine.clients.clear();
+        engine.yourPlayerTactics();
+
+        Assert.assertFalse("Goalie AI should not boost when at destination (dist == 0)",
+                homeGoalie.isBoosting);
+
+        // 2. When out of fuel
+        homeGoalie.fuel = 0.0;
+        homeGoalie.X = 256;
+        homeGoalie.Y = 625;
+        homeGoalie.isBoosting = true;
+
+        engine.yourPlayerTactics();
+
+        Assert.assertFalse("Goalie AI must not boost when fuel is 0",
+                homeGoalie.isBoosting);
+    }
+
+    @Test
+    public void testGoalieAiDoesNotBoostWhenHoldingBall() {
+        GameEngine engine = createStandardGame();
+        Titan homeGoalie = engine.players[0];
+        homeGoalie.setType(TitanType.GOALIE);
+        homeGoalie.team = TeamAffiliation.HOME;
+        homeGoalie.possession = 1;
+        homeGoalie.fuel = 100.0;
+        homeGoalie.aiTargetX = 1200;
+        homeGoalie.aiTargetY = 625;
+        homeGoalie.isBoosting = true;
+
+        engine.clients.clear();
+        engine.yourPlayerTactics();
+
+        Assert.assertFalse("Goalie AI holding ball should not boost",
+                homeGoalie.isBoosting);
+    }
 }

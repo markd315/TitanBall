@@ -162,7 +162,7 @@ public class LoginController {
               @RequestParam(required = false) String preferredLane,
               @RequestParam(required = false) String partners,
               @RequestParam(required = false, defaultValue = "false") boolean fillWithAi,
-              @RequestParam(required = false, defaultValue = "0") int aiDifficulty) throws IOException {
+              @RequestParam(required = false, defaultValue = "2") int aiDifficulty) throws IOException {
         if (shutDownMode) {
             return new ResponseEntity<>("Shutting down", HttpStatus.SERVICE_UNAVAILABLE);
         }

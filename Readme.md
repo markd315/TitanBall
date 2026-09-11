@@ -128,7 +128,7 @@ For more detailed pilot-light architecture information, see [PILOT_LIGHT_GUIDE.m
 
 ## Tournament Strings & Match Options
 
-TitanBall matches are configured using slash-delimited tournament codes (e.g. `"/1/0/1/10/2/9999/10/20/2/1"`), parsed into `GameOptions`:
+TitanBall matches are configured using slash-delimited tournament codes (e.g. `"/1/0/1/10/2/9999/10/20/3/1"`), parsed into `GameOptions`:
 
 | Token Index | Field | Type | Description |
 | :--- | :--- | :--- | :--- |
@@ -140,7 +140,7 @@ TitanBall matches are configured using slash-delimited tournament codes (e.g. `"
 | `split[6]` | `hardWinIndex` | **Literal Value** | Blowout / mercy score cutoff (`9999` = disabled). |
 | `split[7]` | `suddenDeathIndex` | **Literal Minutes** | Minutes elapsed until sudden death triggers (e.g. `10` = 10 minutes). Must not be 0. |
 | `split[8]` | `tieIndex` | **Literal Minutes** | Minutes elapsed until draw is declared (e.g. `20` = 20 minutes). |
-| `split[9]` | `aiDifficultyIndex` | Array Index | Optional. AI reaction time (`0` = Easy, `1` = Medium, `2` = Hard 200–700ms). |
+| `split[9]` | `aiDifficultyIndex` | Array Index | Optional. AI reaction time (`0` = Beginner 2000–5000ms [unrated], `1` = Easy 1200–1700ms [900 ELO], `2` = Medium 500–1200ms [1000 ELO], `3` = Hard 200–700ms [1100 ELO], `4` = Expert 0–200ms [1200 ELO], `5` = Perfect 0ms [unrated]). |
 | `split[10]` | `isHybrid` | Boolean (`0`/`1`) | Optional. Enables bot slot reservation and AI tactics. |
 
 **Key Gotcha**: While `playerIndex`, `goalieIndex`, and `bestOfIndex` index into option arrays, `playToIndex`, `winByIndex`, `hardWinIndex`, `suddenDeathIndex`, and `tieIndex` are parsed directly as **literal numbers**. Passing zeroes for these thresholds triggers immediate win conditions and premature game termination.

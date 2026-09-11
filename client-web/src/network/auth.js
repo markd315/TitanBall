@@ -63,7 +63,7 @@ export async function fetchUserStats() {
   return res.json();
 }
 
-export async function joinQueue(tournamentCode = '', classSelection = '', partners = '', preferredLane = '', fillWithAi = false, aiDifficulty = 0) {
+export async function joinQueue(tournamentCode = '', classSelection = '', partners = '', preferredLane = '', fillWithAi = false, aiDifficulty = 2) {
   const token = sessionStorage.getItem('accessToken');
   const laneParam = preferredLane || sessionStorage.getItem('preferredLane') || 'TOP';
   const url = `/pages/titanball/api/join?tournamentCode=${encodeURIComponent(tournamentCode)}&classSelection=${encodeURIComponent(classSelection)}&preferredLane=${encodeURIComponent(laneParam)}&partners=${encodeURIComponent(partners)}&fillWithAi=${encodeURIComponent(fillWithAi)}&aiDifficulty=${encodeURIComponent(aiDifficulty)}`;

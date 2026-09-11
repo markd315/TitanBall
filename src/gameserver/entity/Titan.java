@@ -36,11 +36,26 @@ public class Titan extends Entity   {
     public int actionFrame = 0; //For answering how long have we been in a shooting/passing state?
 
     public double fuel = 50.0;
+    public double maxFuel = 100.0;
     public boolean isBoosting = false;
 
     public boolean programmed = false;
     public int marchingOrderX = 0;
     public int marchingOrderY = 0;
+    @JsonIgnore
+    public transient int[][] pathWaypoints = null;
+    @JsonIgnore
+    public transient int pathWaypointIdx = 0;
+    @JsonIgnore
+    public transient double pathAnchorX = 0;
+    @JsonIgnore
+    public transient double pathAnchorY = 0;
+    @JsonIgnore
+    public transient boolean pathAnchorBoosting = false;
+    @JsonIgnore
+    public transient int pathAnchorOrderX = 0;
+    @JsonIgnore
+    public transient int pathAnchorOrderY = 0;
     public int stealRad = 11;
     public boolean typeAndMasteriesLocked = false;
     public gameserver.engine.Masteries masteries;
@@ -116,8 +131,10 @@ public class Titan extends Entity   {
     public double baseDamageFactor = 1.0;
     public double boostMaxFactor = 1.0;
     public double boostRegenFactor = 1.0;
+    public double boostDrainFactor = 1.0;
     public double baseBoostMaxFactor = 1.0;
     public double baseBoostRegenFactor = 1.0;
+    public double baseBoostDrainFactor = 1.0;
     public int ammo = 8;
     public int maxAmmo = 8;
 
@@ -510,6 +527,12 @@ public class Titan extends Entity   {
         this.runDown  = this.keyHeldD ? 1 : 0;
         this.runLeft  = this.keyHeldL ? 1 : 0;
         this.runRight = this.keyHeldR ? 1 : 0;
+    }
+
+    /** Clear current path, forcing recomputation next tick. */
+    public void invalidatePath() {
+        pathWaypoints = null;
+        pathWaypointIdx = 0;
     }
     /*
 

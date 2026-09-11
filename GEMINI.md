@@ -35,12 +35,12 @@ When parsed by `new GameOptions(tournamentCode)` on the server, tokens are mappe
 - `split[6]` - **`hardWinIndex`** *(CRITICAL: Literal Value)*: Hard score limit where a match terminates immediately regardless of point differential (e.g. `9999` = disabled, or `20` = mercy/blowout limit).
 - `split[7]` - **`suddenDeathIndex`** *(CRITICAL: Literal Minutes)*: Time in minutes before sudden death triggers (`framesSinceStart / FPS > suddenDeathIndex * 60`). If set to `0`, sudden death activates immediately at tick 0 and any non-tied score ends the match on the next frame. Use `10` for 10:00 minutes.
 - `split[8]` - **`tieIndex`** *(CRITICAL: Literal Minutes)*: Time in minutes before an automatic draw is forced (e.g. `20` for 20:00 minutes).
-- `split[9]` *(Optional)* - **`aiDifficultyIndex`**: AI reaction speed tier (`0` = Easy 1200–1700ms, `1` = Medium 500–1200ms, `2` = Hard 200–700ms).
+- `split[9]` *(Optional)* - **`aiDifficultyIndex`**: AI reaction speed tier (`0` = Beginner 2000–5000ms [unrated], `1` = Easy 1200–1700ms [900 ELO], `2` = Medium 500–1200ms [1000 ELO], `3` = Hard 200–700ms [1100 ELO], `4` = Expert 0–200ms [1200 ELO], `5` = Perfect 0ms every tick [unrated]).
 - `split[10]` *(Optional)* - **`isHybrid`**: `1` or `true` activates hybrid/bot slot reservation and AI tactics.
 
 ### Canonical Examples
 - **Standard 4v4 Headless Balance Benchmark**:
-  `"/1/0/1/10/2/9999/10/20/2/1"` (4v4, Goalies on, Bo1, Play to 10, Win by 2, Hard win OFF, Sudden death at 10:00, Hardcore sudden death at 15:00, Draw at 20:00, Hard AI difficulty, Hybrid bot mode).
+  `"/1/0/1/10/2/9999/10/20/3/1"` (4v4, Goalies on, Bo1, Play to 10, Win by 2, Hard win OFF, Sudden death at 10:00, Hardcore sudden death at 15:00, Draw at 20:00, Hard AI difficulty, Hybrid bot mode).
 - **Default 1v1 Scrimmage**:
   `"/4/1/1/5/2/9999/10/20"` (1v1 scrimmage, play to 5, win by 2, Sudden death at 10:00, Draw at 20:00).
 

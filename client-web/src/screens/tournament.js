@@ -24,9 +24,12 @@ export const GOALIE_DISP = [
 ];
 
 export const AI_DIFF_DISP = [
-  "Easy (1200–1700ms)",
-  "Medium (500–1200ms)",
-  "Hard (200–700ms)"
+  "Beginner (2000–5000ms, Unrated)",
+  "Easy (1200–1700ms, 900 ELO)",
+  "Medium (500–1200ms, 1000 ELO)",
+  "Hard (200–700ms, 1100 ELO)",
+  "Expert (0–200ms, 1200 ELO)",
+  "Perfect (0ms, Unrated)"
 ];
 
 export const DEFAULT_TOURNAMENT_CODE = "/1/0/1/10/2/9999/10/20";
@@ -115,8 +118,8 @@ export function parseTournamentCode(rawCode) {
   let aiDiffIndex = null;
   if (rawParts.length >= offset + 9 && rawParts[offset + 8] !== '') {
     aiDiffIndex = parseInt(rawParts[offset + 8], 10);
-    if (isNaN(aiDiffIndex) || aiDiffIndex < 0 || aiDiffIndex > 2) {
-      aiDiffIndex = 1;
+    if (isNaN(aiDiffIndex) || aiDiffIndex < 0 || aiDiffIndex > 5) {
+      aiDiffIndex = 2;
     }
   }
 
@@ -199,6 +202,12 @@ export function openTournamentModal() {
   if (modeOverlay) {
     modeOverlay.style.pointerEvents = 'none';
   }
+
+  const backdrop = document.getElementById('modal-backdrop');
+  if (backdrop) {
+    backdrop.classList.add('active');
+    backdrop.style.display = 'block';
+  }
 }
 
 export function closeTournamentModal() {
@@ -215,12 +224,34 @@ export function closeTournamentModal() {
     errorEl.style.display = 'none';
     errorEl.textContent = '';
   }
+  const inlineErrorEl = document.getElementById('tournament-code-inline-error');
+  if (inlineErrorEl) {
+    inlineErrorEl.style.display = 'none';
+    inlineErrorEl.textContent = '';
+  }
+  const input = document.getElementById('tournament-code-input');
+  if (input) {
+    input.classList.remove('input-error');
+  }
+
+  const backdrop = document.getElementById('modal-backdrop');
+  if (backdrop) {
+    const otherModalsOpen = ['stats-modal', 'controls-modal', 'masteries-modal'].some(id => {
+      const el = document.getElementById(id);
+      return el && el.style.display !== 'none' && el.style.display !== '';
+    });
+    if (!otherModalsOpen) {
+      backdrop.classList.remove('active');
+      backdrop.style.display = 'none';
+    }
+  }
 }
 
 function updateLiveBreakdown() {
   const input = document.getElementById('tournament-code-input');
   const breakdownEl = document.getElementById('tournament-breakdown-card');
   const errorEl = document.getElementById('tournament-modal-error');
+  const inlineErrorEl = document.getElementById('tournament-code-inline-error');
   const queueBtn = document.getElementById('tournament-queue-btn');
 
   if (!input || !breakdownEl) return;
@@ -229,6 +260,11 @@ function updateLiveBreakdown() {
   const res = parseTournamentCode(rawCode);
 
   if (!res.valid) {
+    input.classList.add('input-error');
+    if (inlineErrorEl) {
+      inlineErrorEl.textContent = res.error;
+      inlineErrorEl.style.display = 'block';
+    }
     breakdownEl.innerHTML = `
       <div style="color: #f87171; display: flex; align-items: center; gap: 8px;">
         <span style="font-size: 16px;">⚠️</span>
@@ -239,6 +275,11 @@ function updateLiveBreakdown() {
     return;
   }
 
+  input.classList.remove('input-error');
+  if (inlineErrorEl) {
+    inlineErrorEl.style.display = 'none';
+    inlineErrorEl.textContent = '';
+  }
   if (queueBtn) queueBtn.disabled = false;
   if (errorEl) errorEl.style.display = 'none';
 
@@ -359,7 +400,7 @@ export function initTournamentModal(queueCallback) {
       const fillAiCheckbox = document.getElementById('tournament-fill-ai');
       const aiDiffSelect = document.getElementById('tournament-ai-difficulty');
       const fillAi = fillAiCheckbox ? fillAiCheckbox.checked : false;
-      const aiDiff = aiDiffSelect ? parseInt(aiDiffSelect.value, 10) : (res.parsed.aiDiffIndex !== null ? res.parsed.aiDiffIndex : 1);
+      const aiDiff = aiDiffSelect ? parseInt(aiDiffSelect.value, 10) : (res.parsed.aiDiffIndex !== null ? res.parsed.aiDiffIndex : 2);
 
       if (onQueueCustomMatchCallback) {
         try {

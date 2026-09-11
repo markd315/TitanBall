@@ -96,7 +96,7 @@ const BASE_ABILITY_RANGES = {
     GOLEM: 90,
     STEALTH: 100,
     CAPTAIN: 250,
-    SPIDER: 150,
+    SPIDER: 700,
     MARKSMAN: 0,
     HOUNDMASTER: 0,
     GOALIE: 0

@@ -43,7 +43,7 @@ public class GameEngine extends Game {
     // Tracks the titan currently executing a lob so that the uncatchable window
     // (frames 3–8) can be scoped to that thrower alone, not all players globally.
     @com.fasterxml.jackson.annotation.JsonIgnore
-    private transient Titan activeLobThrower = null;
+    transient Titan activeLobThrower = null;
 
     // Tracks the active sidegoal scorers until a center goal is cashed in (combo goal)
     // or the ghost points are rounded away by the enemy team.
@@ -55,6 +55,10 @@ public class GameEngine extends Game {
     public transient java.util.function.Consumer<GameEngine> onGameEnded = null;
     @com.fasterxml.jackson.annotation.JsonIgnore
     public transient int customTickIntervalMs = -1;
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    public transient boolean[] staticObstacleGrid = null;
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    public transient int cachedSolidEntityCount = -1;
 
     // ── Performance: ObjectMapper is heavyweight and thread-safe; share one instance
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -374,6 +378,11 @@ public class GameEngine extends Game {
         return predictShotTypeFromRay(bx, by, vel[0], vel[1], throwerTeam);
     }
 
+    public boolean isGoalie(Titan t) {
+        if (t == null) return false;
+        return t.getType() == TitanType.GOALIE || t == players[0] || t == players[1];
+    }
+
     public boolean ballIntersectsEllipse(GoalHoop goal) {
         gameserver.engine.CollisionMath.EllipseData g = goal.ellipseData();
         gameserver.engine.CollisionMath.EllipseData b = ball.ellipseData();
@@ -392,7 +401,20 @@ public class GameEngine extends Game {
         for (GoalHoop goal : this.lowGoals) {
             if (ballIntersectsEllipse(goal) && goal.checkReady()) {
                 Optional<Titan> possessor = titanInPossession();
-                if (possessor.isPresent() && possessor.get().getType() == TitanType.GOALIE && possessor.get().team == goal.team) {
+                if (possessor.isPresent() && isGoalie(possessor.get()) && possessor.get().team == goal.team) {
+                    continue;
+                }
+                Titan mover = getAnyBallMover();
+                if (mover != null && isGoalie(mover) && mover.team == goal.team) {
+                    continue;
+                }
+                if (lastPossessed != null) {
+                    Titan lp = titanByID(lastPossessed.toString()).orElse(null);
+                    if (lp != null && isGoalie(lp) && lp.team == goal.team) {
+                        continue;
+                    }
+                }
+                if (activeLobThrower != null && isGoalie(activeLobThrower) && activeLobThrower.team == goal.team) {
                     continue;
                 }
                 Team enemy, us;
@@ -445,7 +467,20 @@ public class GameEngine extends Game {
         for (GoalHoop goal : this.hiGoals) {
             if (ballIntersectsEllipse(goal) && goal.checkReady()) {
                 Optional<Titan> possessor = titanInPossession();
-                if (possessor.isPresent() && possessor.get().getType() == TitanType.GOALIE && possessor.get().team == goal.team) {
+                if (possessor.isPresent() && isGoalie(possessor.get()) && possessor.get().team == goal.team) {
+                    continue;
+                }
+                Titan mover = getAnyBallMover();
+                if (mover != null && isGoalie(mover) && mover.team == goal.team) {
+                    continue;
+                }
+                if (lastPossessed != null) {
+                    Titan lp = titanByID(lastPossessed.toString()).orElse(null);
+                    if (lp != null && isGoalie(lp) && lp.team == goal.team) {
+                        continue;
+                    }
+                }
+                if (activeLobThrower != null && isGoalie(activeLobThrower) && activeLobThrower.team == goal.team) {
                     continue;
                 }
                 Team us, enemy;
@@ -1372,11 +1407,13 @@ public class GameEngine extends Game {
             t.programmed = true;
             t.marchingOrderX = -1;
             t.marchingOrderY = -1;
+            t.invalidatePath();
         }
         if (request.MV_CLICK) {
             t.programmed = true;
             t.marchingOrderX = request.posX + request.camX;
             t.marchingOrderY = request.posY + request.camY;
+            t.invalidatePath();
         }
     }
 
@@ -1605,6 +1642,7 @@ public class GameEngine extends Game {
                     newSolids[players.length + si] = entityPool.get(si);
                 }
                 allSolids = newSolids;
+                refreshStaticGridIfNeeded();
                 updateBallIfPossessed();
                 effectPool.tickAll(this);
                 doHealthModification();
@@ -1624,19 +1662,24 @@ public class GameEngine extends Game {
                     t.isBoosting = false;
                 }
 
-                double maxFuel = ((t.team == TeamAffiliation.HOME) 
-                    ? homeGoalieAbilities.getMaxFuel(this) 
-                    : awayGoalieAbilities.getMaxFuel(this)) * t.boostMaxFactor;
+                double maxFuel = 100.0;
+                t.maxFuel = maxFuel;
+
+                double goalieDrainMult = (t.team == TeamAffiliation.HOME) 
+                    ? homeGoalieAbilities.getBoostDrainMultiplier(this) 
+                    : awayGoalieAbilities.getBoostDrainMultiplier(this);
+                double drainRate = 0.75 * t.boostDrainFactor * goalieDrainMult;
 
                 if (t.isBoosting) {
-                    t.fuel -= .75;
+                    t.fuel -= drainRate;
                     if (t.fuel < 0) {
                         t.fuel = 0;
                     }
                 } else {
                     double fastRegen = c.getD("globals.boost.regen.fast") * t.boostRegenFactor;
                     double slowRegen = c.getD("globals.boost.regen.slow") * t.boostRegenFactor;
-                    if (t.fuel > c.getD("globals.boost.regen.cutoff")) {
+                    double cutoff = maxFuel * 0.25;
+                    if (t.fuel > cutoff) {
                         t.fuel += fastRegen;//regen bonus
                     } else {
                         t.fuel += slowRegen;
@@ -1678,51 +1721,48 @@ public class GameEngine extends Game {
         unlock();
     }
 
-    public void programmedCtrl(Titan t) {
-        if(t.programmed){
-            boolean canRun = isActionMovementUnlocked(t);
-            if (!effectPool.isRooted(t) && canRun) {
-                double ang = Util.degreesFromCoords(t.marchingOrderX - (t.X + t.height/2),
-                        t.marchingOrderY - (t.Y + t.height/2 ));
-                double cosAng = Math.cos(Math.toRadians(ang));
-                double sinAng = Math.sin(Math.toRadians(ang));
-                double dirX = (cosAng > 0.001) ? 1.0 : ((cosAng < -0.001) ? -1.0 : 0.0);
-                double dx = t.actualSpeed(this, dirX) * cosAng;
-                double dy = t.actualSpeed(this, 0.0) * sinAng;
-                if(dx > 0 && dx > t.marchingOrderX - (t.X + t.width/2)){
-                    dx = t.marchingOrderX - (t.X + t.width/2);
-                }
-                if(dy > 0 && dy > t.marchingOrderY - (t.Y + t.height/2)){
-                    dy = t.marchingOrderY - (t.Y + t.height/2);
-                }
-                if(dx < 0 && dx > (t.X + t.width/2) - t.marchingOrderX){
-                    dx = (t.X + t.width/2) - t.marchingOrderX;
-                }
-                if(dy < 0 && dy > (t.Y + t.height/2) - t.marchingOrderY){
-                    dy = (t.Y + t.height/2) - t.marchingOrderY;
-                }
-                boolean atLocation = 0.1 * t.actualSpeed(this) > (Math.abs(dx) + Math.abs(dy));
-                if (atLocation) {
-                    t.runningFrame = 0;
-                    t.runningFrameCounter = 0;
-                }
-                if (!atLocation && !t.collidesSolid(this, allSolids, 0, dx)) {
-                    t.facing = (int) ang;
-                    t.diagonalRunDir = dx > 0 ? 2 : 1;
-                    t.dirToBall = t.diagonalRunDir;
-                    t.translateBounded(this, dx, 0.0);
-                    t.runningFrameCounter += 1;
-                    if (t.runningFrameCounter == 5) t.runningFrame = 1;
-                    if (t.runningFrameCounter == 10) {
-                        t.runningFrame = 2;
-                        t.runningFrameCounter = 0;
-                    }
-                }
-                if (!atLocation && !t.collidesSolid(this, allSolids, dy, 0)) {
-                    t.translateBounded(this, 0.0, dy);
+    public boolean[] getOrCreateStaticObstacleGrid() {
+        if (staticObstacleGrid == null) {
+            staticObstacleGrid = TitanPathfinder.buildStaticGrid(this);
+            cachedSolidEntityCount = countSolidStaticEntities();
+        }
+        return staticObstacleGrid;
+    }
+
+    public void refreshStaticGridIfNeeded() {
+        int currentCount = countSolidStaticEntities();
+        if (staticObstacleGrid == null || cachedSolidEntityCount != currentCount) {
+            staticObstacleGrid = TitanPathfinder.buildStaticGrid(this);
+            cachedSolidEntityCount = currentCount;
+            // Invalidate all active titan paths when a new solid obstacle appears or disappears
+            for (Titan t : players) {
+                if (t != null && t.programmed) {
+                    t.invalidatePath();
                 }
             }
         }
+    }
+
+    private int countSolidStaticEntities() {
+        int count = 0;
+        if (allSolids != null) {
+            for (Entity e : allSolids) {
+                if (e != null && !(e instanceof Titan) && (e.solid || e instanceof Parapet) && e.health > 0) {
+                    count++;
+                }
+            }
+        } else if (entityPool != null) {
+            for (Entity e : entityPool) {
+                if (e != null && !(e instanceof Titan) && (e.solid || e instanceof Parapet) && e.health > 0) {
+                    count++;
+                }
+            }
+        }
+        return count;
+    }
+
+    public void programmedCtrl(Titan t) {
+        TitanPathfinder.executeProgrammedMovement(this, t);
     }
 
     private void unhideBallIfHidden(Titan t) {
@@ -1789,7 +1829,7 @@ public class GameEngine extends Game {
         }
     }
 
-    protected void updateBallIfPossessed() {
+    public void updateBallIfPossessed() {
         int i = 1;
         for (Titan t : players) {
             updateBallIfPossessed(t, i);
@@ -1797,30 +1837,49 @@ public class GameEngine extends Game {
         }
     }
 
-    protected void updateBallIfPossessed(Titan t, int numSel) {
+    public void updateBallIfPossessed(Titan t, int numSel) {
         if (t.possession == 1 && !effectPool.hasEffect(t, EffectId.DEAD)) {
             int valuePlayerX = (int) t.X;
             int valuePlayerY = (int) t.Y;
-            if (c.GOALIE_DISABLED || (numSel != 1 && numSel != 2)) {
+            boolean goalie = isGoalie(t) || numSel == 1 || numSel == 2;
+            if (c.GOALIE_DISABLED || !goalie) {
                 ball.X = (int) Math.round(valuePlayerX + t.width / 2.0 - ball.centerDist);
                 ball.Y = (int) Math.round(valuePlayerY + t.height / 2.0 - ball.centerDist);
             }
-            if (!c.GOALIE_DISABLED) {
-                if (numSel == 1) {//guardian exceptions
+            if (!c.GOALIE_DISABLED && goalie) {
+                boolean isHome = (t.team == TeamAffiliation.HOME || t == players[0] || (numSel == 1 && t.team != TeamAffiliation.AWAY));
+                if (isHome) { // guardian exceptions: HOME
                     ball.X = (valuePlayerX + 57);
                     ball.Y = (valuePlayerY + 20);
-                    //Don't own-goal this shit.
-                    while(ownGoal()){
-                        ball.X+=1;
-                        ball.Y-=1;
+                    // Don't own-goal this shit.
+                    int safety = 0;
+                    while (ownGoal() && safety++ < 300) {
+                        ball.X += 1;
+                        ball.Y -= 1;
                     }
-                }
-                if (numSel == 2) {
+                    if (ownGoal()) {
+                        for (GoalHoop g : lowGoals) {
+                            if (ballIntersectsEllipse(g)) ball.X = Math.max(ball.X, (int) (g.x + g.w) + 2);
+                        }
+                        for (GoalHoop g : hiGoals) {
+                            if (ballIntersectsEllipse(g)) ball.X = Math.max(ball.X, (int) (g.x + g.w) + 2);
+                        }
+                    }
+                } else { // guardian exceptions: AWAY
                     ball.X = (valuePlayerX - 1);
                     ball.Y = (valuePlayerY + 20);
-                    while(ownGoal()){
-                        ball.X-=1;
-                        ball.Y-=1;
+                    int safety = 0;
+                    while (ownGoal() && safety++ < 300) {
+                        ball.X -= 1;
+                        ball.Y -= 1;
+                    }
+                    if (ownGoal()) {
+                        for (GoalHoop g : lowGoals) {
+                            if (ballIntersectsEllipse(g)) ball.X = Math.min(ball.X, (int) (g.x - ball.width) - 2);
+                        }
+                        for (GoalHoop g : hiGoals) {
+                            if (ballIntersectsEllipse(g)) ball.X = Math.min(ball.X, (int) (g.x - ball.width) - 2);
+                        }
                     }
                 }
             }
@@ -2134,7 +2193,7 @@ public class GameEngine extends Game {
         t.aiStealTargetStartMs = 0;
     }
 
-    protected void updateAiBoostDecision(Titan ai) {
+    public void updateAiBoostDecision(Titan ai) {
         if (ai.fuel <= 0) {
             ai.isBoosting = false;
             return;
@@ -2150,7 +2209,8 @@ public class GameEngine extends Game {
             double currentCenterX = ai.X + ai.width / 2.0;
             double currentCenterY = ai.Y + ai.height / 2.0;
             double dist = Math.hypot(ai.aiTargetX - currentCenterX, ai.aiTargetY - currentCenterY);
-            ai.isBoosting = (dist > 100.0);
+            double boostThreshold = isGoalie(ai) ? 3.0 : 100.0;
+            ai.isBoosting = (dist > boostThreshold);
         } else {
             ai.isBoosting = false;
         }
@@ -2210,15 +2270,24 @@ public class GameEngine extends Game {
             double distToTarget = Math.hypot(dx, dy);
 
             // Safety shutoff: If fuel is depleted or within close proximity of target, stop boosting
-            if (ai.fuel <= 0 || distToTarget <= 30.0) {
+            double arrivalDist = isGoalie(ai) ? 5.0 : 30.0;
+            if (ai.fuel <= 0 || distToTarget <= arrivalDist) {
                 if (ai.aiTargetAction != 10) { // 10 = TRANSITION_BOOST
                     ai.isBoosting = false;
                 }
+            } else if (isGoalie(ai) && ai.possession == 0 && ai.fuel > 0) {
+                ai.isBoosting = true;
             }
 
-            ai.programmed = true;
-            ai.marchingOrderX = (int) ai.aiTargetX;
-            ai.marchingOrderY = (int) ai.aiTargetY;
+            if (isGoalie(ai) && ai.possession == 1) {
+                // Goalie holding ball should hold ground in crease and not march downfield towards pass target
+                ai.programmed = false;
+                ai.invalidatePath();
+            } else {
+                ai.programmed = true;
+                ai.marchingOrderX = (int) ai.aiTargetX;
+                ai.marchingOrderY = (int) ai.aiTargetY;
+            }
 
             // Track horizontal progress when attempting forward horizontal movement
             double forwardDir = (ai.team == TeamAffiliation.HOME) ? 1.0 : -1.0;
@@ -2236,7 +2305,8 @@ public class GameEngine extends Game {
 
             // Pathfind around enemies instead of purely through: mix in diagonal clicks if no horizontal progress happens
             // Priorities when stuck: 2) Find backpass option, 3) Run backwards diagonally to create space
-            if (ai.aiStuckHorizontalTicks >= 3 && ai.possession == 1) {
+            // NOTE: Goalies must NEVER evade backwards into their own net!
+            if (ai.aiStuckHorizontalTicks >= 3 && ai.possession == 1 && !isGoalie(ai)) {
                 TeamAffiliation enemyTeam = (ai.team == TeamAffiliation.HOME) ? TeamAffiliation.AWAY : TeamAffiliation.HOME;
                 Titan passTarget = findBackwardsOrVerticalPassTarget(ai, enemyTeam);
                 if (passTarget != null) {
@@ -2266,9 +2336,10 @@ public class GameEngine extends Game {
         }
     }
 
-    protected void evaluateAiDecision(Titan ai) {
+    public void evaluateAiDecision(Titan ai) {
         if (ai.getType() == TitanType.GOALIE) {
             evaluateGoalieDecision(ai);
+            updateAiBoostDecision(ai);
             return;
         }
 
@@ -3630,7 +3701,7 @@ public class GameEngine extends Game {
         //System.out.println("pow " + xKickPow + " " + yKickPow)
         if (t.actionFrame == 0) {
             ballVisible = true;
-            if (t.getType() != null && !t.getType().equals(TitanType.GOALIE)) {
+            if (!isGoalie(t)) {
                 t.pushMove();
                 centerBall(t);
             }
@@ -3688,8 +3759,10 @@ public class GameEngine extends Game {
         activeLobThrower = t;
         if (t.actionFrame == 0) {
             ballVisible = true;
-            t.pushMove();
-            centerBall(t);
+            if (!isGoalie(t)) {
+                t.pushMove();
+                centerBall(t);
+            }
         }
         t.actionFrame += 1;
         //System.out.println(t.actionState.toString() + t.actionFrame);
@@ -3972,9 +4045,7 @@ public class GameEngine extends Game {
     }
 
     protected void curve(Titan t, int sign) throws Exception {
-        if (t.actionFrame == 0 &&
-                t.getType() != null &&
-                !t.getType().equals(TitanType.GOALIE)) {
+        if (t.actionFrame == 0 && !isGoalie(t)) {
             t.pushMove();
             centerBall(t);
         }
@@ -4223,7 +4294,7 @@ public class GameEngine extends Game {
     private java.util.Map<String, Long> goalieLastAttackTime = new java.util.HashMap<>();
     private int minionWaveCount = 0;
 
-    private double[] laneCenterYs() {
+    double[] laneCenterYs() {
         int goalLowH = c.getI("goal.low.height");
         int goalHiH  = c.getI("goal.hi.height");
         double topCenter = c.getI("goal.low.y")  + goalLowH / 2.0;
@@ -4666,7 +4737,7 @@ protected void tickLaneMinions() {
     }
 
         
-    private void handleGoalieAttackClick(String email, double clickX, double clickY,
+    void handleGoalieAttackClick(String email, double clickX, double clickY,
                                          TeamAffiliation goalieTeam, Titan goalie) {
 
         // Cooldown check

@@ -117,8 +117,8 @@ public class HeadlessGameManager implements ApplicationRunner {
         // 4v4 match (playerIndex = 1), Goalies on (goalieIndex = 0), Best of 1 (bestOfIndex = 1),
         // First to 10 points (playToIndex = 10), Win by 2 (winByIndex = 2), Hard win off (hardWinIndex = 9999),
         // Sudden death 10 min (suddenDeathIndex = 10), Draw at 20 min (tieIndex = 20),
-        // Hard AI reaction speed 200-700ms (aiDifficultyIndex = 2), Hybrid slot reservation (isHybrid = 1)
-        GameOptions op = new GameOptions("/1/0/1/10/2/9999/10/20/2/1");
+        // Hard AI reaction speed 200-700ms (aiDifficultyIndex = 3), Hybrid slot reservation (isHybrid = 1)
+        GameOptions op = new GameOptions("/1/0/1/10/2/9999/10/20/3/1");
 
         // 4v4 slots: 1 (Home Goalie), 2 (Away Goalie), 3 (Home Field 1), 4 (Home Field 2), 5 (Home Field 3),
         //            11 (Away Field 1), 12 (Away Field 2), 13 (Away Field 3)

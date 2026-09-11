@@ -244,8 +244,9 @@ public class Masteries   {
         t.painReduction *= (1.0 + (this.painReduction - 1) * (c.getD("masteries.painReduction.mult") - 1.0));
 
         double boostMult = 1.0 + (this.boost) * (c.getD("masteries.boost.mult") - 1.0);
-        t.boostMaxFactor *= boostMult;
+        t.boostDrainFactor /= boostMult;
         t.boostRegenFactor *= boostMult;
+        t.boostMaxFactor = 1.0;
 
         t.health = t.maxHealth;
         System.out.println("speed, throw, range, steal, health, damage, cooldown, duration, eCast, rCast, sCast, boost");
@@ -259,7 +260,8 @@ public class Masteries   {
         t.basePainReduction = t.painReduction;
         t.baseStealRad = t.stealRad;
         t.baseDamageFactor = t.damageFactor;
-        t.baseBoostMaxFactor = t.boostMaxFactor;
+        t.baseBoostDrainFactor = t.boostDrainFactor;
+        t.baseBoostMaxFactor = 1.0;
         t.baseBoostRegenFactor = t.boostRegenFactor;
         t.typeAndMasteriesLocked = true;
     }

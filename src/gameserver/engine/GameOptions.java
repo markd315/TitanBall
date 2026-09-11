@@ -41,7 +41,7 @@ public class GameOptions   {
         this.hardWinIndex = 9999;     // Hard win off
         this.suddenDeathIndex = 10;   // Sudden death at 10:00
         this.tieIndex = 12;           // Draw at 12:00
-        this.aiDifficultyIndex = 2;   // Hard AI
+        this.aiDifficultyIndex = 3;   // Hard AI
         this.isHybrid = false;
     }
 
@@ -53,6 +53,21 @@ public class GameOptions   {
         return isHybrid;
     }
 
+    public boolean isAiRated() {
+        // Beginner (0) and Perfect (5) are unrated; Easy (1), Medium (2), Hard (3), Expert (4) are rated
+        return aiDifficultyIndex >= 1 && aiDifficultyIndex <= 4;
+    }
+
+    public double getAiRating() {
+        switch (aiDifficultyIndex) {
+            case 1: return 900.0;  // Easy: 900 ELO
+            case 2: return 1000.0; // Medium: 1000 ELO
+            case 3: return 1100.0; // Hard: 1100 ELO
+            case 4: return 1200.0; // Expert: 1200 ELO
+            default: return 1000.0;
+        }
+    }
+
     public int getAiReactionTimeMinMs() {
         return getAiReactionTimeMinMs(false);
     }
@@ -60,10 +75,13 @@ public class GameOptions   {
     public int getAiReactionTimeMinMs(boolean isGoalie) {
         int base;
         switch (aiDifficultyIndex) {
-            case 0: base = 1200; break; // Easy: 1200-1700ms
-            case 1: base = 500;  break; // Medium: 500-1200ms
-            case 2: base = 200;  break; // Hard: 200-700ms
-            default: base = 1200; break;
+            case 0: base = 2000; break; // Beginner: 2000-5000ms
+            case 1: base = 1200; break; // Easy: 1200-1700ms
+            case 2: base = 500;  break; // Medium: 500-1200ms
+            case 3: base = 200;  break; // Hard: 200-700ms
+            case 4: base = 0;    break; // Expert: 0-200ms
+            case 5: base = 0;    break; // Perfect: 0ms every tick
+            default: base = 500; break;
         }
         return isGoalie ? (int) Math.round(base * 0.4) : base;
     }
@@ -75,10 +93,13 @@ public class GameOptions   {
     public int getAiReactionTimeMaxMs(boolean isGoalie) {
         int base;
         switch (aiDifficultyIndex) {
-            case 0: base = 1700; break; // Easy: 1200-1700ms
-            case 1: base = 1200; break; // Medium: 500-1200ms
-            case 2: base = 700;  break; // Hard: 200-700ms
-            default: base = 1700; break;
+            case 0: base = 5000; break; // Beginner: 2000-5000ms
+            case 1: base = 1700; break; // Easy: 1200-1700ms
+            case 2: base = 1200; break; // Medium: 500-1200ms
+            case 3: base = 700;  break; // Hard: 200-700ms
+            case 4: base = 200;  break; // Expert: 0-200ms
+            case 5: base = 0;    break; // Perfect: 0ms every tick
+            default: base = 1200; break;
         }
         return isGoalie ? (int) Math.round(base * 0.4) : base;
     }

@@ -13,7 +13,7 @@ const MASTERY_KEYS = [
   { key: 'abilityRange', name: 'Ability Range', desc: 'Increases ability casting range (+4% per point)' },
   { key: 'abilityLag', name: 'Cast Speed', desc: 'Reduces ability casting lag (+20% cast speed per point)' },
   { key: 'painReduction', name: 'Pain Reduction', desc: 'Reduces damage taken from enemy goal zones (+25% per point)' },
-  { key: 'boost', name: 'Boost', desc: 'Increases boost regen and capacity (+35% per point)' }
+  { key: 'boost', name: 'Boost', desc: 'Increases boost regen and reduces drain rate (+35% efficiency per point)' }
 ];
 
 let currentEditingTitan = 'WARRIOR';
@@ -162,35 +162,75 @@ export function loadMasteriesForTitan(titan) {
   return activeAllocations;
 }
 
+export function openMasteriesModal() {
+  const modal = document.getElementById('masteries-modal');
+  const modeOverlay = document.getElementById('mode-overlay');
+  if (!modal) return;
+
+  currentEditingTitan = getSelectedTitan();
+  const titanData = getTitanMasteryData(currentEditingTitan);
+  editingPageIndex = titanData.activePageIndex;
+  editingPages = JSON.parse(JSON.stringify(titanData.pages));
+  localMasteries = { ...editingPages[editingPageIndex].allocations };
+
+  renderFullMasteriesUI();
+  modal.style.display = 'flex';
+  if (modeOverlay) modeOverlay.style.pointerEvents = 'none';
+
+  const backdrop = document.getElementById('modal-backdrop');
+  if (backdrop) {
+    backdrop.classList.add('active');
+    backdrop.style.display = 'block';
+  }
+}
+
+export function closeMasteriesModal() {
+  const modal = document.getElementById('masteries-modal');
+  const modeOverlay = document.getElementById('mode-overlay');
+  if (modal) modal.style.display = 'none';
+  if (modeOverlay) modeOverlay.style.pointerEvents = 'auto';
+
+  const backdrop = document.getElementById('modal-backdrop');
+  if (backdrop) {
+    const otherModalsOpen = ['stats-modal', 'controls-modal', 'tournament-modal'].some(id => {
+      const el = document.getElementById(id);
+      return el && el.style.display !== 'none' && el.style.display !== '';
+    });
+    if (!otherModalsOpen) {
+      backdrop.classList.remove('active');
+      backdrop.style.display = 'none';
+    }
+  }
+}
+
 export function initMasteries() {
   // Initially load masteries for selected titan
   loadMasteriesForTitan(getSelectedTitan());
 
   const modalBtn = document.getElementById('masteries-modal-btn');
   const modal = document.getElementById('masteries-modal');
-  const modeOverlay = document.getElementById('mode-overlay');
 
   if (modalBtn && modal) {
     modalBtn.addEventListener('click', () => {
-      currentEditingTitan = getSelectedTitan();
-      const titanData = getTitanMasteryData(currentEditingTitan);
-      editingPageIndex = titanData.activePageIndex;
-      editingPages = JSON.parse(JSON.stringify(titanData.pages));
-      localMasteries = { ...editingPages[editingPageIndex].allocations };
-
-      renderFullMasteriesUI();
-      modal.style.display = 'flex';
-      if (modeOverlay) modeOverlay.style.pointerEvents = 'none';
+      openMasteriesModal();
     });
   }
 
   const cancelBtn = document.getElementById('masteries-cancel-btn');
   if (cancelBtn && modal) {
     cancelBtn.addEventListener('click', () => {
-      modal.style.display = 'none';
-      if (modeOverlay) modeOverlay.style.pointerEvents = 'auto';
+      closeMasteriesModal();
     });
   }
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      const m = document.getElementById('masteries-modal');
+      if (m && m.style.display !== 'none') {
+        closeMasteriesModal();
+      }
+    }
+  });
 
   const nameInput = document.getElementById('mastery-page-name-input');
   if (nameInput) {
@@ -335,8 +375,7 @@ export function initMasteries() {
       // Dispatch event to live-update stats
       window.dispatchEvent(new CustomEvent('masteriesUpdated', { detail: localMasteries }));
 
-      modal.style.display = 'none';
-      if (modeOverlay) modeOverlay.style.pointerEvents = 'auto';
+      closeMasteriesModal();
     });
   }
 }

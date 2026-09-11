@@ -335,8 +335,14 @@ public class ServerApplication {
         }
         if (home.isEmpty() && away.isEmpty()) return;
 
-        int aiTier = (state.options != null) ? state.options.aiDifficultyIndex : 1;
-        double botRatingVal = (aiTier == 0) ? 900.0 : (aiTier == 2 ? 1100.0 : 1000.0);
+        boolean hasAi = (state.options != null && state.options.isHybrid())
+                || (state.options != null && state.options.isCoopVsAi())
+                || home.isEmpty() || away.isEmpty();
+        if (hasAi && state.options != null && !state.options.isAiRated()) {
+            return;
+        }
+
+        double botRatingVal = (state.options != null) ? state.options.getAiRating() : 1000.0;
 
         Rating<String> homeRating = home.isEmpty()
                 ? new Rating<>("home", botRatingVal, 10)
@@ -379,8 +385,14 @@ public class ServerApplication {
         }
         if (home.isEmpty() && away.isEmpty()) return;
 
-        int aiTier = (state.options != null) ? state.options.aiDifficultyIndex : 1;
-        double botRatingVal = (aiTier == 0) ? 900.0 : (aiTier == 2 ? 1100.0 : 1000.0);
+        boolean hasAi = (state.options != null && state.options.isHybrid())
+                || (state.options != null && state.options.isCoopVsAi())
+                || home.isEmpty() || away.isEmpty();
+        if (hasAi && state.options != null && !state.options.isAiRated()) {
+            return;
+        }
+
+        double botRatingVal = (state.options != null) ? state.options.getAiRating() : 1000.0;
 
         Rating<String> homeRating = home.isEmpty()
                 ? new Rating<>("home", botRatingVal, 10)

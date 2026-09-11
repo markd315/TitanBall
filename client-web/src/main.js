@@ -1,10 +1,10 @@
 import { gameState, clientUI } from './state.js';
 import { initCanvas, clearScreen, drawImageCam } from './render/canvas.js';
-import { initMasteries, loadMasteriesForTitan, validateMasteries } from './screens/masteries.js';
+import { initMasteries, loadMasteriesForTitan, validateMasteries, closeMasteriesModal } from './screens/masteries.js';
 import { initBuildOrderPlanner, updatePlanBuildButtonVisibility } from './screens/buildOrderPlanner.js';
-import { initControlsModal } from './screens/controls.js';
-import { initTournamentModal } from './screens/tournament.js';
-import { initStatsScreen, refreshUserStats, updateStatsBanner } from './screens/stats.js';
+import { initControlsModal, closeControlsModal } from './screens/controls.js';
+import { initTournamentModal, closeTournamentModal } from './screens/tournament.js';
+import { initStatsScreen, refreshUserStats, updateStatsBanner, closeAdvancedStatsModal } from './screens/stats.js';
 import { drawCredits } from './screens/credits.js';
 import { initKeyboard, setControlPreset } from './input/keyboard.js';
 import { initMouse } from './input/mouse.js';
@@ -519,7 +519,7 @@ function initUIListeners() {
         let code = `/${playerIndex}/0/1/10/2/9999/10/20`;
         if (isCoopAi) {
           const aiDiffSelect = document.getElementById('ai-difficulty-select');
-          const aiDiff = aiDiffSelect ? aiDiffSelect.value : '0';
+          const aiDiff = aiDiffSelect ? aiDiffSelect.value : '2';
           code += `/${aiDiff}`;
         }
         const partnersCsv = partners.join(',');
@@ -532,7 +532,7 @@ function initUIListeners() {
         const fillAiCheckbox = document.getElementById('queue-fill-ai-checkbox');
         const queueAiDiffSelect = document.getElementById('queue-ai-difficulty-select');
         const fillAi = (!isCoopAi && fillAiCheckbox) ? fillAiCheckbox.checked : false;
-        const aiDiff = queueAiDiffSelect ? parseInt(queueAiDiffSelect.value, 10) : 1;
+        const aiDiff = queueAiDiffSelect ? parseInt(queueAiDiffSelect.value, 10) : 2;
         if (lobbyStatus && !isCoopAi && fillAi) {
           lobbyStatus.textContent = 'SEARCHING (FILL WITH AI ACTIVE)...';
         }
@@ -595,7 +595,7 @@ function initUIListeners() {
         const fillAiCheckbox = document.getElementById('queue-fill-ai-checkbox');
         const queueAiDiffSelect = document.getElementById('queue-ai-difficulty-select');
         const fillAi = fillAiCheckbox ? fillAiCheckbox.checked : false;
-        const aiDiff = queueAiDiffSelect ? parseInt(queueAiDiffSelect.value, 10) : 1;
+        const aiDiff = queueAiDiffSelect ? parseInt(queueAiDiffSelect.value, 10) : 2;
         if (lobbyStatus && fillAi) {
           lobbyStatus.textContent = 'SEARCHING (FILL WITH AI ACTIVE)...';
         }
@@ -690,7 +690,7 @@ function initUIListeners() {
     if (isCoopAi) return;
 
     const fillAi = fillAiCheckbox ? fillAiCheckbox.checked : false;
-    const aiDiff = queueAiDiffSelect ? parseInt(queueAiDiffSelect.value, 10) : 1;
+    const aiDiff = queueAiDiffSelect ? parseInt(queueAiDiffSelect.value, 10) : 2;
     const lobbyStatus = document.getElementById('queue-status-label') || document.querySelector('#lobby-overlay .stat-value[style*="pulse"]');
     if (lobbyStatus) {
       lobbyStatus.textContent = fillAi ? 'SEARCHING (FILL WITH AI ACTIVE)...' : 'FINDING PLAYERS...';
@@ -832,9 +832,9 @@ function initUIListeners() {
 
           return `
             <div>
-              <div style="display:flex;justify-content:space-between;color:#94c2b5;margin-bottom:2px;">
+              <div style="display:flex;justify-content:space-between;color:#cbd5e1;margin-bottom:2px;font-weight:600;">
                 <span>${label}</span>
-                <span style="color:#fff;">${baseStr}${bonusStr}${unit} <span style="color:#8abcb0;font-size:10px;">[${statObj.basePct}%ile]</span></span>
+                <span style="color:#fff;">${baseStr}${bonusStr}${unit} <span style="color:#cbd5e1;font-size:10px;font-weight:700;">[${statObj.basePct}%ile]</span></span>
               </div>
               <div style="background:rgba(0,0,0,0.6);height:7px;border-radius:3px;overflow:hidden;border:1px solid rgba(255,255,255,0.15);display:flex;">
                 <div style="background:${statObj.baseColor};height:100%;width:${statObj.basePct}%;"></div>
@@ -854,8 +854,8 @@ function initUIListeners() {
           
           <div style="border-top:1px solid rgba(255,215,0,0.2);padding-top:6px;margin-top:6px;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-              <span style="font-size:11px;font-weight:bold;color:#ffd700;">PERCENTILE STATS</span>
-              <span style="font-size:10px;color:#8abcb0;">🔴 &lt;33% &nbsp;🟡 33-66% &nbsp;🟢 ≥66% &nbsp;|&nbsp; <span style="color:#60a5fa;">🔵 Mastery</span></span>
+              <span style="font-size:11px;font-weight:bold;color:#ffd700;letter-spacing:0.8px;">PERCENTILE STATS</span>
+              <span style="font-size:10px;color:#e2e8f0;font-weight:500;">🔴 &lt;33% &nbsp;🟡 33-66% &nbsp;🟢 ≥66% &nbsp;|&nbsp; <span style="color:#60a5fa;font-weight:700;">🔵 Mastery</span></span>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;font-size:11px;">
               ${_renderBarHtml('Health', hp, ' HP', 0)}
@@ -964,6 +964,27 @@ function initUIListeners() {
       await setControlPreset(e.target.value);
     });
   }
+
+  // Global modal backdrop click dismiss
+  const modalBackdrop = document.getElementById('modal-backdrop');
+  if (modalBackdrop) {
+    modalBackdrop.addEventListener('click', () => {
+      closeAdvancedStatsModal();
+      closeControlsModal();
+      closeTournamentModal();
+      closeMasteriesModal();
+    });
+  }
+
+  // Global Escape key dismiss for modals
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeAdvancedStatsModal();
+      closeControlsModal();
+      closeTournamentModal();
+      closeMasteriesModal();
+    }
+  });
 }
 
 let lastNarrationPhase = -1;

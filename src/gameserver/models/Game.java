@@ -56,7 +56,7 @@ public class Game   {
     public Titan underControl = null; //Only set by the gameserver right before pushing an update
     public boolean ended = false;
     public StatEngine stats = new StatEngine();
-    protected final int FIELD_LENGTH = c.getI("pos.field");
+    public final int FIELD_LENGTH = c.getI("pos.field");
     protected final int TOP_WING_HOME = c.getI("pos.top.y");
     protected final int MID_WING_HOME = c.getI("pos.mid.y");
     protected final int BOT_WING_HOME = c.getI("pos.bot.y");
