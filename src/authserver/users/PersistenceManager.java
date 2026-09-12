@@ -5,8 +5,10 @@ import authserver.models.ClassStat;
 import authserver.models.MasteriesStat;
 import authserver.models.UpgradeClassStat;
 import authserver.models.User;
+import authserver.models.UserClassStat;
 import authserver.users.builds.BuildOrderStatServiceImpl;
 import authserver.users.classes.ClassServiceImpl;
+import authserver.users.classes.UserClassStatServiceImpl;
 import authserver.users.masteries.MasteriesStatServiceImpl;
 import authserver.users.upgrades.UpgradeClassStatServiceImpl;
 import authserver.users.identities.CustomUserDetailsService;
@@ -24,6 +26,9 @@ public class PersistenceManager {
 
     @Autowired
     public ClassServiceImpl classService;
+
+    @Autowired
+    public UserClassStatServiceImpl userClassStatService;
 
     @Autowired
     public MasteriesStatServiceImpl masteriesService;
@@ -45,15 +50,28 @@ public class PersistenceManager {
         }
         ClassStat classStat = classService.findStatsTrackerByRole(className);
         ObjectNode toAdd = stats.statsOf(email);
+        UserClassStat userClassStat = null;
+        if (userClassStatService != null) {
+            userClassStat = userClassStatService.findByUserAndRole(email, className);
+            if (userClassStat == null) {
+                userClassStat = new UserClassStat(email, className);
+                if (user.getUsername() != null) {
+                    userClassStat.setUsername(user.getUsername());
+                }
+            }
+        }
         if(wasVictorious == 1){
             user.setWins(user.getWins() + 1);
             if (classStat != null) classStat.setWins(classStat.getWins() + 1);
+            if (userClassStat != null) userClassStat.setWins(userClassStat.getWins() + 1);
         }else if(wasVictorious == -1){
             user.setLosses(user.getLosses() + 1);
             if (classStat != null) classStat.setLosses(classStat.getLosses() + 1);
+            if (userClassStat != null) userClassStat.setLosses(userClassStat.getLosses() + 1);
         }else{ //tie
             user.setTies(user.getTies() + 1);
             if (classStat != null) classStat.setTies(classStat.getTies() + 1);
+            if (userClassStat != null) userClassStat.setTies(userClassStat.getTies() + 1);
         }
         if (newRating > 0.0) {
             user.setRating(newRating);
@@ -64,95 +82,130 @@ public class PersistenceManager {
         if(toAdd.has(StatEngine.StatEnum.GOALS.toString())){
             user.setGoals((user.getGoals() + toAdd.get(StatEngine.StatEnum.GOALS.toString()).asInt()));
             if (classStat != null) classStat.setGoals((classStat.getGoals() +  toAdd.get(StatEngine.StatEnum.GOALS.toString()).asInt()));
+            if (userClassStat != null) userClassStat.setGoals(userClassStat.getGoals() + toAdd.get(StatEngine.StatEnum.GOALS.toString()).asInt());
         }
         if(toAdd.has(StatEngine.StatEnum.SIDEGOALS.toString())){
             user.setSidegoals((user.getSidegoals() + toAdd.get(StatEngine.StatEnum.SIDEGOALS.toString()).asInt()));
             if (classStat != null) classStat.setSidegoals((classStat.getSidegoals() + toAdd.get(StatEngine.StatEnum.SIDEGOALS.toString()).asInt()));
+            if (userClassStat != null) userClassStat.setSidegoals(userClassStat.getSidegoals() + toAdd.get(StatEngine.StatEnum.SIDEGOALS.toString()).asInt());
         }
         if(toAdd.has(StatEngine.StatEnum.POINTS.toString())){
             user.setPoints(user.getPoints() +  toAdd.get(StatEngine.StatEnum.POINTS.toString()).asDouble());
             if (classStat != null) classStat.setPoints(classStat.getPoints() +  toAdd.get(StatEngine.StatEnum.POINTS.toString()).asDouble());
+            if (userClassStat != null) userClassStat.setPoints(userClassStat.getPoints() + toAdd.get(StatEngine.StatEnum.POINTS.toString()).asDouble());
         }
         if(toAdd.has(StatEngine.StatEnum.STEALS.toString())){
             user.setSteals((user.getSteals() +   toAdd.get(StatEngine.StatEnum.STEALS.toString()).asInt()));
             if (classStat != null) classStat.setSteals((classStat.getSteals() + toAdd.get(StatEngine.StatEnum.STEALS.toString()).asInt()));
+            if (userClassStat != null) userClassStat.setSteals(userClassStat.getSteals() + toAdd.get(StatEngine.StatEnum.STEALS.toString()).asInt());
         }
         if(toAdd.has(StatEngine.StatEnum.BLOCKS.toString())){
             user.setBlocks((user.getBlocks() +  toAdd.get(StatEngine.StatEnum.BLOCKS.toString()).asInt()));
             if (classStat != null) classStat.setBlocks((classStat.getBlocks() +  toAdd.get(StatEngine.StatEnum.BLOCKS.toString()).asInt()));
+            if (userClassStat != null) userClassStat.setBlocks(userClassStat.getBlocks() + toAdd.get(StatEngine.StatEnum.BLOCKS.toString()).asInt());
         }
         if(toAdd.has(StatEngine.StatEnum.PASSES.toString())){
             user.setPasses((user.getPasses() +  toAdd.get(StatEngine.StatEnum.PASSES.toString()).asInt()));
             if (classStat != null) classStat.setPasses((classStat.getPasses() +  toAdd.get(StatEngine.StatEnum.PASSES.toString()).asInt()));
+            if (userClassStat != null) userClassStat.setPasses(userClassStat.getPasses() + toAdd.get(StatEngine.StatEnum.PASSES.toString()).asInt());
         }
         if(toAdd.has(StatEngine.StatEnum.KILLS.toString())){
             user.setKills((user.getKills() +  toAdd.get(StatEngine.StatEnum.KILLS.toString()).asInt()));
             if (classStat != null) classStat.setKills((classStat.getKills() +  toAdd.get(StatEngine.StatEnum.KILLS.toString()).asInt()));
+            if (userClassStat != null) userClassStat.setKills(userClassStat.getKills() + toAdd.get(StatEngine.StatEnum.KILLS.toString()).asInt());
         }
         if(toAdd.has(StatEngine.StatEnum.DEATHS.toString())){
             user.setDeaths((user.getDeaths() + toAdd.get(StatEngine.StatEnum.DEATHS.toString()).asInt()));
             if (classStat != null) classStat.setDeaths((classStat.getDeaths() + toAdd.get(StatEngine.StatEnum.DEATHS.toString()).asInt()));
+            if (userClassStat != null) userClassStat.setDeaths(userClassStat.getDeaths() + toAdd.get(StatEngine.StatEnum.DEATHS.toString()).asInt());
         }
         if(toAdd.has(StatEngine.StatEnum.TURNOVERS.toString())){
             user.setTurnovers((user.getTurnovers() +  toAdd.get(StatEngine.StatEnum.TURNOVERS.toString()).asInt()));
             if (classStat != null) classStat.setTurnovers((classStat.getTurnovers() +  toAdd.get(StatEngine.StatEnum.TURNOVERS.toString()).asInt()));
+            if (userClassStat != null) userClassStat.setTurnovers(userClassStat.getTurnovers() + toAdd.get(StatEngine.StatEnum.TURNOVERS.toString()).asInt());
         }
         if(toAdd.has(StatEngine.StatEnum.KILLASSISTS.toString())){
             user.setKillassists((user.getKillassists() +  toAdd.get(StatEngine.StatEnum.KILLASSISTS.toString()).asInt()));
             if (classStat != null) classStat.setKillassists((classStat.getKillassists() +  toAdd.get(StatEngine.StatEnum.KILLASSISTS.toString()).asInt()));
+            if (userClassStat != null) userClassStat.setKillassists(userClassStat.getKillassists() + toAdd.get(StatEngine.StatEnum.KILLASSISTS.toString()).asInt());
         }
         if(toAdd.has(StatEngine.StatEnum.GOALASSISTS.toString())){
             user.setGoalassists(user.getGoalassists() +  toAdd.get(StatEngine.StatEnum.GOALASSISTS.toString()).asInt());
             if (classStat != null) classStat.setGoalassists(classStat.getGoalassists() +  toAdd.get(StatEngine.StatEnum.GOALASSISTS.toString()).asInt());
+            if (userClassStat != null) userClassStat.setGoalassists(userClassStat.getGoalassists() + toAdd.get(StatEngine.StatEnum.GOALASSISTS.toString()).asInt());
         }
         if(toAdd.has(StatEngine.StatEnum.REBOUND.toString())){
             user.setRebounds(user.getRebounds() +  toAdd.get(StatEngine.StatEnum.REBOUND.toString()).asInt());
             if (classStat != null) classStat.setRebounds(classStat.getRebounds() + toAdd.get(StatEngine.StatEnum.REBOUND.toString()).asInt());
+            if (userClassStat != null) userClassStat.setRebounds(userClassStat.getRebounds() + toAdd.get(StatEngine.StatEnum.REBOUND.toString()).asInt());
         }
         if(toAdd.has(StatEngine.StatEnum.SAVES.toString())){
             user.setSaves(user.getSaves() + toAdd.get(StatEngine.StatEnum.SAVES.toString()).asInt());
+            if (userClassStat != null) userClassStat.setSaves(userClassStat.getSaves() + toAdd.get(StatEngine.StatEnum.SAVES.toString()).asInt());
         }
         if(toAdd.has(StatEngine.StatEnum.SIDEGOAL_SAVES.toString())){
             user.setSidegoalsaves(user.getSidegoalsaves() + toAdd.get(StatEngine.StatEnum.SIDEGOAL_SAVES.toString()).asInt());
+            if (userClassStat != null) userClassStat.setSidegoalsaves(userClassStat.getSidegoalsaves() + toAdd.get(StatEngine.StatEnum.SIDEGOAL_SAVES.toString()).asInt());
         }
         if(toAdd.has(StatEngine.StatEnum.CENTERGOAL_SAVES.toString())){
             user.setCentergoalsaves(user.getCentergoalsaves() + toAdd.get(StatEngine.StatEnum.CENTERGOAL_SAVES.toString()).asInt());
+            if (userClassStat != null) userClassStat.setCentergoalsaves(userClassStat.getCentergoalsaves() + toAdd.get(StatEngine.StatEnum.CENTERGOAL_SAVES.toString()).asInt());
         }
         if(toAdd.has(StatEngine.StatEnum.SIDEGOALS_CONCEDED.toString())){
             user.setSidegoalsconceded(user.getSidegoalsconceded() + toAdd.get(StatEngine.StatEnum.SIDEGOALS_CONCEDED.toString()).asInt());
+            if (userClassStat != null) userClassStat.setSidegoalsconceded(userClassStat.getSidegoalsconceded() + toAdd.get(StatEngine.StatEnum.SIDEGOALS_CONCEDED.toString()).asInt());
         }
         if(toAdd.has(StatEngine.StatEnum.GOALS_CONCEDED.toString())){
             user.setGoalsconceded(user.getGoalsconceded() + toAdd.get(StatEngine.StatEnum.GOALS_CONCEDED.toString()).asInt());
+            if (userClassStat != null) userClassStat.setGoalsconceded(userClassStat.getGoalsconceded() + toAdd.get(StatEngine.StatEnum.GOALS_CONCEDED.toString()).asInt());
         }
         if(toAdd.has(StatEngine.StatEnum.UPGRADESGOLD.toString())){
             user.setUpgradesgold(user.getUpgradesgold() + toAdd.get(StatEngine.StatEnum.UPGRADESGOLD.toString()).asInt());
+            if (userClassStat != null) userClassStat.setUpgradesgold(userClassStat.getUpgradesgold() + toAdd.get(StatEngine.StatEnum.UPGRADESGOLD.toString()).asInt());
         }
         if(toAdd.has(StatEngine.StatEnum.CONSUMABLESGOLD.toString())){
             user.setConsumablesgold(user.getConsumablesgold() + toAdd.get(StatEngine.StatEnum.CONSUMABLESGOLD.toString()).asInt());
+            if (userClassStat != null) userClassStat.setConsumablesgold(userClassStat.getConsumablesgold() + toAdd.get(StatEngine.StatEnum.CONSUMABLESGOLD.toString()).asInt());
         }
         if(toAdd.has(StatEngine.StatEnum.MANASPENT.toString())){
             user.setManaspent(user.getManaspent() + toAdd.get(StatEngine.StatEnum.MANASPENT.toString()).asInt());
+            if (userClassStat != null) userClassStat.setManaspent(userClassStat.getManaspent() + toAdd.get(StatEngine.StatEnum.MANASPENT.toString()).asInt());
         }
+        // Goalie action stats: record directly into UserClassStat for GOALIE
         if(toAdd.has(StatEngine.StatEnum.BLOCKS_G.toString())){
-            user.setBlocks_g(user.getBlocks_g() + toAdd.get(StatEngine.StatEnum.BLOCKS_G.toString()).asInt());
+            int val = toAdd.get(StatEngine.StatEnum.BLOCKS_G.toString()).asInt();
+            user.setBlocks_g(user.getBlocks_g() + val);
+            if (userClassStat != null) userClassStat.setBlocks(userClassStat.getBlocks() + val);
         }
         if(toAdd.has(StatEngine.StatEnum.PASSES_G.toString())){
-            user.setPasses_g(user.getPasses_g() + toAdd.get(StatEngine.StatEnum.PASSES_G.toString()).asInt());
+            int val = toAdd.get(StatEngine.StatEnum.PASSES_G.toString()).asInt();
+            user.setPasses_g(user.getPasses_g() + val);
+            if (userClassStat != null) userClassStat.setPasses(userClassStat.getPasses() + val);
         }
         if(toAdd.has(StatEngine.StatEnum.TURNOVERS_G.toString())){
-            user.setTurnovers_g(user.getTurnovers_g() + toAdd.get(StatEngine.StatEnum.TURNOVERS_G.toString()).asInt());
+            int val = toAdd.get(StatEngine.StatEnum.TURNOVERS_G.toString()).asInt();
+            user.setTurnovers_g(user.getTurnovers_g() + val);
+            if (userClassStat != null) userClassStat.setTurnovers(userClassStat.getTurnovers() + val);
         }
         if(toAdd.has(StatEngine.StatEnum.REBOUND_G.toString())){
-            user.setRebounds_g(user.getRebounds_g() + toAdd.get(StatEngine.StatEnum.REBOUND_G.toString()).asInt());
+            int val = toAdd.get(StatEngine.StatEnum.REBOUND_G.toString()).asInt();
+            user.setRebounds_g(user.getRebounds_g() + val);
+            if (userClassStat != null) userClassStat.setRebounds(userClassStat.getRebounds() + val);
         }
         if(toAdd.has(StatEngine.StatEnum.STEALS_G.toString())){
-            user.setSteals_g(user.getSteals_g() + toAdd.get(StatEngine.StatEnum.STEALS_G.toString()).asInt());
+            int val = toAdd.get(StatEngine.StatEnum.STEALS_G.toString()).asInt();
+            user.setSteals_g(user.getSteals_g() + val);
+            if (userClassStat != null) userClassStat.setSteals(userClassStat.getSteals() + val);
         }
         if(toAdd.has(StatEngine.StatEnum.KILLS_G.toString())){
-            user.setKills_g(user.getKills_g() + toAdd.get(StatEngine.StatEnum.KILLS_G.toString()).asInt());
+            int val = toAdd.get(StatEngine.StatEnum.KILLS_G.toString()).asInt();
+            user.setKills_g(user.getKills_g() + val);
+            if (userClassStat != null) userClassStat.setKills(userClassStat.getKills() + val);
         }
         if(toAdd.has(StatEngine.StatEnum.DEATHS_G.toString())){
-            user.setDeaths_g(user.getDeaths_g() + toAdd.get(StatEngine.StatEnum.DEATHS_G.toString()).asInt());
+            int val = toAdd.get(StatEngine.StatEnum.DEATHS_G.toString()).asInt();
+            user.setDeaths_g(user.getDeaths_g() + val);
+            if (userClassStat != null) userClassStat.setDeaths(userClassStat.getDeaths() + val);
         }
         if (classStat != null) {
             if (toAdd.has(StatEngine.StatEnum.SAVES.toString())) {
@@ -188,6 +241,7 @@ public class PersistenceManager {
         }
         userService.saveUser(user);
         if (classStat != null) classService.saveClass(classStat);
+        if (userClassStat != null && userClassStatService != null) userClassStatService.save(userClassStat);
     }
     public void postgameStats1v1(String email, StatEngine stats, String className, int wasVictorious, double newRating) throws Exception {
         User user = userService.findUserByEmail(email);
@@ -200,15 +254,28 @@ public class PersistenceManager {
         }
         ClassStat classStat = classService.findStatsTrackerByRole(className);
         JsonNode toAdd = stats.statsOf(email);
+        UserClassStat userClassStat = null;
+        if (userClassStatService != null) {
+            userClassStat = userClassStatService.findByUserAndRole(email, className);
+            if (userClassStat == null) {
+                userClassStat = new UserClassStat(email, className);
+                if (user.getUsername() != null) {
+                    userClassStat.setUsername(user.getUsername());
+                }
+            }
+        }
         if(wasVictorious == 1){
             user.setWins_1v1(user.getWins_1v1() + 1);
             if (classStat != null) classStat.setWins(classStat.getWins() + 1);
+            if (userClassStat != null) userClassStat.setWins_1v1(userClassStat.getWins_1v1() + 1);
         }else if(wasVictorious == -1){
             user.setLosses_1v1(user.getLosses_1v1() + 1);
             if (classStat != null) classStat.setLosses(classStat.getLosses() + 1);
+            if (userClassStat != null) userClassStat.setLosses_1v1(userClassStat.getLosses_1v1() + 1);
         }else{ //tie
             user.setTies_1v1(user.getTies_1v1() + 1);
             if (classStat != null) classStat.setTies(classStat.getTies() + 1);
+            if (userClassStat != null) userClassStat.setTies_1v1(userClassStat.getTies_1v1() + 1);
         }
         if (newRating > 0.0) {
             user.setRating_1v1(newRating);
@@ -216,50 +283,62 @@ public class PersistenceManager {
         if(toAdd.has(StatEngine.StatEnum.GOALS.toString())){
             user.setGoals_1v1(user.getGoals_1v1() +  toAdd.get(StatEngine.StatEnum.GOALS.toString()).asInt());
             if (classStat != null) classStat.setGoals(classStat.getGoals() +  toAdd.get(StatEngine.StatEnum.GOALS.toString()).asInt());
+            if (userClassStat != null) userClassStat.setGoals_1v1(userClassStat.getGoals_1v1() + toAdd.get(StatEngine.StatEnum.GOALS.toString()).asInt());
         }
         if(toAdd.has(StatEngine.StatEnum.SIDEGOALS.toString())){
             user.setSidegoals_1v1((user.getSidegoals_1v1() +  toAdd.get(StatEngine.StatEnum.SIDEGOALS.toString()).asInt()));
             if (classStat != null) classStat.setSidegoals((classStat.getSidegoals() +  toAdd.get(StatEngine.StatEnum.SIDEGOALS.toString()).asInt()));
+            if (userClassStat != null) userClassStat.setSidegoals_1v1(userClassStat.getSidegoals_1v1() + toAdd.get(StatEngine.StatEnum.SIDEGOALS.toString()).asInt());
         }
         if(toAdd.has(StatEngine.StatEnum.POINTS.toString())){
             user.setPoints_1v1(user.getPoints_1v1() +  toAdd.get(StatEngine.StatEnum.POINTS.toString()).asDouble());
             if (classStat != null) classStat.setPoints(classStat.getPoints() +  toAdd.get(StatEngine.StatEnum.POINTS.toString()).asDouble());
+            if (userClassStat != null) userClassStat.setPoints_1v1(userClassStat.getPoints_1v1() + toAdd.get(StatEngine.StatEnum.POINTS.toString()).asDouble());
         }
         if(toAdd.has(StatEngine.StatEnum.STEALS.toString())){
             user.setSteals_1v1((user.getSteals_1v1() +   toAdd.get(StatEngine.StatEnum.STEALS.toString()).asInt()));
             if (classStat != null) classStat.setSteals((classStat.getSteals() +   toAdd.get(StatEngine.StatEnum.STEALS.toString()).asInt()));
+            if (userClassStat != null) userClassStat.setSteals_1v1(userClassStat.getSteals_1v1() + toAdd.get(StatEngine.StatEnum.STEALS.toString()).asInt());
         }
         if(toAdd.has(StatEngine.StatEnum.BLOCKS.toString())){
             user.setBlocks_1v1((user.getBlocks_1v1() +  toAdd.get(StatEngine.StatEnum.BLOCKS.toString()).asInt()));
             if (classStat != null) classStat.setBlocks((classStat.getBlocks() +  toAdd.get(StatEngine.StatEnum.BLOCKS.toString()).asInt()));
+            if (userClassStat != null) userClassStat.setBlocks_1v1(userClassStat.getBlocks_1v1() + toAdd.get(StatEngine.StatEnum.BLOCKS.toString()).asInt());
         }
         if(toAdd.has(StatEngine.StatEnum.PASSES.toString())){
             user.setPasses_1v1((user.getPasses_1v1() +  toAdd.get(StatEngine.StatEnum.PASSES.toString()).asInt()));
             if (classStat != null) classStat.setPasses((classStat.getPasses() +  toAdd.get(StatEngine.StatEnum.PASSES.toString()).asInt()));
+            if (userClassStat != null) userClassStat.setPasses_1v1(userClassStat.getPasses_1v1() + toAdd.get(StatEngine.StatEnum.PASSES.toString()).asInt());
         }
         if(toAdd.has(StatEngine.StatEnum.KILLS.toString())){
             user.setKills_1v1((user.getKills_1v1() +  toAdd.get(StatEngine.StatEnum.KILLS.toString()).asInt()));
             if (classStat != null) classStat.setKills((classStat.getKills() +  toAdd.get(StatEngine.StatEnum.KILLS.toString()).asInt()));
+            if (userClassStat != null) userClassStat.setKills_1v1(userClassStat.getKills_1v1() + toAdd.get(StatEngine.StatEnum.KILLS.toString()).asInt());
         }
         if(toAdd.has(StatEngine.StatEnum.DEATHS.toString())){
             user.setDeaths_1v1((user.getDeaths_1v1() + toAdd.get(StatEngine.StatEnum.DEATHS.toString()).asInt()));
             if (classStat != null) classStat.setDeaths((classStat.getDeaths() + toAdd.get(StatEngine.StatEnum.DEATHS.toString()).asInt()));
+            if (userClassStat != null) userClassStat.setDeaths_1v1(userClassStat.getDeaths_1v1() + toAdd.get(StatEngine.StatEnum.DEATHS.toString()).asInt());
         }
         if(toAdd.has(StatEngine.StatEnum.TURNOVERS.toString())){
             user.setTurnovers_1v1((user.getTurnovers_1v1() +  toAdd.get(StatEngine.StatEnum.TURNOVERS.toString()).asInt()));
             if (classStat != null) classStat.setTurnovers((classStat.getTurnovers() +  toAdd.get(StatEngine.StatEnum.TURNOVERS.toString()).asInt()));
+            if (userClassStat != null) userClassStat.setTurnovers_1v1(userClassStat.getTurnovers_1v1() + toAdd.get(StatEngine.StatEnum.TURNOVERS.toString()).asInt());
         }
         if(toAdd.has(StatEngine.StatEnum.KILLASSISTS.toString())){
             user.setKillassists_1v1((user.getKillassists_1v1() +  toAdd.get(StatEngine.StatEnum.KILLASSISTS.toString()).asInt()));
             if (classStat != null) classStat.setKillassists((classStat.getKillassists() +  toAdd.get(StatEngine.StatEnum.KILLASSISTS.toString()).asInt()));
+            if (userClassStat != null) userClassStat.setKillassists_1v1(userClassStat.getKillassists_1v1() + toAdd.get(StatEngine.StatEnum.KILLASSISTS.toString()).asInt());
         }
         if(toAdd.has(StatEngine.StatEnum.GOALASSISTS.toString())){
             user.setGoalassists_1v1((user.getGoalassists_1v1() +  toAdd.get(StatEngine.StatEnum.GOALASSISTS.toString()).asInt()));
             if (classStat != null) classStat.setGoalassists((classStat.getGoalassists() +  toAdd.get(StatEngine.StatEnum.GOALASSISTS.toString()).asInt()));
+            if (userClassStat != null) userClassStat.setGoalassists_1v1(userClassStat.getGoalassists_1v1() + toAdd.get(StatEngine.StatEnum.GOALASSISTS.toString()).asInt());
         }
         if(toAdd.has(StatEngine.StatEnum.REBOUND.toString())){
             user.setRebounds_1v1((user.getRebounds_1v1() +  toAdd.get(StatEngine.StatEnum.REBOUND.toString()).asInt()));
             if (classStat != null) classStat.setRebounds((classStat.getRebounds() +  toAdd.get(StatEngine.StatEnum.REBOUND.toString()).asInt()));
+            if (userClassStat != null) userClassStat.setRebounds_1v1(userClassStat.getRebounds_1v1() + toAdd.get(StatEngine.StatEnum.REBOUND.toString()).asInt());
         }
         if (classStat != null) {
             if (toAdd.has(StatEngine.StatEnum.SAVES.toString())) {
@@ -295,6 +374,7 @@ public class PersistenceManager {
         }
         userService.saveUser(user);
         if (classStat != null) classService.saveClass(classStat);
+        if (userClassStat != null && userClassStatService != null) userClassStatService.save(userClassStat);
     }
 
     public synchronized void recordClassStats(StatEngine stats, String trackerKey, String className, int wasVictorious) {

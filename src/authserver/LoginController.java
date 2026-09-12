@@ -13,6 +13,8 @@ import authserver.models.responses.JwtAuthenticationResponse;
 import authserver.models.responses.UserResponse;
 import authserver.users.identities.UserService;
 import authserver.users.premades.PremadeService;
+import authserver.models.UserClassStat;
+import authserver.users.classes.UserClassStatServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -30,7 +32,9 @@ import javax.validation.Valid;
 import java.io.IOException;
 import java.util.UUID;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -57,6 +61,9 @@ public class LoginController {
 
     @Autowired
     UserService userService;
+
+    @Autowired
+    UserClassStatServiceImpl userClassStatService;
 
     @Autowired
     PremadeService premadeService;
@@ -216,7 +223,27 @@ public class LoginController {
         List<User> rate1v1 = new ArrayList<>(rate3v3);
         rate1v1.sort((o1, o2) -> Double.compare(o2.getRating_1v1(), o1.getRating_1v1()));
 
-        return new ResponseEntity<>(new UserResponse(user, findUserRank(rate3v3, user.getEmail()), findUserRank(rate1v1, user.getEmail())), HttpStatus.OK);
+        List<UserClassStat> classStatsList = null;
+        if (userClassStatService != null) {
+            if (user.getEmail() != null && !user.getEmail().trim().isEmpty()) {
+                classStatsList = userClassStatService.findAllByUser(user.getEmail().trim());
+            }
+            if ((classStatsList == null || classStatsList.isEmpty()) && user.getUsername() != null && !user.getUsername().trim().isEmpty()) {
+                classStatsList = userClassStatService.findAllByUser(user.getUsername().trim());
+            }
+        }
+        Map<String, UserClassStat> classStatsMap = new HashMap<>();
+        if (classStatsList != null) {
+            for (UserClassStat ucs : classStatsList) {
+                if (ucs.getRole() != null) {
+                    classStatsMap.put(ucs.getRole().toUpperCase(), ucs);
+                }
+            }
+        }
+
+        UserResponse userResponse = new UserResponse(user, findUserRank(rate3v3, user.getEmail()), findUserRank(rate1v1, user.getEmail()));
+        userResponse.setClassStats(classStatsMap);
+        return new ResponseEntity<>(userResponse, HttpStatus.OK);
     }
 
     private int findUserRank(List<User> list, String email) {

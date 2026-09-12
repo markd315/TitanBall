@@ -1,9 +1,12 @@
 package authserver.models.responses;
 
 import authserver.models.User;
+import authserver.models.UserClassStat;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 
 import java.io.Serializable;
+import java.util.HashMap;
+import java.util.Map;
 
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 public class UserResponse implements Serializable {
@@ -23,6 +26,7 @@ public class UserResponse implements Serializable {
     protected String email;
     protected String role;
     protected int rank, rank1v1;
+    protected Map<String, UserClassStat> classStats = new HashMap<>();
 
     public UserResponse(User user, int rank, int rank1v1){
         this.rank = rank;
@@ -474,6 +478,26 @@ public class UserResponse implements Serializable {
 
     public void setGoalie_matches(Integer goalie_matches) {
         this.goalie_matches = goalie_matches;
+    }
+
+    public Map<String, UserClassStat> getClassStats() {
+        return classStats;
+    }
+
+    public void setClassStats(Map<String, UserClassStat> classStats) {
+        this.classStats = classStats;
+        if (classStats != null && classStats.containsKey("GOALIE")) {
+            UserClassStat g = classStats.get("GOALIE");
+            if (this.blocks_g == null || this.blocks_g == 0) this.blocks_g = g.getBlocks();
+            if (this.passes_g == null || this.passes_g == 0) this.passes_g = g.getPasses();
+            if (this.turnovers_g == null || this.turnovers_g == 0) this.turnovers_g = g.getTurnovers();
+            if (this.rebounds_g == null || this.rebounds_g == 0) this.rebounds_g = g.getRebounds();
+            if (this.steals_g == null || this.steals_g == 0) this.steals_g = g.getSteals();
+            if (this.kills_g == null || this.kills_g == 0) this.kills_g = g.getKills();
+            if (this.deaths_g == null || this.deaths_g == 0) this.deaths_g = g.getDeaths();
+            int gm = g.getWins() + g.getLosses() + g.getTies();
+            if (gm > 0 && (this.goalie_matches == null || this.goalie_matches == 0)) this.goalie_matches = gm;
+        }
     }
 }
 

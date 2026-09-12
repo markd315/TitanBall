@@ -630,6 +630,39 @@
         color: #ffffff;
         box-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
       }
+      .stats-filter-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin: 10px 0 4px 0;
+        gap: 10px;
+      }
+      .stats-filter-label {
+        font-size: 12px;
+        font-weight: 700;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
+      }
+      .stats-class-select {
+        flex: 1;
+        background: rgba(15, 23, 42, 0.85);
+        color: #f8fafc;
+        border: 1px solid rgba(56, 189, 248, 0.35);
+        border-radius: 8px;
+        padding: 6px 12px;
+        font-size: 13px;
+        font-weight: 600;
+        font-family: inherit;
+        cursor: pointer;
+        outline: none;
+        transition: all 0.2s ease;
+      }
+      .stats-class-select:focus, .stats-class-select:hover {
+        border-color: #38bdf8;
+        box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
+      }
       .help-btn {
         display: inline-flex;
         align-items: center;
@@ -1920,6 +1953,28 @@
           <div class="stats-mode-tabs">
             <button id="stats-tab-4v4" class="stats-tab-btn active">4v4 Team Matches</button>
             <button id="stats-tab-1v1" class="stats-tab-btn">1v1 Scrimmages</button>
+          </div>
+
+          <!-- Outfield Class Filter -->
+          <div class="stats-filter-row">
+            <label for="stats-class-filter" class="stats-filter-label">Outfield Class</label>
+            <select id="stats-class-filter" class="stats-class-select">
+              <option value="ALL" selected>All Classes</option>
+              <option value="WARRIOR">Warrior</option>
+              <option value="RANGER">Ranger</option>
+              <option value="MAGE">Mage</option>
+              <option value="HOUNDMASTER">Houndmaster</option>
+              <option value="MARKSMAN">Marksman</option>
+              <option value="DASHER">Dasher</option>
+              <option value="GOLEM">Golem</option>
+              <option value="STEALTH">Stealth</option>
+              <option value="SUPPORT">Support</option>
+              <option value="BUILDER">Builder</option>
+              <option value="ARTISAN">Artisan</option>
+              <option value="GRENADIER">Grenadier</option>
+              <option value="CAPTAIN">Captain</option>
+              <option value="SPIDER">Spider</option>
+            </select>
           </div>
 
           <!-- Tiles Grid -->
