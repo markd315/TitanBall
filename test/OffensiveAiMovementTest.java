@@ -87,9 +87,9 @@ public class OffensiveAiMovementTest {
         teammate2.X = 610;
         teammate2.Y = 640; // 140px vertical separation
 
-        // Put enemies away so they don't block
+        // Put other players away so they don't interfere
         for (Titan t : engine.players) {
-            if (t != null && t.team == TeamAffiliation.AWAY) {
+            if (t != null && t != carrier && t != teammate1 && t != teammate2) {
                 t.X = 1500;
                 t.Y = 1000;
             }

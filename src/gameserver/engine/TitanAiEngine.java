@@ -2,7 +2,9 @@ package gameserver.engine;
 
 import gameserver.Const;
 import gameserver.effects.EffectId;
+import gameserver.effects.effects.Effect;
 import gameserver.effects.effects.EmptyEffect;
+import gameserver.effects.effects.RatioEffect;
 import gameserver.entity.Entity;
 import gameserver.entity.Titan;
 import gameserver.entity.TitanType;
@@ -269,13 +271,23 @@ public class TitanAiEngine {
         // Rule 3: Neutral state / Loose ball or thrown ball
         if (looseBall) {
             boolean ballInMotion = context.anyBallMoveState();
+            double targetBallX;
+            double targetBallY;
             if (ballInMotion) {
-                ai.aiTargetX = Math.max(context.c.MIN_X, Math.min(context.c.MAX_X, context.ball.X + context.xKickPow * 15));
-                ai.aiTargetY = Math.max(context.c.MIN_Y, Math.min(context.c.MAX_Y, context.ball.Y + context.yKickPow * 15));
+                targetBallX = Math.max(context.c.MIN_X, Math.min(context.c.MAX_X, context.ball.X + context.xKickPow * 15));
+                targetBallY = Math.max(context.c.MIN_Y, Math.min(context.c.MAX_Y, context.ball.Y + context.yKickPow * 15));
             } else {
-                ai.aiTargetX = ballCenterX;
-                ai.aiTargetY = ballCenterY;
+                targetBallX = ballCenterX;
+                targetBallY = ballCenterY;
             }
+
+            if (isTeammateCloserToLooseBall(ai, targetBallX, targetBallY)) {
+                evaluateLooseBallAttackingPosture(ai, targetBallX, targetBallY);
+                return;
+            }
+
+            ai.aiTargetX = targetBallX;
+            ai.aiTargetY = targetBallY;
             ai.aiTargetAction = 0;
             updateAiBoostDecision(ai);
             return;
@@ -713,6 +725,113 @@ public class TitanAiEngine {
 
         ai.aiTargetX = Math.max(context.c.MIN_X, Math.min(context.c.MAX_X, carrierCX + forwardDir * 200.0));
         ai.aiTargetY = Math.max(context.c.MIN_Y, Math.min(context.c.MAX_Y, carrierCY + verticalOffset));
+    }
+
+    public double getTitanChaseSpeed(Titan t) {
+        if (t == null) return 1.0;
+        if (context.effectPool != null && (context.effectPool.isRooted(t) || context.effectPool.isStunned(t))) {
+            return 0.001;
+        }
+        double base = t.speed;
+        boolean hasDilators = (context.homeGoaliePurchasedUpgrades != null && context.homeGoaliePurchasedUpgrades.contains("fortress.t5.dilators")) ||
+                              (context.awayGoaliePurchasedUpgrades != null && context.awayGoaliePurchasedUpgrades.contains("fortress.t5.dilators"));
+        if (hasDilators && context.c != null) {
+            base *= context.c.getD("guardian.dilators.speedmult");
+        }
+        if (context.effectPool != null) {
+            for (Effect eff : context.effectPool.getEffects()) {
+                if (eff != null && eff.on != null && eff.on.id.equals(t.id)) {
+                    if (eff.effect.equals(EffectId.SLOW)) {
+                        base /= ((RatioEffect) eff).getRatio();
+                    } else if (eff.effect.equals(EffectId.FAST)) {
+                        base *= ((RatioEffect) eff).getRatio();
+                    }
+                }
+            }
+        }
+        if (t.fuel > 5.0) {
+            base *= t.boostFactor;
+        }
+        int L = 0;
+        int topCY = (int) (context.c.getI("goal.low.y") + context.c.getI("goal.low.height") / 2.0);
+        int midCY = (int) (context.c.getI("goal.hi.y") + context.c.getI("goal.hi.height") / 2.0);
+        int botCY = (int) (context.c.getI("goal.low2.y") + context.c.getI("goal.low.height") / 2.0);
+        double d0 = Math.abs(t.Y - topCY);
+        double d1 = Math.abs(t.Y - midCY);
+        double d2 = Math.abs(t.Y - botCY);
+        if (d1 < d0 && d1 < d2) L = 1;
+        else if (d2 < d0 && d2 < d1) L = 2;
+        return Math.max(0.1, context.getLaneMinionSpeed(L, t.team, base, 0.0));
+    }
+
+    public boolean isTeammateCloserToLooseBall(Titan ai, double targetBallX, double targetBallY) {
+        double aiCX = ai.X + ai.width / 2.0;
+        double aiCY = ai.Y + ai.height / 2.0;
+        double aiDist = Math.hypot(targetBallX - aiCX, targetBallY - aiCY);
+        double aiSpeed = getTitanChaseSpeed(ai);
+        double aiTimeToBall = aiDist / aiSpeed;
+
+        for (Titan t : context.players) {
+            if (t == null || t.id.equals(ai.id) || t.team != ai.team) continue;
+            if (context.effectPool != null && (context.effectPool.hasEffect(t, EffectId.DEAD)
+                    || context.effectPool.isRooted(t) || context.effectPool.isStunned(t))) {
+                continue;
+            }
+
+            // Goalies stay in their crease and only contest balls inside their box
+            if (context.isGoalie(t)) {
+                boolean inCrease = (targetBallY >= context.c.GOALIE_Y_MIN && targetBallY <= context.c.GOALIE_Y_MAX
+                        && (t.team == TeamAffiliation.HOME
+                                ? (targetBallX >= context.c.GOALIE_XH_MIN && targetBallX <= context.c.GOALIE_XH_MAX)
+                                : (targetBallX >= context.c.GOALIE_XA_MIN && targetBallX <= context.c.GOALIE_XA_MAX)));
+                if (!inCrease) continue;
+            }
+
+            double tCX = t.X + t.width / 2.0;
+            double tCY = t.Y + t.height / 2.0;
+            double tDist = Math.hypot(targetBallX - tCX, targetBallY - tCY);
+            double tSpeed = getTitanChaseSpeed(t);
+            double tTimeToBall = tDist / tSpeed;
+
+            if (tTimeToBall < aiTimeToBall - 0.001) {
+                return true;
+            } else if (Math.abs(tTimeToBall - aiTimeToBall) <= 0.001) {
+                if (tDist < aiDist - 0.001) {
+                    return true;
+                } else if (Math.abs(tDist - aiDist) <= 0.001) {
+                    if (t.id.compareTo(ai.id) < 0) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    public void evaluateLooseBallAttackingPosture(Titan ai, double ballX, double ballY) {
+        double forwardDir = (ai.team == TeamAffiliation.HOME) ? 1.0 : -1.0;
+        TeamAffiliation enemyTeam = (ai.team == TeamAffiliation.HOME) ? TeamAffiliation.AWAY : TeamAffiliation.HOME;
+
+        // One pass length away (~297 px = sqrt(210^2 + 210^2), standard throw power distance is 316.0)
+        double forwardOffset = forwardDir * 210.0;
+        double preferredVerticalOffset = (ai.Y < ballY) ? -210.0 : 210.0;
+        double alternateVerticalOffset = -preferredVerticalOffset;
+
+        double targetX = Math.max(context.c.MIN_X + 25, Math.min(context.c.MAX_X - 25, ballX + forwardOffset));
+        double targetY = Math.max(context.c.MIN_Y + 25, Math.min(context.c.MAX_Y - 25, ballY + preferredVerticalOffset));
+
+        // If preferred flank pass path is blocked by an enemy, try alternate flank
+        if (isPassPathBlocked(ballX, ballY, targetX, targetY, enemyTeam)) {
+            double altTargetY = Math.max(context.c.MIN_Y + 25, Math.min(context.c.MAX_Y - 25, ballY + alternateVerticalOffset));
+            if (!isPassPathBlocked(ballX, ballY, targetX, altTargetY, enemyTeam)) {
+                targetY = altTargetY;
+            }
+        }
+
+        ai.aiTargetX = targetX;
+        ai.aiTargetY = targetY;
+        ai.aiTargetAction = 0;
+        updateAiBoostDecision(ai);
     }
 
     public Titan getHorizontalImpedingEnemy(Titan ai, TeamAffiliation enemyTeam) {

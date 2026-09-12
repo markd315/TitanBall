@@ -285,5 +285,109 @@ public class GoalieFarmingAndHoopTest {
             Assert.assertTrue("Tech tree combination " + treeA + " + " + treeB + " must be represented in GOALIE_BUILD_PRESETS", found);
         }
     }
+
+    @Test
+    public void testGoalHitboxesDoNotCollideDuringLobSubphase() {
+        GameEngine engine = createStandardGame();
+        Titan lobber = engine.players[2]; // Home outfield titan
+        lobber.setType(TitanType.WARRIOR);
+        lobber.team = TeamAffiliation.HOME;
+        lobber.actionState = Titan.TitanState.LOB;
+        lobber.actionFrame = 5; // In the middle of the airborne lob subphase (frames 3–8)
+        engine.activeLobThrower = lobber;
+
+        GoalHoop awayHi = engine.awayHiGoal;
+        CollisionMath.EllipseData hiEll = awayHi.ellipseData();
+        GoalHoop awayLow = engine.lowGoals[2];
+        CollisionMath.EllipseData lowEll = awayLow.ellipseData();
+
+        // 1. Center Goal: place ball inside the center goal during lob subphase
+        engine.ball.X = hiEll.centerX() - engine.ball.centerDist;
+        engine.ball.Y = hiEll.centerY() - engine.ball.centerDist;
+        double initHomeScore = engine.home.score;
+        engine.detectGoals();
+        Assert.assertEquals("Airborne lob ball during lob subphase must not trigger center goal",
+                initHomeScore, engine.home.score, 0.001);
+
+        // 2. Side Goal: place ball inside a side goal during lob subphase
+        engine.ball.X = lowEll.centerX() - engine.ball.centerDist;
+        engine.ball.Y = lowEll.centerY() - engine.ball.centerDist;
+        engine.detectGoals();
+        Assert.assertEquals("Airborne lob ball during lob subphase must not trigger side goal",
+                initHomeScore, engine.home.score, 0.001);
+
+        // 3. Minor Hoop Bounce: place ball inside side goal during lob subphase
+        double initialBallX = engine.ball.X;
+        double initialBallY = engine.ball.Y;
+        engine.minorHoopBounce();
+        Assert.assertEquals("Airborne lob ball during lob subphase must not bounce off goal hoop (X)",
+                initialBallX, engine.ball.X, 0.001);
+        Assert.assertEquals("Airborne lob ball during lob subphase must not bounce off goal hoop (Y)",
+                initialBallY, engine.ball.Y, 0.001);
+
+        // 4. Outside lob subphase (actionState = IDLE): minorHoopBounce should kick the ball out
+        lobber.actionState = Titan.TitanState.IDLE;
+        lobber.actionFrame = 0;
+        engine.activeLobThrower = null;
+
+        engine.minorHoopBounce();
+        double ballCX = engine.ball.X + engine.ball.centerDist;
+        double ballCY = engine.ball.Y + engine.ball.centerDist;
+        double distFromCenter = Math.hypot(ballCX - lowEll.centerX(), ballCY - lowEll.centerY());
+        double minExpectedDist = Math.min(lowEll.radiusX(), lowEll.radiusY()) + 30.0;
+        Assert.assertTrue("Ball should be kicked away from hoop once outside lob subphase",
+                distFromCenter >= minExpectedDist - 1.0);
+
+        // 5. Outside lob subphase: detectGoals should detect goal when ball is inside hoop
+        engine.ball.X = hiEll.centerX() - engine.ball.centerDist;
+        engine.ball.Y = hiEll.centerY() - engine.ball.centerDist;
+        engine.detectGoals();
+        Assert.assertTrue("Center goal must score normally once outside lob subphase",
+                engine.home.score > initHomeScore);
+    }
+
+    @Test
+    public void testHoundmasterAbility1RangeMatchesBuilderWall() {
+        GameEngine engine = createStandardGame();
+        int wallRange = engine.c.getI("titan.wall.range");
+        int cageRange = engine.c.getI("titan.cage.range");
+        Assert.assertEquals("Houndmaster cage range must equal builder wall range", wallRange, cageRange);
+        Assert.assertEquals("Wall range is 350", 350, wallRange);
+
+        Titan houndmaster = engine.players[2];
+        houndmaster.setType(TitanType.HOUNDMASTER);
+        houndmaster.team = TeamAffiliation.HOME;
+        houndmaster.X = 800;
+        houndmaster.Y = 500;
+
+        // Verify Houndmaster range indicator matches builder wall range
+        Assert.assertNotNull("Range indicators must be present", houndmaster.rangeIndicators);
+        Assert.assertFalse("Range indicators must not be empty", houndmaster.rangeIndicators.isEmpty());
+        gameserver.entity.RangeCircle indicator = houndmaster.rangeIndicators.get(0);
+        Assert.assertEquals("Indicator radius must be 350", 350, (int) indicator.getRadius());
+
+        // Test cage spawn clamping when targeting beyond range (600px away)
+        gameserver.engine.AbilityStrategy strat = new gameserver.engine.AbilityStrategy(engine, houndmaster);
+        strat.x = (int) houndmaster.X + 600;
+        strat.y = (int) houndmaster.Y;
+        gameserver.engine.TitanAbilitiesDeployable.spawnCage(strat);
+
+        // Find the spawned cage
+        gameserver.entity.minions.Cage spawnedCage = null;
+        for (gameserver.entity.Entity e : engine.entityPool) {
+            if (e instanceof gameserver.entity.minions.Cage) {
+                spawnedCage = (gameserver.entity.minions.Cage) e;
+                break;
+            }
+        }
+        Assert.assertNotNull("Cage must be spawned in entity pool", spawnedCage);
+        double casterCX = houndmaster.X + (houndmaster.width > 0 ? houndmaster.width : 70) / 2.0;
+        double casterCY = houndmaster.Y + (houndmaster.height > 0 ? houndmaster.height : 70) / 2.0;
+        double cageCX = spawnedCage.X + spawnedCage.width / 2.0;
+        double cageCY = spawnedCage.Y + spawnedCage.height / 2.0;
+        double spawnDist = Math.hypot(cageCX - casterCX, cageCY - casterCY);
+        Assert.assertTrue("Spawned cage must be clamped to range 350: dist=" + spawnDist,
+                spawnDist <= 350.5);
+    }
 }
 

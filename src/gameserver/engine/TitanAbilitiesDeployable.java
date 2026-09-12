@@ -128,8 +128,9 @@ public class TitanAbilitiesDeployable {
         GameEngine context = strat.context;
         Const c = strat.c;
 
+        int range = (int) (c.getI("titan.cage.range") * caster.rangeFactor);
         strat.shape = new CollisionMath.Bounds(0, 0, 70, 70);
-        strat.sel = new Selector(strat.shape, SelectorOffset.MOUSE_CENTER, c.FAR_RANGE);
+        strat.sel = new Selector(strat.shape, SelectorOffset.MOUSE_CENTER, range);
         strat.sel.select(Collections.EMPTY_SET, strat.x, strat.y, caster);
         strat.corners = strat.sel.getLatestColliderBounds();
         if (strat.corners.getWidth() > 0 && AbilityPositionHelper.inBoundsNotRedzone(strat.corners, context)) {

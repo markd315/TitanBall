@@ -449,6 +449,7 @@
         z-index: 130 !important;
         max-height: 90vh !important;
         overflow-y: auto !important;
+        overflow-x: hidden !important;
         box-sizing: border-box !important;
         pointer-events: auto !important;
         background: rgba(10, 24, 18, 0.96) !important;
@@ -460,7 +461,14 @@
       /* Advanced Stats Modal Dialog Specifics */
       .stats-modal-dialog {
         width: min(540px, 94vw);
+        max-width: 94vw;
+        overflow-x: hidden !important;
+        scrollbar-width: none;
         box-shadow: 0 40px 100px rgba(0, 0, 0, 0.9), 0 0 60px rgba(56, 189, 248, 0.12) !important;
+      }
+      .stats-modal-dialog::-webkit-scrollbar:horizontal {
+        display: none !important;
+        height: 0 !important;
       }
       .stats-modal-header {
         display: flex;
@@ -840,20 +848,30 @@
       }
       .stats-tiles-grid {
         display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 10px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
         margin-top: 8px;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+      }
+      @media (max-width: 480px) {
+        .stats-tiles-grid {
+          grid-template-columns: minmax(0, 1fr);
+        }
       }
       .stats-metric-card {
         background: rgba(0, 0, 0, 0.35);
         border: 1px solid rgba(45, 140, 100, 0.25);
         border-radius: 12px;
-        padding: 10px 14px;
+        padding: 9px 12px;
         display: flex;
         flex-direction: column;
         gap: 4px;
         transition: all 0.2s;
         box-sizing: border-box;
+        min-width: 0;
+        overflow: hidden;
       }
       .stats-metric-card:hover {
         background: rgba(0, 0, 0, 0.5);
@@ -876,8 +894,10 @@
         display: flex;
         align-items: baseline;
         justify-content: space-between;
-        gap: 8px;
+        gap: 6px;
         width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
       }
       .stats-metric-card .metric-val {
         font-size: 18px;
@@ -888,6 +908,8 @@
         display: flex;
         align-items: baseline;
         gap: 3px;
+        min-width: 0;
+        flex-shrink: 0;
       }
       .stats-per-game .pg-unit {
         font-size: 10px;
@@ -904,9 +926,20 @@
         font-size: 11px;
         font-weight: 600;
         color: #cbd5e1;
-        white-space: nowrap;
         text-align: right;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        white-space: normal;
+        word-break: break-word;
+        line-height: 1.25;
+        min-width: 0;
+      }
+      .secondary-font {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+        font-size: 10.5px !important;
+        color: #94a3b8 !important;
+        font-weight: 500 !important;
+        white-space: normal !important;
+        word-break: break-word !important;
       }
       .stats-metric-card .metric-sub {
         font-size: 11px;
@@ -1102,10 +1135,23 @@
         flex: 2;
         display: flex;
         flex-direction: column;
+        align-items: center;
+        justify-content: center;
         min-width: 0;
         gap: 6px;
-        overflow: auto;
-        -webkit-overflow-scrolling: touch;
+        overflow-x: hidden !important;
+        overflow-y: hidden;
+        scrollbar-width: none;
+      }
+      .planner-canvas-pane::-webkit-scrollbar:horizontal {
+        display: none !important;
+        height: 0 !important;
+      }
+      #planner-canvas {
+        width: 100%;
+        max-width: 100%;
+        height: auto;
+        display: block;
       }
       .planner-sidebar-pane {
         flex: 0 0 260px;
@@ -1114,6 +1160,7 @@
         min-width: 180px;
         max-width: 300px;
         transition: all 0.3s ease;
+        overflow-x: hidden !important;
       }
 
       .build-order-expanded .planner-sidebar-pane {
@@ -1122,6 +1169,13 @@
       .build-order-expanded .planner-canvas-pane {
         flex: 1 1 100% !important;
         max-height: 75vh;
+        overflow-x: auto !important;
+        overflow-y: auto !important;
+        scrollbar-width: thin;
+      }
+      .build-order-expanded .planner-canvas-pane::-webkit-scrollbar:horizontal {
+        display: block !important;
+        height: 8px !important;
       }
       .build-order-expanded #planner-canvas {
         min-width: 860px;
@@ -1134,15 +1188,22 @@
         .build-order-modal-body {
           flex-direction: column !important;
           overflow-y: auto !important;
+          overflow-x: hidden !important;
         }
         .planner-sidebar-pane {
           flex: none !important;
           width: 100% !important;
           max-width: 100% !important;
           max-height: 220px;
+          overflow-x: hidden !important;
         }
         .planner-canvas-pane {
-          overflow: auto !important;
+          overflow-x: hidden !important;
+          overflow-y: visible !important;
+        }
+        .build-order-expanded .planner-canvas-pane {
+          overflow-x: auto !important;
+          overflow-y: auto !important;
         }
         .build-order-expanded #planner-canvas {
           min-width: 780px;
@@ -1557,7 +1618,7 @@
         90%, 100% { transform: rotate(0deg); }
       }
     </style>
-    <script type="module" crossorigin src="./assets/main-c31e59e4.js"></script>
+    <script type="module" crossorigin src="./assets/main-d7177e39.js"></script>
   </head>
   <body>
     <div id="app">
@@ -1856,9 +1917,9 @@
             <button id="stats-modal-close-btn" class="modal-close-btn" title="Close stats">✕</button>
           </div>
 
-          <!-- Mode Toggle Tabs (3v3 Team Matches vs 1v1 Scrimmages) -->
+          <!-- Mode Toggle Tabs (4v4 Team Matches vs 1v1 Scrimmages) -->
           <div class="stats-mode-tabs">
-            <button id="stats-tab-3v3" class="stats-tab-btn active">3v3 Team Matches</button>
+            <button id="stats-tab-4v4" class="stats-tab-btn active">4v4 Team Matches</button>
             <button id="stats-tab-1v1" class="stats-tab-btn">1v1 Scrimmages</button>
           </div>
 
@@ -2009,9 +2070,9 @@
         </div>
 
         <!-- Build Order Planner Modal -->
-        <div id="build-order-modal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:200;pointer-events:auto;background:rgba(5,12,10,0.93);backdrop-filter:blur(10px);justify-content:center;align-items:center;">
+        <div id="build-order-modal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:200;pointer-events:auto;background:rgba(5,12,10,0.93);backdrop-filter:blur(10px);justify-content:center;align-items:center;overflow-x:hidden;">
 
-          <div style="background:rgba(10,26,20,0.98);border:1.5px solid rgba(45,140,100,0.3);border-radius:20px;width:min(1120px,97vw);max-height:93vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 30px 90px rgba(0,0,0,0.85);">
+          <div style="background:rgba(10,26,20,0.98);border:1.5px solid rgba(45,140,100,0.3);border-radius:20px;width:min(1120px,97vw);max-height:93vh;display:flex;flex-direction:column;overflow:hidden;overflow-x:hidden;box-shadow:0 30px 90px rgba(0,0,0,0.85);">
 
             <!-- Header -->
             <div style="padding:18px 24px 14px;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
@@ -2048,7 +2109,7 @@
             </div>
 
             <!-- Body -->
-            <div class="build-order-modal-body" style="display:flex;flex:1;overflow:hidden;padding:14px 16px 14px;gap:14px;min-height:0;">
+            <div class="build-order-modal-body" style="display:flex;flex:1;overflow:hidden;overflow-x:hidden;padding:14px 16px 14px;gap:14px;min-height:0;">
 
               <!-- Tree Canvas pane -->
               <div class="planner-canvas-pane">
@@ -2062,7 +2123,7 @@
                   <span style="font-weight:700;font-size:12px;letter-spacing:1.5px;color:#a7f3d0;text-transform:uppercase;">Build Order</span>
                   <button id="build-order-clear-btn" style="background:rgba(220,38,38,0.08);border:1px solid rgba(220,38,38,0.25);color:#f87171;border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer;font-family:inherit;transition:all 0.2s;" onmouseover="this.style.background='rgba(220,38,38,0.2)'" onmouseout="this.style.background='rgba(220,38,38,0.08)'">Clear Slot</button>
                 </div>
-                <div id="planner-build-list" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:4px;padding-right:2px;"></div>
+                <div id="planner-build-list" style="flex:1;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:4px;padding-right:2px;"></div>
               </div>
             </div>
 
@@ -2146,16 +2207,21 @@
       /* ── Build Order Planner ─────────────────────────────── */
       .build-slots-container {
         display: flex;
-        gap: 6px;
-        overflow-x: auto;
-        padding-bottom: 2px;
-        scrollbar-width: thin;
+        gap: 4px;
+        overflow-x: hidden !important;
+        scrollbar-width: none;
+        width: 100%;
+        box-sizing: border-box;
+      }
+      .build-slots-container::-webkit-scrollbar {
+        display: none !important;
+        height: 0 !important;
       }
       .build-slot-tab {
         display: flex;
         flex-direction: column;
-        gap: 4px;
-        padding: 6px 8px;
+        gap: 3px;
+        padding: 4px 6px;
         border-radius: 8px;
         background: rgba(255, 255, 255, 0.04);
         border: 1px solid rgba(255, 255, 255, 0.08);
@@ -2163,11 +2229,12 @@
         cursor: pointer;
         font-family: 'Outfit', sans-serif;
         flex: 1 1 0;
-        min-width: 84px;
-        max-width: 120px;
+        min-width: 0;
+        max-width: none;
         transition: all 0.2s;
         user-select: none;
         text-align: left;
+        box-sizing: border-box;
       }
       .build-slot-tab:hover {
         background: rgba(255, 255, 255, 0.08);
@@ -2182,13 +2249,14 @@
       .slot-title-row {
         display: flex;
         align-items: center;
-        gap: 4px;
+        gap: 3px;
         overflow: hidden;
         white-space: nowrap;
         width: 100%;
+        min-width: 0;
       }
       .slot-num {
-        font-size: 10px;
+        font-size: clamp(9px, 1.1vw, 10px);
         font-weight: 700;
         color: #64748b;
         flex-shrink: 0;
@@ -2197,17 +2265,18 @@
         color: #34d399;
       }
       .slot-name {
-        font-size: 11px;
+        font-size: clamp(9px, 1.1vw, 11px);
         font-weight: 600;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
         flex: 1;
+        min-width: 0;
       }
       .slot-slices-track {
         display: flex;
         width: 100%;
-        height: 6px;
+        height: 5px;
         border-radius: 3px;
         overflow: hidden;
         gap: 1px;
@@ -2218,6 +2287,19 @@
         height: 100%;
         border-radius: 1px;
         transition: background-color 0.2s ease;
+      }
+
+      @media (max-width: 768px) {
+        .build-slots-container {
+          display: grid;
+          grid-template-columns: repeat(5, 1fr);
+          gap: 4px;
+          overflow-x: hidden !important;
+        }
+        .build-slot-tab {
+          min-width: 0 !important;
+          max-width: none !important;
+        }
       }
 
       .planner-tab-btn {

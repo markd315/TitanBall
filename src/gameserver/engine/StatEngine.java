@@ -6,6 +6,7 @@ import gameserver.effects.EffectId;
 import gameserver.effects.EffectPool;
 import gameserver.effects.effects.Effect;
 import gameserver.entity.Titan;
+import gameserver.entity.TitanType;
 import networking.PlayerDivider;
 
 import com.fasterxml.jackson.annotation.*;
@@ -48,13 +49,25 @@ public class StatEngine  {
     }
 
     public void grant(GameEngine context, Titan t, StatEnum en) {
-        PlayerDivider pl = context.clientFromTitan(t);
-        grant(pl, en, 1.0);
+        grant(context, t, en, 1.0);
     }
 
     public void grant(GameEngine context, Titan t, StatEnum en, double amount) {
         PlayerDivider pl = context.clientFromTitan(t);
-        grant(pl, en, amount);
+        StatEnum targetEnum = en;
+        if (t != null && t.getType() == TitanType.GOALIE) {
+            switch (en) {
+                case BLOCKS: targetEnum = StatEnum.BLOCKS_G; break;
+                case PASSES: targetEnum = StatEnum.PASSES_G; break;
+                case TURNOVERS: targetEnum = StatEnum.TURNOVERS_G; break;
+                case REBOUND: targetEnum = StatEnum.REBOUND_G; break;
+                case STEALS: targetEnum = StatEnum.STEALS_G; break;
+                case KILLS: targetEnum = StatEnum.KILLS_G; break;
+                case DEATHS: targetEnum = StatEnum.DEATHS_G; break;
+                default: break;
+            }
+        }
+        grant(pl, targetEnum, amount);
     }
 
     public Map<String, Double> getStat(StatEnum en) {
@@ -195,7 +208,9 @@ public class StatEngine  {
         UPGRADESGOLD(15), CONSUMABLESGOLD(16),
         SIDEGOAL_SAVES(17), CENTERGOAL_SAVES(18),
         SIDEGOALS_CONCEDED(19), GOALS_CONCEDED(20),
-        MANASPENT(21);
+        MANASPENT(21),
+        BLOCKS_G(22), PASSES_G(23), TURNOVERS_G(24),
+        REBOUND_G(25), STEALS_G(26), KILLS_G(27), DEATHS_G(28);
         private final int index;
 
         private final static Map<Integer, StatEnum> map =
@@ -234,6 +249,13 @@ public class StatEngine  {
         Map<String, Double> sidegoalsconceded = new HashMap<>();
         Map<String, Double> goalsconceded = new HashMap<>();
         Map<String, Double> manaspent = new HashMap<>();
+        Map<String, Double> blocks_g = new HashMap<>();
+        Map<String, Double> passes_g = new HashMap<>();
+        Map<String, Double> turnovers_g = new HashMap<>();
+        Map<String, Double> rebounds_g = new HashMap<>();
+        Map<String, Double> steals_g = new HashMap<>();
+        Map<String, Double> kills_g = new HashMap<>();
+        Map<String, Double> deaths_g = new HashMap<>();
         gamestats.add(goals);
         gamestats.add(sidegoals);
         gamestats.add(points);
@@ -256,6 +278,13 @@ public class StatEngine  {
         gamestats.add(sidegoalsconceded);
         gamestats.add(goalsconceded);
         gamestats.add(manaspent);
+        gamestats.add(blocks_g);
+        gamestats.add(passes_g);
+        gamestats.add(turnovers_g);
+        gamestats.add(rebounds_g);
+        gamestats.add(steals_g);
+        gamestats.add(kills_g);
+        gamestats.add(deaths_g);
     }
 
     public List<Map<String, Double>> getGamestats() {

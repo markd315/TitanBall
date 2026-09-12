@@ -98,6 +98,9 @@ public class BallPhysicsEngine {
         if (context.phase == GamePhase.SCORE_FREEZE || !context.ballVisible) {
             return;
         }
+        if (contactExemptBall()) {
+            return;
+        }
 
         for (GoalHoop goal : context.lowGoals) {
             if (ballIntersectsEllipse(goal) && goal.checkReady()) {
@@ -242,6 +245,9 @@ public class BallPhysicsEngine {
     }
 
     public void minorHoopBounce() {
+        if (contactExemptBall()) {
+            return;
+        }
         CollisionMath.Bounds ballBounds = context.ball.asBounds();
         for (GoalHoop goal : context.lowGoals) {
             CollisionMath.EllipseData ell = goal.ellipseData();
@@ -515,12 +521,12 @@ public class BallPhysicsEngine {
 
     public boolean contactExemptBall() {
         Titan mover = getAnyBallMover();
-        if (mover != null && mover.actionState == Titan.TitanState.LOB && mover.actionFrame > 2 && mover.actionFrame < 8) {
+        if (mover != null && mover.actionState == Titan.TitanState.LOB && mover.actionFrame >= 3 && mover.actionFrame <= 8) {
             return true;
         }
         if (context.activeLobThrower != null) {
             Titan alt = context.activeLobThrower;
-            return alt.actionState == Titan.TitanState.LOB && alt.actionFrame > 2 && alt.actionFrame < 8;
+            return alt.actionState == Titan.TitanState.LOB && alt.actionFrame >= 3 && alt.actionFrame <= 8;
         }
         return false;
     }

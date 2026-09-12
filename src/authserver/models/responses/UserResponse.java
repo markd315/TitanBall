@@ -9,6 +9,11 @@ import java.io.Serializable;
 public class UserResponse implements Serializable {
     protected Double points, rating;
     protected Integer kills, blocks, steals, deaths, turnovers, passes, sidegoals, goals;
+    protected Integer killassists, goalassists, rebounds;
+    protected Integer saves, sidegoalsaves, centergoalsaves, sidegoalsconceded, goalsconceded;
+    protected Integer upgradesgold, consumablesgold, manaspent;
+    protected Integer blocks_g, passes_g, turnovers_g, rebounds_g, steals_g, kills_g, deaths_g;
+    protected Integer goalie_matches;
     protected Integer wins, losses;
     protected int ties, ties_1v1;
     protected Double points_1v1, rating_1v1;
@@ -38,6 +43,25 @@ public class UserResponse implements Serializable {
         this.turnovers = user.getTurnovers();
         this.kills = user.getKills();
         this.deaths = user.getDeaths();
+        this.killassists = user.getKillassists();
+        this.goalassists = user.getGoalassists();
+        this.rebounds = user.getRebounds();
+        this.saves = user.getSaves();
+        this.sidegoalsaves = user.getSidegoalsaves();
+        this.centergoalsaves = user.getCentergoalsaves();
+        this.sidegoalsconceded = user.getSidegoalsconceded();
+        this.goalsconceded = user.getGoalsconceded();
+        this.upgradesgold = user.getUpgradesgold();
+        this.consumablesgold = user.getConsumablesgold();
+        this.manaspent = user.getManaspent();
+        this.blocks_g = user.getBlocks_g();
+        this.passes_g = user.getPasses_g();
+        this.turnovers_g = user.getTurnovers_g();
+        this.rebounds_g = user.getRebounds_g();
+        this.steals_g = user.getSteals_g();
+        this.kills_g = user.getKills_g();
+        this.deaths_g = user.getDeaths_g();
+        this.goalie_matches = user.getGoalie_matches();
         this.wins_1v1 = user.getWins_1v1();
         this.losses_1v1 = user.getLosses_1v1();
         this.rating_1v1 = user.getRating_1v1();
@@ -298,6 +322,158 @@ public class UserResponse implements Serializable {
 
     public void setRank1v1(int rank1v1) {
         this.rank1v1 = rank1v1;
+    }
+
+    public Integer getKillassists() {
+        return killassists;
+    }
+
+    public void setKillassists(Integer killassists) {
+        this.killassists = killassists;
+    }
+
+    public Integer getGoalassists() {
+        return goalassists;
+    }
+
+    public void setGoalassists(Integer goalassists) {
+        this.goalassists = goalassists;
+    }
+
+    public Integer getRebounds() {
+        return rebounds;
+    }
+
+    public void setRebounds(Integer rebounds) {
+        this.rebounds = rebounds;
+    }
+
+    public Integer getSaves() {
+        return saves;
+    }
+
+    public void setSaves(Integer saves) {
+        this.saves = saves;
+    }
+
+    public Integer getSidegoalsaves() {
+        return sidegoalsaves;
+    }
+
+    public void setSidegoalsaves(Integer sidegoalsaves) {
+        this.sidegoalsaves = sidegoalsaves;
+    }
+
+    public Integer getCentergoalsaves() {
+        return centergoalsaves;
+    }
+
+    public void setCentergoalsaves(Integer centergoalsaves) {
+        this.centergoalsaves = centergoalsaves;
+    }
+
+    public Integer getSidegoalsconceded() {
+        return sidegoalsconceded;
+    }
+
+    public void setSidegoalsconceded(Integer sidegoalsconceded) {
+        this.sidegoalsconceded = sidegoalsconceded;
+    }
+
+    public Integer getGoalsconceded() {
+        return goalsconceded;
+    }
+
+    public void setGoalsconceded(Integer goalsconceded) {
+        this.goalsconceded = goalsconceded;
+    }
+
+    public Integer getUpgradesgold() {
+        return upgradesgold;
+    }
+
+    public void setUpgradesgold(Integer upgradesgold) {
+        this.upgradesgold = upgradesgold;
+    }
+
+    public Integer getConsumablesgold() {
+        return consumablesgold;
+    }
+
+    public void setConsumablesgold(Integer consumablesgold) {
+        this.consumablesgold = consumablesgold;
+    }
+
+    public Integer getManaspent() {
+        return manaspent;
+    }
+
+    public void setManaspent(Integer manaspent) {
+        this.manaspent = manaspent;
+    }
+
+    public Integer getBlocks_g() {
+        return blocks_g;
+    }
+
+    public void setBlocks_g(Integer blocks_g) {
+        this.blocks_g = blocks_g;
+    }
+
+    public Integer getPasses_g() {
+        return passes_g;
+    }
+
+    public void setPasses_g(Integer passes_g) {
+        this.passes_g = passes_g;
+    }
+
+    public Integer getTurnovers_g() {
+        return turnovers_g;
+    }
+
+    public void setTurnovers_g(Integer turnovers_g) {
+        this.turnovers_g = turnovers_g;
+    }
+
+    public Integer getRebounds_g() {
+        return rebounds_g;
+    }
+
+    public void setRebounds_g(Integer rebounds_g) {
+        this.rebounds_g = rebounds_g;
+    }
+
+    public Integer getSteals_g() {
+        return steals_g;
+    }
+
+    public void setSteals_g(Integer steals_g) {
+        this.steals_g = steals_g;
+    }
+
+    public Integer getKills_g() {
+        return kills_g;
+    }
+
+    public void setKills_g(Integer kills_g) {
+        this.kills_g = kills_g;
+    }
+
+    public Integer getDeaths_g() {
+        return deaths_g;
+    }
+
+    public void setDeaths_g(Integer deaths_g) {
+        this.deaths_g = deaths_g;
+    }
+
+    public Integer getGoalie_matches() {
+        return goalie_matches;
+    }
+
+    public void setGoalie_matches(Integer goalie_matches) {
+        this.goalie_matches = goalie_matches;
     }
 }
 

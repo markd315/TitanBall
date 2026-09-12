@@ -13,12 +13,15 @@ export const RANK_TIERS = [
 export const getRankTier = (elo) => RANK_TIERS.find(t => (Number(elo) || 1000) >= t.minElo) || RANK_TIERS[RANK_TIERS.length - 1];
 
 let cachedUserStats = null;
-let activeStatsTab = '3v3';
+let activeStatsTab = '4v4';
 
 function getDefaultStats() {
   const s = { username: sessionStorage.getItem('username') || '', email: sessionStorage.getItem('email') || '', rating: 1000.0, rank: 999, rating_1v1: 1000.0, rank1v1: 999 };
   ['wins', 'losses', 'ties', 'goals', 'sidegoals', 'points', 'kills', 'deaths', 'killassists', 'goalassists', 'passes', 'turnovers', 'steals', 'blocks', 'rebounds',
-   'wins_1v1', 'losses_1v1', 'ties_1v1', 'goals_1v1', 'sidegoals_1v1', 'points_1v1', 'kills_1v1', 'deaths_1v1', 'passes_1v1', 'turnovers_1v1', 'steals_1v1', 'blocks_1v1'].forEach(k => s[k] = 0);
+   'saves', 'sidegoalsaves', 'centergoalsaves', 'sidegoalsconceded', 'goalsconceded',
+   'upgradesgold', 'consumablesgold', 'manaspent',
+   'blocks_g', 'passes_g', 'turnovers_g', 'rebounds_g', 'steals_g', 'kills_g', 'deaths_g', 'goalie_matches',
+   'wins_1v1', 'losses_1v1', 'ties_1v1', 'goals_1v1', 'sidegoals_1v1', 'points_1v1', 'kills_1v1', 'deaths_1v1', 'killassists_1v1', 'goalassists_1v1', 'passes_1v1', 'turnovers_1v1', 'steals_1v1', 'blocks_1v1'].forEach(k => s[k] = 0);
   return s;
 }
 
@@ -101,15 +104,15 @@ export const openAdvancedStatsModal = () => setAdvancedStatsModal(true);
 export const closeAdvancedStatsModal = () => setAdvancedStatsModal(false);
 
 function renderAdvancedStatsPane() {
-  const stats = getCurrentUserStats(), is3v3 = activeStatsTab === '3v3';
-  const elo = Math.round(is3v3 ? (stats.rating != null ? stats.rating : 1000) : (stats.rating_1v1 != null ? stats.rating_1v1 : 1000));
-  const wins = Number(is3v3 ? (stats.wins || 0) : (stats.wins_1v1 || 0));
-  const losses = Number(is3v3 ? (stats.losses || 0) : (stats.losses_1v1 || 0));
-  const ties = Number(is3v3 ? (stats.ties || 0) : (stats.ties_1v1 || 0));
+  const stats = getCurrentUserStats(), is4v4 = activeStatsTab === '4v4';
+  const elo = Math.round(is4v4 ? (stats.rating != null ? stats.rating : 1000) : (stats.rating_1v1 != null ? stats.rating_1v1 : 1000));
+  const wins = Number(is4v4 ? (stats.wins || 0) : (stats.wins_1v1 || 0));
+  const losses = Number(is4v4 ? (stats.losses || 0) : (stats.losses_1v1 || 0));
+  const ties = Number(is4v4 ? (stats.ties || 0) : (stats.ties_1v1 || 0));
   const totalMatches = wins + losses + ties;
   const winRate = totalMatches > 0 ? ((wins / totalMatches) * 100).toFixed(1) : '0.0';
   const tier = getRankTier(elo);
-  const rankNum = is3v3 ? stats.rank : stats.rank1v1;
+  const rankNum = is4v4 ? stats.rank : stats.rank1v1;
   const rankStr = (rankNum && rankNum < 900) ? `#${rankNum}` : 'Unranked';
 
   const avatarEl = document.getElementById('stats-player-avatar');
@@ -139,24 +142,122 @@ function renderAdvancedStatsPane() {
     if (placeEl) placeEl.textContent = `${totalMatches} of 10 matches played`;
   }
 
-  const goals = is3v3 ? (stats.goals || 0) : (stats.goals_1v1 || 0);
-  const sidegoals = is3v3 ? (stats.sidegoals || 0) : (stats.sidegoals_1v1 || 0);
-  const points = Number(is3v3 ? (stats.points || 0) : (stats.points_1v1 || 0)).toFixed(1);
-  const kills = is3v3 ? (stats.kills || 0) : (stats.kills_1v1 || 0);
-  const deaths = is3v3 ? (stats.deaths || 0) : (stats.deaths_1v1 || 0);
+  const goals = is4v4 ? (stats.goals || 0) : (stats.goals_1v1 || 0);
+  const sidegoals = is4v4 ? (stats.sidegoals || 0) : (stats.sidegoals_1v1 || 0);
+  const points = Number(is4v4 ? (stats.points || 0) : (stats.points_1v1 || 0)).toFixed(1);
+  const kills = is4v4 ? (stats.kills || 0) : (stats.kills_1v1 || 0);
+  const deaths = is4v4 ? (stats.deaths || 0) : (stats.deaths_1v1 || 0);
   const kdRatio = deaths > 0 ? (kills / deaths).toFixed(2) : (kills > 0 ? kills.toFixed(2) : '0.00');
-  const passes = is3v3 ? (stats.passes || 0) : (stats.passes_1v1 || 0);
-  const turnovers = is3v3 ? (stats.turnovers || 0) : (stats.turnovers_1v1 || 0);
-  const steals = is3v3 ? (stats.steals || 0) : (stats.steals_1v1 || 0);
-  const blocks = is3v3 ? (stats.blocks || 0) : (stats.blocks_1v1 || 0);
-  const assists = is3v3 ? ((stats.killassists || 0) + (stats.goalassists || 0)) : 0;
-  const rebounds = is3v3 ? (stats.rebounds || 0) : 0;
+  const passes = is4v4 ? (stats.passes || 0) : (stats.passes_1v1 || 0);
+  const turnovers = is4v4 ? (stats.turnovers || 0) : (stats.turnovers_1v1 || 0);
+  const steals = is4v4 ? (stats.steals || 0) : (stats.steals_1v1 || 0);
+  const blocks = is4v4 ? (stats.blocks || 0) : (stats.blocks_1v1 || 0);
+  const assists = is4v4 ? ((stats.killassists || 0) + (stats.goalassists || 0)) : 0;
+  const killAssists = is4v4 ? (stats.killassists || 0) : (stats.killassists_1v1 || 0);
+  const goalAssists = is4v4 ? (stats.goalassists || 0) : (stats.goalassists_1v1 || 0);
+  const rebounds = is4v4 ? (stats.rebounds || 0) : 0;
 
   const m = totalMatches > 0 ? totalMatches : 1;
-  const cpg = (goals / m).toFixed(1), spg = (sidegoals / m).toFixed(1), ppg = (Number(points) / m).toFixed(1);
-  const kpg = (kills / m).toFixed(1), dpg = (deaths / m).toFixed(1);
-  const passPg = (passes / m).toFixed(1), toPg = (turnovers / m).toFixed(1);
-  const stlPg = (steals / m).toFixed(1), blkPg = (blocks / m).toFixed(1), rebPg = (rebounds / m).toFixed(1);
+  // Goalie games vs Outfield games:
+  // Use tracked goalie_matches directly from user profile.
+  const goalieMatches = is4v4 ? Math.min(totalMatches, (stats.goalie_matches != null ? Number(stats.goalie_matches) : ((stats.saves || 0) > 0 || (stats.goalsconceded || 0) > 0 ? 1 : 0))) : 0;
+  const outfieldMatches = Math.max(0, totalMatches - goalieMatches);
+  const mOutfield = outfieldMatches > 0 ? outfieldMatches : (goalieMatches > 0 ? 0 : m);
+  const mGoalie = goalieMatches > 0 ? goalieMatches : (stats.saves > 0 || (stats.goalsconceded || 0) > 0 ? 1 : 1);
+
+  const cpg = mOutfield > 0 ? (goals / mOutfield).toFixed(1) : '0.0';
+  const spg = mOutfield > 0 ? (sidegoals / mOutfield).toFixed(1) : '0.0';
+  const ppg = mOutfield > 0 ? (Number(points) / mOutfield).toFixed(1) : '0.0';
+  const kpg = mOutfield > 0 ? (kills / mOutfield).toFixed(1) : '0.0';
+  const dpg = mOutfield > 0 ? (deaths / mOutfield).toFixed(1) : '0.0';
+  const passPg = mOutfield > 0 ? (passes / mOutfield).toFixed(1) : '0.0';
+  const toPg = mOutfield > 0 ? (turnovers / mOutfield).toFixed(1) : '0.0';
+  const stlPg = mOutfield > 0 ? (steals / mOutfield).toFixed(1) : '0.0';
+  const blkPg = mOutfield > 0 ? (blocks / mOutfield).toFixed(1) : '0.0';
+  const rebPg = mOutfield > 0 ? (rebounds / mOutfield).toFixed(1) : '0.0';
+  const gastPg = mOutfield > 0 ? (goalAssists / mOutfield).toFixed(1) : '0.0';
+  const kastPg = mOutfield > 0 ? (killAssists / mOutfield).toFixed(1) : '0.0';
+
+  // Goalie stats & resources (4v4 matches)
+  const saves = is4v4 ? (stats.saves || 0) : 0;
+  const sidegoalsaves = is4v4 ? (stats.sidegoalsaves || 0) : 0;
+  const centergoalsaves = is4v4 ? (stats.centergoalsaves || 0) : 0;
+  const sidegoalsconceded = is4v4 ? (stats.sidegoalsconceded || 0) : 0;
+  const goalsconceded = is4v4 ? (stats.goalsconceded || 0) : 0;
+  const totalConceded = sidegoalsconceded + goalsconceded;
+  const totalShotsFaced = saves + totalConceded;
+  const svPct = totalShotsFaced > 0 ? ((saves / totalShotsFaced) * 100).toFixed(1) : (saves > 0 ? '100.0' : '0.0');
+  const cgTotal = centergoalsaves + goalsconceded;
+  const cgSvPct = cgTotal > 0 ? ((centergoalsaves / cgTotal) * 100).toFixed(1) : (centergoalsaves > 0 ? '100.0' : '0.0');
+  const sgTotal = sidegoalsaves + sidegoalsconceded;
+  const sgSvPct = sgTotal > 0 ? ((sidegoalsaves / sgTotal) * 100).toFixed(1) : (sidegoalsaves > 0 ? '100.0' : '0.0');
+  const savesPg = (saves / mGoalie).toFixed(1);
+  const concPg = (totalConceded / mGoalie).toFixed(1);
+
+  const upgradesgold = is4v4 ? (stats.upgradesgold || 0) : 0;
+  const consumablesgold = is4v4 ? (stats.consumablesgold || 0) : 0;
+  const totalGold = upgradesgold + consumablesgold;
+  const manaspent = is4v4 ? (stats.manaspent || 0) : 0;
+  const goldPg = Math.round(totalGold / mGoalie);
+  const manaPg = Math.round(manaspent / mGoalie);
+
+  const blkG = is4v4 ? (stats.blocks_g || 0) : 0;
+  const passG = is4v4 ? (stats.passes_g || 0) : 0;
+  const toG = is4v4 ? (stats.turnovers_g || 0) : 0;
+  const rebG = is4v4 ? (stats.rebounds_g || 0) : 0;
+  const stlG = is4v4 ? (stats.steals_g || 0) : 0;
+
+  // Box Plus-Minus Performance Tier helper:
+  // In TitanBall (first to 10 points), +2.0 TBPM represents game-breaking dominance (+2 net points per game by one player).
+  const getBpmTier = (val) => {
+    if (val >= 2.0) return { name: 'MVP', color: '#facc15' };
+    if (val >= 1.2) return { name: 'All-Titan', color: '#2ed573' };
+    if (val >= 0.4) return { name: 'Above Avg', color: '#38bdf8' };
+    if (val >= -0.4) return { name: 'Average', color: '#cbd5e1' };
+    if (val >= -1.2) return { name: 'Below Avg', color: '#fb923c' };
+    return { name: 'Replacement', color: '#ef4444' };
+  };
+
+  // Goalie Box Plus-Minus (GBPM): Empirical 19,333-match telemetry baselines from classstat (38,666 goalie entries)
+  // Evaluates shot-stopping (GSAx) + Crease Disruption & Distribution + Lane Economy Pace
+  let gbpm = 0, gbpmStr = '0.0', gbpmTier = getBpmTier(0);
+  const hasGoalieData = is4v4 && (totalShotsFaced > 0 || (totalGold > 0 && manaspent > 0) || goalieMatches > 0);
+  if (hasGoalieData) {
+    // Expected center save rate from classstat: 0.44 / (0.44 + 2.43) = 15.3% (84.7% conceded)
+    // Expected side save rate from classstat: 0.07 / (0.07 + 11.28) = 0.6% (99.4% conceded)
+    const expectedCgConc = cgTotal * 0.847;
+    const cgSavedAboveExp = expectedCgConc - goalsconceded;
+
+    const expectedSgConc = sgTotal * 0.994;
+    const sgSavedAboveExp = expectedSgConc - sidegoalsconceded;
+
+    const netProtection = (cgSavedAboveExp / mGoalie) * 1.5 + (sgSavedAboveExp / mGoalie) * 0.35;
+    const disruption = (blkG > 0 || rebG > 0 || passG > 0 || toG > 0 || stlG > 0)
+      ? ((blkG / mGoalie - 0.54) * 0.05 + (rebG / mGoalie - 0.02) * 0.05 + (stlG / mGoalie - 0.23) * 0.08 + (passG / mGoalie - 0.72) * 0.02 - (toG / mGoalie - 0.28) * 0.06)
+      : 0;
+    const economy = totalGold > 0 ? ((totalGold / mGoalie - 630) * 0.002 + (manaspent / mGoalie - 460) * 0.0005) : 0;
+
+    gbpm = netProtection + disruption + economy;
+    gbpmStr = (gbpm >= 0 ? '+' : '') + gbpm.toFixed(1);
+    gbpmTier = getBpmTier(gbpm);
+  }
+
+  // Field Titan Box Plus-Minus (TBPM): Empirical 19,333-match outfield baselines from classstat (115,998 entries)
+  // Evaluated ONLY across matches played as an outfield Titan so Goalie duty does not drag down OBPM/DBPM.
+  let obpm = 0, dbpm = 0, tbpm = 0, tbpmStr = '0.0', tbpmTier = getBpmTier(0);
+  const hasOutfieldData = is4v4 && outfieldMatches > 0;
+  if (hasOutfieldData) {
+    obpm = (Number(cpg) - 0.81) * 1.5 + (Number(spg) - 3.76) * 0.35 + (Number(gastPg) - 0.6) * 0.8 + (Number(kpg) - 1.2) * 0.25 + (Number(kastPg) - 0.5) * 0.10 + (Number(passPg) - 12.0) * 0.04 - (Number(toPg) - 9.1) * 0.12;
+    dbpm = (Number(stlPg) - 6.9) * 0.15 + (Number(blkPg) - 10.7) * 0.08 + (Number(rebPg) - 8.5) * 0.08 + (Number(kpg) - 1.2) * 0.25 + (Number(kastPg) - 0.5) * 0.10 - (Number(dpg) - 1.5) * 0.30 - (Number(toPg) - 9.1) * 0.03;
+    tbpm = obpm + dbpm;
+    tbpmStr = (tbpm >= 0 ? '+' : '') + tbpm.toFixed(1);
+    tbpmTier = getBpmTier(tbpm);
+  } else if (hasGoalieData) {
+    // Pure Goalie: Primary performance tier is determined by GBPM
+    tbpm = gbpm;
+    tbpmStr = gbpmStr;
+    tbpmTier = gbpmTier;
+  }
 
   const gridEl = document.getElementById('stats-tiles-grid');
   if (gridEl) {
@@ -176,18 +277,18 @@ function renderAdvancedStatsPane() {
         </div>
       </div>
       <div class="stats-metric-card">
-        <div class="stats-split-row"><span class="metric-label">Scoring</span><span class="stats-total-count">${goals} center · ${sidegoals} side</span></div>
+        <div class="stats-split-row"><span class="metric-label">Scoring</span><span class="stats-total-count">${goals} center · ${sidegoals} side${is4v4 ? ` · ${goalAssists} ast` : ''}</span></div>
         <div class="stats-split-row" style="justify-content: space-between;"><span class="stats-sub-label" style="font-size: 10px; color: #cbd5e1; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Center / Side</span><span class="stats-total-count">${points} pts</span></div>
         <div class="stats-split-row" style="margin-top: 2px;">
           <div class="stats-per-game"><span class="metric-val"><span style="color:#fbbf24;">${cpg}</span> / <span style="color:#cbd5e1;">${spg}</span></span><span class="pg-unit">/g</span></div>
-          <span class="stats-total-count">${ppg} pts/g</span>
+          <span class="stats-total-count">${ppg} pts/g${is4v4 ? ` · ${gastPg} G-ast/g` : ''}</span>
         </div>
       </div>
       <div class="stats-metric-card">
-        <div class="stats-split-row"><span class="metric-label">Combat</span><span class="stats-total-count">${kills} kills · ${deaths} deaths</span></div>
+        <div class="stats-split-row"><span class="metric-label">Combat</span><span class="stats-total-count">${kills} kills · ${deaths} deaths${is4v4 ? ` · ${killAssists} ast` : ''}</span></div>
         <div class="stats-split-row" style="margin-top: 2px;">
           <div class="stats-per-game"><span class="metric-val"><span style="color:#f87171;">${kpg}</span> / <span style="color:#cbd5e1;">${dpg}</span></span><span class="pg-unit">/g</span></div>
-          <span class="stats-total-count">${kdRatio} K/D ${is3v3 ? `· ${assists} ast` : ''}</span>
+          <span class="stats-total-count">${kdRatio} K/D${is4v4 ? ` · ${kastPg} K-ast/g` : ''}</span>
         </div>
       </div>
       <div class="stats-metric-card">
@@ -204,6 +305,33 @@ function renderAdvancedStatsPane() {
           <div class="stats-per-game"><span class="metric-val"><span style="color:#a7f3d0;">${stlPg}</span> / <span style="color:#a855f7;">${blkPg}</span></span><span class="pg-unit">/g</span></div>
         </div>
       </div>
+      ${is4v4 ? `
+      <div class="stats-metric-card">
+        <div class="stats-split-row"><span class="metric-label">Goalie</span><span class="stats-total-count">${saves} sv · ${totalConceded} conc (${centergoalsaves} CG sv)</span></div>
+        <div class="stats-split-row" style="justify-content: space-between;"><span class="stats-sub-label" style="font-size: 10px; color: #cbd5e1; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Center / Side SV%</span><span class="stats-total-count">${savesPg} sv/g · ${concPg} conc/g</span></div>
+        <div class="stats-split-row" style="margin-top: 2px;">
+          <div class="stats-per-game"><span class="metric-val"><span style="color:#22d3ee;">${cgSvPct}%</span> / <span style="color:#38bdf8;">${sgSvPct}%</span></span></div>
+          <span class="stats-total-count"><span style="color:#facc15; font-weight:700;">${goldPg}</span> gold · <span style="color:#c084fc; font-weight:700;">${manaPg}</span> mana/g</span>
+        </div>
+      </div>
+      <div class="stats-metric-card">
+        <div class="stats-split-row"><span class="metric-label">Advanced</span><span class="stats-total-count" style="font-weight: 700; color: ${tbpmTier.color};">${tbpmTier.name} Tier (${tbpmStr} ${hasOutfieldData ? 'BPM' : 'GBPM'})</span></div>
+        <div class="stats-split-row" style="margin-top: 2px;">
+          <div class="stats-per-game" style="gap: 2px;">
+            <span class="metric-val" style="color: #38bdf8; font-size: 13px; cursor: help;" title="OBPM = 1.50*(cpg - 0.81) + 0.35*(spg - 3.76) + 0.80*(gast/g - 0.6) + 0.25*(kpg - 1.2) + 0.10*(kast/g - 0.5) + 0.04*(pass/g - 12.0) - 0.12*(to/g - 9.1)">${hasOutfieldData ? `${obpm >= 0 ? '+' : ''}${obpm.toFixed(1)}` : '—'}</span><span class="pg-unit" style="color: #38bdf8; font-weight: 700; font-size: 9px; cursor: help;" title="OBPM (Offensive Box Plus-Minus): Evaluates goal scoring, assists, combat offense, passing volume, and turnover deductions relative to 19,333-match outfield baselines.">OBPM</span>
+            <span style="color: #475569; margin: 0 2px; font-size: 11px;">·</span>
+            <span class="metric-val" style="color: #a7f3d0; font-size: 13px; cursor: help;" title="DBPM = 0.15*(stl/g - 6.9) + 0.08*(blk/g - 10.7) + 0.08*(reb/g - 8.5) + 0.25*(kpg - 1.2) + 0.10*(kast/g - 0.5) - 0.30*(dpg - 1.5) - 0.03*(to/g - 9.1)">${hasOutfieldData ? `${dbpm >= 0 ? '+' : ''}${dbpm.toFixed(1)}` : '—'}</span><span class="pg-unit" style="color: #a7f3d0; font-weight: 700; font-size: 9px; cursor: help;" title="DBPM (Defensive Box Plus-Minus): Evaluates steals, shots contested/blocked, loose ball rebounds, kills, and death penalties relative to 19,333-match outfield baselines.">DBPM</span>
+          </div>
+          <div class="stats-per-game">
+            <span class="metric-val" style="color: ${gbpmTier.color}; font-size: 13px; cursor: help;" title="GBPM = 1.50*(cgGSAx/g) + 0.35*(sgGSAx/g) + 0.002*(gold/g - 630) + 0.0005*(mana/g - 460)&#10;where cgGSAx = cgTotal*0.847 - cgConceded, sgGSAx = sgTotal*0.994 - sgConceded">${hasGoalieData ? gbpmStr : '—'}</span><span class="pg-unit" style="color: ${gbpmTier.color}; font-weight: 700; font-size: 9px; cursor: help;" title="GBPM (Goalie Box Plus-Minus): Goals Saved Above Expected (GSAx) evaluated across center and side shots faced plus lane resource economy pace relative to 38,666 goalie match baselines.">GBPM</span>
+          </div>
+        </div>
+        ${(goalieMatches > 0 && outfieldMatches > 0) ? `
+        <div class="stats-split-row" style="margin-top: 2px;">
+          <span class="stats-total-count" style="color: #94a3b8; font-size: 10px;">${goalieMatches} goalie match${goalieMatches > 1 ? 'es' : ''} · ${outfieldMatches} outfield match${outfieldMatches > 1 ? 'es' : ''}</span>
+        </div>` : ''}
+      </div>
+      ` : ''}
     `;
   }
 }
@@ -212,11 +340,14 @@ export function initStatsScreen() {
   document.getElementById('user-stats-card')?.addEventListener('click', openAdvancedStatsModal);
   ['stats-modal-close-btn', 'stats-modal-done-btn'].forEach(id => document.getElementById(id)?.addEventListener('click', closeAdvancedStatsModal));
 
-  ['3v3', '1v1'].forEach(mode => {
-    document.getElementById(`stats-tab-${mode}`)?.addEventListener('click', () => {
+  ['4v4', '1v1'].forEach(mode => {
+    const tabEl = document.getElementById(`stats-tab-${mode}`) || (mode === '4v4' ? document.getElementById('stats-tab-3v3') : null);
+    tabEl?.addEventListener('click', () => {
       activeStatsTab = mode;
-      document.getElementById('stats-tab-3v3')?.classList.toggle('active', mode === '3v3');
-      document.getElementById('stats-tab-1v1')?.classList.toggle('active', mode === '1v1');
+      const tab4v4 = document.getElementById('stats-tab-4v4') || document.getElementById('stats-tab-3v3');
+      const tab1v1 = document.getElementById('stats-tab-1v1');
+      tab4v4?.classList.toggle('active', mode === '4v4');
+      tab1v1?.classList.toggle('active', mode === '1v1');
       renderAdvancedStatsPane();
     });
   });

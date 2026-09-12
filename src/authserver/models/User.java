@@ -92,6 +92,22 @@ public class User implements Serializable, UserDetails {
         this.killassists = 0;
         this.goalassists = 0;
         this.rebounds = 0;
+        this.saves = 0;
+        this.sidegoalsaves = 0;
+        this.centergoalsaves = 0;
+        this.sidegoalsconceded = 0;
+        this.goalsconceded = 0;
+        this.upgradesgold = 0;
+        this.consumablesgold = 0;
+        this.manaspent = 0;
+        this.blocks_g = 0;
+        this.passes_g = 0;
+        this.turnovers_g = 0;
+        this.rebounds_g = 0;
+        this.steals_g = 0;
+        this.kills_g = 0;
+        this.deaths_g = 0;
+        this.goalie_matches = 0;
         this.rating_1v1 = 1000.0;
         this.wins_1v1 = 0;
         this.losses_1v1 = 0;
@@ -245,6 +261,54 @@ public class User implements Serializable, UserDetails {
 
     @Column(name = "rebounds")
     protected int rebounds;
+
+    @Column(name = "saves")
+    protected int saves = 0;
+
+    @Column(name = "sidegoalsaves")
+    protected int sidegoalsaves = 0;
+
+    @Column(name = "centergoalsaves")
+    protected int centergoalsaves = 0;
+
+    @Column(name = "sidegoalsconceded")
+    protected int sidegoalsconceded = 0;
+
+    @Column(name = "goalsconceded")
+    protected int goalsconceded = 0;
+
+    @Column(name = "upgradesgold")
+    protected int upgradesgold = 0;
+
+    @Column(name = "consumablesgold")
+    protected int consumablesgold = 0;
+
+    @Column(name = "manaspent")
+    protected int manaspent = 0;
+
+    @Column(name = "blocks_g")
+    protected int blocks_g = 0;
+
+    @Column(name = "passes_g")
+    protected int passes_g = 0;
+
+    @Column(name = "turnovers_g")
+    protected int turnovers_g = 0;
+
+    @Column(name = "rebounds_g")
+    protected int rebounds_g = 0;
+
+    @Column(name = "steals_g")
+    protected int steals_g = 0;
+
+    @Column(name = "kills_g")
+    protected int kills_g = 0;
+
+    @Column(name = "deaths_g")
+    protected int deaths_g = 0;
+
+    @Column(name = "goalie_matches")
+    protected int goalie_matches = 0;
 
     @Column(name = "rating_1v1")
     protected Double rating_1v1;
@@ -540,5 +604,133 @@ public class User implements Serializable, UserDetails {
 
     public void setRebounds_1v1(int rebounds_1v1) {
         this.rebounds_1v1 = rebounds_1v1;
+    }
+
+    public int getSaves() {
+        return saves;
+    }
+
+    public void setSaves(int saves) {
+        this.saves = saves;
+    }
+
+    public int getSidegoalsaves() {
+        return sidegoalsaves;
+    }
+
+    public void setSidegoalsaves(int sidegoalsaves) {
+        this.sidegoalsaves = sidegoalsaves;
+    }
+
+    public int getCentergoalsaves() {
+        return centergoalsaves;
+    }
+
+    public void setCentergoalsaves(int centergoalsaves) {
+        this.centergoalsaves = centergoalsaves;
+    }
+
+    public int getSidegoalsconceded() {
+        return sidegoalsconceded;
+    }
+
+    public void setSidegoalsconceded(int sidegoalsconceded) {
+        this.sidegoalsconceded = sidegoalsconceded;
+    }
+
+    public int getGoalsconceded() {
+        return goalsconceded;
+    }
+
+    public void setGoalsconceded(int goalsconceded) {
+        this.goalsconceded = goalsconceded;
+    }
+
+    public int getUpgradesgold() {
+        return upgradesgold;
+    }
+
+    public void setUpgradesgold(int upgradesgold) {
+        this.upgradesgold = upgradesgold;
+    }
+
+    public int getConsumablesgold() {
+        return consumablesgold;
+    }
+
+    public void setConsumablesgold(int consumablesgold) {
+        this.consumablesgold = consumablesgold;
+    }
+
+    public int getManaspent() {
+        return manaspent;
+    }
+
+    public void setManaspent(int manaspent) {
+        this.manaspent = manaspent;
+    }
+
+    public int getBlocks_g() {
+        return blocks_g;
+    }
+
+    public void setBlocks_g(int blocks_g) {
+        this.blocks_g = blocks_g;
+    }
+
+    public int getPasses_g() {
+        return passes_g;
+    }
+
+    public void setPasses_g(int passes_g) {
+        this.passes_g = passes_g;
+    }
+
+    public int getTurnovers_g() {
+        return turnovers_g;
+    }
+
+    public void setTurnovers_g(int turnovers_g) {
+        this.turnovers_g = turnovers_g;
+    }
+
+    public int getRebounds_g() {
+        return rebounds_g;
+    }
+
+    public void setRebounds_g(int rebounds_g) {
+        this.rebounds_g = rebounds_g;
+    }
+
+    public int getSteals_g() {
+        return steals_g;
+    }
+
+    public void setSteals_g(int steals_g) {
+        this.steals_g = steals_g;
+    }
+
+    public int getKills_g() {
+        return kills_g;
+    }
+
+    public void setKills_g(int kills_g) {
+        this.kills_g = kills_g;
+    }
+
+    public int getDeaths_g() {
+        return deaths_g;
+    }
+
+    public void setDeaths_g(int deaths_g) {
+        this.deaths_g = deaths_g;
+    }
+
+    public int getGoalie_matches() {
+        return goalie_matches;
+    }
+
+    public void setGoalie_matches(int goalie_matches) {
+        this.goalie_matches = goalie_matches;
     }
 }

@@ -27,7 +27,19 @@ public class Selector  {
         Set<Entity> ret = new HashSet<>();
         // Center the bounds around (mX, mY) if MOUSE_CENTER is used
         if (offset == SelectorOffset.MOUSE_CENTER) {
-            latestCollider = new CollisionMath.Bounds(mX - sizeDef.width() / 2.0, mY - sizeDef.height() / 2.0, sizeDef.width(), sizeDef.height());
+            double targetX = mX;
+            double targetY = mY;
+            if (offsetRange > 0 && offsetRange < 9000 && casting != null) {
+                double cx = casting.X + (casting.width > 0 ? casting.width : 70) / 2.0;
+                double cy = casting.Y + (casting.height > 0 ? casting.height : 70) / 2.0;
+                double dist = Math.hypot(mX - cx, mY - cy);
+                if (dist > offsetRange) {
+                    double angle = Math.atan2(mY - cy, mX - cx);
+                    targetX = cx + Math.cos(angle) * offsetRange;
+                    targetY = cy + Math.sin(angle) * offsetRange;
+                }
+            }
+            latestCollider = new CollisionMath.Bounds(targetX - sizeDef.width() / 2.0, targetY - sizeDef.height() / 2.0, sizeDef.width(), sizeDef.height());
         } else if (offset == SelectorOffset.CAST_CENTER) {
             double cx = casting.X + casting.width / 2.0;
             double cy = casting.Y + casting.height / 2.0;

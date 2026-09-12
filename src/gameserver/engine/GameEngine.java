@@ -8,6 +8,7 @@ import gameserver.TutorialOverrides;
 import gameserver.effects.EffectId;
 import gameserver.effects.cooldowns.CooldownCurve;
 import gameserver.effects.effects.Effect;
+import gameserver.effects.effects.RatioEffect;
 import gameserver.entity.Box;
 import gameserver.entity.Entity;
 import gameserver.entity.Titan;
@@ -43,7 +44,7 @@ public class GameEngine extends Game {
     // Tracks the titan currently executing a lob so that the uncatchable window
     // (frames 3–8) can be scoped to that thrower alone, not all players globally.
     @com.fasterxml.jackson.annotation.JsonIgnore
-    transient Titan activeLobThrower = null;
+    public transient Titan activeLobThrower = null;
 
     // Tracks the active sidegoal scorers until a center goal is cashed in (combo goal)
     // or the ghost points are rounded away by the enemy team.
@@ -394,10 +395,9 @@ public class GameEngine extends Game {
         if (this.phase == GamePhase.SCORE_FREEZE || !ballVisible) {
             return;
         }
-        // NOTE: contactExemptBall() is intentionally NOT checked here.
-        // The lob uncatchable window must never block goal detection — a ball
-        // in the air can and should score. Only intersectAll() (player catching)
-        // is gated by contactExemptBall().
+        if (contactExemptBall()) {
+            return;
+        }
         for (GoalHoop goal : this.lowGoals) {
             if (ballIntersectsEllipse(goal) && goal.checkReady()) {
                 Optional<Titan> possessor = titanInPossession();
@@ -544,6 +544,9 @@ public class GameEngine extends Game {
     }
 
     public void minorHoopBounce() {
+        if (contactExemptBall()) {
+            return;
+        }
         gameserver.engine.CollisionMath.Bounds ballBounds = ball.asBounds();
         for (GoalHoop goal : this.lowGoals) {
             gameserver.engine.CollisionMath.EllipseData ell = goal.ellipseData();
@@ -886,6 +889,11 @@ public class GameEngine extends Game {
                 && activeLobThrower.actionFrame <= 8) {
             return true;
         }
+        Titan mover = getAnyBallMover();
+        if (mover != null && mover.actionState == Titan.TitanState.LOB
+                && mover.actionFrame >= 3 && mover.actionFrame <= 8) {
+            return true;
+        }
         return false;
     }
 
@@ -1052,7 +1060,7 @@ public class GameEngine extends Game {
         return countInTier(purchased, shortName, prevTier) >= required;
     }
 
-    void handleGoalieTreePurchase(Titan t, String treeKey, String nodeKey) {
+    public void handleGoalieTreePurchase(Titan t, String treeKey, String nodeKey) {
         if (treeKey == null || nodeKey == null) return;
         String shortName = TREE_SHORT_NAME.get(treeKey);
         if (shortName == null || !nodeKey.startsWith(shortName + ".")) return;
@@ -1112,7 +1120,9 @@ public class GameEngine extends Game {
             stats.grant(this, t, StatEngine.StatEnum.MANASPENT, cost);
         } else {
             if (hasCost) {
-                stats.grant(this, t, StatEngine.StatEnum.UPGRADESGOLD, cost);
+                if (!"cultivation".equals(shortName)) {
+                    stats.grant(this, t, StatEngine.StatEnum.UPGRADESGOLD, cost);
+                }
             } else if (hasUse) {
                 stats.grant(this, t, StatEngine.StatEnum.CONSUMABLESGOLD, cost);
             }
@@ -2368,13 +2378,23 @@ public class GameEngine extends Game {
         // Rule 3: Neutral state / Loose ball or thrown ball
         if (looseBall) {
             boolean ballInMotion = anyBallMoveState();
+            double targetBallX;
+            double targetBallY;
             if (ballInMotion) {
-                ai.aiTargetX = Math.max(c.MIN_X, Math.min(c.MAX_X, ball.X + xKickPow * 15));
-                ai.aiTargetY = Math.max(c.MIN_Y, Math.min(c.MAX_Y, ball.Y + yKickPow * 15));
+                targetBallX = Math.max(c.MIN_X, Math.min(c.MAX_X, ball.X + xKickPow * 15));
+                targetBallY = Math.max(c.MIN_Y, Math.min(c.MAX_Y, ball.Y + yKickPow * 15));
             } else {
-                ai.aiTargetX = ballCenterX;
-                ai.aiTargetY = ballCenterY;
+                targetBallX = ballCenterX;
+                targetBallY = ballCenterY;
             }
+
+            if (isTeammateCloserToLooseBall(ai, targetBallX, targetBallY)) {
+                evaluateLooseBallAttackingPosture(ai, targetBallX, targetBallY);
+                return;
+            }
+
+            ai.aiTargetX = targetBallX;
+            ai.aiTargetY = targetBallY;
             ai.aiTargetAction = 0;
             updateAiBoostDecision(ai);
             return;
@@ -2824,6 +2844,113 @@ public class GameEngine extends Game {
 
         ai.aiTargetX = Math.max(c.MIN_X, Math.min(c.MAX_X, carrierCX + forwardDir * 200.0));
         ai.aiTargetY = Math.max(c.MIN_Y, Math.min(c.MAX_Y, carrierCY + verticalOffset));
+    }
+
+    public double getTitanChaseSpeed(Titan t) {
+        if (t == null) return 1.0;
+        if (effectPool != null && (effectPool.isRooted(t) || effectPool.isStunned(t))) {
+            return 0.001;
+        }
+        double base = t.speed;
+        boolean hasDilators = (homeGoaliePurchasedUpgrades != null && homeGoaliePurchasedUpgrades.contains("fortress.t5.dilators")) ||
+                              (awayGoaliePurchasedUpgrades != null && awayGoaliePurchasedUpgrades.contains("fortress.t5.dilators"));
+        if (hasDilators && c != null) {
+            base *= c.getD("guardian.dilators.speedmult");
+        }
+        if (effectPool != null) {
+            for (Effect eff : effectPool.getEffects()) {
+                if (eff != null && eff.on != null && eff.on.id.equals(t.id)) {
+                    if (eff.effect.equals(EffectId.SLOW)) {
+                        base /= ((RatioEffect) eff).getRatio();
+                    } else if (eff.effect.equals(EffectId.FAST)) {
+                        base *= ((RatioEffect) eff).getRatio();
+                    }
+                }
+            }
+        }
+        if (t.fuel > 5.0) {
+            base *= t.boostFactor;
+        }
+        int L = 0;
+        int topCY = (int) (c.getI("goal.low.y") + c.getI("goal.low.height") / 2.0);
+        int midCY = (int) (c.getI("goal.hi.y") + c.getI("goal.hi.height") / 2.0);
+        int botCY = (int) (c.getI("goal.low2.y") + c.getI("goal.low.height") / 2.0);
+        double d0 = Math.abs(t.Y - topCY);
+        double d1 = Math.abs(t.Y - midCY);
+        double d2 = Math.abs(t.Y - botCY);
+        if (d1 < d0 && d1 < d2) L = 1;
+        else if (d2 < d0 && d2 < d1) L = 2;
+        return Math.max(0.1, getLaneMinionSpeed(L, t.team, base, 0.0));
+    }
+
+    public boolean isTeammateCloserToLooseBall(Titan ai, double targetBallX, double targetBallY) {
+        double aiCX = ai.X + ai.width / 2.0;
+        double aiCY = ai.Y + ai.height / 2.0;
+        double aiDist = Math.hypot(targetBallX - aiCX, targetBallY - aiCY);
+        double aiSpeed = getTitanChaseSpeed(ai);
+        double aiTimeToBall = aiDist / aiSpeed;
+
+        for (Titan t : players) {
+            if (t == null || t.id.equals(ai.id) || t.team != ai.team) continue;
+            if (effectPool != null && (effectPool.hasEffect(t, EffectId.DEAD)
+                    || effectPool.isRooted(t) || effectPool.isStunned(t))) {
+                continue;
+            }
+
+            // Goalies stay in their crease and only contest balls inside their box
+            if (isGoalie(t)) {
+                boolean inCrease = (targetBallY >= c.GOALIE_Y_MIN && targetBallY <= c.GOALIE_Y_MAX
+                        && (t.team == TeamAffiliation.HOME
+                                ? (targetBallX >= c.GOALIE_XH_MIN && targetBallX <= c.GOALIE_XH_MAX)
+                                : (targetBallX >= c.GOALIE_XA_MIN && targetBallX <= c.GOALIE_XA_MAX)));
+                if (!inCrease) continue;
+            }
+
+            double tCX = t.X + t.width / 2.0;
+            double tCY = t.Y + t.height / 2.0;
+            double tDist = Math.hypot(targetBallX - tCX, targetBallY - tCY);
+            double tSpeed = getTitanChaseSpeed(t);
+            double tTimeToBall = tDist / tSpeed;
+
+            if (tTimeToBall < aiTimeToBall - 0.001) {
+                return true;
+            } else if (Math.abs(tTimeToBall - aiTimeToBall) <= 0.001) {
+                if (tDist < aiDist - 0.001) {
+                    return true;
+                } else if (Math.abs(tDist - aiDist) <= 0.001) {
+                    if (t.id.compareTo(ai.id) < 0) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    public void evaluateLooseBallAttackingPosture(Titan ai, double ballX, double ballY) {
+        double forwardDir = (ai.team == TeamAffiliation.HOME) ? 1.0 : -1.0;
+        TeamAffiliation enemyTeam = (ai.team == TeamAffiliation.HOME) ? TeamAffiliation.AWAY : TeamAffiliation.HOME;
+
+        // One pass length away (~297 px = sqrt(210^2 + 210^2), standard throw power distance is 316.0)
+        double forwardOffset = forwardDir * 210.0;
+        double preferredVerticalOffset = (ai.Y < ballY) ? -210.0 : 210.0;
+        double alternateVerticalOffset = -preferredVerticalOffset;
+
+        double targetX = Math.max(c.MIN_X + 25, Math.min(c.MAX_X - 25, ballX + forwardOffset));
+        double targetY = Math.max(c.MIN_Y + 25, Math.min(c.MAX_Y - 25, ballY + preferredVerticalOffset));
+
+        // If preferred flank pass path is blocked by an enemy, try alternate flank
+        if (isPassPathBlocked(ballX, ballY, targetX, targetY, enemyTeam)) {
+            double altTargetY = Math.max(c.MIN_Y + 25, Math.min(c.MAX_Y - 25, ballY + alternateVerticalOffset));
+            if (!isPassPathBlocked(ballX, ballY, targetX, altTargetY, enemyTeam)) {
+                targetY = altTargetY;
+            }
+        }
+
+        ai.aiTargetX = targetX;
+        ai.aiTargetY = targetY;
+        ai.aiTargetAction = 0;
+        updateAiBoostDecision(ai);
     }
 
     public Titan getHorizontalImpedingEnemy(Titan ai, TeamAffiliation enemyTeam) {

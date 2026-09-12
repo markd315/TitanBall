@@ -23,7 +23,7 @@ public class AbilityStrategy {
     protected CollisionMath.Bounds corners;
     protected GameEngine context;
     protected Titan caster;
-    protected int x, y;
+    public int x, y;
     protected Const c;
 
     static final Filter friendly = AbilityHelper.friendly;
