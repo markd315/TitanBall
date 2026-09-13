@@ -1744,9 +1744,88 @@ public class GameEngine extends Game {
         if (staticObstacleGrid == null || cachedSolidEntityCount != currentCount) {
             staticObstacleGrid = TitanPathfinder.buildStaticGrid(this);
             cachedSolidEntityCount = currentCount;
+            if (entityPool != null) {
+                for (Entity e : entityPool) {
+                    if (e != null && e.solid && !(e instanceof Titan) && e.health > 0) {
+                        depenetrateTitansFrom(e);
+                    }
+                }
+            }
             // Invalidate all active titan paths when a new solid obstacle appears or disappears
             for (Titan t : players) {
                 if (t != null && t.programmed) {
+                    t.invalidatePath();
+                }
+            }
+        }
+    }
+
+    public void depenetrateTitansFrom(Entity obstacle) {
+        if (obstacle == null || !obstacle.solid || players == null) return;
+        double obsMinX = obstacle.X;
+        double obsMaxX = obstacle.X + obstacle.width;
+        double obsMinY = obstacle.Y;
+        double obsMaxY = obstacle.Y + obstacle.height;
+
+        for (Titan t : players) {
+            if (t == null || t.health <= 0) continue;
+            double tMinX, tMinY, tW, tH;
+            if (t.getType() == TitanType.GOALIE) {
+                double xOffset = (t.width - GOALIE_SOLID_W) / 2.0;
+                tMinX = t.X + xOffset;
+                tMinY = t.Y;
+                tW = GOALIE_SOLID_W;
+                tH = GOALIE_SOLID_H;
+            } else {
+                tMinX = t.X + SPRITE_X_EMPTY / 2.0;
+                tMinY = t.Y + SPRITE_Y_EMPTY / 2.0;
+                tW = t.width - SPRITE_X_EMPTY;
+                tH = t.height - SPRITE_Y_EMPTY;
+            }
+            double tMaxX = tMinX + tW;
+            double tMaxY = tMinY + tH;
+
+            if (tMinX < obsMaxX && tMaxX > obsMinX && tMinY < obsMaxY && tMaxY > obsMinY) {
+                double overlapLeft = tMaxX - obsMinX;
+                double overlapRight = obsMaxX - tMinX;
+                double overlapTop = tMaxY - obsMinY;
+                double overlapBottom = obsMaxY - tMinY;
+
+                double minOverlap = Math.min(Math.min(overlapLeft, overlapRight), Math.min(overlapTop, overlapBottom));
+                double pushX = 0;
+                double pushY = 0;
+
+                if (minOverlap == overlapLeft) {
+                    pushX = -(overlapLeft + 2.0);
+                } else if (minOverlap == overlapRight) {
+                    pushX = (overlapRight + 2.0);
+                } else if (minOverlap == overlapTop) {
+                    pushY = -(overlapTop + 2.0);
+                } else {
+                    pushY = (overlapBottom + 2.0);
+                }
+
+                double newX = t.X + pushX;
+                double newY = t.Y + pushY;
+
+                newX = Math.max(c.MIN_X, Math.min(c.MAX_X - t.width, newX));
+                newY = Math.max(c.MIN_Y, Math.min(c.MAX_Y - t.height, newY));
+
+                t.setX((int) Math.round(newX));
+                t.setY((int) Math.round(newY));
+
+                if (t.collidesSolid(this, allSolids)) {
+                    double obsCX = obstacle.X + obstacle.width / 2.0;
+                    double obsCY = obstacle.Y + obstacle.height / 2.0;
+                    double titanCX = t.X + (t.width > 0 ? t.width : 70) / 2.0;
+                    double titanCY = t.Y + (t.height > 0 ? t.height : 70) / 2.0;
+                    double prefAngle = Math.atan2(titanCY - obsCY, titanCX - obsCX);
+                    double[] safePos = AbilityPositionHelper.findClosestUnoccupiedPosition(t.X, t.Y, t, this, prefAngle);
+                    t.setX((int) Math.round(safePos[0]));
+                    t.setY((int) Math.round(safePos[1]));
+                }
+
+                if (t.programmed) {
                     t.invalidatePath();
                 }
             }

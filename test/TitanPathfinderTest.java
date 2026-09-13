@@ -7,6 +7,8 @@ import gameserver.entity.Entity;
 import gameserver.entity.Titan;
 import gameserver.entity.TitanType;
 import gameserver.entity.minions.LaneMinion;
+import gameserver.entity.minions.Wall;
+import gameserver.entity.minions.Cage;
 import gameserver.gamemanager.GamePhase;
 import networking.ClientPacket;
 import networking.PlayerDivider;
@@ -114,5 +116,117 @@ public class TitanPathfinderTest {
         TitanPathfinder.executeProgrammedMovement(engine, t);
         Assert.assertNotNull("Path should be recomputed", t.pathWaypoints);
         Assert.assertEquals(900, t.pathAnchorOrderX);
+    }
+
+    @Test
+    public void testComputePathEscapesBlockedStartCell() {
+        boolean[] grid = new boolean[TitanPathfinder.TOTAL_CELLS];
+        // Block start cell (col=25, row=15) and its immediate neighbors
+        int col = 25;
+        int row = 15;
+        for (int r = row - 1; r <= row + 1; r++) {
+            for (int c = col - 1; c <= col + 1; c++) {
+                grid[TitanPathfinder.toCellIdx(c, r)] = true;
+            }
+        }
+
+        double startX = TitanPathfinder.cellToWorldCenterX(col);
+        double startY = TitanPathfinder.cellToWorldCenterY(row);
+        double goalX = TitanPathfinder.cellToWorldCenterX(35);
+        double goalY = TitanPathfinder.cellToWorldCenterY(15);
+
+        int[][] path = TitanPathfinder.computePath(startX, startY, goalX, goalY, grid);
+        Assert.assertNotNull("Path should be computed even when start is blocked", path);
+        Assert.assertTrue("Path must have waypoints", path.length > 0);
+        // Final waypoint is the goal
+        int[] lastWp = path[path.length - 1];
+        Assert.assertEquals((int) Math.round(goalX), lastWp[0]);
+        Assert.assertEquals((int) Math.round(goalY), lastWp[1]);
+    }
+
+    @Test
+    public void testWallDroppedOnTitanDepenetratesAndMaintainsPathing() {
+        GameEngine engine = createTestGame();
+        Titan t = engine.players[0];
+        t.X = 500;
+        t.Y = 500;
+        t.marchingOrderX = 800;
+        t.marchingOrderY = 500;
+        t.programmed = true;
+
+        // Populate engine.allSolids with players
+        engine.allSolids = new Entity[engine.players.length];
+        System.arraycopy(engine.players, 0, engine.allSolids, 0, engine.players.length);
+
+        // Drop a wall right onto the titan's position
+        Wall wall = new Wall(engine, 520, 460);
+        engine.entityPool.add(wall);
+
+        // Update allSolids including the wall
+        Entity[] newSolids = new Entity[engine.players.length + engine.entityPool.size()];
+        System.arraycopy(engine.players, 0, newSolids, 0, engine.players.length);
+        for (int i = 0; i < engine.entityPool.size(); i++) {
+            newSolids[engine.players.length + i] = engine.entityPool.get(i);
+        }
+        engine.allSolids = newSolids;
+
+        // Refresh static grid
+        engine.refreshStaticGridIfNeeded();
+
+        // Verify titan was pushed out and no longer collides
+        Assert.assertFalse("Titan must not collide with wall after depenetration",
+                t.collidesSolid(engine, engine.allSolids));
+
+        // Execute programmed movement
+        double initialX = t.X;
+        TitanPathfinder.executeProgrammedMovement(engine, t);
+
+        // Verify titan pathing is NOT cancelled and titan is moving towards destination
+        Assert.assertTrue("Pathing must remain programmed (not stunned/cancelled)", t.programmed);
+        Assert.assertTrue("Titan must have made progress or computed a valid path",
+                t.X > initialX || (t.pathWaypoints != null && t.pathWaypoints.length > 0));
+    }
+
+    @Test
+    public void testCageDroppedOnTitanDepenetratesAndMaintainsPathing() {
+        GameEngine engine = createTestGame();
+        Titan t = engine.players[0];
+        t.X = 500;
+        t.Y = 500;
+        t.marchingOrderX = 800;
+        t.marchingOrderY = 500;
+        t.programmed = true;
+
+        // Populate engine.allSolids with players
+        engine.allSolids = new Entity[engine.players.length];
+        System.arraycopy(engine.players, 0, engine.allSolids, 0, engine.players.length);
+
+        // Drop a cage directly on top of the titan
+        Cage cage = new Cage(TeamAffiliation.AWAY, engine.players[1], 500, 500, engine);
+        engine.entityPool.add(cage);
+
+        // Update allSolids
+        Entity[] newSolids = new Entity[engine.players.length + engine.entityPool.size()];
+        System.arraycopy(engine.players, 0, newSolids, 0, engine.players.length);
+        for (int i = 0; i < engine.entityPool.size(); i++) {
+            newSolids[engine.players.length + i] = engine.entityPool.get(i);
+        }
+        engine.allSolids = newSolids;
+
+        // Refresh static grid
+        engine.refreshStaticGridIfNeeded();
+
+        // Verify titan was pushed out and no longer collides
+        Assert.assertFalse("Titan must not collide with cage after depenetration",
+                t.collidesSolid(engine, engine.allSolids));
+
+        // Execute programmed movement
+        double initialX = t.X;
+        TitanPathfinder.executeProgrammedMovement(engine, t);
+
+        // Verify titan pathing is NOT cancelled and titan is moving towards destination
+        Assert.assertTrue("Pathing must remain programmed (not stunned/cancelled)", t.programmed);
+        Assert.assertTrue("Titan must have made progress or computed a valid path",
+                t.X > initialX || (t.pathWaypoints != null && t.pathWaypoints.length > 0));
     }
 }

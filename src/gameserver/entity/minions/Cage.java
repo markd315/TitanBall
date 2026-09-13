@@ -25,8 +25,8 @@ public class Cage extends Entity   {
         this.maxHealth = this.health;
         this.solid = true;
         this.createdById = pl.id;
-        while(this.collidesSolid(context, context.allSolids)){
-            this.setY((int)this.Y +1);
+        if (context != null) {
+            context.depenetrateTitansFrom(this);
         }
     }
 

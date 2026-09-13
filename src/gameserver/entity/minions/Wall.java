@@ -19,10 +19,8 @@ public class Wall extends gameserver.entity.Entity implements Collidable, Serial
         this.health = 4;
         this.maxHealth = 4;
         this.solid = true;
-        if (context != null && context.allSolids != null) {
-            while (this.collidesSolid(context, context.allSolids)) {
-                this.setY((int) this.Y + 1);
-            }
+        if (context != null) {
+            context.depenetrateTitansFrom(this);
         }
     }
 

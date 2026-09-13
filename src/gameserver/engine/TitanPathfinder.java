@@ -193,16 +193,35 @@ public class TitanPathfinder {
         }
     }
 
+    public static int findNearestWalkableCell(boolean[] grid, int startCol, int startRow) {
+        if (!grid[toCellIdx(startCol, startRow)]) {
+            return toCellIdx(startCol, startRow);
+        }
+
+        int maxRadius = 15;
+        for (int r = 1; r <= maxRadius; r++) {
+            for (int dx = -r; dx <= r; dx++) {
+                for (int dy = -r; dy <= r; dy++) {
+                    if (Math.abs(dx) != r && Math.abs(dy) != r) continue;
+                    int c = startCol + dx;
+                    int row = startRow + dy;
+                    if (c >= 0 && c < GRID_COLS && row >= 0 && row < GRID_ROWS) {
+                        int idx = toCellIdx(c, row);
+                        if (!grid[idx]) {
+                            return idx;
+                        }
+                    }
+                }
+            }
+        }
+        return -1;
+    }
+
     /**
      * Computes the shortest path of 1-10 straight line segments using Theta*.
      * Returns an array of waypoints [x, y] or null if no valid path found.
      */
     public static int[][] computePath(double startX, double startY, double goalX, double goalY, boolean[] grid) {
-        // Fast direct LOS check
-        if (hasLineOfSight(grid, startX, startY, goalX, goalY)) {
-            return new int[][] { {(int) Math.round(goalX), (int) Math.round(goalY)} };
-        }
-
         int startCol = worldToCol(startX);
         int startRow = worldToRow(startY);
         int startCell = toCellIdx(startCol, startRow);
@@ -211,9 +230,36 @@ public class TitanPathfinder {
         int goalRow = worldToRow(goalY);
         int goalCell = toCellIdx(goalCol, goalRow);
 
-        if (startCell == goalCell) {
+        int effectiveStartCell = startCell;
+        if (grid[startCell]) {
+            int nearest = findNearestWalkableCell(grid, startCol, startRow);
+            if (nearest != -1) {
+                effectiveStartCell = nearest;
+            }
+        }
+
+        int effectiveGoalCell = goalCell;
+        if (grid[goalCell]) {
+            int nearest = findNearestWalkableCell(grid, goalCol, goalRow);
+            if (nearest != -1) {
+                effectiveGoalCell = nearest;
+            }
+        }
+
+        // Fast direct LOS check
+        if (effectiveStartCell == startCell && effectiveGoalCell == goalCell
+                && hasLineOfSight(grid, startX, startY, goalX, goalY)) {
             return new int[][] { {(int) Math.round(goalX), (int) Math.round(goalY)} };
         }
+
+        if (effectiveStartCell == effectiveGoalCell) {
+            return new int[][] { {(int) Math.round(goalX), (int) Math.round(goalY)} };
+        }
+
+        int effStartCol = effectiveStartCell % GRID_COLS;
+        int effStartRow = effectiveStartCell / GRID_COLS;
+        int effGoalCol = effectiveGoalCell % GRID_COLS;
+        int effGoalRow = effectiveGoalCell / GRID_COLS;
 
         double[] gScore = new double[TOTAL_CELLS];
         Arrays.fill(gScore, Double.POSITIVE_INFINITY);
@@ -223,10 +269,10 @@ public class TitanPathfinder {
 
         PriorityQueue<Node> open = new PriorityQueue<>(128);
 
-        gScore[startCell] = 0.0;
-        parent[startCell] = startCell;
-        double startH = Math.hypot(goalCol - startCol, goalRow - startRow);
-        open.add(new Node(startCell, 0.0, startH));
+        gScore[effectiveStartCell] = 0.0;
+        parent[effectiveStartCell] = effectiveStartCell;
+        double startH = Math.hypot(effGoalCol - effStartCol, effGoalRow - effStartRow);
+        open.add(new Node(effectiveStartCell, 0.0, startH));
 
         boolean found = false;
 
@@ -236,7 +282,7 @@ public class TitanPathfinder {
             if (closed[u]) continue;
             closed[u] = true;
 
-            if (u == goalCell) {
+            if (u == effectiveGoalCell) {
                 found = true;
                 break;
             }
@@ -267,7 +313,7 @@ public class TitanPathfinder {
                     if (tentativeG < gScore[v]) {
                         gScore[v] = tentativeG;
                         parent[v] = p;
-                        double h = Math.hypot(goalCol - vCol, goalRow - vRow);
+                        double h = Math.hypot(effGoalCol - vCol, effGoalRow - vRow);
                         open.add(new Node(v, tentativeG, tentativeG + h));
                     }
                 } else {
@@ -275,7 +321,7 @@ public class TitanPathfinder {
                     if (tentativeG < gScore[v]) {
                         gScore[v] = tentativeG;
                         parent[v] = u;
-                        double h = Math.hypot(goalCol - vCol, goalRow - vRow);
+                        double h = Math.hypot(effGoalCol - vCol, effGoalRow - vRow);
                         open.add(new Node(v, tentativeG, tentativeG + h));
                     }
                 }
@@ -288,11 +334,11 @@ public class TitanPathfinder {
 
         // Reconstruct path of cell waypoints
         List<int[]> waypoints = new ArrayList<>();
-        int curr = goalCell;
-        while (curr != startCell && curr != -1) {
+        int curr = effectiveGoalCell;
+        while (curr != effectiveStartCell && curr != -1) {
             int c = curr % GRID_COLS;
             int r = curr / GRID_COLS;
-            if (curr == goalCell) {
+            if (curr == effectiveGoalCell) {
                 waypoints.add(new int[] {(int) Math.round(goalX), (int) Math.round(goalY)});
             } else {
                 waypoints.add(new int[] {(int) Math.round(cellToWorldCenterX(c)), (int) Math.round(cellToWorldCenterY(r))});
@@ -300,6 +346,12 @@ public class TitanPathfinder {
             int next = parent[curr];
             if (next == curr) break;
             curr = next;
+        }
+
+        if (effectiveStartCell != startCell) {
+            int sc = effectiveStartCell % GRID_COLS;
+            int sr = effectiveStartCell / GRID_COLS;
+            waypoints.add(new int[] {(int) Math.round(cellToWorldCenterX(sc)), (int) Math.round(cellToWorldCenterY(sr))});
         }
 
         Collections.reverse(waypoints);
@@ -337,6 +389,17 @@ public class TitanPathfinder {
      */
     public static void executeProgrammedMovement(GameEngine context, Titan t) {
         if (!t.programmed) return;
+
+        // Depenetration check: if titan is currently overlapping a solid entity, push out immediately
+        if (context != null && context.allSolids != null && t.collidesSolid(context, context.allSolids)) {
+            if (context.entityPool != null) {
+                for (Entity e : context.entityPool) {
+                    if (e != null && e.solid && !(e instanceof Titan) && e.health > 0) {
+                        context.depenetrateTitansFrom(e);
+                    }
+                }
+            }
+        }
 
         boolean canRun = context.isActionMovementUnlocked(t);
         if (context.effectPool.isRooted(t) || !canRun) {
@@ -422,15 +485,19 @@ public class TitanPathfinder {
         double currentCenterY = t.Y + t.height / 2.0;
         double distToWp = Math.hypot(targetX - currentCenterX, targetY - currentCenterY);
 
-        if (distToWp <= 10.0 || atLocation) {
-            if (t.pathWaypoints != null && t.pathWaypointIdx < t.pathWaypoints.length) {
+        if (t.pathWaypoints != null && t.pathWaypointIdx < t.pathWaypoints.length) {
+            if (distToWp <= 10.0 || atLocation) {
                 t.pathWaypointIdx++;
                 if (t.pathWaypointIdx >= t.pathWaypoints.length) {
                     // Final destination reached
                     t.programmed = false;
                     t.invalidatePath();
                 }
-            } else {
+            }
+        } else {
+            // Direct/naive fallback movement towards marching order
+            double distToFinal = Math.hypot(t.marchingOrderX - currentCenterX, t.marchingOrderY - currentCenterY);
+            if (distToFinal <= 10.0) {
                 t.programmed = false;
                 t.invalidatePath();
             }

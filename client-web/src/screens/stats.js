@@ -211,10 +211,15 @@ function renderAdvancedStatsPane() {
 
   // Match denominators
   const m = totalMatches > 0 ? totalMatches : 1;
-  const goalieMatches = (!isFiltered && is4v4) ? Math.min(totalMatches, (stats.goalie_matches != null ? Number(stats.goalie_matches) : ((stats.saves || 0) > 0 || (stats.goalsconceded || 0) > 0 ? 1 : 0))) : 0;
-  const outfieldMatches = isFiltered ? totalMatches : Math.max(0, totalMatches - goalieMatches);
+  const isGoalieFiltered = activeClassFilter === 'GOALIE';
+  const goalieStatObj = stats.classStats ? (stats.classStats['GOALIE'] || stats.classStats['goalie'] || null) : null;
+  const goalieClassMatches = goalieStatObj ? (Number(goalieStatObj.wins || 0) + Number(goalieStatObj.losses || 0) + Number(goalieStatObj.ties || 0)) : 0;
+  const goalieMatches = is4v4
+    ? (isGoalieFiltered ? totalMatches : (!isFiltered ? (goalieClassMatches > 0 ? goalieClassMatches : (stats.goalie_matches != null ? Number(stats.goalie_matches) : ((stats.saves || 0) > 0 || (stats.goalsconceded || 0) > 0 ? 1 : 0))) : 0))
+    : 0;
+  const outfieldMatches = isGoalieFiltered ? 0 : (isFiltered ? totalMatches : Math.max(0, totalMatches - goalieMatches));
   const mOutfield = outfieldMatches > 0 ? outfieldMatches : (goalieMatches > 0 ? 0 : m);
-  const mGoalie = goalieMatches > 0 ? goalieMatches : (stats.saves > 0 || (stats.goalsconceded || 0) > 0 ? 1 : 1);
+  const mGoalie = goalieMatches > 0 ? goalieMatches : 1;
 
   const cpg = mOutfield > 0 ? (goals / mOutfield).toFixed(1) : '0.0';
   const spg = mOutfield > 0 ? (sidegoals / mOutfield).toFixed(1) : '0.0';
@@ -229,12 +234,13 @@ function renderAdvancedStatsPane() {
   const gastPg = mOutfield > 0 ? (goalAssists / mOutfield).toFixed(1) : '0.0';
   const kastPg = mOutfield > 0 ? (killAssists / mOutfield).toFixed(1) : '0.0';
 
-  // Goalie stats & resources (4v4 matches, only when ALL classes view)
-  const saves = (!isFiltered && is4v4) ? (stats.saves || 0) : 0;
-  const sidegoalsaves = (!isFiltered && is4v4) ? (stats.sidegoalsaves || 0) : 0;
-  const centergoalsaves = (!isFiltered && is4v4) ? (stats.centergoalsaves || 0) : 0;
-  const sidegoalsconceded = (!isFiltered && is4v4) ? (stats.sidegoalsconceded || 0) : 0;
-  const goalsconceded = (!isFiltered && is4v4) ? (stats.goalsconceded || 0) : 0;
+  // Goalie stats & resources (4v4 matches, when ALL classes view OR GOALIE class is filtered)
+  const showGoalie = is4v4 && (isGoalieFiltered || !isFiltered);
+  const saves = showGoalie ? (isGoalieFiltered && cStat ? (cStat.saves || 0) : (stats.saves || 0)) : 0;
+  const sidegoalsaves = showGoalie ? (isGoalieFiltered && cStat ? (cStat.sidegoalsaves || 0) : (stats.sidegoalsaves || 0)) : 0;
+  const centergoalsaves = showGoalie ? (isGoalieFiltered && cStat ? (cStat.centergoalsaves || 0) : (stats.centergoalsaves || 0)) : 0;
+  const sidegoalsconceded = showGoalie ? (isGoalieFiltered && cStat ? (cStat.sidegoalsconceded || 0) : (stats.sidegoalsconceded || 0)) : 0;
+  const goalsconceded = showGoalie ? (isGoalieFiltered && cStat ? (cStat.goalsconceded || 0) : (stats.goalsconceded || 0)) : 0;
   const totalConceded = sidegoalsconceded + goalsconceded;
   const totalShotsFaced = saves + totalConceded;
   const cgTotal = centergoalsaves + goalsconceded;
@@ -244,18 +250,19 @@ function renderAdvancedStatsPane() {
   const savesPg = (saves / mGoalie).toFixed(1);
   const concPg = (totalConceded / mGoalie).toFixed(1);
 
-  const upgradesgold = (!isFiltered && is4v4) ? (stats.upgradesgold || 0) : 0;
-  const consumablesgold = (!isFiltered && is4v4) ? (stats.consumablesgold || 0) : 0;
+  // Goalie resource stats (read directly from GOALIE class stat; outfield titans do not have gold/mana spend)
+  const upgradesgold = showGoalie ? (goalieStatObj ? Number(goalieStatObj.upgradesgold || 0) : Number(stats.upgradesgold || 0)) : 0;
+  const consumablesgold = showGoalie ? (goalieStatObj ? Number(goalieStatObj.consumablesgold || 0) : Number(stats.consumablesgold || 0)) : 0;
   const totalGold = upgradesgold + consumablesgold;
-  const manaspent = (!isFiltered && is4v4) ? (stats.manaspent || 0) : 0;
-  const goldPg = Math.round(totalGold / mGoalie);
-  const manaPg = Math.round(manaspent / mGoalie);
+  const manaspent = showGoalie ? (goalieStatObj ? Number(goalieStatObj.manaspent || 0) : Number(stats.manaspent || 0)) : 0;
+  const goldPg = goalieMatches > 0 ? Math.round(totalGold / goalieMatches) : 0;
+  const manaPg = goalieMatches > 0 ? Math.round(manaspent / goalieMatches) : 0;
 
-  const blkG = (!isFiltered && is4v4) ? (stats.blocks_g || 0) : 0;
-  const passG = (!isFiltered && is4v4) ? (stats.passes_g || 0) : 0;
-  const toG = (!isFiltered && is4v4) ? (stats.turnovers_g || 0) : 0;
-  const rebG = (!isFiltered && is4v4) ? (stats.rebounds_g || 0) : 0;
-  const stlG = (!isFiltered && is4v4) ? (stats.steals_g || 0) : 0;
+  const blkG = showGoalie ? (isGoalieFiltered && cStat ? (cStat.blocks || 0) : (stats.blocks_g || 0)) : 0;
+  const passG = showGoalie ? (isGoalieFiltered && cStat ? (cStat.passes || 0) : (stats.passes_g || 0)) : 0;
+  const toG = showGoalie ? (isGoalieFiltered && cStat ? (cStat.turnovers || 0) : (stats.turnovers_g || 0)) : 0;
+  const rebG = showGoalie ? (isGoalieFiltered && cStat ? (cStat.rebounds || 0) : (stats.rebounds_g || 0)) : 0;
+  const stlG = showGoalie ? (isGoalieFiltered && cStat ? (cStat.steals || 0) : (stats.steals_g || 0)) : 0;
 
   // Box Plus-Minus Performance Tier helper:
   const getBpmTier = (val) => {
@@ -267,35 +274,41 @@ function renderAdvancedStatsPane() {
     return { name: 'Replacement', color: '#ef4444' };
   };
 
-  // Goalie Box Plus-Minus (GBPM)
-  let gbpm = 0, gbpmStr = '0.0', gbpmTier = getBpmTier(0);
-  const hasGoalieData = !isFiltered && is4v4 && (totalShotsFaced > 0 || (totalGold > 0 && manaspent > 0) || goalieMatches > 0);
+  const formatBpm = (val) => {
+    if (val === null || val === undefined || isNaN(val)) return '—';
+    if (Math.abs(val) < 0.005) return '0.00';
+    return (val > 0 ? '+' : '') + val.toFixed(2);
+  };
+
+  // Goalie Box Plus-Minus (GBPM): Recalibrated empirical baselines from 2,912 goalie matches in classstat
+  let gbpm = 0, gbpmStr = '0.00', gbpmTier = getBpmTier(0);
+  const hasGoalieData = showGoalie && (totalShotsFaced > 0 || (totalGold > 0 && manaspent > 0) || goalieMatches > 0);
   if (hasGoalieData) {
-    const expectedCgConc = cgTotal * 0.847;
+    const expectedCgConc = cgTotal * 0.288;
     const cgSavedAboveExp = expectedCgConc - goalsconceded;
-    const expectedSgConc = sgTotal * 0.994;
+    const expectedSgConc = sgTotal * 0.942;
     const sgSavedAboveExp = expectedSgConc - sidegoalsconceded;
 
     const netProtection = (cgSavedAboveExp / mGoalie) * 1.5 + (sgSavedAboveExp / mGoalie) * 0.35;
     const disruption = (blkG > 0 || rebG > 0 || passG > 0 || toG > 0 || stlG > 0)
-      ? ((blkG / mGoalie - 0.54) * 0.05 + (rebG / mGoalie - 0.02) * 0.05 + (stlG / mGoalie - 0.23) * 0.08 + (passG / mGoalie - 0.72) * 0.02 - (toG / mGoalie - 0.28) * 0.06)
+      ? ((blkG / mGoalie - 0.005) * 0.05 + (rebG / mGoalie - 0.003) * 0.05 + (stlG / mGoalie - 0.0) * 0.08 + (passG / mGoalie - 0.0) * 0.02 - (toG / mGoalie - 0.002) * 0.06)
       : 0;
-    const economy = totalGold > 0 ? ((totalGold / mGoalie - 630) * 0.002 + (manaspent / mGoalie - 460) * 0.0005) : 0;
+    const economy = totalGold > 0 ? ((totalGold / mGoalie - 1066) * 0.002 + (manaspent / mGoalie - 547) * 0.0005) : 0;
 
     gbpm = netProtection + disruption + economy;
-    gbpmStr = (gbpm >= 0 ? '+' : '') + gbpm.toFixed(1);
+    gbpmStr = formatBpm(gbpm);
     gbpmTier = getBpmTier(gbpm);
   }
 
-  // Field Titan Box Plus-Minus (TBPM): Empirical 19,333-match outfield baselines from classstat (115,998 entries)
-  let obpm = 0, dbpm = 0, tbpm = 0, tbpmStr = '0.0', tbpmTier = getBpmTier(0);
-  const hasOutfieldData = is4v4 && outfieldMatches > 0;
+  // Field Titan Box Plus-Minus (TBPM): Empirical outfield baselines from classstat
+  let obpm = 0, dbpm = 0, tbpm = 0, tbpmStr = '0.00', tbpmTier = getBpmTier(0);
+  const hasOutfieldData = is4v4 && !isGoalieFiltered && outfieldMatches > 0;
   if (hasOutfieldData) {
     // Combat weights updated: ~75/25 split favoring DBPM, reduced total impact (~half previous: total +0.16 kill, +0.08 kast, -0.20 death)
     obpm = (Number(cpg) - 0.81) * 1.5 + (Number(spg) - 3.76) * 0.35 + (Number(gastPg) - 0.6) * 0.8 + (Number(kpg) - 1.2) * 0.04 + (Number(kastPg) - 0.5) * 0.02 + (Number(passPg) - 12.0) * 0.04 - (Number(toPg) - 9.1) * 0.12;
     dbpm = (Number(stlPg) - 6.9) * 0.15 + (Number(blkPg) - 10.7) * 0.08 + (Number(rebPg) - 8.5) * 0.08 + (Number(kpg) - 1.2) * 0.12 + (Number(kastPg) - 0.5) * 0.06 - (Number(dpg) - 1.5) * 0.20 - (Number(toPg) - 9.1) * 0.03;
     tbpm = obpm + dbpm;
-    tbpmStr = (tbpm >= 0 ? '+' : '') + tbpm.toFixed(1);
+    tbpmStr = formatBpm(tbpm);
     tbpmTier = getBpmTier(tbpm);
   } else if (hasGoalieData) {
     tbpm = gbpm;
@@ -349,7 +362,7 @@ function renderAdvancedStatsPane() {
           <div class="stats-per-game"><span class="metric-val"><span style="color:#a7f3d0;">${stlPg}</span> / <span style="color:#a855f7;">${blkPg}</span></span><span class="pg-unit">/g</span></div>
         </div>
       </div>
-      ${(!isFiltered && is4v4) ? `
+      ${showGoalie ? `
       <div class="stats-metric-card">
         <div class="stats-split-row"><span class="metric-label">Goalie</span><span class="stats-total-count">${saves} sv · ${totalConceded} conc (${centergoalsaves} CG sv)</span></div>
         <div class="stats-split-row" style="justify-content: space-between;"><span class="stats-sub-label" style="font-size: 10px; color: #cbd5e1; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Center / Side SV%</span><span class="stats-total-count">${savesPg} sv/g · ${concPg} conc/g</span></div>
@@ -359,22 +372,26 @@ function renderAdvancedStatsPane() {
         </div>
       </div>` : ''}
       ${is4v4 ? `
-      <div class="stats-metric-card">
-        <div class="stats-split-row"><span class="metric-label">Advanced</span><span class="stats-total-count" style="font-weight: 700; color: ${tbpmTier.color};">${tbpmTier.name} Tier (${tbpmStr} ${hasOutfieldData ? 'BPM' : 'GBPM'})</span></div>
-        <div class="stats-split-row" style="margin-top: 2px;">
-          <div class="stats-per-game" style="gap: 2px;">
-            <span class="metric-val" style="color: #38bdf8; font-size: 13px; cursor: help;" title="OBPM = 1.50*(cpg - 0.81) + 0.35*(spg - 3.76) + 0.80*(gast/g - 0.6) + 0.04*(kpg - 1.2) + 0.02*(kast/g - 0.5) + 0.04*(pass/g - 12.0) - 0.12*(to/g - 9.1)">${hasOutfieldData ? `${obpm >= 0 ? '+' : ''}${obpm.toFixed(1)}` : '—'}</span><span class="pg-unit" style="color: #38bdf8; font-weight: 700; font-size: 9px; cursor: help;" title="OBPM (Offensive Box Plus-Minus): Evaluates goal scoring, assists, combat offense, passing volume, and turnover deductions relative to 19,333-match outfield baselines.">OBPM</span>
-            <span style="color: #475569; margin: 0 2px; font-size: 11px;">·</span>
-            <span class="metric-val" style="color: #a7f3d0; font-size: 13px; cursor: help;" title="DBPM = 0.15*(stl/g - 6.9) + 0.08*(blk/g - 10.7) + 0.08*(reb/g - 8.5) + 0.12*(kpg - 1.2) + 0.06*(kast/g - 0.5) - 0.20*(dpg - 1.5) - 0.03*(to/g - 9.1)">${hasOutfieldData ? `${dbpm >= 0 ? '+' : ''}${dbpm.toFixed(1)}` : '—'}</span><span class="pg-unit" style="color: #a7f3d0; font-weight: 700; font-size: 9px; cursor: help;" title="DBPM (Defensive Box Plus-Minus): Evaluates steals, shots contested/blocked, loose ball rebounds, kills, and death penalties relative to 19,333-match outfield baselines.">DBPM</span>
-          </div>
-          ${!isFiltered ? `
-          <div class="stats-per-game">
-            <span class="metric-val" style="color: ${gbpmTier.color}; font-size: 13px; cursor: help;" title="GBPM = 1.50*(cgGSAx/g) + 0.35*(sgGSAx/g) + 0.002*(gold/g - 630) + 0.0005*(mana/g - 460)&#10;where cgGSAx = cgTotal*0.847 - cgConceded, sgGSAx = sgTotal*0.994 - sgConceded">${hasGoalieData ? gbpmStr : '—'}</span><span class="pg-unit" style="color: ${gbpmTier.color}; font-weight: 700; font-size: 9px; cursor: help;" title="GBPM (Goalie Box Plus-Minus): Goals Saved Above Expected (GSAx) evaluated across center and side shots faced plus lane resource economy pace relative to 38,666 goalie match baselines.">GBPM</span>
+      <div class="stats-metric-card" style="min-width: 0;">
+        <div class="stats-split-row" style="gap: 4px;">
+          <span class="metric-label" style="flex-shrink: 0;">Advanced</span>
+          <span class="stats-total-count" style="font-weight: 700; color: ${tbpmTier.color}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;" title="${tbpmTier.name} (${tbpmStr} ${hasOutfieldData ? 'BPM' : 'GBPM'})">${tbpmTier.name} (${tbpmStr} ${hasOutfieldData ? 'BPM' : 'GBPM'})</span>
+        </div>
+        <div class="stats-split-row" style="margin-top: 2px; align-items: center; justify-content: space-between; gap: 4px; min-width: 0;">
+          ${!isGoalieFiltered ? `
+          <div class="stats-per-game" style="gap: 2px; flex-shrink: 1; min-width: 0; overflow: hidden;">
+            <span class="metric-val" style="color: #38bdf8; font-size: 12px; font-weight: 700; cursor: help; white-space: nowrap;" title="OBPM = 1.50*(cpg - 0.81) + 0.35*(spg - 3.76) + 0.80*(gast/g - 0.6) + 0.04*(kpg - 1.2) + 0.02*(kast/g - 0.5) + 0.04*(pass/g - 12.0) - 0.12*(to/g - 9.1)">${hasOutfieldData ? formatBpm(obpm) : '—'}</span><span class="pg-unit" style="color: #38bdf8; font-weight: 700; font-size: 8.5px; cursor: help;" title="OBPM (Offensive Box Plus-Minus): Evaluates goal scoring, assists, combat offense, passing volume, and turnover deductions relative to 19,333-match outfield baselines.">OBPM</span>
+            <span style="color: #475569; margin: 0 1px; font-size: 10px;">·</span>
+            <span class="metric-val" style="color: #a7f3d0; font-size: 12px; font-weight: 700; cursor: help; white-space: nowrap;" title="DBPM = 0.15*(stl/g - 6.9) + 0.08*(blk/g - 10.7) + 0.08*(reb/g - 8.5) + 0.12*(kpg - 1.2) + 0.06*(kast/g - 0.5) - 0.20*(dpg - 1.5) - 0.03*(to/g - 9.1)">${hasOutfieldData ? formatBpm(dbpm) : '—'}</span><span class="pg-unit" style="color: #a7f3d0; font-weight: 700; font-size: 8.5px; cursor: help;" title="DBPM (Defensive Box Plus-Minus): Evaluates steals, shots contested/blocked, loose ball rebounds, kills, and death penalties relative to 19,333-match outfield baselines.">DBPM</span>
+          </div>` : ''}
+          ${showGoalie ? `
+          <div class="stats-per-game" style="gap: 2px; flex-shrink: 0;">
+            <span class="metric-val" style="color: ${gbpmTier.color}; font-size: 12px; font-weight: 700; cursor: help; white-space: nowrap;" title="GBPM = 1.50*(cgGSAx/g) + 0.35*(sgGSAx/g) + 0.002*(gold/g - 1066) + 0.0005*(mana/g - 547)&#10;where cgGSAx = cgTotal*0.288 - cgConceded, sgGSAx = sgTotal*0.942 - sgConceded">${hasGoalieData ? gbpmStr : '—'}</span><span class="pg-unit" style="color: ${gbpmTier.color}; font-weight: 700; font-size: 8.5px; cursor: help;" title="GBPM (Goalie Box Plus-Minus): Goals Saved Above Expected (GSAx) evaluated across center and side shots faced plus lane resource economy pace relative to 2,912 goalie match baselines.">GBPM</span>
           </div>` : ''}
         </div>
         ${(!isFiltered && goalieMatches > 0 && outfieldMatches > 0) ? `
         <div class="stats-split-row" style="margin-top: 2px;">
-          <span class="stats-total-count" style="color: #94a3b8; font-size: 10px;">${goalieMatches} goalie match${goalieMatches > 1 ? 'es' : ''} · ${outfieldMatches} outfield match${outfieldMatches > 1 ? 'es' : ''}</span>
+          <span class="stats-total-count" style="color: #94a3b8; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${goalieMatches} goalie · ${outfieldMatches} outfield match${outfieldMatches > 1 ? 'es' : ''}</span>
         </div>` : ''}
       </div>
       ` : ''}
