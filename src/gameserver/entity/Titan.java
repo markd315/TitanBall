@@ -441,6 +441,8 @@ public class Titan extends Entity   {
         goalie.add(new RangeCircle(1.0, 0.0, 0.0, 1.0, c.getI("titan.goalie.rangex"), c.getI("titan.goalie.rangey")));
         goalie.add(r(c.getI("titan.goalie.slide.dist")));
         titanRange.put(TitanType.GOALIE, goalie);
+        titanRange.put(TitanType.CAPTAIN, captain);
+        titanRange.put(TitanType.SPIDER, spider);
 
         titanText.put(TitanType.MAGE, "DAMAGE ignite enemies and warp players around the map with portals");
         titanText.put(TitanType.RANGER, "DAMAGE/DEFENSE take attacking enemies down from a distance");

@@ -368,46 +368,56 @@ public class TitanAiEngine {
         Titan nearestEnemy = findNearestEnemy(ai, enemyTeam);
         double enemyDist = (nearestEnemy != null) ? Math.hypot(nearestEnemy.X - ai.X, nearestEnemy.Y - ai.Y) : Double.MAX_VALUE;
 
+        Const c = context.c;
+        double rf = ai.rangeFactor;
+
         if (isQ) {
             switch (type) {
-                case WARRIOR: return enemyDist <= 110.0;
-                case RANGER: return enemyDist <= 320.0;
-                case MAGE: return enemyDist <= 400.0;
-                case BUILDER: return enemyDist <= 200.0;
-                case MARKSMAN: return enemyDist <= 150.0;
-                case ARTISAN: return ai.possession == 0 && Math.hypot(context.ball.X - ai.X, context.ball.Y - ai.Y) <= 280.0;
-                case SUPPORT: return enemyDist <= 130.0;
+                case WARRIOR: return enemyDist <= (c.getI("titan.slash.range") / 2.0) * rf;
+                case RANGER: return enemyDist <= c.getI("titan.arrow.range") * rf;
+                case MAGE: return enemyDist <= c.getI("titan.portal.range") * rf;
+                case BUILDER: return enemyDist <= c.getI("titan.trap.range") * rf;
+                case MARKSMAN: return enemyDist <= c.getI("titan.slow.range") * rf;
+                case ARTISAN: return ai.possession == 0 && Math.hypot(context.ball.X - ai.X, context.ball.Y - ai.Y) <= (c.getI("titan.suck.range") / 2.0) * rf;
+                case SUPPORT: return enemyDist <= (c.getI("titan.stun.range") / 2.0) * rf;
                 case GOLEM: return enemyDist <= 200.0 || ai.getHealth() < ai.maxHealth * 0.7;
                 case STEALTH: return enemyDist <= 300.0;
                 case DASHER: return ai.possession == 1;
-                case HOUNDMASTER: return enemyDist <= 300.0;
-                case GRENADIER: return enemyDist <= 260.0;
-                case CAPTAIN: return ai.ammo > 0 && enemyDist <= 300.0;
-                case SPIDER: return enemyDist <= 250.0;
+                case HOUNDMASTER: return enemyDist <= c.getI("titan.cage.range") * rf;
+                case GRENADIER: return enemyDist <= (c.getI("titan.flashbang.range") / 2.0) * rf;
+                case CAPTAIN: return ai.ammo > 0 && enemyDist <= c.getI("titan.captain.shot.range") * rf;
+                case SPIDER: return enemyDist <= c.getI("titan.spider.web.range") * rf;
                 case GOALIE: return ai.possession == 0 && (context.activeLobThrower != null || Math.hypot(context.ball.X - ai.X, context.ball.Y - ai.Y) <= 300.0);
                 default: return false;
             }
         } else {
             switch (type) {
-                case WARRIOR: return enemyDist > 80.0 && enemyDist <= 250.0;
-                case RANGER: return enemyDist <= 120.0;
-                case MAGE: return enemyDist <= 250.0;
-                case BUILDER: return enemyDist <= 300.0;
+                case WARRIOR: {
+                    double maxDist = c.getI("titan.flash.warrior.dist") * rf;
+                    return enemyDist > 80.0 && enemyDist <= maxDist;
+                }
+                case RANGER: return enemyDist <= (c.getI("titan.kick.range") / 2.0) * rf;
+                case MAGE: return enemyDist <= c.getI("titan.ignite.range") * rf;
+                case BUILDER: return enemyDist <= c.getI("titan.wall.range") * rf;
                 case MARKSMAN: return enemyDist <= 400.0;
                 case ARTISAN: return true;
                 case SUPPORT: {
+                    double healRange = c.getI("titan.heal.range") * rf;
                     for (Titan ally : context.players) {
                         if (ally != null && ally.team == ai.team && !context.effectPool.hasEffect(ally, EffectId.DEAD)) {
-                            if (ally.getHealth() < ally.maxHealth && Math.hypot(ally.X - ai.X, ally.Y - ai.Y) <= 250.0) {
+                            if (ally.getHealth() < ally.maxHealth && Math.hypot(ally.X - ai.X, ally.Y - ai.Y) <= healRange) {
                                 return true;
                             }
                         }
                     }
                     return false;
                 }
-                case GOLEM: return enemyDist <= 180.0;
-                case STEALTH: return enemyDist > 80.0 && enemyDist <= 250.0;
-                case DASHER: return enemyDist <= 250.0;
+                case GOLEM: return enemyDist <= (c.getI("titan.scatter.range") / 2.0) * rf;
+                case STEALTH: {
+                    double maxDist = c.getI("titan.flash.stealth.dist") * rf;
+                    return enemyDist > 80.0 && enemyDist <= maxDist;
+                }
+                case DASHER: return enemyDist <= c.getI("titan.ignite.range") * rf;
                 case HOUNDMASTER: {
                     for (Entity e : context.entityPool) {
                         if (e instanceof gameserver.entity.minions.Cage && ((gameserver.entity.minions.Cage) e).getCreatedById().equals(ai.id)) {
@@ -416,9 +426,9 @@ public class TitanAiEngine {
                     }
                     return false;
                 }
-                case GRENADIER: return enemyDist <= 140.0;
-                case CAPTAIN: return enemyDist <= 200.0;
-                case SPIDER: return enemyDist <= 200.0;
+                case GRENADIER: return enemyDist <= c.getI("titan.molotov.range") * rf;
+                case CAPTAIN: return enemyDist <= c.getI("titan.captain.slide.range") * rf;
+                case SPIDER: return enemyDist <= c.getI("titan.spider.cocoon.range") * rf;
                 case GOALIE: {
                     if (ai.possession != 0) return false;
                     if (ai.aiTargetX < 0 || ai.aiTargetY < 0) return false;

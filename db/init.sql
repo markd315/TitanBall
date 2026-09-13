@@ -328,7 +328,7 @@ INSERT INTO users (id, username, email, password, role, created, subexpiration, 
  4, 1, 3, 59, 13, 670, 40, 540, 1, 1015.0, 3, 2),
 (7,  'u7',         'e7@gmail.com',         '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.', 'USER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1, 1000.0, 0, 0,
  0, 0.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
- 0, 0, 0, 0, 0, 0, 0, 0, 1000.0, 0, 0),
+ 0, 0, 0, 0, 0, 0, 0, 0, 0, 1000.0, 0, 0),
 (8,  'u8',         'e8@gmail.com',         '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.', 'USER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1, 1048.14, 3, 0,
  2, 7.25, 10, 18, 2, 5, 0, 0, 5, 0, 0, 15,
  10, 6, 4, 26, 3, 670, 40, 540, 1, 1000.0, 0, 0),
@@ -387,7 +387,7 @@ ON DUPLICATE KEY UPDATE rating = VALUES(rating), wins = VALUES(wins), losses = V
                         centergoalsaves = VALUES(centergoalsaves), sidegoalsconceded = VALUES(sidegoalsconceded),
                         goalsconceded = VALUES(goalsconceded),
                         upgradesgold = VALUES(upgradesgold), consumablesgold = VALUES(consumablesgold),
-                        manaspent = VALUES(manaspent),
+                        manaspent = VALUES(manaspent), goalie_matches = VALUES(goalie_matches),
                         rating_1v1 = VALUES(rating_1v1), wins_1v1 = VALUES(wins_1v1), losses_1v1 = VALUES(losses_1v1);
 
 

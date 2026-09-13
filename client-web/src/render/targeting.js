@@ -31,7 +31,7 @@ export function getSelectedTargetEntity(game) {
 const SINGLE_TARGET_ABILITIES = {
     SUPPORT: { E: true, R: true },     // E: Stun (130px), R: Heal (250px)
     MARKSMAN: { E: true, R: false },   // E: Slow (250px)
-    SPIDER: { E: false, R: true },     // R: Cocoon (150px)
+    SPIDER: { E: false, R: true },     // R: Cocoon (700px)
     RANGER: { E: true, R: true },      // E: Arrow (320px), R: Kick (120px)
     CAPTAIN: { E: true, R: false },    // E: Pistol Shot (200px)
     MAGE: { E: false, R: true }        // R: Ignite/Flare (250px)

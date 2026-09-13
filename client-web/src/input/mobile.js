@@ -4,6 +4,7 @@ import { getDefaultPreset, executeNextBuildOrder } from './keyboard.js';
 import { handleUIClick } from './mouse.js';
 import { requestFullscreen, isFullscreenActive } from '../util/fullscreen.js';
 import { returnToMainMenu } from '../main.js';
+import { getCfgNum } from '../render/classStats.js';
 
 let joystickBase = null;
 let joystickStick = null;
@@ -66,41 +67,40 @@ let aimMaxRadius = 50;
 let lastAimNormX = 1;
 let lastAimNormY = 0;
 
-const BASE_ABILITY_RANGES = {
+// Map titan ability slots to their game.cfg range keys
+const ABILITY_RANGE_CONFIG_KEYS = {
   E: {
-    MAGE: 400,
-    BUILDER: 200,
-    SUPPORT: 130,
-    RANGER: 320,
-    WARRIOR: 200,
-    ARTISAN: 140,
-    GRENADIER: 260,
-    MARKSMAN: 250,
-    HOUNDMASTER: 9999,
-    CAPTAIN: 200,
-    SPIDER: 280,
-    DASHER: 0,
-    GOLEM: 0,
-    STEALTH: 0,
-    GOALIE: 0
+    MAGE: 'titan.portal.range',
+    BUILDER: 'titan.trap.range',
+    SUPPORT: 'titan.stun.range',     // note: stun is radius/2
+    RANGER: 'titan.arrow.range',
+    WARRIOR: 'titan.slash.range',    // note: slash is radius/2
+    ARTISAN: 'titan.suck.range',     // note: suck is radius/2
+    GRENADIER: 'titan.flashbang.range', // note: flashbang is radius/2
+    MARKSMAN: 'titan.slow.range',
+    HOUNDMASTER: 'titan.cage.range',
+    CAPTAIN: 'titan.captain.shot.range',
+    SPIDER: 'titan.spider.web.range'
   },
   R: {
-    MAGE: 250,
-    BUILDER: 350,
-    SUPPORT: 250,
-    RANGER: 120,
-    WARRIOR: 140,
-    ARTISAN: 200,
-    GRENADIER: 180,
-    DASHER: 250,
-    GOLEM: 90,
-    STEALTH: 100,
-    CAPTAIN: 250,
-    SPIDER: 700,
-    MARKSMAN: 0,
-    HOUNDMASTER: 0,
-    GOALIE: 0
+    MAGE: 'titan.ignite.range',
+    BUILDER: 'titan.wall.range',
+    SUPPORT: 'titan.heal.range',
+    RANGER: 'titan.kick.range',       // note: kick is radius/2
+    WARRIOR: 'titan.flash.warrior.dist',
+    ARTISAN: 'titan.bportal.range',
+    GRENADIER: 'titan.molotov.range',
+    DASHER: 'titan.ignite.range',
+    GOLEM: 'titan.scatter.range',     // note: scatter is radius/2
+    STEALTH: 'titan.flash.stealth.dist',
+    CAPTAIN: 'titan.captain.slide.range',
+    SPIDER: 'titan.spider.cocoon.range'
   }
+};
+
+const HALF_RANGE_TITANS = {
+  E: new Set(['SUPPORT', 'WARRIOR', 'ARTISAN', 'GRENADIER']),
+  R: new Set(['RANGER', 'GOLEM'])
 };
 
 export function getAbilityRange(titan, slot) {
@@ -120,11 +120,14 @@ export function getAbilityRange(titan, slot) {
     }
   }
 
-  const type = titan.type;
-  if (BASE_ABILITY_RANGES[slot] && BASE_ABILITY_RANGES[slot][type] !== undefined) {
-    const fallback = BASE_ABILITY_RANGES[slot][type];
-    if (fallback > 0) {
-      return fallback * rangeFactor;
+  const type = titan.type ? titan.type.toString().toUpperCase() : null;
+  if (type && ABILITY_RANGE_CONFIG_KEYS[slot] && ABILITY_RANGE_CONFIG_KEYS[slot][type]) {
+    const cfgKey = ABILITY_RANGE_CONFIG_KEYS[slot][type];
+    const val = getCfgNum(cfgKey, 0);
+    if (val > 0) {
+      const isHalf = HALF_RANGE_TITANS[slot] && HALF_RANGE_TITANS[slot].has(type);
+      const baseRange = isHalf ? val / 2.0 : val;
+      return baseRange * rangeFactor;
     }
   }
 
