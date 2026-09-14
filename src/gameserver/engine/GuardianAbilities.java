@@ -1115,6 +1115,7 @@ public class GuardianAbilities implements Serializable {
 
     private void applyRosterStatBoosts(GameEngine context) {
         Set<String> purchased = (team == TeamAffiliation.HOME) ? context.homeGoaliePurchasedUpgrades : context.awayGoaliePurchasedUpgrades;
+        Set<String> enemyPurchased = (team == TeamAffiliation.HOME) ? context.awayGoaliePurchasedUpgrades : context.homeGoaliePurchasedUpgrades;
 
         int speedCount = 0;
         int throwCount = 0;
@@ -1128,20 +1129,20 @@ public class GuardianAbilities implements Serializable {
         int boostCount = 0;
 
         if (purchased.contains("empowerment.t3.grit")) { hpCount++; painCount++; }
-        if (purchased.contains("empowerment.t3.marksmanship")) { throwCount++; rangeCount++; }
+        if (purchased.contains("empowerment.t3.marksmanship")) { throwCount += 2; rangeCount += 2; }
         if (purchased.contains("empowerment.t3.footwork")) { speedCount++; }
-        if (purchased.contains("empowerment.t3.discipline")) { cdCount++; durCount++; }
+        if (purchased.contains("empowerment.t3.discipline")) { cdCount += 2; durCount += 2; }
         
         if (purchased.contains("empowerment.t6.apexform")) {
             speedCount += 1; throwCount += 1; rangeCount += 1; cdCount += 1;
             durCount += 1; hpCount += 1; painCount += 1; stealCount += 1; damageCount += 1; boostCount += 1;
         }
 
-        // Focused Training logic (+2 in highest existing mastery category)
+        // Focused Training logic (+3 in highest existing mastery category)
         int gritVal = purchased.contains("empowerment.t3.grit") ? 1 : 0;
-        int marksVal = purchased.contains("empowerment.t3.marksmanship") ? 1 : 0;
+        int marksVal = purchased.contains("empowerment.t3.marksmanship") ? 2 : 0;
         int footVal = purchased.contains("empowerment.t3.footwork") ? 1 : 0;
-        int discVal = purchased.contains("empowerment.t3.discipline") ? 1 : 0;
+        int discVal = purchased.contains("empowerment.t3.discipline") ? 2 : 0;
 
         int highest = 2; // 0 = Grit, 1 = Marksmanship, 2 = Footwork, 3 = Discipline. Default to footwork/speed.
         int maxVal = footVal;
@@ -1151,7 +1152,7 @@ public class GuardianAbilities implements Serializable {
 
         int focusTimes = countPurchases(purchased, "empowerment.t5.focusedtraining");
         if (focusTimes > 0) {
-            int bonus = focusTimes * 2;
+            int bonus = focusTimes * 3;
             if (highest == 0) {
                 hpCount += bonus;
                 painCount += bonus;
@@ -1182,7 +1183,8 @@ public class GuardianAbilities implements Serializable {
                 double cf = t.baseCooldownFactor / (1.0 + cdCount * (context.c.getD("masteries.cooldowns.mult") - 1.0));
                 if (purchased.contains("cultivation.t4.manafrenzy")) {
                     double currentMana = (team == TeamAffiliation.HOME) ? context.homeGoalieMana : context.awayGoalieMana;
-                    double frenzyCdr = currentMana / 30.0;
+                    double divisor = (context.c != null && context.c.hasKey("guardian.manafrenzy.divisor")) ? context.c.getD("guardian.manafrenzy.divisor") : 45.0;
+                    double frenzyCdr = currentMana / divisor;
                     double frenzyMult = Math.max(0.0, 1.0 - (frenzyCdr / 100.0));
                     cf *= frenzyMult;
                 }
@@ -1197,8 +1199,9 @@ public class GuardianAbilities implements Serializable {
                 if (purchased.contains("empowerment.t4.forecheck") && t.X >= 680 && t.X <= 1368) {
                     stealBonus = context.c.getD("guardian.forecheck.bonus");
                 }
+                double biggermodelsEnemyComp = enemyPurchased.contains("fortress.t3.biggermodels") ? (context.c.hasKey("guardian.biggermodels.compensation") ? context.c.getD("guardian.biggermodels.compensation") : 3.0) : 0.0;
                 double flatMasteryBonus = stealCount * context.c.getI("masteries.stealRadius.flat");
-                t.stealRad = (int) (t.baseStealRad + flatMasteryBonus + heistBonus + stealBonus);
+                t.stealRad = (int) (t.baseStealRad + flatMasteryBonus + heistBonus + stealBonus + biggermodelsEnemyComp);
                 t.damageFactor = t.baseDamageFactor * (1.0 + damageCount * (context.c.getD("masteries.damage.mult") - 1.0));
 
                 double boostMult = 1.0 + boostCount * (context.c.getD("masteries.boost.mult") - 1.0);

@@ -73,6 +73,10 @@ public class GameOptions   {
     }
 
     public int getAiReactionTimeMinMs(boolean isGoalie) {
+        return getAiReactionTimeMinMs(isGoalie, 0.70);
+    }
+
+    public int getAiReactionTimeMinMs(boolean isGoalie, double goalieRatio) {
         int base;
         switch (aiDifficultyIndex) {
             case 0: base = 2000; break; // Beginner: 2000-5000ms
@@ -83,7 +87,7 @@ public class GameOptions   {
             case 5: base = 0;    break; // Perfect: 0ms every tick
             default: base = 500; break;
         }
-        return isGoalie ? (int) Math.round(base * 0.4) : base;
+        return isGoalie ? (int) Math.round(base * goalieRatio) : base;
     }
 
     public int getAiReactionTimeMaxMs() {
@@ -91,6 +95,10 @@ public class GameOptions   {
     }
 
     public int getAiReactionTimeMaxMs(boolean isGoalie) {
+        return getAiReactionTimeMaxMs(isGoalie, 0.70);
+    }
+
+    public int getAiReactionTimeMaxMs(boolean isGoalie, double goalieRatio) {
         int base;
         switch (aiDifficultyIndex) {
             case 0: base = 5000; break; // Beginner: 2000-5000ms
@@ -101,7 +109,7 @@ public class GameOptions   {
             case 5: base = 0;    break; // Perfect: 0ms every tick
             default: base = 1200; break;
         }
-        return isGoalie ? (int) Math.round(base * 0.4) : base;
+        return isGoalie ? (int) Math.round(base * goalieRatio) : base;
     }
 
     /** 1v1 scrimmage is the only mode where guardians may be omitted. */

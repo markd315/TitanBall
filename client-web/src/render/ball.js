@@ -4,6 +4,55 @@ import { CONSTANTS } from '../constants.js';
 import { getControlledTitan } from '../input/mobile.js';
 
 let ballFrameCounter = 0;
+let prevBallX = null;
+let prevBallY = null;
+let lastBallMoveTime = 0;
+
+function isBallActive(game) {
+    if (!game || !game.ball) return false;
+
+    // 1. Being held by any player
+    if (game.players && game.players.some(p => p.possession === 1)) {
+        return true;
+    }
+
+    // 2. Active shot or lob action state on any player
+    if (game.players && game.players.some(p => 
+        p.actionState === 'SHOOT' || 
+        p.actionState === 'LOB' || 
+        p.actionState === 'CURVE_LEFT' || 
+        p.actionState === 'CURVE_RIGHT'
+    )) {
+        return true;
+    }
+
+    // 3. Ball lob mode
+    if (ballLobMode(game)) {
+        return true;
+    }
+
+    // 4. Non-zero kick power from shot/lob
+    if ((game.xKickPow && Math.abs(game.xKickPow) > 0.01) || (game.yKickPow && Math.abs(game.yKickPow) > 0.01)) {
+        return true;
+    }
+
+    // 5. Ball is moving across coordinates (in flight or rolling)
+    const now = Date.now();
+    if (prevBallX !== null && prevBallY !== null) {
+        const distMoved = Math.hypot(game.ball.X - prevBallX, game.ball.Y - prevBallY);
+        if (distMoved > 0.5) {
+            lastBallMoveTime = now;
+        }
+    }
+    prevBallX = game.ball.X;
+    prevBallY = game.ball.Y;
+
+    if (now - lastBallMoveTime < 150) {
+        return true;
+    }
+
+    return false;
+}
 
 function ballLobMode(game) {
     if (!game || !game.players) return false;
@@ -43,19 +92,17 @@ function isLocalPlayer(player, myTitan) {
 export function drawBall(ctx, game, camX, camY) {
     if (!game || !game.ballVisible || !game.ball) return;
 
-    ballFrameCounter = (ballFrameCounter + 1) % 20;
+    const active = isBallActive(game);
+    if (active) {
+        ballFrameCounter = (ballFrameCounter + 1) % 20;
+    } else {
+        ballFrameCounter = 0;
+    }
     const isFrameB = ballFrameCounter > 10;
+    const imgKey = isFrameB ? 'ballB' : 'ballA';
 
     const holder = game.players && game.players.find(p => p.possession === 1);
-    const anyPoss = Boolean(holder);
     const isLob = ballLobMode(game);
-    
-    let imgKey = 'ballA';
-    if (anyPoss) {
-        imgKey = isFrameB ? 'ballB' : 'ballA';
-    } else {
-        imgKey = isFrameB ? 'ballFB' : 'ballFA';
-    }
 
     const size = isLob ? 45 : 30;
     const offset = isLob ? -7.5 : 0;
@@ -97,44 +144,54 @@ export function drawBall(ctx, game, camX, camY) {
 }
 
 export function displayBallArrow(ctx, game, camX, camY) {
-    if (!game || !game.ballVisible) return;
+    if (!game || !game.ballVisible || !game.ball) return;
 
-    const x = game.ball.X + game.ball.width / 2 - camX;
-    const y = game.ball.Y + game.ball.height / 2 - camY;
-    
-    const ptrImg = game.players && game.players.some(p => p.possession === 1) 
-        ? AssetManager.images['ballPtr'] 
-        : AssetManager.images['ballFPtr'];
+    const holder = game.players && game.players.find(p => p.possession === 1);
+    const myTitan = game.underControl || getControlledTitan(game);
+    const isOpponentPossession = Boolean(holder && myTitan && !isSameTeam(holder, myTitan));
 
-    if (!ptrImg) return;
+    const ptrImg = isOpponentPossession 
+        ? AssetManager.images['ballFPtr'] 
+        : AssetManager.images['ballPtr'];
 
-    let rot = null;
-    let drawX = x, drawY = y;
+    if (!ptrImg || !ptrImg.width || !ptrImg.height) return;
 
-    // Check if off-screen
-    if (x < 0) {
-        rot = 180;
-        if (y < 0) { rot = 225; drawY = 20; }
-        else if (y > CONSTANTS.Y_RES) { rot = 135; drawY = CONSTANTS.Y_RES - 20; }
-        drawX = 20;
-    } else if (x > CONSTANTS.X_RES) {
-        rot = 0;
-        if (y < 0) { rot = 315; drawY = 20; }
-        else if (y > CONSTANTS.Y_RES) { rot = 45; drawY = CONSTANTS.Y_RES - 20; }
-        drawX = CONSTANTS.X_RES - 20;
-    } else if (y < 0) {
-        rot = 270;
-        drawY = 20;
-    } else if (y > CONSTANTS.Y_RES) {
-        rot = 90;
-        drawY = CONSTANTS.Y_RES - 20;
-    }
+    const isGoalie = Boolean(myTitan && myTitan.type === 'GOALIE');
+    const ballCenterX = game.ball.X + (game.ball.width || 30) / 2;
+    const ballCenterY = game.ball.Y + (game.ball.height || 30) / 2;
 
-    if (rot !== null) {
+    const cx = camX || 0;
+    const cy = camY || 0;
+    const screenX = isGoalie ? (ballCenterX - cx) * 0.9375 : (ballCenterX - cx);
+    const screenY = ballCenterY - cy;
+
+    const halfW = ptrImg.width / 2;
+    const halfH = ptrImg.height / 2;
+
+    // Keep indicators visible on screen and avoid corner overlap
+    const margin = halfW + 10;
+    const clampedX = Math.max(margin, Math.min(CONSTANTS.X_RES - margin, screenX));
+    const clampedY = Math.max(margin, Math.min(CONSTANTS.Y_RES - margin, screenY));
+
+    function drawPointer(x, y, angleDeg) {
         ctx.save();
-        ctx.translate(drawX, drawY);
-        ctx.rotate(rot * Math.PI / 180);
-        ctx.drawImage(ptrImg, -ptrImg.width/2, -ptrImg.height/2);
+        ctx.translate(x, y);
+        if (angleDeg !== 0) {
+            ctx.rotate(angleDeg * Math.PI / 180);
+        }
+        ctx.drawImage(ptrImg, -halfW, -halfH);
         ctx.restore();
     }
+
+    // 1. Left border: unaltered (points right, tracks ball Y)
+    drawPointer(halfW, clampedY, 0);
+
+    // 2. Right border: rotated 180 deg (points left, tracks ball Y)
+    drawPointer(CONSTANTS.X_RES - halfW, clampedY, 180);
+
+    // 3. Top border: rotated 90 deg (points down, tracks ball X)
+    drawPointer(clampedX, halfW, 90);
+
+    // 4. Bottom border: rotated 270 deg (points up, tracks ball X)
+    drawPointer(clampedX, CONSTANTS.Y_RES - halfW, 270);
 }

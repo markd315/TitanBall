@@ -519,68 +519,85 @@
         text-transform: uppercase;
         letter-spacing: 0.5px;
       }
-      /* Diagonal Font Shimmer for Diamond and Gold Halo ranks */
+      /* Diagonal Font Shimmer for Top 3 Tiers (Grandmaster, Master, Diamond) */
+      .rank-shimmer-grandmaster,
+      .rank-shimmer-master,
       .rank-shimmer-diamond {
-        background: linear-gradient(
+        background-size: 200% 100%;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        display: inline-block;
+        font-weight: 800;
+        animation: diagonalRankShimmer 2.8s linear infinite;
+        will-change: background-position;
+        -webkit-backface-visibility: hidden;
+        backface-visibility: hidden;
+        transform: translateZ(0);
+      }
+      .rank-shimmer-grandmaster {
+        background-image: linear-gradient(
+          115deg,
+          #ff4757 0%,
+          #ff4757 38%,
+          #ffccd2 46%,
+          #ffffff 50%,
+          #ffccd2 54%,
+          #ff4757 62%,
+          #ff4757 100%
+        );
+        filter: drop-shadow(0 0 3px rgba(255, 71, 87, 0.35));
+      }
+      .rank-shimmer-master {
+        background-image: linear-gradient(
+          115deg,
+          #c084fc 0%,
+          #c084fc 38%,
+          #f3e8ff 46%,
+          #ffffff 50%,
+          #f3e8ff 54%,
+          #c084fc 62%,
+          #c084fc 100%
+        );
+        filter: drop-shadow(0 0 3px rgba(192, 132, 252, 0.35));
+      }
+      .rank-shimmer-diamond {
+        background-image: linear-gradient(
           115deg,
           #38bdf8 0%,
-          #38bdf8 36%,
+          #38bdf8 38%,
           #e0f2fe 46%,
           #ffffff 50%,
           #e0f2fe 54%,
-          #38bdf8 64%,
+          #38bdf8 62%,
           #38bdf8 100%
         );
-        background-size: 220% 100%;
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        display: inline-block;
-        animation: rankShimmer 3.2s ease-in-out infinite;
-        filter: drop-shadow(0 0 5px rgba(56, 189, 248, 0.45));
+        filter: drop-shadow(0 0 3px rgba(56, 189, 248, 0.35));
       }
-      .rank-shimmer-gold-halo {
-        background: linear-gradient(
-          115deg,
-          #facc15 0%,
-          #facc15 36%,
-          #fef08a 46%,
-          #ffffff 50%,
-          #fef08a 54%,
-          #facc15 64%,
-          #facc15 100%
-        );
-        background-size: 220% 100%;
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        display: inline-block;
-        animation: rankShimmer 3.2s ease-in-out infinite;
-        filter: drop-shadow(0 0 5px rgba(250, 204, 21, 0.45));
-      }
-      @keyframes rankShimmer {
+      @keyframes diagonalRankShimmer {
         0% {
           background-position: 200% 0;
         }
-        42% {
-          background-position: -120% 0;
-        }
         100% {
-          background-position: -120% 0;
+          background-position: -200% 0;
         }
       }
       @media (prefers-reduced-motion: reduce) {
-        .rank-shimmer-diamond,
-        .rank-shimmer-gold-halo {
+        .rank-shimmer-grandmaster,
+        .rank-shimmer-master,
+        .rank-shimmer-diamond {
           animation: none;
-          background: none;
-          -webkit-text-fill-color: initial;
+          background: none !important;
+          -webkit-text-fill-color: initial !important;
+        }
+        .rank-shimmer-grandmaster {
+          color: #ff4757;
+        }
+        .rank-shimmer-master {
+          color: #c084fc;
         }
         .rank-shimmer-diamond {
           color: #38bdf8;
-        }
-        .rank-shimmer-gold-halo {
-          color: #facc15;
         }
       }
       .stats-header-subtext {
@@ -1651,7 +1668,7 @@
         90%, 100% { transform: rotate(0deg); }
       }
     </style>
-    <script type="module" crossorigin src="./assets/main-3ac2abf7.js"></script>
+    <script type="module" crossorigin src="./assets/main-7381ad70.js"></script>
   </head>
   <body>
     <div id="app">

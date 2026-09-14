@@ -77,7 +77,7 @@ public class Entity extends Box   {
             }
         }
         health /= currentArmor;
-        if (attacker != null && this instanceof Titan && attacker.team != this.team) {
+        if (health > 0.0 && attacker != null && this instanceof Titan && attacker.team != this.team) {
             this.lastAttacker = attacker;
             this.lastAttackerTimeMs = System.currentTimeMillis();
             if (context != null && context.effectPool != null) {

@@ -56,6 +56,76 @@ Server logs (`docker-compose logs -f server`) and browser console (`[DIAG]` pref
 
 ---
 
+## Balance Tables & Simulation Metrics (Docker Database)
+
+Headless balance simulations periodically record winrates and gameplay metrics directly into MySQL running inside Docker (`titanball-db-1`).
+
+### Quick Docker Query Commands
+
+Run these commands directly in your terminal or via agent commands:
+
+#### 1. Class Stat Balance & Win Rates (`classstat`)
+```bash
+docker exec titanball-db-1 mysql -uroot -pdevpassword titanball -e "
+SELECT role, wins, losses, ties, (wins + losses + ties) AS total_games,
+       ROUND(wins / (wins + losses) * 100, 2) AS winrate_pct,
+       ROUND(points / (wins + losses), 2) AS ppg,
+       ROUND(goals / (wins + losses), 2) AS gpg,
+       ROUND(kills / (wins + losses), 2) AS kpg,
+       ROUND(deaths / (wins + losses), 2) AS dpg
+FROM classstat
+WHERE (wins + losses) > 0
+ORDER BY winrate_pct DESC;"
+```
+
+#### 2. Mastery Pairs Balance & Win Rates (`masteriesstat`)
+```bash
+docker exec titanball-db-1 mysql -uroot -pdevpassword titanball -e "
+SELECT role, wins, losses, (wins + losses) AS total_games,
+       ROUND(wins / (wins + losses) * 100, 2) AS winrate_pct,
+       ROUND(points / (wins + losses), 2) AS ppg,
+       ROUND(goals / (wins + losses), 2) AS gpg,
+       ROUND(kills / (wins + losses), 2) AS kpg,
+       ROUND(deaths / (wins + losses), 2) AS dpg
+FROM masteriesstat
+WHERE (wins + losses) > 0
+ORDER BY winrate_pct DESC;"
+```
+
+#### 3. Goalie Upgrade Tree Balance & Win Rates (`upgradeclassstat`)
+```bash
+docker exec titanball-db-1 mysql -uroot -pdevpassword titanball -e "
+SELECT upgrade, wins, losses, (wins + losses) AS total_games,
+       ROUND(wins / (wins + losses) * 100, 2) AS winrate_pct,
+       ROUND(saves / (wins + losses), 2) AS saves_pg,
+       ROUND(goalsconceded / (wins + losses), 2) AS conc_pg,
+       ROUND(upgradesgold / (wins + losses), 2) AS gold_pg
+FROM upgradeclassstat
+WHERE (wins + losses) > 0
+ORDER BY winrate_pct DESC;"
+```
+
+#### 4. Headless Build Order Win Rates (`buildorderstat`)
+```bash
+docker exec titanball-db-1 mysql -uroot -pdevpassword titanball -e "
+SELECT buildname, wins, losses, (wins + losses) AS total_games,
+       ROUND(wins / (wins + losses) * 100, 2) AS winrate_pct
+FROM buildorderstat
+WHERE (wins + losses) > 0
+ORDER BY winrate_pct DESC;"
+```
+
+### How to Respond to Balance Queries (For AI Assistants & Developers)
+When prompted with queries like *"check classstat, masteries, and upgrade balance tables"*:
+1. **Query Live Container**: Run `docker exec` against `titanball-db-1` on the `titanball` database (`-uroot -pdevpassword`) for `classstat`, `masteriesstat`, and `upgradeclassstat`.
+2. **Present Clean Tables**:
+   - **Class Stats Table**: Ranked by `winrate_pct` with matches played (`total_games`), points per game (`ppg`), goals per game (`gpg`), and K/D ratios. Highlight any classes with sample size > 1,000 above 52% (overpowered/dominant) or below 48% (underpowered).
+   - **Masteries**: Provide the top 10 highest winrate traits and bottom 10 lowest winrate traits, pointing out stat synergies (e.g. `GOLEM_BOOST`, `STEALTH_SHOT`) vs traps (e.g. `CAPTAIN_COOLDOWNS`, `SPIDER_DAMAGE`).
+   - **Goalie Upgrades**: Group or sort by winrate and tree branch (`cultivation`, `fortress`, `siege`, `empowerment`), highlighting meta-defining upgrades (e.g. `siege.t6.forwardmedics`, `fortress.t5.icebarrage`) vs underperforming investments (e.g. `empowerment.t6.apexform`).
+3. **Synthesis & Balance Takeaways**: Provide a bulleted summary of key balance insights, outlier trends, and potential tuning levers in `res/game.cfg`.
+
+---
+
 ## Deployment
 
 ### 1. Frontend Deployment (S3 & CloudFront)
@@ -76,9 +146,16 @@ Once deployed, the frontend is live at `https://blockforger.net/pages/titanball/
 
 ### 2. Backend Server Deployment (Docker & Amazon ECR)
 
-Authenticate with Amazon ECR, build the server Docker image, tag it, and push it to ECR:
+Ensure headless games are turned off in `res/game.cfg`, authenticate with Amazon ECR, build the server Docker image, tag it, and push it to ECR:
 
 ```bash
+./operations/deploy-backend.sh
+```
+
+Or execute manually:
+
+```bash
+sed -i.bak 's/^headless\.enabled=.*/headless.enabled=false/' res/game.cfg && rm -f res/game.cfg.bak
 aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 720291373173.dkr.ecr.us-east-1.amazonaws.com
 docker build -t titanball .
 docker tag titanball 720291373173.dkr.ecr.us-east-1.amazonaws.com/titanball

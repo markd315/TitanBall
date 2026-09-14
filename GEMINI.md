@@ -44,4 +44,18 @@ When parsed by `new GameOptions(tournamentCode)` on the server, tokens are mappe
 - **Default 1v1 Scrimmage**:
   `"/4/1/1/5/2/9999/10/20"` (1v1 scrimmage, play to 5, win by 2, Sudden death at 10:00, Draw at 20:00).
 
+## Balance Tables & Querying Docker Database
+
+When prompted with queries to check balance tables (e.g. *"check classstat, masteries, and upgrade balance tables"*):
+1. **Query MySQL in Docker (`titanball-db-1`)**:
+   - `classstat`: `docker exec titanball-db-1 mysql -uroot -pdevpassword titanball -e "SELECT role, wins, losses, ties, (wins + losses + ties) AS total_games, ROUND(wins / (wins + losses) * 100, 2) AS winrate_pct, ROUND(points / (wins + losses), 2) AS ppg, ROUND(goals / (wins + losses), 2) AS gpg, ROUND(kills / (wins + losses), 2) AS kpg, ROUND(deaths / (wins + losses), 2) AS dpg FROM classstat WHERE (wins + losses) > 0 ORDER BY winrate_pct DESC;"`
+   - `masteriesstat`: `docker exec titanball-db-1 mysql -uroot -pdevpassword titanball -e "SELECT role, wins, losses, (wins + losses) AS total_games, ROUND(wins / (wins + losses) * 100, 2) AS winrate_pct, ROUND(points / (wins + losses), 2) AS ppg, ROUND(goals / (wins + losses), 2) AS gpg, ROUND(kills / (wins + losses), 2) AS kpg, ROUND(deaths / (wins + losses), 2) AS dpg FROM masteriesstat WHERE (wins + losses) > 0 ORDER BY winrate_pct DESC LIMIT 20;"`
+   - `upgradeclassstat`: `docker exec titanball-db-1 mysql -uroot -pdevpassword titanball -e "SELECT upgrade, wins, losses, (wins + losses) AS total_games, ROUND(wins / (wins + losses) * 100, 2) AS winrate_pct, ROUND(saves / (wins + losses), 2) AS saves_pg, ROUND(goalsconceded / (wins + losses), 2) AS conc_pg, ROUND(upgradesgold / (wins + losses), 2) AS gold_pg FROM upgradeclassstat WHERE (wins + losses) > 0 ORDER BY winrate_pct DESC;"`
+2. **Present Clean Tables & Metrics**: Show Winrate %, Matches Played, Points/Goals per game, and K/D.
+3. **Analyze Balance**:
+   - Identify overperforming classes (>52%) and underperforming classes (<48%).
+   - Highlight high-synergy masteries vs underpowered masteries.
+   - Contrast strong goalie upgrade branches (e.g. `fortress`, `cultivation`) against lagging trees (e.g. `empowerment`).
+
+
 

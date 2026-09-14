@@ -114,8 +114,7 @@ export function drawMinions(ctx, game, camX, camY) {
         }
         else if (e.entityClass === 'SecondBall') {
             const isFrameB = (staticFrame % 20) > 10;
-            const anyPoss = game.players && game.players.some(p => p.possession === 1);
-            imgKey = anyPoss ? (isFrameB ? 'ballB' : 'ballA') : (isFrameB ? 'ballFB' : 'ballFA');
+            imgKey = isFrameB ? 'ballB' : 'ballA';
         }
         else if (e.entityClass === 'Web') {
             imgKey = 'web';

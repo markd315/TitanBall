@@ -1063,11 +1063,12 @@ function drawIngame(ctx, dt) {
   drawEffectIcons(ctx, game, camX, camY);
   drawHealthBars(ctx, game, camX, camY);
   drawBall(ctx, game, camX, camY);
-  displayBallArrow(ctx, game, camX, camY);
 
   if (isGoalie) {
     ctx.restore();
   }
+
+  displayBallArrow(ctx, game, camX, camY);
 
   drawHud(ctx, game, gameState);
 
@@ -1507,7 +1508,11 @@ function drawGameEnded(ctx) {
             val = altMap[email];
           }
         }
-        valStr = entry.isFloat ? val.toFixed(1) : Math.floor(val).toString();
+        if (entry.statIndex === 2) {
+          valStr = (val % 1 === 0) ? Math.floor(val).toString() : val.toFixed(2);
+        } else {
+          valStr = entry.isFloat ? val.toFixed(1) : Math.floor(val).toString();
+        }
       }
       
       ctx.fillStyle = '#ffffff';

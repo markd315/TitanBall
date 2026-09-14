@@ -12,6 +12,7 @@ import gameserver.entity.minions.LaneMinion;
 import networking.PlayerDivider;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -75,7 +76,7 @@ public class TitanAiEngine {
     }
 
     public void runCoopVsAiEngine() {
-        long nowMs = System.currentTimeMillis();
+        long nowMs = (long) context.framesSinceStart * context.GAMETICK_MS;
         for (int i = 0; i < context.players.length; i++) {
             Titan t = context.players[i];
             if (t == null || context.effectPool.hasEffect(t, EffectId.DEAD)) continue;
@@ -88,12 +89,28 @@ public class TitanAiEngine {
     public void resetAiReactionAfterPossession(Titan t) {
         if (t == null) return;
         boolean isGoalie = (t.getType() == TitanType.GOALIE);
-        int minDelay = (context.options != null) ? context.options.getAiReactionTimeMinMs(isGoalie) : (isGoalie ? 480 : 1200);
-        int maxDelay = (context.options != null) ? context.options.getAiReactionTimeMaxMs(isGoalie) : (isGoalie ? 680 : 1700);
-        t.aiLastDecisionTimeMs = System.currentTimeMillis();
+        double goalieRatio = (context.c != null) ? context.c.AI_GOALIE_REACTION_RATIO : 0.70;
+        int minDelay = (context.options != null) ? context.options.getAiReactionTimeMinMs(isGoalie, goalieRatio) : (isGoalie ? (int) Math.round(1200 * goalieRatio) : 1200);
+        int maxDelay = (context.options != null) ? context.options.getAiReactionTimeMaxMs(isGoalie, goalieRatio) : (isGoalie ? (int) Math.round(1700 * goalieRatio) : 1700);
+        t.aiLastDecisionTimeMs = (long) context.framesSinceStart * context.GAMETICK_MS;
         t.aiReactionDelayMs = minDelay + (long)(Math.random() * (maxDelay - minDelay + 1));
         t.aiTargetAction = 0;
         t.aiStealTargetStartMs = 0;
+
+        // Catch-and-shoot one-timer in attacking third
+        if (!isGoalie) {
+            double currentCX = t.X + t.width / 2.0;
+            boolean inAttackingThird = (t.team == TeamAffiliation.HOME)
+                    ? currentCX > (context.FIELD_LENGTH * 2.0 / 3.0)
+                    : currentCX < (context.FIELD_LENGTH / 3.0);
+            if (inAttackingThird) {
+                TeamAffiliation enemyTeam = (t.team == TeamAffiliation.HOME) ? TeamAffiliation.AWAY : TeamAffiliation.HOME;
+                GoalHoop openGoal = findUnblockedGoal(t, enemyTeam);
+                if (openGoal != null) {
+                    t.aiReactionDelayMs = 0; // Immediate one-timer execution
+                }
+            }
+        }
     }
 
     public void updateAiBoostDecision(Titan ai) {
@@ -132,8 +149,9 @@ public class TitanAiEngine {
             if (context.isTitanVisibleTo(ai, tip) && context.isWithinStealRange(ai, tip)) {
                 if (ai.aiStealTargetStartMs == 0) {
                     ai.aiStealTargetStartMs = nowMs;
-                    int stealMin = (context.options != null) ? context.options.getAiReactionTimeMinMs(true) : 480;
-                    int stealMax = (context.options != null) ? context.options.getAiReactionTimeMaxMs(true) : 680;
+                    double goalieRatio = (context.c != null) ? context.c.AI_GOALIE_REACTION_RATIO : 0.70;
+                    int stealMin = (context.options != null) ? context.options.getAiReactionTimeMinMs(true, goalieRatio) : (int) Math.round(1200 * goalieRatio);
+                    int stealMax = (context.options != null) ? context.options.getAiReactionTimeMaxMs(true, goalieRatio) : (int) Math.round(1700 * goalieRatio);
                     ai.aiStealReactionDelayMs = stealMin + (long)(Math.random() * (stealMax - stealMin + 1));
                 }
                 if (nowMs - ai.aiStealTargetStartMs >= ai.aiStealReactionDelayMs) {
@@ -154,10 +172,17 @@ public class TitanAiEngine {
         if (isGoalie) {
             tickAiGoalieMinionFarming(ai);
         }
-        int minDelay = (context.options != null) ? context.options.getAiReactionTimeMinMs(isGoalie) : (isGoalie ? 480 : 1200);
-        int maxDelay = (context.options != null) ? context.options.getAiReactionTimeMaxMs(isGoalie) : (isGoalie ? 680 : 1700);
+        double goalieRatio = (context.c != null) ? context.c.AI_GOALIE_REACTION_RATIO : 0.70;
+        int minDelay = (context.options != null) ? context.options.getAiReactionTimeMinMs(isGoalie, goalieRatio) : (isGoalie ? (int) Math.round(1200 * goalieRatio) : 1200);
+        int maxDelay = (context.options != null) ? context.options.getAiReactionTimeMaxMs(isGoalie, goalieRatio) : (isGoalie ? (int) Math.round(1700 * goalieRatio) : 1700);
 
-        // 2. Movement target re-evaluation strictly governed by difficulty reaction delay timer.
+        // 2. Abilities check (Independent of movement reaction timer - does not reset decision timer)
+        tryUseAbilities(ai);
+        if (ai.actionState != Titan.TitanState.IDLE) {
+            return;
+        }
+
+        // 3. Movement target re-evaluation strictly governed by difficulty reaction delay timer.
         if (ai.aiReactionDelayMs == 0 || (nowMs - ai.aiLastDecisionTimeMs >= ai.aiReactionDelayMs)) {
             evaluateAiDecision(ai);
             ai.aiLastDecisionTimeMs = nowMs;
@@ -252,11 +277,6 @@ public class TitanAiEngine {
             return;
         }
 
-        // Abilities check: Evaluated on reaction delay timer
-        tryUseAbilities(ai);
-        if (ai.actionState != Titan.TitanState.IDLE) {
-            return;
-        }
 
         TeamAffiliation myTeam = ai.team;
         TeamAffiliation enemyTeam = (myTeam == TeamAffiliation.HOME) ? TeamAffiliation.AWAY : TeamAffiliation.HOME;
@@ -526,7 +546,6 @@ public class TitanAiEngine {
 
     public void evaluateGoalieDecision(Titan ai) {
         context.tickAiGoalieBuildOrder(ai);
-        tryUseAbilities(ai);
 
         GoalHoop myGoal = (ai.team == TeamAffiliation.HOME) ? context.homeHiGoal : context.awayHiGoal;
         double hoopCX = myGoal.x + myGoal.w / 2.0;
@@ -718,6 +737,23 @@ public class TitanAiEngine {
                 ? possessor.X < context.FIELD_LENGTH / 2.0
                 : possessor.X > context.FIELD_LENGTH / 2.0;
 
+        // Gather all active off-ball outfield teammates
+        List<Titan> offBallTeammates = new ArrayList<>();
+        for (Titan t : context.players) {
+            if (t != null && t.team == ai.team && !t.id.equals(possessor.id)
+                    && t.getType() != TitanType.GOALIE && !context.effectPool.hasEffect(t, EffectId.DEAD)) {
+                offBallTeammates.add(t);
+            }
+        }
+        offBallTeammates.sort(Comparator.comparing(t -> t.id != null ? t.id.toString() : ""));
+
+        int slotIndex = Math.max(0, offBallTeammates.indexOf(ai));
+        int totalOffBall = Math.max(1, offBallTeammates.size());
+
+        double carrierCX = possessor.X + possessor.width / 2.0;
+        double carrierCY = possessor.Y + possessor.height / 2.0;
+        double forwardDir = (ai.team == TeamAffiliation.HOME) ? 1.0 : -1.0;
+
         if (isTransition) {
             if (ai.fuel > 25.0) {
                 ai.isBoosting = true;
@@ -725,16 +761,156 @@ public class TitanAiEngine {
             } else {
                 ai.isBoosting = false;
             }
+            // Stagger transition lanes so off-ball teammates don't stack on top of each other
+            double verticalOffset;
+            double leadDist = 200.0;
+            if (slotIndex == 0) {
+                verticalOffset = -220.0;
+            } else if (slotIndex == 1) {
+                verticalOffset = 220.0;
+            } else if (slotIndex == 2) {
+                verticalOffset = 0.0;
+                leadDist = 320.0;
+            } else {
+                verticalOffset = (slotIndex % 2 == 1) ? 260.0 : -260.0;
+                leadDist = -120.0;
+            }
+            ai.aiTargetX = Math.max(context.c.MIN_X + 25.0, Math.min(context.c.MAX_X - 25.0, carrierCX + forwardDir * leadDist));
+            ai.aiTargetY = Math.max(context.c.MIN_Y + 25.0, Math.min(context.c.MAX_Y - 25.0, carrierCY + verticalOffset));
+            return;
         }
 
-        double carrierCX = possessor.X + possessor.width / 2.0;
-        double carrierCY = possessor.Y + possessor.height / 2.0;
+        GoalHoop centerHoop = (ai.team == TeamAffiliation.HOME) ? context.awayHiGoal : context.homeHiGoal;
+        double hoopCX = (centerHoop != null) ? centerHoop.x + centerHoop.w / 2.0 : (ai.team == TeamAffiliation.HOME ? 1821.0 : 291.0);
+        double hoopCY = (centerHoop != null) ? centerHoop.y + centerHoop.h / 2.0 : 625.0;
+        double centerY = (context.c.MIN_Y + context.c.MAX_Y) / 2.0;
 
-        double forwardDir = (ai.team == TeamAffiliation.HOME) ? 1.0 : -1.0;
-        double verticalOffset = (ai.Y < carrierCY) ? -220.0 : 220.0;
+        // Dynamic slot positions across perimeter horseshoe
+        // Spots:
+        // 0: High Slot Trailer
+        // 1: Top Wing
+        // 2: Deep Top Behind Hoop
+        // 3: Deep Center Behind Hoop
+        // 4: Deep Bottom Behind Hoop
+        // 5: Bottom Wing
+        // 6: Low Slot Trailer
+        // 7: Point Safety
+        double wingX = (ai.team == TeamAffiliation.HOME)
+                ? Math.min(hoopCX - 80.0, Math.max(carrierCX + 100.0, hoopCX - 280.0))
+                : Math.max(hoopCX + 80.0, Math.min(carrierCX - 100.0, hoopCX + 280.0));
+        double behindHoopX = hoopCX + forwardDir * 130.0;
+        double trailerX = carrierCX - forwardDir * 200.0;
 
-        ai.aiTargetX = Math.max(context.c.MIN_X, Math.min(context.c.MAX_X, carrierCX + forwardDir * 200.0));
-        ai.aiTargetY = Math.max(context.c.MIN_Y, Math.min(context.c.MAX_Y, carrierCY + verticalOffset));
+        double[] spotX = new double[8];
+        double[] spotY = new double[8];
+
+        spotX[0] = trailerX;
+        spotY[0] = centerY - 180.0;
+
+        spotX[1] = wingX;
+        spotY[1] = context.c.MIN_Y + 110.0;
+
+        spotX[2] = behindHoopX;
+        spotY[2] = hoopCY - 160.0;
+
+        spotX[3] = behindHoopX;
+        spotY[3] = hoopCY;
+
+        spotX[4] = behindHoopX;
+        spotY[4] = hoopCY + 160.0;
+
+        spotX[5] = wingX;
+        spotY[5] = context.c.MAX_Y - 110.0;
+
+        spotX[6] = trailerX;
+        spotY[6] = centerY + 180.0;
+
+        spotX[7] = carrierCX - forwardDir * 350.0;
+        spotY[7] = centerY;
+
+        // Identify if the ball carrier is occupying or crowding a designated slot
+        int carrierOccupiedSpot = -1;
+        double minCarrierDist = Double.MAX_VALUE;
+        for (int i = 0; i < 8; i++) {
+            double dist = Math.hypot(spotX[i] - carrierCX, spotY[i] - carrierCY);
+            if (dist < 220.0 && dist < minCarrierDist) {
+                minCarrierDist = dist;
+                carrierOccupiedSpot = i;
+            }
+        }
+
+        // When the ball is not in its designated spot, dynamically shift/rotate off-ball positions
+        int[] activeOrder;
+        switch (carrierOccupiedSpot) {
+            case 1: // Carrier at Top Wing -> off-ball rotates to Deep Top Behind Hoop (2)
+                activeOrder = new int[] { 2, 5, 3, 4, 0, 6, 7 };
+                break;
+            case 5: // Carrier at Bottom Wing -> off-ball rotates to Deep Bottom Behind Hoop (4)
+                activeOrder = new int[] { 4, 1, 3, 2, 6, 0, 7 };
+                break;
+            case 3: // Carrier at Deep Center Behind Hoop -> off-ball rotates to wings and flank behind-hoop (2, 4)
+                activeOrder = new int[] { 1, 5, 2, 4, 0, 6, 7 };
+                break;
+            case 2: // Carrier at Deep Top Behind Hoop -> off-ball rotates to Top Wing & Center Behind
+                activeOrder = new int[] { 1, 5, 3, 4, 0, 6, 7 };
+                break;
+            case 4: // Carrier at Deep Bottom Behind Hoop -> off-ball rotates to Bottom Wing & Center Behind
+                activeOrder = new int[] { 1, 5, 3, 2, 0, 6, 7 };
+                break;
+            case 0: // Carrier at High Slot Trailer
+                activeOrder = new int[] { 1, 5, 3, 2, 4, 6, 7 };
+                break;
+            case 6: // Carrier at Low Slot Trailer
+                activeOrder = new int[] { 1, 5, 3, 2, 4, 0, 7 };
+                break;
+            case 7: // Carrier at Point Safety
+                activeOrder = new int[] { 1, 5, 3, 2, 4, 0, 6 };
+                break;
+            default: // Ball in open space / center initiation
+                activeOrder = new int[] { 1, 5, 3, 2, 4, 0, 6, 7 };
+                break;
+        }
+
+        double targetX, targetY;
+        if (slotIndex < activeOrder.length) {
+            int assignedSpot = activeOrder[slotIndex];
+            targetX = spotX[assignedSpot];
+            targetY = spotY[assignedSpot];
+        } else {
+            // Roster sizes beyond 8 off-ball outfielders (e.g. 9v9+ safeties)
+            int overflowIndex = slotIndex - activeOrder.length;
+            targetX = carrierCX - forwardDir * (350.0 + overflowIndex * 60.0);
+            targetY = centerY + (overflowIndex % 2 == 0 ? 1 : -1) * (overflowIndex * 40.0);
+        }
+
+        // Anti-clustering separation guarantee: ensure off-ball target is never within 200px of carrier
+        double distToCarrier = Math.hypot(targetX - carrierCX, targetY - carrierCY);
+        if (distToCarrier < 200.0 && distToCarrier > 0.001) {
+            double pushX = (targetX - carrierCX) / distToCarrier;
+            double pushY = (targetY - carrierCY) / distToCarrier;
+            targetX = carrierCX + pushX * 220.0;
+            targetY = carrierCY + pushY * 220.0;
+        }
+
+        // Clamp to valid playing pitch
+        targetX = Math.max(context.c.MIN_X + 25.0, Math.min(context.c.MAX_X - 25.0, targetX));
+        targetY = Math.max(context.c.MIN_Y + 25.0, Math.min(context.c.MAX_Y - 25.0, targetY));
+
+        // Passing lane micro-adjustment: If an enemy blocks the direct pass line, shift vertically to open the window
+        if (isPassPathBlocked(carrierCX, carrierCY, targetX, targetY, enemyTeam)) {
+            double altY1 = Math.min(context.c.MAX_Y - 30.0, targetY + 80.0);
+            double altY2 = Math.max(context.c.MIN_Y + 30.0, targetY - 80.0);
+            if (!isPassPathBlocked(carrierCX, carrierCY, targetX, altY1, enemyTeam)) {
+                targetY = altY1;
+            } else if (!isPassPathBlocked(carrierCX, carrierCY, targetX, altY2, enemyTeam)) {
+                targetY = altY2;
+            }
+        }
+
+        ai.aiTargetX = targetX;
+        ai.aiTargetY = targetY;
+        ai.aiTargetAction = 0;
+        ai.isBoosting = false;
     }
 
     public double getTitanChaseSpeed(Titan t) {
@@ -1246,16 +1422,34 @@ public class TitanAiEngine {
         double bestDist = -1.0;
         double aiCX = ai.X + ai.width / 2.0;
         double aiCY = ai.Y + ai.height / 2.0;
+        boolean inAttackingThird = (ai.team == TeamAffiliation.HOME)
+                ? aiCX > (context.FIELD_LENGTH * 2.0 / 3.0)
+                : aiCX < (context.FIELD_LENGTH / 3.0);
         TeamAffiliation enemyTeam = (ai.team == TeamAffiliation.HOME) ? TeamAffiliation.AWAY : TeamAffiliation.HOME;
         for (Titan t : context.players) {
             if (t != null && !t.id.equals(ai.id) && t.team == ai.team && t.getType() != TitanType.GOALIE && !context.effectPool.hasEffect(t, EffectId.DEAD)) {
                 double tCX = t.X + t.width / 2.0;
                 double tCY = t.Y + t.height / 2.0;
                 double forwardX = (ai.team == TeamAffiliation.HOME) ? (tCX - aiCX) : (aiCX - tCX);
-                if (forwardX > 50.0) {
+                boolean validTarget = false;
+                double targetScore = 0.0;
+                if (!inAttackingThird) {
+                    if (forwardX > 50.0) {
+                        validTarget = true;
+                        targetScore = forwardX;
+                    }
+                } else {
+                    double dist = Math.hypot(tCX - aiCX, tCY - aiCY);
+                    // In attacking third, allow lateral kicks (Y diff >= 100) or upfield, as long as within passing range and not way behind
+                    if (dist >= 80.0 && dist <= 550.0 && (forwardX > -50.0 || Math.abs(tCY - aiCY) >= 100.0)) {
+                        validTarget = true;
+                        targetScore = 1000.0 - dist;
+                    }
+                }
+                if (validTarget) {
                     if (!isPassPathBlocked(aiCX, aiCY, tCX, tCY, enemyTeam)) {
-                        if (forwardX > bestDist) {
-                            bestDist = forwardX;
+                        if (targetScore > bestDist) {
+                            bestDist = targetScore;
                             best = t;
                         }
                     }
@@ -1337,10 +1531,11 @@ public class TitanAiEngine {
         ai.queuedBtn = lob ? 3 : 1;
         context.serverMouseRoutine(ai, (int) targetX, (int) targetY, ai.queuedBtn, 0, 0);
         ai.queuedBtn = 0;
-        ai.aiLastDecisionTimeMs = System.currentTimeMillis();
+        ai.aiLastDecisionTimeMs = (long) context.framesSinceStart * context.GAMETICK_MS;
         boolean isGoalie = (ai.getType() == TitanType.GOALIE);
-        int minDelay = (context.options != null) ? context.options.getAiReactionTimeMinMs(isGoalie) : (isGoalie ? 480 : 1200);
-        int maxDelay = (context.options != null) ? context.options.getAiReactionTimeMaxMs(isGoalie) : (isGoalie ? 680 : 1700);
+        double goalieRatio = (context.c != null) ? context.c.AI_GOALIE_REACTION_RATIO : 0.70;
+        int minDelay = (context.options != null) ? context.options.getAiReactionTimeMinMs(isGoalie, goalieRatio) : (isGoalie ? (int) Math.round(1200 * goalieRatio) : 1200);
+        int maxDelay = (context.options != null) ? context.options.getAiReactionTimeMaxMs(isGoalie, goalieRatio) : (isGoalie ? (int) Math.round(1700 * goalieRatio) : 1700);
         ai.aiReactionDelayMs = minDelay + (long)(Math.random() * (maxDelay - minDelay + 1));
     }
 
@@ -1428,7 +1623,7 @@ public class TitanAiEngine {
             }
             if (!blocked) return g;
         }
-        return enemyGoals[0];
+        return null;
     }
 
     public static double distToSegment(double px, double py, double x1, double y1, double x2, double y2) {

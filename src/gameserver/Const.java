@@ -24,6 +24,8 @@ public class Const extends ConstOperations   {
     public final int LOB_CASTLAG_FRAMES = hasKey("globals.lob.castlag") ? getI("globals.lob.castlag") : 15;
     public boolean GOALIE_DISABLED = getB("globals.goalie.disabled");
     public boolean AI_OMNISCIENCE_ENABLED = hasKey("globals.ai.omniscience.enabled") ? getB("globals.ai.omniscience.enabled") : false;
+    public final double AI_GOALIE_REACTION_RATIO = hasKey("globals.ai.goalie.reaction.ratio") ? getD("globals.ai.goalie.reaction.ratio") : 0.70;
+    public final int AI_DIFFICULTY = hasKey("globals.ai.difficulty") ? getI("globals.ai.difficulty") : 4;
     public final gameserver.entity.TitanType[] AI_INCLUDED_TITANS = initAiIncludedTitans();
     public final double BALL_X = getD("ball.x");
     public final double BALL_Y = getD("ball.y");

@@ -512,8 +512,8 @@ export function computeStatWithMastery(statType, baseVal, masteryPoints = 0) {
   let totalVal, bonusVal;
 
   if (statType === 'stealRad') {
-    const flatBonus = getCfgNum('masteries.stealRadius.flat', 1);
-    bonusVal = points * flatBonus;
+    const flatBonus = getCfgNum('masteries.stealRadius.flat', 2);
+    bonusVal = (points - 1) * flatBonus;
     totalVal = baseVal + bonusVal;
   } else {
     const cfgKey = STAT_MASTERY_CONFIG_MAP[statType];

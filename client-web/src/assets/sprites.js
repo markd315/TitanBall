@@ -164,8 +164,6 @@ export function initAssets() {
     AssetManager.loadSprite('selector', 'res/Court/select.png');
     AssetManager.loadSprite('ballA', 'res/Court/ballA.png');
     AssetManager.loadSprite('ballB', 'res/Court/ballB.png');
-    AssetManager.loadSprite('ballFA', 'res/Court/ballFA.png');
-    AssetManager.loadSprite('ballFB', 'res/Court/ballFB.png');
     AssetManager.loadSprite('ballPtr', 'res/Court/ballptr.png');
     AssetManager.loadSprite('ballFPtr', 'res/Court/ballfptr.png');
     AssetManager.loadSprite('victory', 'res/Court/victory.png');

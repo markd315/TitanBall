@@ -1,13 +1,13 @@
 import { fetchUserStats } from '../network/auth.js';
 
 export const RANK_TIERS = [
-  { name: 'Grandmaster', minElo: 2000, badge: 'res/Court/rnk/grandmaster.png', color: '#ff4757', glow: 'rgba(255, 71, 87, 0.45)' },
-  { name: 'Master', minElo: 1800, badge: 'res/Court/rnk/master.png', color: '#c084fc', glow: 'rgba(192, 132, 252, 0.45)' },
-  { name: 'Diamond', minElo: 1600, badge: 'res/Court/rnk/diamond.png', color: '#38bdf8', glow: 'rgba(56, 189, 248, 0.45)', shimmerClass: 'rank-shimmer-diamond' },
-  { name: 'Gold Halo', minElo: 1400, badge: 'res/Court/rnk/gold_halo.png', color: '#facc15', glow: 'rgba(250, 204, 21, 0.45)', shimmerClass: 'rank-shimmer-gold-halo' },
-  { name: 'Gold', minElo: 1200, badge: 'res/Court/rnk/gold.png', color: '#fbbf24', glow: 'rgba(251, 191, 36, 0.45)' },
-  { name: 'Silver', minElo: 1000, badge: 'res/Court/rnk/silver.png', color: '#cbd5e1', glow: 'rgba(203, 213, 225, 0.45)' },
-  { name: 'Bronze', minElo: 0, badge: 'res/Court/rnk/bronze.png', color: '#fb923c', glow: 'rgba(251, 146, 60, 0.45)' }
+  { name: 'Grandmaster', minElo: 1440, badge: 'res/Court/rnk/grandmaster.png', color: '#ff4757', glow: 'rgba(255, 71, 87, 0.22)', shimmerClass: 'rank-shimmer-grandmaster' },
+  { name: 'Master', minElo: 1350, badge: 'res/Court/rnk/master.png', color: '#c084fc', glow: 'rgba(192, 132, 252, 0.22)', shimmerClass: 'rank-shimmer-master' },
+  { name: 'Diamond', minElo: 1260, badge: 'res/Court/rnk/diamond.png', color: '#38bdf8', glow: 'rgba(56, 189, 248, 0.22)', shimmerClass: 'rank-shimmer-diamond' },
+  { name: 'Gold Halo', minElo: 1175, badge: 'res/Court/rnk/gold_halo.png', color: '#facc15', glow: 'rgba(250, 204, 21, 0.22)' },
+  { name: 'Gold', minElo: 1060, badge: 'res/Court/rnk/gold.png', color: '#fbbf24', glow: 'rgba(251, 191, 36, 0.22)' },
+  { name: 'Silver', minElo: 900, badge: 'res/Court/rnk/silver.png', color: '#cbd5e1', glow: 'rgba(203, 213, 225, 0.22)' },
+  { name: 'Bronze', minElo: 0, badge: 'res/Court/rnk/bronze.png', color: '#fb923c', glow: 'rgba(251, 146, 60, 0.22)' }
 ];
 
 export const getRankTier = (elo) => RANK_TIERS.find(t => (Number(elo) || 1000) >= t.minElo) || RANK_TIERS[RANK_TIERS.length - 1];
@@ -56,7 +56,7 @@ export function updateStatsBanner() {
   const elo = Math.round(stats.rating != null ? stats.rating : 1000), wins = Number(stats.wins || 0), losses = Number(stats.losses || 0), ties = Number(stats.ties || 0);
   const totalMatches = wins + losses + ties;
 
-  const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  const setTxt = (id, v) => { const el = document.getElementById(id); if (el && el.textContent !== String(v)) el.textContent = v; };
   setTxt('stat-elo-val', elo);
   setTxt('stat-wins-val', wins);
   setTxt('stat-losses-val', losses);
@@ -66,13 +66,21 @@ export function updateStatsBanner() {
   if (rankContainer) {
     if (totalMatches >= 10) {
       const tier = getRankTier(elo);
-      const shimmer = tier.shimmerClass ? ` ${tier.shimmerClass}` : '';
-      const colorStyle = tier.shimmerClass ? '' : `color: ${tier.color};`;
-      rankContainer.innerHTML = `<div class="inline-rank-badge" style="box-shadow: 0 0 8px ${tier.glow}; border-color: ${tier.color}55;"><img src="${tier.badge}" alt="${tier.name}" class="inline-rank-img"><span class="inline-rank-name${shimmer}" style="${colorStyle}">${tier.name}</span></div>`;
-      rankContainer.title = `${tier.name} Tier (${elo} ELO) - Click for advanced stats`;
+      const renderKey = `ranked_${tier.name}_${elo}`;
+      if (rankContainer.dataset.renderKey !== renderKey) {
+        rankContainer.dataset.renderKey = renderKey;
+        const shimmer = tier.shimmerClass ? ` ${tier.shimmerClass}` : '';
+        const colorStyle = tier.shimmerClass ? '' : `color: ${tier.color};`;
+        rankContainer.innerHTML = `<div class="inline-rank-badge" style="box-shadow: 0 0 4px ${tier.glow}; border-color: ${tier.color}35;"><img src="${tier.badge}" alt="${tier.name}" class="inline-rank-img"><span class="inline-rank-name${shimmer}" style="${colorStyle}">${tier.name}</span></div>`;
+        rankContainer.title = `${tier.name} Tier (${elo} ELO) - Click for advanced stats`;
+      }
     } else {
-      rankContainer.innerHTML = `<div class="inline-rank-badge unranked"><span class="inline-placement-icon">⏳</span><span class="inline-unranked-badge">Unranked</span><span class="inline-unranked-progress">(${totalMatches}/10)</span></div>`;
-      rankContainer.title = `${totalMatches}/10 matches played - Play 10 matches to reveal rank! Click for advanced stats.`;
+      const unrankedKey = `unranked_${totalMatches}`;
+      if (rankContainer.dataset.renderKey !== unrankedKey) {
+        rankContainer.dataset.renderKey = unrankedKey;
+        rankContainer.innerHTML = `<div class="inline-rank-badge unranked"><span class="inline-placement-icon">⏳</span><span class="inline-unranked-badge">Unranked</span><span class="inline-unranked-progress">(${totalMatches}/10)</span></div>`;
+        rankContainer.title = `${totalMatches}/10 matches played - Play 10 matches to reveal rank! Click for advanced stats.`;
+      }
     }
   }
 }
@@ -159,16 +167,28 @@ function renderAdvancedStatsPane() {
   if (eloEl) eloEl.textContent = `${elo} ELO`;
 
   if (overallMatches >= 10) {
-    if (avatarEl) avatarEl.innerHTML = `<img src="${tier.badge}" alt="${tier.name}" style="width: 32px; height: 32px; object-fit: contain; filter: drop-shadow(0 0 8px ${tier.glow}); image-rendering: pixelated;">`;
+    const avatarKey = `${tier.name}_${tier.badge}`;
+    if (avatarEl && avatarEl.dataset.avatarKey !== avatarKey) {
+      avatarEl.dataset.avatarKey = avatarKey;
+      avatarEl.innerHTML = `<img src="${tier.badge}" alt="${tier.name}" style="width: 32px; height: 32px; object-fit: contain; filter: drop-shadow(0 0 8px ${tier.glow}); image-rendering: pixelated;">`;
+    }
     if (tierEl) {
-      tierEl.textContent = tier.name;
-      tierEl.className = `stats-header-tier-text${tier.shimmerClass ? ` ${tier.shimmerClass}` : ''}`;
-      tierEl.style.color = tier.shimmerClass ? '' : tier.color;
+      const tierKey = `${tier.name}_${tier.shimmerClass || ''}`;
+      if (tierEl.dataset.tierKey !== tierKey) {
+        tierEl.dataset.tierKey = tierKey;
+        tierEl.textContent = tier.name;
+        tierEl.className = `stats-header-tier-text${tier.shimmerClass ? ` ${tier.shimmerClass}` : ''}`;
+        tierEl.style.color = tier.shimmerClass ? '' : tier.color;
+      }
     }
     if (placeEl) placeEl.textContent = `Leaderboard: ${rankStr}`;
   } else {
-    if (avatarEl) avatarEl.innerHTML = `<div style="font-size: 28px; filter: grayscale(0.5);">⏳</div>`;
-    if (tierEl) {
+    if (avatarEl && avatarEl.dataset.avatarKey !== 'unranked') {
+      avatarEl.dataset.avatarKey = 'unranked';
+      avatarEl.innerHTML = `<div style="font-size: 28px; filter: grayscale(0.5);">⏳</div>`;
+    }
+    if (tierEl && tierEl.dataset.tierKey !== 'unranked') {
+      tierEl.dataset.tierKey = 'unranked';
       tierEl.textContent = 'Placement Matches';
       tierEl.className = 'stats-header-tier-text';
       tierEl.style.color = '#cbd5e1';
@@ -181,7 +201,8 @@ function renderAdvancedStatsPane() {
   if (isFiltered) {
     goals = is4v4 ? (cStat?.goals || 0) : (cStat?.goals_1v1 || 0);
     sidegoals = is4v4 ? (cStat?.sidegoals || 0) : (cStat?.sidegoals_1v1 || 0);
-    points = Number(is4v4 ? (cStat?.points || 0) : (cStat?.points_1v1 || 0)).toFixed(1);
+    const rawPoints = Number(is4v4 ? (cStat?.points || 0) : (cStat?.points_1v1 || 0));
+    points = (rawPoints % 1 === 0) ? rawPoints.toString() : rawPoints.toFixed(2);
     kills = is4v4 ? (cStat?.kills || 0) : (cStat?.kills_1v1 || 0);
     deaths = is4v4 ? (cStat?.deaths || 0) : (cStat?.deaths_1v1 || 0);
     passes = is4v4 ? (cStat?.passes || 0) : (cStat?.passes_1v1 || 0);
@@ -195,7 +216,8 @@ function renderAdvancedStatsPane() {
   } else {
     goals = is4v4 ? (stats.goals || 0) : (stats.goals_1v1 || 0);
     sidegoals = is4v4 ? (stats.sidegoals || 0) : (stats.sidegoals_1v1 || 0);
-    points = Number(is4v4 ? (stats.points || 0) : (stats.points_1v1 || 0)).toFixed(1);
+    const rawPoints = Number(is4v4 ? (stats.points || 0) : (stats.points_1v1 || 0));
+    points = (rawPoints % 1 === 0) ? rawPoints.toString() : rawPoints.toFixed(2);
     kills = is4v4 ? (stats.kills || 0) : (stats.kills_1v1 || 0);
     deaths = is4v4 ? (stats.deaths || 0) : (stats.deaths_1v1 || 0);
     passes = is4v4 ? (stats.passes || 0) : (stats.passes_1v1 || 0);

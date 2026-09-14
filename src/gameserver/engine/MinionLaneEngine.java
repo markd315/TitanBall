@@ -107,7 +107,7 @@ public class MinionLaneEngine {
                     if (tLane == L) numHeroes++;
                 }
             }
-            m.damageMultiplier *= (1.0 + 0.15 * numHeroes);
+            m.damageMultiplier *= (1.0 + 0.30 * numHeroes);
         }
 
         if (upgrades.contains("siege.t5.phalanx")) {

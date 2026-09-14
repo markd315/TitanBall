@@ -27,6 +27,7 @@ public class HeadlessGameManager implements ApplicationRunner {
     private volatile boolean running = false;
     private int targetConcurrent = 100;
     private int tickIntervalMs = 8;
+    private int aiDifficulty = 4;
 
     @Override
     public void run(ApplicationArguments args) throws Exception {
@@ -34,6 +35,7 @@ public class HeadlessGameManager implements ApplicationRunner {
         int count = 100;
 
         gameserver.Const cfg = new gameserver.Const("res/game.cfg");
+        this.aiDifficulty = cfg.AI_DIFFICULTY;
         if (cfg.HEADLESS_ENABLED) {
             actuated = true;
             count = cfg.HEADLESS_CONCURRENCY;
@@ -98,7 +100,7 @@ public class HeadlessGameManager implements ApplicationRunner {
         System.out.println("================================================================================");
         System.out.println(" [HeadlessGameManager] Starting " + this.targetConcurrent + " concurrent 4v4 balance test games");
         System.out.println(" [HeadlessGameManager] Tick Interval: " + this.tickIntervalMs + "ms (~" + (1000 / Math.max(1, this.tickIntervalMs)) + " TPS)");
-        System.out.println(" [HeadlessGameManager] AI Reaction Speed: HARD (200-700ms), Roster: Configured AI Titans (Excludes Grenadier & Mage)");
+        System.out.println(" [HeadlessGameManager] AI Difficulty: " + this.aiDifficulty + ", Roster: Configured AI Titans (Excludes Grenadier & Mage)");
         System.out.println(" [HeadlessGameManager] Results will be persisted continuously to `classstat` table.");
         System.out.println("================================================================================");
 
@@ -117,8 +119,8 @@ public class HeadlessGameManager implements ApplicationRunner {
         // 4v4 match (playerIndex = 1), Goalies on (goalieIndex = 0), Best of 1 (bestOfIndex = 1),
         // First to 10 points (playToIndex = 10), Win by 2 (winByIndex = 2), Hard win off (hardWinIndex = 9999),
         // Sudden death 10 min (suddenDeathIndex = 10), Draw at 20 min (tieIndex = 20),
-        // Hard AI reaction speed 200-700ms (aiDifficultyIndex = 3), Hybrid slot reservation (isHybrid = 1)
-        GameOptions op = new GameOptions("/1/0/1/10/2/9999/10/20/3/1");
+        // AI reaction speed tier (aiDifficultyIndex = aiDifficulty), Hybrid slot reservation (isHybrid = 1)
+        GameOptions op = new GameOptions("/1/0/1/10/2/9999/10/20/" + this.aiDifficulty + "/1");
 
         // 4v4 slots: 1 (Home Goalie), 2 (Away Goalie), 3 (Home Field 1), 4 (Home Field 2), 5 (Home Field 3),
         //            11 (Away Field 1), 12 (Away Field 2), 13 (Away Field 3)
