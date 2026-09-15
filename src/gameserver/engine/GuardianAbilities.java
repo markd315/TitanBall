@@ -1128,10 +1128,14 @@ public class GuardianAbilities implements Serializable {
         int damageCount = 0;
         int boostCount = 0;
 
-        if (purchased.contains("empowerment.t3.grit")) { hpCount++; painCount++; }
+        if (purchased.contains("empowerment.t3.grit")) { hpCount += 3; painCount += 2; }
         if (purchased.contains("empowerment.t3.marksmanship")) { throwCount += 2; rangeCount += 2; }
         if (purchased.contains("empowerment.t3.footwork")) { speedCount++; }
-        if (purchased.contains("empowerment.t3.discipline")) { cdCount += 2; durCount += 2; }
+        if (purchased.contains("empowerment.t3.discipline")) { cdCount += 4; durCount += 2; }
+        if (purchased.contains("empowerment.t4.forecheck")) { stealCount += 2; }
+        if (purchased.contains("empowerment.t4.fuelreserves")) { boostCount += 2; }
+        if (purchased.contains("empowerment.t5.heistcamp")) { speedCount += 2; }
+        if (purchased.contains("empowerment.t5.clutchgene")) { damageCount += 2; }
         
         if (purchased.contains("empowerment.t6.apexform")) {
             speedCount += 1; throwCount += 1; rangeCount += 1; cdCount += 1;

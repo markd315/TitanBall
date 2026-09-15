@@ -32,6 +32,37 @@ export const AI_DIFF_DISP = [
   "Perfect (0ms, Unrated)"
 ];
 
+export const AI_DIFFICULTY_NAMES = [
+  "Beginner",
+  "Easy",
+  "Medium",
+  "Hard",
+  "Expert",
+  "Perfect"
+];
+
+export const AI_DIFFICULTY_COLORS = [
+  "#94a3b8", // Beginner - Slate
+  "#22c55e", // Easy - Green
+  "#38bdf8", // Medium - Sky Blue
+  "#f59e0b", // Hard - Amber
+  "#ef4444", // Expert - Crimson
+  "#a855f7"  // Perfect - Purple
+];
+
+export function getAiDifficultyInfo(diffIndex) {
+  let idx = parseInt(diffIndex, 10);
+  if (isNaN(idx) || idx < 0 || idx >= AI_DIFFICULTY_NAMES.length) {
+    idx = 2; // Default Medium
+  }
+  return {
+    index: idx,
+    name: AI_DIFFICULTY_NAMES[idx],
+    color: AI_DIFFICULTY_COLORS[idx] || "#38bdf8",
+    disp: AI_DIFF_DISP[idx] || "Medium"
+  };
+}
+
 export const DEFAULT_TOURNAMENT_CODE = "/1/0/1/10/2/9999/10/20";
 
 let onQueueCustomMatchCallback = null;

@@ -3,7 +3,7 @@ import { initCanvas, clearScreen, drawImageCam } from './render/canvas.js';
 import { initMasteries, loadMasteriesForTitan, validateMasteries, closeMasteriesModal } from './screens/masteries.js';
 import { initBuildOrderPlanner, updatePlanBuildButtonVisibility } from './screens/buildOrderPlanner.js';
 import { initControlsModal, closeControlsModal } from './screens/controls.js';
-import { initTournamentModal, closeTournamentModal } from './screens/tournament.js';
+import { initTournamentModal, closeTournamentModal, getAiDifficultyInfo } from './screens/tournament.js';
 import { initStatsScreen, refreshUserStats, updateStatsBanner, closeAdvancedStatsModal } from './screens/stats.js';
 import { drawCredits } from './screens/credits.js';
 import { initKeyboard, setControlPreset } from './input/keyboard.js';
@@ -54,6 +54,44 @@ function getPlayerIndexForSize(mode) {
   if (mode === '4v0') return 11;
   if (mode === '5v0') return 12;
   return 1; // fallback
+}
+
+function getMatchAiDifficulty(game) {
+  let diffIndex = null;
+  if (game && game.options && game.options.aiDifficultyIndex !== undefined && game.options.aiDifficultyIndex !== null) {
+    diffIndex = parseInt(game.options.aiDifficultyIndex, 10);
+  } else if (activeQueueTournamentCode && activeQueueTournamentCode.includes('/')) {
+    const parts = activeQueueTournamentCode.split('/');
+    let offset = 1;
+    if (parts.length >= 2 && parts[0] === '') {
+      const firstNum = parseInt(parts[1], 10);
+      offset = isNaN(firstNum) ? 2 : 1;
+    }
+    if (parts.length >= offset + 9 && parts[offset + 8] !== '') {
+      const parsed = parseInt(parts[offset + 8], 10);
+      if (!isNaN(parsed)) diffIndex = parsed;
+    }
+  }
+
+  if (diffIndex === null || isNaN(diffIndex)) {
+    const queueDiff = document.getElementById('queue-ai-difficulty-select');
+    if (queueDiff && queueDiff.value !== undefined) {
+      diffIndex = parseInt(queueDiff.value, 10);
+    }
+  }
+
+  if (diffIndex === null || isNaN(diffIndex)) {
+    const coopDiff = document.getElementById('ai-difficulty-select');
+    if (coopDiff && coopDiff.value !== undefined) {
+      diffIndex = parseInt(coopDiff.value, 10);
+    }
+  }
+
+  if (diffIndex === null || isNaN(diffIndex)) {
+    diffIndex = 2; // Default Medium
+  }
+
+  return getAiDifficultyInfo(diffIndex);
 }
 
 function updateOverlays() {
@@ -1550,6 +1588,7 @@ function drawDraftShowcase(ctx) {
     return;
   }
 
+  const diffInfo = getMatchAiDifficulty(game);
   const homePlayers = game.players.filter(p => p.team === 'HOME');
   const awayPlayers = game.players.filter(p => p.team === 'AWAY');
 
@@ -1608,7 +1647,8 @@ function drawDraftShowcase(ctx) {
     players.forEach((p, idx) => {
       const origIdx = game.players.indexOf(p);
       const client = game.clients ? game.clients.find(c => c.selection === origIdx + 1) : null;
-      const displayName = client && client.email ? client.email.split('@')[0] : `AI #${idx + 1}`;
+      const isHuman = Boolean(client && client.email && client.isAi !== true);
+      const displayName = isHuman ? client.email.split('@')[0] : `${diffInfo.name} AI #${idx + 1}`;
       const isLocalUser = Boolean(
         (game.underControl && (p === game.underControl || p.id === game.underControl.id)) ||
         (client && client.email && myEmail && client.email.toLowerCase() === myEmail.toLowerCase())
