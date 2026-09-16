@@ -302,33 +302,33 @@ function renderAdvancedStatsPane() {
     return (val > 0 ? '+' : '') + val.toFixed(2);
   };
 
-  // Goalie Box Plus-Minus (GBPM): Recalibrated empirical baselines from 2,912 goalie matches in classstat
+  // Goalie Box Plus-Minus (GBPM): Recalibrated empirical baselines from 12,008 goalie matches in classstat
   let gbpm = 0, gbpmStr = '0.00', gbpmTier = getBpmTier(0);
   const hasGoalieData = showGoalie && (totalShotsFaced > 0 || (totalGold > 0 && manaspent > 0) || goalieMatches > 0);
   if (hasGoalieData) {
-    const expectedCgConc = cgTotal * 0.288;
+    const expectedCgConc = cgTotal * 0.344;
     const cgSavedAboveExp = expectedCgConc - goalsconceded;
-    const expectedSgConc = sgTotal * 0.942;
+    const expectedSgConc = sgTotal * 0.899;
     const sgSavedAboveExp = expectedSgConc - sidegoalsconceded;
 
     const netProtection = (cgSavedAboveExp / mGoalie) * 1.5 + (sgSavedAboveExp / mGoalie) * 0.35;
     const disruption = (blkG > 0 || rebG > 0 || passG > 0 || toG > 0 || stlG > 0)
       ? ((blkG / mGoalie - 0.005) * 0.05 + (rebG / mGoalie - 0.003) * 0.05 + (stlG / mGoalie - 0.0) * 0.08 + (passG / mGoalie - 0.0) * 0.02 - (toG / mGoalie - 0.002) * 0.06)
       : 0;
-    const economy = totalGold > 0 ? ((totalGold / mGoalie - 1066) * 0.002 + (manaspent / mGoalie - 547) * 0.0005) : 0;
+    const economy = totalGold > 0 ? ((totalGold / mGoalie - 865) * 0.002 + (manaspent / mGoalie - 662) * 0.0005) : 0;
 
     gbpm = netProtection + disruption + economy;
     gbpmStr = formatBpm(gbpm);
     gbpmTier = getBpmTier(gbpm);
   }
 
-  // Field Titan Box Plus-Minus (TBPM): Empirical outfield baselines from classstat
+  // Field Titan Box Plus-Minus (TBPM): Empirical outfield baselines from classstat (35,452 player-matches)
   let obpm = 0, dbpm = 0, tbpm = 0, tbpmStr = '0.00', tbpmTier = getBpmTier(0);
   const hasOutfieldData = is4v4 && !isGoalieFiltered && outfieldMatches > 0;
   if (hasOutfieldData) {
-    // Combat weights updated: ~75/25 split favoring DBPM, reduced total impact (~half previous: total +0.16 kill, +0.08 kast, -0.20 death)
-    obpm = (Number(cpg) - 0.81) * 1.5 + (Number(spg) - 3.76) * 0.35 + (Number(gastPg) - 0.6) * 0.8 + (Number(kpg) - 1.2) * 0.04 + (Number(kastPg) - 0.5) * 0.02 + (Number(passPg) - 12.0) * 0.04 - (Number(toPg) - 9.1) * 0.12;
-    dbpm = (Number(stlPg) - 6.9) * 0.15 + (Number(blkPg) - 10.7) * 0.08 + (Number(rebPg) - 8.5) * 0.08 + (Number(kpg) - 1.2) * 0.12 + (Number(kastPg) - 0.5) * 0.06 - (Number(dpg) - 1.5) * 0.20 - (Number(toPg) - 9.1) * 0.03;
+    // Combat weights: ~75/25 split favoring DBPM
+    obpm = (Number(cpg) - 0.41) * 1.5 + (Number(spg) - 6.00) * 0.35 + (Number(gastPg) - 0.0) * 0.8 + (Number(kpg) - 0.77) * 0.04 + (Number(kastPg) - 0.37) * 0.02 + (Number(passPg) - 14.78) * 0.04 - (Number(toPg) - 6.40) * 0.12;
+    dbpm = (Number(stlPg) - 2.12) * 0.15 + (Number(blkPg) - 26.47) * 0.08 + (Number(rebPg) - 23.14) * 0.08 + (Number(kpg) - 0.77) * 0.12 + (Number(kastPg) - 0.37) * 0.06 - (Number(dpg) - 1.69) * 0.20 - (Number(toPg) - 6.40) * 0.03;
     tbpm = obpm + dbpm;
     tbpmStr = formatBpm(tbpm);
     tbpmTier = getBpmTier(tbpm);
@@ -402,13 +402,13 @@ function renderAdvancedStatsPane() {
         <div class="stats-split-row" style="margin-top: 2px; align-items: center; justify-content: space-between; gap: 4px; min-width: 0;">
           ${!isGoalieFiltered ? `
           <div class="stats-per-game" style="gap: 2px; flex-shrink: 1; min-width: 0; overflow: hidden;">
-            <span class="metric-val" style="color: #38bdf8; font-size: 12px; font-weight: 700; cursor: help; white-space: nowrap;" title="OBPM = 1.50*(cpg - 0.81) + 0.35*(spg - 3.76) + 0.80*(gast/g - 0.6) + 0.04*(kpg - 1.2) + 0.02*(kast/g - 0.5) + 0.04*(pass/g - 12.0) - 0.12*(to/g - 9.1)">${hasOutfieldData ? formatBpm(obpm) : '—'}</span><span class="pg-unit" style="color: #38bdf8; font-weight: 700; font-size: 8.5px; cursor: help;" title="OBPM (Offensive Box Plus-Minus): Evaluates goal scoring, assists, combat offense, passing volume, and turnover deductions relative to 19,333-match outfield baselines.">OBPM</span>
+            <span class="metric-val" style="color: #38bdf8; font-size: 12px; font-weight: 700; cursor: help; white-space: nowrap;" title="OBPM = 1.50*(cpg - 0.41) + 0.35*(spg - 6.00) + 0.80*(gast/g - 0.0) + 0.04*(kpg - 0.77) + 0.02*(kast/g - 0.37) + 0.04*(pass/g - 14.78) - 0.12*(to/g - 6.40)">${hasOutfieldData ? formatBpm(obpm) : '—'}</span><span class="pg-unit" style="color: #38bdf8; font-weight: 700; font-size: 8.5px; cursor: help;" title="OBPM (Offensive Box Plus-Minus): Evaluates goal scoring, assists, combat offense, passing volume, and turnover deductions relative to 35,452-match outfield baselines.">OBPM</span>
             <span style="color: #475569; margin: 0 1px; font-size: 10px;">·</span>
-            <span class="metric-val" style="color: #a7f3d0; font-size: 12px; font-weight: 700; cursor: help; white-space: nowrap;" title="DBPM = 0.15*(stl/g - 6.9) + 0.08*(blk/g - 10.7) + 0.08*(reb/g - 8.5) + 0.12*(kpg - 1.2) + 0.06*(kast/g - 0.5) - 0.20*(dpg - 1.5) - 0.03*(to/g - 9.1)">${hasOutfieldData ? formatBpm(dbpm) : '—'}</span><span class="pg-unit" style="color: #a7f3d0; font-weight: 700; font-size: 8.5px; cursor: help;" title="DBPM (Defensive Box Plus-Minus): Evaluates steals, shots contested/blocked, loose ball rebounds, kills, and death penalties relative to 19,333-match outfield baselines.">DBPM</span>
+            <span class="metric-val" style="color: #a7f3d0; font-size: 12px; font-weight: 700; cursor: help; white-space: nowrap;" title="DBPM = 0.15*(stl/g - 2.12) + 0.08*(blk/g - 26.47) + 0.08*(reb/g - 23.14) + 0.12*(kpg - 0.77) + 0.06*(kast/g - 0.37) - 0.20*(dpg - 1.69) - 0.03*(to/g - 6.40)">${hasOutfieldData ? formatBpm(dbpm) : '—'}</span><span class="pg-unit" style="color: #a7f3d0; font-weight: 700; font-size: 8.5px; cursor: help;" title="DBPM (Defensive Box Plus-Minus): Evaluates steals, shots contested/blocked, loose ball rebounds, kills, and death penalties relative to 35,452-match outfield baselines.">DBPM</span>
           </div>` : ''}
           ${showGoalie ? `
           <div class="stats-per-game" style="gap: 2px; flex-shrink: 0;">
-            <span class="metric-val" style="color: ${gbpmTier.color}; font-size: 12px; font-weight: 700; cursor: help; white-space: nowrap;" title="GBPM = 1.50*(cgGSAx/g) + 0.35*(sgGSAx/g) + 0.002*(gold/g - 1066) + 0.0005*(mana/g - 547)&#10;where cgGSAx = cgTotal*0.288 - cgConceded, sgGSAx = sgTotal*0.942 - sgConceded">${hasGoalieData ? gbpmStr : '—'}</span><span class="pg-unit" style="color: ${gbpmTier.color}; font-weight: 700; font-size: 8.5px; cursor: help;" title="GBPM (Goalie Box Plus-Minus): Goals Saved Above Expected (GSAx) evaluated across center and side shots faced plus lane resource economy pace relative to 2,912 goalie match baselines.">GBPM</span>
+            <span class="metric-val" style="color: ${gbpmTier.color}; font-size: 12px; font-weight: 700; cursor: help; white-space: nowrap;" title="GBPM = 1.50*(cgGSAx/g) + 0.35*(sgGSAx/g) + 0.002*(gold/g - 865) + 0.0005*(mana/g - 662)&#10;where cgGSAx = cgTotal*0.344 - cgConceded, sgGSAx = sgTotal*0.899 - sgConceded">${hasGoalieData ? gbpmStr : '—'}</span><span class="pg-unit" style="color: ${gbpmTier.color}; font-weight: 700; font-size: 8.5px; cursor: help;" title="GBPM (Goalie Box Plus-Minus): Goals Saved Above Expected (GSAx) evaluated across center and side shots faced plus lane resource economy pace relative to 12,008 goalie match baselines.">GBPM</span>
           </div>` : ''}
         </div>
         ${(!isFiltered && goalieMatches > 0 && outfieldMatches > 0) ? `

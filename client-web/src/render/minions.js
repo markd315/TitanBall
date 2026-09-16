@@ -207,7 +207,7 @@ export function drawMinions(ctx, game, camX, camY) {
     }
 
     // Draw lane advantage indicators
-    const LANE_YS = [354, 583, 790];
+    const LANE_YS = [354, 577, 790];
     const INDICATOR_X = 40; // fixed at far left of screen, behind the goals — not camera-relative
 
     function nearestLane(y) {
