@@ -125,6 +125,8 @@ public class GameEngine extends Game {
                                 } else {
                                     if (chosenType != TitanType.GOALIE) {
                                         players[slotIndex].setType(chosenType);
+                                    } else {
+                                        players[slotIndex].setType(TitanType.WARRIOR);
                                     }
                                 }
                             } catch (Exception ex) {
@@ -322,6 +324,21 @@ public class GameEngine extends Game {
     public double[] currentStepVel = new double[]{0, 0};
     public UUID lastHomePossessor = null;
     public UUID lastAwayPossessor = null;
+    public UUID lastHomePasser = null;
+    public UUID lastAwayPasser = null;
+
+    public UUID currentToucher = null;
+    public UUID previousToucher = null;
+
+    public void registerBallTouch(Titan t) {
+        if (t == null) return;
+        if (currentToucher == null) {
+            currentToucher = t.id;
+        } else if (!currentToucher.equals(t.id)) {
+            previousToucher = currentToucher;
+            currentToucher = t.id;
+        }
+    }
 
     public ShotType predictShotTypeFromRay(double bx, double by, double dx, double dy, TeamAffiliation throwerTeam) {
         double len = Math.hypot(dx, dy);
@@ -437,11 +454,25 @@ public class GameEngine extends Game {
                 Titan defGoalie = (goal.team == TeamAffiliation.HOME) ? players[0] : players[1];
                 stats.grant(this, defGoalie, StatEngine.StatEnum.SIDEGOALS_CONCEDED);
                 UUID attackerId = (us.which == TeamAffiliation.HOME) ? lastHomePossessor : lastAwayPossessor;
-                PlayerDivider scorer = (attackerId != null) ? clientFromTitan(titanByID(attackerId.toString()).orElse(null)) : getPossessorOrThrower();
+                UUID scorerId = (currentToucher != null) ? currentToucher : attackerId;
+                Titan scorerTitan = (scorerId != null) ? titanByID(scorerId.toString()).orElse(null) : null;
+                PlayerDivider scorer = (scorerTitan != null) ? clientFromTitan(scorerTitan) : getPossessorOrThrower();
                 if (scorer != null) {
                     stats.grant(scorer, StatEngine.StatEnum.SIDEGOALS);
                     ourSideScorers.add(scorer);
                 }
+
+                // If the last person to touch the ball prior to the scorer was friendly, credit assist
+                if (scorerId != null && previousToucher != null && !previousToucher.equals(scorerId)) {
+                    Titan assister = titanByID(previousToucher.toString()).orElse(null);
+                    if (assister != null && assister.team == us.which) {
+                        stats.grant(this, assister, StatEngine.StatEnum.SIDEGOALASSISTS);
+                    }
+                }
+                previousToucher = null;
+                currentToucher = null;
+                lastHomePasser = null;
+                lastAwayPasser = null;
                 if (us.score % 1.0 == .75) {
                     goal.freeze();
                 }
@@ -509,13 +540,27 @@ public class GameEngine extends Game {
                 us.score = Math.floor(us.score);
                 us.score += fPart * 4 + 1;
                 UUID attackerIdHi = (us.which == TeamAffiliation.HOME) ? lastHomePossessor : lastAwayPossessor;
-                PlayerDivider scorerHi = (attackerIdHi != null) ? clientFromTitan(titanByID(attackerIdHi.toString()).orElse(null)) : getPossessorOrThrower();
+                UUID scorerIdHi = (currentToucher != null) ? currentToucher : attackerIdHi;
+                Titan scorerTitanHi = (scorerIdHi != null) ? titanByID(scorerIdHi.toString()).orElse(null) : null;
+                PlayerDivider scorerHi = (scorerTitanHi != null) ? clientFromTitan(scorerTitanHi) : getPossessorOrThrower();
                 if (scorerHi != null) {
                     stats.grant(scorerHi, StatEngine.StatEnum.GOALS);
                     // Combo goal credit: 1 + (0.5 * n) points credit goes to center goal scorer
                     double centerPoints = 1.0 + (0.5 * nSidegoals);
                     stats.grant(scorerHi, StatEngine.StatEnum.POINTS, centerPoints);
                 }
+
+                // If the last person to touch the ball prior to the scorer was friendly, credit assist
+                if (scorerIdHi != null && previousToucher != null && !previousToucher.equals(scorerIdHi)) {
+                    Titan assisterHi = titanByID(previousToucher.toString()).orElse(null);
+                    if (assisterHi != null && assisterHi.team == us.which) {
+                        stats.grant(this, assisterHi, StatEngine.StatEnum.GOALASSISTS);
+                    }
+                }
+                previousToucher = null;
+                currentToucher = null;
+                lastHomePasser = null;
+                lastAwayPasser = null;
                 // 0.5 points credit goes to each active sidegoal scorer as an assist in the combo goal
                 for (int sIdx = 0; sIdx < nSidegoals && !ourSideScorers.isEmpty(); sIdx++) {
                     PlayerDivider sideScorer = ourSideScorers.remove(0);
@@ -597,6 +642,8 @@ public class GameEngine extends Game {
         away.hasBall = false;
         goalVisible = false;
         ballVisible = true;
+        this.currentToucher = null;
+        this.previousToucher = null;
         List<TitanType> playableTypes;
         if (c != null && c.AI_INCLUDED_TITANS != null && c.AI_INCLUDED_TITANS.length > 0) {
             playableTypes = Arrays.asList(c.AI_INCLUDED_TITANS);
@@ -773,6 +820,10 @@ public class GameEngine extends Game {
         }
         this.phase = GamePhase.SCORE_FREEZE;
         this.lastPossessed = null;
+        this.lastHomePasser = null;
+        this.lastAwayPasser = null;
+        this.currentToucher = null;
+        this.previousToucher = null;
         for (GoalHoop goal : lowGoals) {
             goal.onCooldown = false;
             goal.frozen = false;
@@ -818,6 +869,10 @@ public class GameEngine extends Game {
         this.phase = GamePhase.INGAME;
         goalVisible = false;
         ballVisible = true;
+        this.lastHomePasser = null;
+        this.lastAwayPasser = null;
+        this.currentToucher = null;
+        this.previousToucher = null;
         // Remove transient entities (non-Titans, non-LaneMinions, non-permanent structures) once,
         // not once-per-player as before — the predicate never depended on `p`.
         entityPool.removeIf(e -> {
@@ -2053,6 +2108,7 @@ public class GameEngine extends Game {
                     players[numSel - 1].possession = 1;
                     players[numSel - 1].queuedBtn = 0;
                     lastPossessed = players[numSel - 1].id;
+                    registerBallTouch(players[numSel - 1]);
                     resetAiReactionAfterPossession(players[numSel - 1]);
                     updateBallIfPossessed(t, numSel);
                 }
@@ -2065,9 +2121,16 @@ public class GameEngine extends Game {
             TeamAffiliation oldTeam = lost.team;
             if (gained.team == oldTeam) {
                 stats.grant(this, lost, StatEngine.StatEnum.PASSES);
+                if (oldTeam == TeamAffiliation.HOME) {
+                    lastHomePasser = lost.id;
+                } else if (oldTeam == TeamAffiliation.AWAY) {
+                    lastAwayPasser = lost.id;
+                }
             } else { //Enemy taking possession
                 stats.grant(this, lost, StatEngine.StatEnum.TURNOVERS);
                 stats.grant(this, gained, StatEngine.StatEnum.BLOCKS);
+                lastHomePasser = null;
+                lastAwayPasser = null;
                 if (gained.getType() == TitanType.GOALIE) {
                     ShotType st = currentShotType;
                     if (st == ShotType.NONE && currentStepVel != null) {
@@ -2083,8 +2146,12 @@ public class GameEngine extends Game {
                 }
             }
         } else {//Picking up loose ball
+            if (gained.team == TeamAffiliation.HOME) {
+                lastHomePasser = null;
+            } else if (gained.team == TeamAffiliation.AWAY) {
+                lastAwayPasser = null;
+            }
             stats.grant(this, gained, StatEngine.StatEnum.REBOUND);
-            stats.grant(this, gained, StatEngine.StatEnum.BLOCKS);
             if (gained.getType() == TitanType.GOALIE) {
                 Titan shooter = (this.titanInPossession().isPresent()) ? this.titanInPossession().get() : (lastPossessed != null ? this.titanByID(lastPossessed.toString()).orElse(null) : null);
                 ShotType st = currentShotType;
@@ -2223,13 +2290,24 @@ public class GameEngine extends Game {
                     CollisionMath.Bounds playertangle = new CollisionMath.Bounds((int) players[pIndex].X + SPRITE_X_EMPTY / 2.0, (int) players[pIndex].Y + SPRITE_Y_EMPTY / 2.0,
                             players[pIndex].width - SPRITE_X_EMPTY, players[pIndex].height - SPRITE_Y_EMPTY);
                     if (ballTangle.intersects(playertangle)) {
-                        //clientFromIndex(pIndex + 1).selection = pIndex + 1;
-                        players[pIndex].possession = 1;
-                        players[pIndex].inactiveDir = 0;
-                        players[pIndex].runningFrame = 0;
-                        players[pIndex].runningFrameCounter = 0;
-                        players[pIndex].actionState = Titan.TitanState.IDLE;
-                        players[pIndex].actionFrame = 0;
+                        Titan aiT = players[pIndex];
+                        aiT.possession = 1;
+                        lastPossessed = aiT.id;
+                        if (aiT.team == TeamAffiliation.HOME) {
+                            lastHomePossessor = aiT.id;
+                            home.hasBall = true;
+                            away.hasBall = false;
+                        } else if (aiT.team == TeamAffiliation.AWAY) {
+                            lastAwayPossessor = aiT.id;
+                            away.hasBall = true;
+                            home.hasBall = false;
+                        }
+                        registerBallTouch(aiT);
+                        aiT.inactiveDir = 0;
+                        aiT.runningFrame = 0;
+                        aiT.runningFrameCounter = 0;
+                        aiT.actionState = Titan.TitanState.IDLE;
+                        aiT.actionFrame = 0;
                     }
                 }
             }
@@ -2442,8 +2520,8 @@ public class GameEngine extends Game {
         }
 
         // 4. Execute queued actions
-        if (ai.aiTargetAction == 1 && ai.possession == 1) { // SHOOT / PASS
-            executeAiShot(ai, ai.aiTargetX, ai.aiTargetY);
+        if ((ai.aiTargetAction == 1 || ai.aiTargetAction == 3) && ai.possession == 1) { // SHOOT / PASS / LOB
+            executeAiShot(ai, ai.aiTargetX, ai.aiTargetY, ai.aiTargetAction);
             ai.aiTargetAction = 0;
         } else if (ai.aiTargetAction == 2 && ai.possession == 0) { // STEAL
             executeAiSteal(ai);
@@ -3430,107 +3508,177 @@ public class GameEngine extends Game {
             return;
         }
 
-        // On ball offense in attacking third
-        if (impedingEnemy != null) {
-            // Check clear path to goals for a shot first
-            GoalHoop openGoal = findUnblockedGoal(ai, enemyTeam);
-            if (openGoal != null) {
-                ai.aiTargetX = openGoal.x + openGoal.w / 2.0;
-                ai.aiTargetY = openGoal.y + openGoal.h / 2.0;
-                ai.aiTargetAction = 1;
-                return;
-            }
+        // On ball offense in attacking third: 6-Tier Strategic Decision Hierarchy
+        GoalHoop enemyCenterGoal = (enemyTeam == TeamAffiliation.AWAY) ? awayHiGoal : homeHiGoal;
+        double cgX = enemyCenterGoal.x + enemyCenterGoal.w / 2.0;
+        double cgY = enemyCenterGoal.y + enemyCenterGoal.h / 2.0;
+        double distToCenterGoal = Math.hypot(cgX - currentCX, cgY - currentCY);
+        double maxGroundShotDist = 316.0 * ai.throwPower;
 
-            // Priorities: 1) Run forward, 2) Find a backpass option, 3) Run backwards diagonally to create space
-            if (ai.aiStuckHorizontalTicks < 2) {
-                double[] fwdTarget = calculateForwardEvadeTarget(ai, impedingEnemy, currentCX, currentCY);
-                ai.aiTargetX = fwdTarget[0];
-                ai.aiTargetY = fwdTarget[1];
-                ai.aiTargetAction = 0;
-                return;
-            }
-
-            Titan outletPass = findBackwardsOrVerticalPassTarget(ai, enemyTeam);
-            if (outletPass != null) {
-                ai.aiTargetX = outletPass.X + outletPass.width / 2.0;
-                ai.aiTargetY = outletPass.Y + outletPass.height / 2.0;
-                ai.aiTargetAction = 1; // PASS
-                return;
-            }
-
-            double[] backTarget = calculateBackwardDiagonalEvadeTarget(ai, impedingEnemy, currentCX, currentCY);
-            ai.aiTargetX = backTarget[0];
-            ai.aiTargetY = backTarget[1];
-            ai.aiTargetAction = 0;
+        // Tier 1: Check center goal, drill it if open
+        if (enemyCenterGoal.checkReady() && distToCenterGoal <= maxGroundShotDist && !isShotPathBlocked(currentCX, currentCY, cgX, cgY, enemyTeam)) {
+            ai.aiTargetX = cgX;
+            ai.aiTargetY = cgY;
+            ai.aiTargetAction = 1; // Flat line-drive ground shot
             return;
         }
 
-        Titan nearestDefender = findNearestEnemy(ai, enemyTeam);
-        if (nearestDefender != null) {
-            double defDist = Math.hypot(nearestDefender.X - ai.X, nearestDefender.Y - ai.Y);
-            if (defDist < 110.0) {
-                // Back away from defender with vertical offset to prevent steal attempt and avoid horizontal trap
-                double retreatX = currentCX + (currentCX - (nearestDefender.X + nearestDefender.width / 2.0));
-                double defCY = nearestDefender.Y + nearestDefender.height / 2.0;
-                double vertStep = (currentCY >= defCY) ? 90.0 : -90.0;
-                double retreatY = currentCY + vertStep;
-                if (ai.possession == 1 && isNearFriendlyGoal(ai.team, retreatX, retreatY, 65.0)) {
-                    retreatX = currentCX;
-                    if (isNearFriendlyGoal(ai.team, retreatX, retreatY, 65.0)) {
-                        double altY = currentCY - vertStep;
-                        if (!isNearFriendlyGoal(ai.team, retreatX, altY, 65.0)) {
-                            retreatY = altY;
-                        } else {
-                            retreatY = currentCY;
+        // Tier 2: Check lob, and goalie on block cooldown, shoot it if open
+        Titan defendingGoalie = getDefendingGoalie(enemyTeam);
+        boolean goalieCannotBlock = (defendingGoalie == null
+                || effectPool.hasEffect(defendingGoalie, EffectId.DEAD)
+                || effectPool.isStunned(defendingGoalie)
+                || (!effectPool.hasEffect(defendingGoalie, EffectId.BLOCK) && effectPool.hasEffect(defendingGoalie, EffectId.COOLDOWN_Q)));
+
+        if (goalieCannotBlock && enemyCenterGoal.checkReady()) {
+            double gravityMult = 1.0;
+            long lowGrav = (ai.team == TeamAffiliation.HOME)
+                    ? homeGoalieAbilities.lowGravityUntilMs
+                    : awayGoalieAbilities.lowGravityUntilMs;
+            if (nowEpochMs < lowGrav) {
+                gravityMult = 1.5;
+            }
+            double noFlyMult = 1.0;
+            if (ai.team == TeamAffiliation.HOME) {
+                if (awayNoFlyZoneActive && ai.X >= 1368.0 && ai.X <= 2012.0) {
+                    noFlyMult = 0.5;
+                }
+            } else if (ai.team == TeamAffiliation.AWAY) {
+                if (homeNoFlyZoneActive && ai.X >= 36.0 && ai.X <= 680.0) {
+                    noFlyMult = 0.5;
+                }
+            }
+            double dLob = 230.0 * ai.throwPower * gravityMult * noFlyMult;
+            double hoopRadius = Math.max(enemyCenterGoal.w, enemyCenterGoal.h) / 2.0;
+
+            // Lob reaches and descends into hoop (past uncatchable window frames 3-8, landing in hoop)
+            if (distToCenterGoal >= 0.70 * dLob && distToCenterGoal <= dLob + hoopRadius) {
+                if (!isLandingZoneBlocked(cgX, cgY, enemyTeam)) {
+                    ai.aiTargetX = cgX;
+                    ai.aiTargetY = cgY;
+                    ai.aiTargetAction = 3; // Overhead lob shot
+                    return;
+                }
+            }
+        }
+
+        // Tier 3: Check unblocked one-timers into the center goal, where shooter has a clear path and pass has a clean path
+        Titan bestOneTimerTarget = null;
+        double bestOneTimerGoalDist = Double.MAX_VALUE;
+        for (Titan t : players) {
+            if (t != null && !t.id.equals(ai.id) && t.team == ai.team && !isGoalie(t)
+                    && !effectPool.hasEffect(t, EffectId.DEAD) && !effectPool.isStunned(t)) {
+                double tCX = t.X + t.width / 2.0;
+                double tCY = t.Y + t.height / 2.0;
+                double distToTeammate = Math.hypot(tCX - currentCX, tCY - currentCY);
+
+                if (distToTeammate >= 60.0 && distToTeammate <= maxGroundShotDist) {
+                    if (!isPassPathBlocked(currentCX, currentCY, tCX, tCY, enemyTeam)) {
+                        double distTeammateToGoal = Math.hypot(cgX - tCX, cgY - tCY);
+                        double maxTeammateShotDist = 316.0 * t.throwPower;
+                        if (distTeammateToGoal <= maxTeammateShotDist && !isShotPathBlocked(tCX, tCY, cgX, cgY, enemyTeam)) {
+                            if (distTeammateToGoal < bestOneTimerGoalDist) {
+                                bestOneTimerGoalDist = distTeammateToGoal;
+                                bestOneTimerTarget = t;
+                            }
                         }
                     }
                 }
-                ai.aiTargetX = Math.max(c.MIN_X, Math.min(c.MAX_X, retreatX));
-                ai.aiTargetY = Math.max(c.MIN_Y, Math.min(c.MAX_Y, retreatY));
-                ai.aiTargetAction = 0;
-                return;
             }
         }
-
-        // Check clear path to goals for a shot
-        GoalHoop openGoal = findUnblockedGoal(ai, enemyTeam);
-        if (openGoal != null) {
-            ai.aiTargetX = openGoal.x + openGoal.w / 2.0;
-            ai.aiTargetY = openGoal.y + openGoal.h / 2.0;
-            ai.aiTargetAction = 1;
+        if (bestOneTimerTarget != null) {
+            ai.aiTargetX = bestOneTimerTarget.X + bestOneTimerTarget.width / 2.0;
+            ai.aiTargetY = bestOneTimerTarget.Y + bestOneTimerTarget.height / 2.0;
+            ai.aiTargetAction = 1; // PASS to one-timer shooter
             return;
         }
 
-        // Check for open pass
-        Titan openPassTarget = findBestPassTarget(ai);
-        if (openPassTarget != null) {
-            ai.aiTargetX = openPassTarget.X + openPassTarget.width / 2.0;
-            ai.aiTargetY = openPassTarget.Y + openPassTarget.height / 2.0;
-            ai.aiTargetAction = 1;
+        // Tier 4: Checkdown into the sidegoal
+        GoalHoop[] enemySideGoals = (enemyTeam == TeamAffiliation.AWAY)
+                ? new GoalHoop[]{lowGoals[2], lowGoals[3]}
+                : new GoalHoop[]{lowGoals[0], lowGoals[1]};
+        GoalHoop bestSideGoal = null;
+        double bestSideGoalDist = Double.MAX_VALUE;
+        for (GoalHoop sg : enemySideGoals) {
+            if (sg == null || !sg.checkReady()) continue;
+            double sgX = sg.x + sg.w / 2.0;
+            double sgY = sg.y + sg.h / 2.0;
+            double distToSg = Math.hypot(sgX - currentCX, sgY - currentCY);
+            if (distToSg <= maxGroundShotDist && !isShotPathBlocked(currentCX, currentCY, sgX, sgY, enemyTeam)) {
+                if (distToSg < bestSideGoalDist) {
+                    bestSideGoalDist = distToSg;
+                    bestSideGoal = sg;
+                }
+            }
+        }
+        if (bestSideGoal != null) {
+            ai.aiTargetX = bestSideGoal.x + bestSideGoal.w / 2.0;
+            ai.aiTargetY = bestSideGoal.y + bestSideGoal.h / 2.0;
+            ai.aiTargetAction = 1; // Sidegoal shot
             return;
         }
 
-        boolean groundGiven = (nearestDefender == null || Math.hypot(nearestDefender.X - ai.X, nearestDefender.Y - ai.Y) > 220.0);
-        if (groundGiven) {
-            // Take ground
-            double forwardDir = (ai.team == TeamAffiliation.HOME) ? 1.0 : -1.0;
-            if (ai.aiStuckHorizontalTicks >= 2) {
-                int vertDir = (ai.aiEvadeVerticalDir != 0) ? ai.aiEvadeVerticalDir : ((currentCY < (c.MIN_Y + c.MAX_Y) / 2.0) ? 1 : -1);
-                ai.aiEvadeVerticalDir = vertDir;
-                ai.aiTargetX = Math.max(c.MIN_X, Math.min(c.MAX_X, currentCX + forwardDir * 80.0));
-                ai.aiTargetY = Math.max(c.MIN_Y + 30.0, Math.min(c.MAX_Y - 30.0, currentCY + vertDir * 140.0));
-            } else {
-                double stepX = currentCX + forwardDir * 150.0;
-                ai.aiTargetX = Math.max(c.MIN_X, Math.min(c.MAX_X, stepX));
-                ai.aiTargetY = currentCY;
+        // Tier 5: If no goals in range, find any safe pass
+        Titan bestSafePassTarget = null;
+        double bestPassScore = -99999.0;
+        for (Titan t : players) {
+            if (t != null && !t.id.equals(ai.id) && t.team == ai.team && !isGoalie(t)
+                    && !effectPool.hasEffect(t, EffectId.DEAD) && !effectPool.isStunned(t)) {
+                double tCX = t.X + t.width / 2.0;
+                double tCY = t.Y + t.height / 2.0;
+                double distToTeammate = Math.hypot(tCX - currentCX, tCY - currentCY);
+                if (distToTeammate >= 60.0 && distToTeammate <= maxGroundShotDist) {
+                    if (!isPassPathBlocked(currentCX, currentCY, tCX, tCY, enemyTeam)) {
+                        boolean teammateSafe = true;
+                        for (Titan enemy : players) {
+                            if (enemy != null && enemy.team == enemyTeam && !effectPool.hasEffect(enemy, EffectId.DEAD)) {
+                                if (Math.hypot(enemy.X + enemy.width / 2.0 - tCX, enemy.Y + enemy.height / 2.0 - tCY) < 50.0) {
+                                    teammateSafe = false;
+                                    break;
+                                }
+                            }
+                        }
+                        if (teammateSafe) {
+                            double forwardProgress = (ai.team == TeamAffiliation.HOME) ? (tCX - currentCX) : (currentCX - tCX);
+                            double score = forwardProgress + 500.0 - distToTeammate * 0.2;
+                            if (score > bestPassScore) {
+                                bestPassScore = score;
+                                bestSafePassTarget = t;
+                            }
+                        }
+                    }
+                }
             }
+        }
+        if (bestSafePassTarget != null) {
+            ai.aiTargetX = bestSafePassTarget.X + bestSafePassTarget.width / 2.0;
+            ai.aiTargetY = bestSafePassTarget.Y + bestSafePassTarget.height / 2.0;
+            ai.aiTargetAction = 1; // Safe pass
+            return;
+        }
+
+        // Tier 6: If no safe passes and already in attacking third, shoot to any safe location (50%) or move laterally (50%)
+        if (Math.random() < 0.5) {
+            // Shoot to safe location in attacking third
+            double targetX = (ai.team == TeamAffiliation.HOME)
+                    ? Math.min(c.MAX_X - 50.0, currentCX + 150.0)
+                    : Math.max(c.MIN_X + 50.0, currentCX - 150.0);
+            double targetY = (currentCY < (c.MIN_Y + c.MAX_Y) / 2.0)
+                    ? c.MIN_Y + 50.0
+                    : c.MAX_Y - 50.0;
+            ai.aiTargetX = targetX;
+            ai.aiTargetY = targetY;
+            ai.aiTargetAction = 1;
         } else {
-            // Probe back and forth
-            double probeY = (Math.random() < 0.5) ? Math.max(c.MIN_Y, currentCY - 160.0) : Math.min(c.MAX_Y, currentCY + 160.0);
+            // Move laterally to create space/angle; reassess on natural reaction cycle
+            int vertDir = (ai.aiEvadeVerticalDir != 0) ? ai.aiEvadeVerticalDir : ((currentCY < (c.MIN_Y + c.MAX_Y) / 2.0) ? 1 : -1);
+            ai.aiEvadeVerticalDir = vertDir;
+            double targetY = Math.max(c.MIN_Y + 40.0, Math.min(c.MAX_Y - 40.0, currentCY + vertDir * 140.0));
             ai.aiTargetX = currentCX;
-            ai.aiTargetY = probeY;
+            ai.aiTargetY = targetY;
+            ai.aiTargetAction = 0;
         }
-        ai.aiTargetAction = 0;
+        return;
     }
 
     protected boolean isPassPathBlocked(double x1, double y1, double x2, double y2, TeamAffiliation enemyTeam) {
@@ -3674,8 +3822,12 @@ public class GameEngine extends Game {
     }
 
     protected void executeAiShot(Titan ai, double targetX, double targetY) {
+        executeAiShot(ai, targetX, targetY, 1);
+    }
+
+    protected void executeAiShot(Titan ai, double targetX, double targetY, int btn) {
         if (ai.possession != 1 || ai.actionState != Titan.TitanState.IDLE) return;
-        serverMouseRoutine(ai, (int) targetX, (int) targetY, 1, 0, 0);
+        serverMouseRoutine(ai, (int) targetX, (int) targetY, btn, 0, 0);
     }
 
     public boolean isEnemyBetween(Titan from, Titan to) {
@@ -3863,27 +4015,78 @@ public class GameEngine extends Game {
         return nearest;
     }
 
+    public boolean isShotPathBlocked(double x1, double y1, double x2, double y2, TeamAffiliation enemyTeam) {
+        double dx = x2 - x1;
+        double dy = y2 - y1;
+        double l2 = dx * dx + dy * dy;
+        if (l2 < 1.0) return false;
+
+        for (Titan enemy : players) {
+            if (enemy != null && enemy.team == enemyTeam && !effectPool.hasEffect(enemy, EffectId.DEAD)) {
+                if (c != null && !c.AI_OMNISCIENCE_ENABLED && effectPool != null
+                        && effectPool.hasEffect(enemy, EffectId.STEALTHED)
+                        && !effectPool.hasEffect(enemy, EffectId.FLARE)) {
+                    continue;
+                }
+                double ex = enemy.X + enemy.width / 2.0;
+                double ey = enemy.Y + enemy.height / 2.0;
+                double t = ((ex - x1) * dx + (ey - y1) * dy) / l2;
+                if (t > 0.05 && t < 1.02) {
+                    double projX = x1 + t * dx;
+                    double projY = y1 + t * dy;
+                    if (Math.hypot(ex - projX, ey - projY) < 40.0) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    public Titan getDefendingGoalie(TeamAffiliation enemyTeam) {
+        if (players == null) return null;
+        for (Titan t : players) {
+            if (t != null && t.team == enemyTeam && isGoalie(t)) {
+                return t;
+            }
+        }
+        return null;
+    }
+
+    public boolean isLandingZoneBlocked(double gx, double gy, TeamAffiliation enemyTeam) {
+        for (Titan enemy : players) {
+            if (enemy != null && enemy.team == enemyTeam && !effectPool.hasEffect(enemy, EffectId.DEAD) && !isGoalie(enemy)) {
+                if (c != null && !c.AI_OMNISCIENCE_ENABLED && effectPool != null
+                        && effectPool.hasEffect(enemy, EffectId.STEALTHED)
+                        && !effectPool.hasEffect(enemy, EffectId.FLARE)) {
+                    continue;
+                }
+                double ex = enemy.X + enemy.width / 2.0;
+                double ey = enemy.Y + enemy.height / 2.0;
+                if (Math.hypot(ex - gx, ey - gy) < 40.0) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     protected GoalHoop findUnblockedGoal(Titan ai, TeamAffiliation enemyTeam) {
+        if (ai == null) return null;
+        double aiCX = ai.X + ai.width / 2.0;
+        double aiCY = ai.Y + ai.height / 2.0;
+        double maxDist = 316.0 * ai.throwPower;
         GoalHoop[] enemyGoals = (enemyTeam == TeamAffiliation.AWAY)
                 ? new GoalHoop[]{awayHiGoal, lowGoals[2], lowGoals[3]}
                 : new GoalHoop[]{homeHiGoal, lowGoals[0], lowGoals[1]};
         for (GoalHoop g : enemyGoals) {
+            if (g == null || !g.checkReady()) continue;
             double gx = g.x + g.w / 2.0;
             double gy = g.y + g.h / 2.0;
-            boolean blocked = false;
-            for (Titan enemy : players) {
-                if (enemy != null && enemy.team == enemyTeam && !effectPool.hasEffect(enemy, EffectId.DEAD)) {
-                    if (ai != null && c != null && !c.AI_OMNISCIENCE_ENABLED && !isTitanVisibleTo(ai, enemy)) {
-                        continue;
-                    }
-                    double distToLine = distToSegment(enemy.X + enemy.width / 2.0, enemy.Y + enemy.height / 2.0, ai.X + ai.width / 2.0, ai.Y + ai.height / 2.0, gx, gy);
-                    if (distToLine < 40.0) {
-                        blocked = true;
-                        break;
-                    }
-                }
+            if (Math.hypot(gx - aiCX, gy - aiCY) > maxDist) continue;
+            if (!isShotPathBlocked(aiCX, aiCY, gx, gy, enemyTeam)) {
+                return g;
             }
-            if (!blocked) return g;
         }
         return null;
     }
@@ -4248,6 +4451,7 @@ public class GameEngine extends Game {
     }
 
     public void bounceOffTitan(Titan t, double[] vel) {
+        registerBallTouch(t);
         double curDx = (vel != null) ? vel[0] : (xKickPow != 0 ? xKickPow : 0);
         double curDy = (vel != null) ? vel[1] : (-yKickPow);
         CollisionMath.Bounds bBounds = ball.asBounds();

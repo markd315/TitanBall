@@ -84,20 +84,24 @@ public class ManagedGame {
 
         if (op != null && op.isCoopVsAi()) {
             availableSlots.clear();
-            if (gameFor != null && !gameFor.isEmpty()) {
-                authserver.matchmaking.Matchmaker mm = null;
-                try {
-                    mm = authserver.SpringContextBridge.services().getMatchmaker();
-                } catch (Exception ignored) {}
-                assignTeamSlots(new ArrayList<>(gameFor), 1, 3, mm);
-                availableSlots.addAll(preAssignedSlots.values());
+            teamSize = Math.max(1, GameOptions.getPlayersVal()[op.playerIndex]);
+            authserver.matchmaking.Matchmaker mm = null;
+            try {
+                mm = authserver.SpringContextBridge.services().getMatchmaker();
+            } catch (Exception ignored) {}
+
+            int numFieldSlots = op.goaliesDisabled() ? teamSize : teamSize - 1;
+
+            if (op.goaliesDisabled()) {
+                for (int i = 0; i < teamSize; i++) availableSlots.add(3 + i);
+                if (gameFor != null && !gameFor.isEmpty()) {
+                    assignHybridTeamSlots(new ArrayList<>(gameFor), -1, 3, numFieldSlots, mm);
+                }
             } else {
-                teamSize = Math.max(1, GameOptions.getPlayersVal()[op.playerIndex]);
-                if (op.goaliesDisabled()) {
-                    for (int i = 0; i < teamSize; i++) availableSlots.add(3 + i);
-                } else {
-                    availableSlots.add(1); 
-                    for (int i = 0; i < teamSize - 1; i++) availableSlots.add(3 + i); 
+                availableSlots.add(1); 
+                for (int i = 0; i < numFieldSlots; i++) availableSlots.add(3 + i); 
+                if (gameFor != null && !gameFor.isEmpty()) {
+                    assignHybridTeamSlots(new ArrayList<>(gameFor), 1, 3, numFieldSlots, mm);
                 }
             }
             return;
@@ -240,19 +244,21 @@ public class ManagedGame {
 
     private void assignHybridTeamSlots(List<String> team, int goalieSlot, int fieldSlotStart, int numFieldSlots, authserver.matchmaking.Matchmaker mm) {
         String goalie = null;
-        if (mm != null) {
-            for (String email : team) {
-                if ("GOALIE".equalsIgnoreCase(mm.playerClasses.getOrDefault(email, "WARRIOR"))) {
-                    goalie = email;
-                    break;
+        if (goalieSlot > 0) {
+            if (mm != null) {
+                for (String email : team) {
+                    if ("GOALIE".equalsIgnoreCase(mm.playerClasses.getOrDefault(email, "WARRIOR"))) {
+                        goalie = email;
+                        break;
+                    }
                 }
             }
-        }
-        if (goalie == null && team.size() >= 1 + numFieldSlots && !team.isEmpty()) {
-            goalie = team.get(0);
-        }
-        if (goalie != null) {
-            preAssignedSlots.put(goalie, goalieSlot);
+            if (goalie == null && team.size() >= 1 + numFieldSlots && !team.isEmpty()) {
+                goalie = team.get(0);
+            }
+            if (goalie != null) {
+                preAssignedSlots.put(goalie, goalieSlot);
+            }
         }
 
         List<String> fieldPlayers = new ArrayList<>();

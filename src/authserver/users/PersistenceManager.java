@@ -3,6 +3,7 @@ package authserver.users;
 import authserver.models.BuildOrderStat;
 import authserver.models.ClassStat;
 import authserver.models.MasteriesStat;
+import authserver.models.PlayerGameStat;
 import authserver.models.UpgradeClassStat;
 import authserver.models.User;
 import authserver.models.UserClassStat;
@@ -10,13 +11,23 @@ import authserver.users.builds.BuildOrderStatServiceImpl;
 import authserver.users.classes.ClassServiceImpl;
 import authserver.users.classes.UserClassStatServiceImpl;
 import authserver.users.masteries.MasteriesStatServiceImpl;
+import authserver.users.playerstats.PlayerGameStatService;
 import authserver.users.upgrades.UpgradeClassStatServiceImpl;
 import authserver.users.identities.CustomUserDetailsService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import gameserver.engine.GameEngine;
 import gameserver.engine.StatEngine;
+import gameserver.engine.TeamAffiliation;
+import gameserver.entity.Titan;
+import gameserver.entity.TitanType;
+import networking.PlayerDivider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 @Component
 public class PersistenceManager {
@@ -38,6 +49,9 @@ public class PersistenceManager {
 
     @Autowired
     public BuildOrderStatServiceImpl buildOrderStatService;
+
+    @Autowired
+    public PlayerGameStatService playerGameStatService;
 
     public void postgameStats(String email, StatEngine stats, String className, int wasVictorious, double newRating) throws Exception {
         User user = userService.findUserByEmail(email);
@@ -133,6 +147,11 @@ public class PersistenceManager {
             user.setGoalassists(user.getGoalassists() +  toAdd.get(StatEngine.StatEnum.GOALASSISTS.toString()).asInt());
             if (classStat != null) classStat.setGoalassists(classStat.getGoalassists() +  toAdd.get(StatEngine.StatEnum.GOALASSISTS.toString()).asInt());
             if (userClassStat != null) userClassStat.setGoalassists(userClassStat.getGoalassists() + toAdd.get(StatEngine.StatEnum.GOALASSISTS.toString()).asInt());
+        }
+        if(toAdd.has(StatEngine.StatEnum.SIDEGOALASSISTS.toString())){
+            user.setSidegoalassists(user.getSidegoalassists() +  toAdd.get(StatEngine.StatEnum.SIDEGOALASSISTS.toString()).asInt());
+            if (classStat != null) classStat.setSidegoalassists(classStat.getSidegoalassists() +  toAdd.get(StatEngine.StatEnum.SIDEGOALASSISTS.toString()).asInt());
+            if (userClassStat != null) userClassStat.setSidegoalassists(userClassStat.getSidegoalassists() + toAdd.get(StatEngine.StatEnum.SIDEGOALASSISTS.toString()).asInt());
         }
         if(toAdd.has(StatEngine.StatEnum.REBOUND.toString())){
             user.setRebounds(user.getRebounds() +  toAdd.get(StatEngine.StatEnum.REBOUND.toString()).asInt());
@@ -335,6 +354,11 @@ public class PersistenceManager {
             if (classStat != null) classStat.setGoalassists((classStat.getGoalassists() +  toAdd.get(StatEngine.StatEnum.GOALASSISTS.toString()).asInt()));
             if (userClassStat != null) userClassStat.setGoalassists_1v1(userClassStat.getGoalassists_1v1() + toAdd.get(StatEngine.StatEnum.GOALASSISTS.toString()).asInt());
         }
+        if(toAdd.has(StatEngine.StatEnum.SIDEGOALASSISTS.toString())){
+            user.setSidegoalassists_1v1((user.getSidegoalassists_1v1() +  toAdd.get(StatEngine.StatEnum.SIDEGOALASSISTS.toString()).asInt()));
+            if (classStat != null) classStat.setSidegoalassists((classStat.getSidegoalassists() +  toAdd.get(StatEngine.StatEnum.SIDEGOALASSISTS.toString()).asInt()));
+            if (userClassStat != null) userClassStat.setSidegoalassists_1v1(userClassStat.getSidegoalassists_1v1() + toAdd.get(StatEngine.StatEnum.SIDEGOALASSISTS.toString()).asInt());
+        }
         if(toAdd.has(StatEngine.StatEnum.REBOUND.toString())){
             user.setRebounds_1v1((user.getRebounds_1v1() +  toAdd.get(StatEngine.StatEnum.REBOUND.toString()).asInt()));
             if (classStat != null) classStat.setRebounds((classStat.getRebounds() +  toAdd.get(StatEngine.StatEnum.REBOUND.toString()).asInt()));
@@ -424,6 +448,9 @@ public class PersistenceManager {
         if (toAdd.has(StatEngine.StatEnum.GOALASSISTS.toString())) {
             classStat.setGoalassists(classStat.getGoalassists() + toAdd.get(StatEngine.StatEnum.GOALASSISTS.toString()).asInt());
         }
+        if (toAdd.has(StatEngine.StatEnum.SIDEGOALASSISTS.toString())) {
+            classStat.setSidegoalassists(classStat.getSidegoalassists() + toAdd.get(StatEngine.StatEnum.SIDEGOALASSISTS.toString()).asInt());
+        }
         if (toAdd.has(StatEngine.StatEnum.REBOUND.toString())) {
             classStat.setRebounds(classStat.getRebounds() + toAdd.get(StatEngine.StatEnum.REBOUND.toString()).asInt());
         }
@@ -506,6 +533,9 @@ public class PersistenceManager {
         }
         if (toAdd.has(StatEngine.StatEnum.GOALASSISTS.toString())) {
             masteriesStat.setGoalassists(masteriesStat.getGoalassists() + toAdd.get(StatEngine.StatEnum.GOALASSISTS.toString()).asInt());
+        }
+        if (toAdd.has(StatEngine.StatEnum.SIDEGOALASSISTS.toString())) {
+            masteriesStat.setSidegoalassists(masteriesStat.getSidegoalassists() + toAdd.get(StatEngine.StatEnum.SIDEGOALASSISTS.toString()).asInt());
         }
         if (toAdd.has(StatEngine.StatEnum.REBOUND.toString())) {
             masteriesStat.setRebounds(masteriesStat.getRebounds() + toAdd.get(StatEngine.StatEnum.REBOUND.toString()).asInt());
@@ -590,6 +620,9 @@ public class PersistenceManager {
         if (toAdd.has(StatEngine.StatEnum.GOALASSISTS.toString())) {
             upgradeStat.setGoalassists(upgradeStat.getGoalassists() + toAdd.get(StatEngine.StatEnum.GOALASSISTS.toString()).asInt());
         }
+        if (toAdd.has(StatEngine.StatEnum.SIDEGOALASSISTS.toString())) {
+            upgradeStat.setSidegoalassists(upgradeStat.getSidegoalassists() + toAdd.get(StatEngine.StatEnum.SIDEGOALASSISTS.toString()).asInt());
+        }
         if (toAdd.has(StatEngine.StatEnum.REBOUND.toString())) {
             upgradeStat.setRebounds(upgradeStat.getRebounds() + toAdd.get(StatEngine.StatEnum.REBOUND.toString()).asInt());
         }
@@ -673,6 +706,9 @@ public class PersistenceManager {
         if (toAdd.has(StatEngine.StatEnum.GOALASSISTS.toString())) {
             stat.setGoalassists(stat.getGoalassists() + toAdd.get(StatEngine.StatEnum.GOALASSISTS.toString()).asInt());
         }
+        if (toAdd.has(StatEngine.StatEnum.SIDEGOALASSISTS.toString())) {
+            stat.setSidegoalassists(stat.getSidegoalassists() + toAdd.get(StatEngine.StatEnum.SIDEGOALASSISTS.toString()).asInt());
+        }
         if (toAdd.has(StatEngine.StatEnum.REBOUND.toString())) {
             stat.setRebounds(stat.getRebounds() + toAdd.get(StatEngine.StatEnum.REBOUND.toString()).asInt());
         }
@@ -707,5 +743,94 @@ public class PersistenceManager {
             stat.setManaspent(stat.getManaspent() + toAdd.get(StatEngine.StatEnum.MANASPENT.toString()).asInt());
         }
         buildOrderStatService.saveBuildOrderStat(stat);
+    }
+
+    public void recordPlayerGameStats(GameEngine endedGame) {
+        if (playerGameStatService == null || endedGame == null) return;
+        try {
+            double duration = (endedGame.GAMETICK_MS > 0) ? (endedGame.framesSinceStart / (1000.0 / endedGame.GAMETICK_MS)) : 0.0;
+            double homeScore = (endedGame.home != null) ? endedGame.home.score : 0.0;
+            double awayScore = (endedGame.away != null) ? endedGame.away.score : 0.0;
+            String gameId = (endedGame.gameId != null && !endedGame.gameId.isEmpty()) ? endedGame.gameId : UUID.randomUUID().toString();
+
+            // 1. Calculate team-level CG and SG for home and away
+            int homeCg = 0, awayCg = 0, homeSg = 0, awaySg = 0;
+            if (endedGame.clients != null && endedGame.stats != null) {
+                for (PlayerDivider player : endedGame.clients) {
+                    Titan t = endedGame.titanSelected(player);
+                    if (t != null && t.team != null && player.email != null) {
+                        JsonNode node = endedGame.stats.statsOf(player.email);
+                        int g = node.has(StatEngine.StatEnum.GOALS.toString()) ? node.get(StatEngine.StatEnum.GOALS.toString()).asInt() : 0;
+                        int sg = node.has(StatEngine.StatEnum.SIDEGOALS.toString()) ? node.get(StatEngine.StatEnum.SIDEGOALS.toString()).asInt() : 0;
+                        if (t.team == TeamAffiliation.HOME) {
+                            homeCg += g;
+                            homeSg += sg;
+                        } else if (t.team == TeamAffiliation.AWAY) {
+                            awayCg += g;
+                            awaySg += sg;
+                        }
+                    }
+                }
+            }
+
+            // 2. Iterate outfielders only (ignore goalies)
+            List<PlayerGameStat> toSave = new ArrayList<>();
+            if (endedGame.clients != null && endedGame.stats != null) {
+                for (PlayerDivider player : endedGame.clients) {
+                    Titan t = endedGame.titanSelected(player);
+                    if (t == null || t.getType() == null || t.getType() == TitanType.GOALIE) {
+                        continue;
+                    }
+                    boolean isHome = (t.team == TeamAffiliation.HOME);
+                    double pointsFor = isHome ? homeScore : awayScore;
+                    double pointsAgainst = isHome ? awayScore : homeScore;
+                    double pointDiff = pointsFor - pointsAgainst;
+                    int cgFor = isHome ? homeCg : awayCg;
+                    int cgAgainst = isHome ? awayCg : homeCg;
+                    int sgFor = isHome ? homeSg : awaySg;
+                    int sgAgainst = isHome ? awaySg : homeSg;
+                    int won = (player.wasVictorious == 1) ? 1 : 0;
+
+                    PlayerGameStat pgs = new PlayerGameStat();
+                    pgs.setGameId(gameId);
+                    pgs.setMatchDurationSeconds(duration);
+                    pgs.setTeam(isHome ? "HOME" : "AWAY");
+                    pgs.setWon(won);
+                    pgs.setOutfieldclass(t.getType().toString());
+                    pgs.setPreset(t.presetName);
+                    pgs.setPointsFor(pointsFor);
+                    pgs.setPointsAgainst(pointsAgainst);
+                    pgs.setPointDiff(pointDiff);
+                    pgs.setCgFor(cgFor);
+                    pgs.setCgAgainst(cgAgainst);
+                    pgs.setSidegoalsFor(sgFor);
+                    pgs.setSidegoalsAgainst(sgAgainst);
+
+                    if (player.email != null) {
+                        JsonNode s = endedGame.stats.statsOf(player.email);
+                        if (s.has(StatEngine.StatEnum.GOALS.toString())) pgs.setGoals(s.get(StatEngine.StatEnum.GOALS.toString()).asInt());
+                        if (s.has(StatEngine.StatEnum.SIDEGOALS.toString())) pgs.setSidegoals(s.get(StatEngine.StatEnum.SIDEGOALS.toString()).asInt());
+                        if (s.has(StatEngine.StatEnum.POINTS.toString())) pgs.setPoints(s.get(StatEngine.StatEnum.POINTS.toString()).asDouble());
+                        if (s.has(StatEngine.StatEnum.GOALASSISTS.toString())) pgs.setCgAssists(s.get(StatEngine.StatEnum.GOALASSISTS.toString()).asInt());
+                        if (s.has(StatEngine.StatEnum.SIDEGOALASSISTS.toString())) pgs.setSgAssists(s.get(StatEngine.StatEnum.SIDEGOALASSISTS.toString()).asInt());
+                        if (s.has(StatEngine.StatEnum.PASSES.toString())) pgs.setPasses(s.get(StatEngine.StatEnum.PASSES.toString()).asInt());
+                        if (s.has(StatEngine.StatEnum.REBOUND.toString())) pgs.setRebounds(s.get(StatEngine.StatEnum.REBOUND.toString()).asInt());
+                        if (s.has(StatEngine.StatEnum.TURNOVERS.toString())) pgs.setTurnovers(s.get(StatEngine.StatEnum.TURNOVERS.toString()).asInt());
+                        if (s.has(StatEngine.StatEnum.STEALS.toString())) pgs.setSteals(s.get(StatEngine.StatEnum.STEALS.toString()).asInt());
+                        if (s.has(StatEngine.StatEnum.BLOCKS.toString())) pgs.setBlocks(s.get(StatEngine.StatEnum.BLOCKS.toString()).asInt());
+                        if (s.has(StatEngine.StatEnum.KILLS.toString())) pgs.setKills(s.get(StatEngine.StatEnum.KILLS.toString()).asInt());
+                        if (s.has(StatEngine.StatEnum.DEATHS.toString())) pgs.setDeaths(s.get(StatEngine.StatEnum.DEATHS.toString()).asInt());
+                        if (s.has(StatEngine.StatEnum.KILLASSISTS.toString())) pgs.setKillassists(s.get(StatEngine.StatEnum.KILLASSISTS.toString()).asInt());
+                    }
+
+                    toSave.add(pgs);
+                }
+            }
+            if (!toSave.isEmpty()) {
+                playerGameStatService.saveAll(toSave);
+            }
+        } catch (Exception e) {
+            System.err.println("[PersistenceManager] Error recording player game stats: " + e.getMessage());
+        }
     }
 }

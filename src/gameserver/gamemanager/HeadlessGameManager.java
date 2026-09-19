@@ -4,6 +4,7 @@ import authserver.users.PersistenceManager;
 import gameserver.engine.GameEngine;
 import gameserver.engine.GameOptions;
 import gameserver.engine.Masteries;
+import gameserver.engine.TitanPresetMenu;
 import gameserver.entity.Titan;
 import networking.PlayerDivider;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,12 +15,16 @@ import org.springframework.stereotype.Component;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 @Component
 public class HeadlessGameManager implements ApplicationRunner {
 
     @Autowired
     private PersistenceManager persistenceManager;
+
+    private static final AtomicLong outfieldRollCounter = new AtomicLong(0);
+    private static final AtomicLong goalieRollCounter = new AtomicLong(0);
 
     private final AtomicInteger completedGames = new AtomicInteger(0);
     private final AtomicInteger activeGames = new AtomicInteger(0);
@@ -138,20 +143,46 @@ public class HeadlessGameManager implements ApplicationRunner {
 
         engine.initializeServer();
 
-        // Initiate 10 titan masteries:
-        // - Goalies: speed=3, boost=3, health=3, +1 random in another stat
-        // - Field titans: 10 random masteries allocated in a 3/3/3/1 split across the stats
+        // Initiate titan masteries and classes:
+        // Every 10th roll pulls from the optimized menu instead of rolling a random class and 3 tier-3 masteries
         Random rng = new Random();
-        for (int i = 0; i < engine.players.length; i++) {
-            Titan t = engine.players[i];
-            if (t == null) continue;
-            Masteries m;
-            if (i == 0 || i == 1 || t.getType() == gameserver.entity.TitanType.GOALIE) {
-                m = Masteries.createGoalieMasteries(rng);
+
+        // 1. Goalies (players 0 and 1) - shuffle order to avoid team bias
+        List<Integer> goalieIndices = new ArrayList<>(Arrays.asList(0, 1));
+        Collections.shuffle(goalieIndices, rng);
+        for (int idx : goalieIndices) {
+            Titan goalie = engine.players[idx];
+            if (goalie == null) continue;
+
+            long roll = goalieRollCounter.incrementAndGet();
+            if (rng.nextDouble() < 0.70) {
+                TitanPresetMenu.TitanPreset preset = TitanPresetMenu.getRandomGoaliePreset(rng);
+                preset.applyToTitan(goalie, rng);
             } else {
-                m = Masteries.createRandom3331(rng);
+                Masteries m = Masteries.createGoalieMasteries(rng);
+                m.applyMasteries(goalie);
             }
-            m.applyMasteries(t);
+        }
+
+        // 2. Outfield titans (players 2..length-1) - shuffle order to avoid slot/team bias
+        List<Integer> outfieldIndices = new ArrayList<>();
+        for (int i = 2; i < engine.players.length; i++) {
+            outfieldIndices.add(i);
+        }
+        Collections.shuffle(outfieldIndices, rng);
+        for (int idx : outfieldIndices) {
+            Titan fieldTitan = engine.players[idx];
+            if (fieldTitan == null) continue;
+
+            long roll = outfieldRollCounter.incrementAndGet();
+            if (rng.nextDouble() < 0.70) {
+                // 70% of rolls pull from premade menu, 30% pull random titan class & 3 tier 3 masteries
+                TitanPresetMenu.TitanPreset preset = TitanPresetMenu.getRandomOutfieldPreset(rng);
+                preset.applyToTitan(fieldTitan, rng);
+            } else {
+                Masteries m = Masteries.createRandom3331(rng);
+                m.applyMasteries(fieldTitan);
+            }
         }
 
         engine.secondsToStart = 0;
@@ -191,6 +222,12 @@ public class HeadlessGameManager implements ApplicationRunner {
                     for (String masteryName : plusThrees) {
                         String pairName = className + "_" + masteryName;
                         persistenceManager.recordMasteryStats(endedGame.stats, player.email, pairName, player.wasVictorious);
+                    }
+                    if (t.presetName != null) {
+                        persistenceManager.recordMasteryStats(endedGame.stats, player.email, t.presetName, player.wasVictorious);
+                        if ("WEBSPINNER".equals(t.presetName)) {
+                            persistenceManager.recordMasteryStats(endedGame.stats, player.email, "WEBSPINNER_SPIDER", player.wasVictorious);
+                        }
                     }
                 }
             }
@@ -252,6 +289,13 @@ public class HeadlessGameManager implements ApplicationRunner {
             System.err.println("[HeadlessGameManager] Error recording build order stats: " + e.getMessage());
         }
 
+        // Record granular single-game player stats for OBPM / DBPM regression
+        try {
+            persistenceManager.recordPlayerGameStats(endedGame);
+        } catch (Exception e) {
+            System.err.println("[HeadlessGameManager] Error recording player game stats: " + e.getMessage());
+        }
+
         int totalDone = completedGames.incrementAndGet();
         double homeScore = endedGame.home != null ? endedGame.home.score : 0.0;
         double awayScore = endedGame.away != null ? endedGame.away.score : 0.0;
@@ -276,5 +320,18 @@ public class HeadlessGameManager implements ApplicationRunner {
 
     public int getActiveGamesCount() {
         return activeGames.get();
+    }
+
+    public static long getOutfieldRollCount() {
+        return outfieldRollCounter.get();
+    }
+
+    public static long getGoalieRollCount() {
+        return goalieRollCounter.get();
+    }
+
+    public static void resetRollCounters() {
+        outfieldRollCounter.set(0);
+        goalieRollCounter.set(0);
     }
 }

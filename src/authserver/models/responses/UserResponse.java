@@ -12,7 +12,7 @@ import java.util.Map;
 public class UserResponse implements Serializable {
     protected Double points, rating;
     protected Integer kills, blocks, steals, deaths, turnovers, passes, sidegoals, goals;
-    protected Integer killassists, goalassists, rebounds;
+    protected Integer killassists, goalassists, sidegoalassists, rebounds;
     protected Integer saves, sidegoalsaves, centergoalsaves, sidegoalsconceded, goalsconceded;
     protected Integer upgradesgold, consumablesgold, manaspent;
     protected Integer blocks_g, passes_g, turnovers_g, rebounds_g, steals_g, kills_g, deaths_g;
@@ -21,6 +21,7 @@ public class UserResponse implements Serializable {
     protected int ties, ties_1v1;
     protected Double points_1v1, rating_1v1;
     protected Integer kills_1v1, blocks_1v1, steals_1v1, deaths_1v1, turnovers_1v1, passes_1v1, sidegoals_1v1, goals_1v1;
+    protected Integer killassists_1v1, goalassists_1v1, sidegoalassists_1v1, rebounds_1v1;
     protected Integer wins_1v1, losses_1v1;
     protected String username;
     protected String email;
@@ -49,6 +50,7 @@ public class UserResponse implements Serializable {
         this.deaths = user.getDeaths();
         this.killassists = user.getKillassists();
         this.goalassists = user.getGoalassists();
+        this.sidegoalassists = user.getSidegoalassists();
         this.rebounds = user.getRebounds();
         this.saves = user.getSaves();
         this.sidegoalsaves = user.getSidegoalsaves();
@@ -78,6 +80,10 @@ public class UserResponse implements Serializable {
         this.turnovers_1v1 = user.getTurnovers_1v1();
         this.kills_1v1 = user.getKills_1v1();
         this.deaths_1v1 = user.getDeaths_1v1();
+        this.killassists_1v1 = user.getKillassists_1v1();
+        this.goalassists_1v1 = user.getGoalassists_1v1();
+        this.sidegoalassists_1v1 = user.getSidegoalassists_1v1();
+        this.rebounds_1v1 = user.getRebounds_1v1();
     }
 
     public String getUsername() {
@@ -478,6 +484,46 @@ public class UserResponse implements Serializable {
 
     public void setGoalie_matches(Integer goalie_matches) {
         this.goalie_matches = goalie_matches;
+    }
+
+    public Integer getSidegoalassists() {
+        return sidegoalassists;
+    }
+
+    public void setSidegoalassists(Integer sidegoalassists) {
+        this.sidegoalassists = sidegoalassists;
+    }
+
+    public Integer getKillassists_1v1() {
+        return killassists_1v1;
+    }
+
+    public void setKillassists_1v1(Integer killassists_1v1) {
+        this.killassists_1v1 = killassists_1v1;
+    }
+
+    public Integer getGoalassists_1v1() {
+        return goalassists_1v1;
+    }
+
+    public void setGoalassists_1v1(Integer goalassists_1v1) {
+        this.goalassists_1v1 = goalassists_1v1;
+    }
+
+    public Integer getSidegoalassists_1v1() {
+        return sidegoalassists_1v1;
+    }
+
+    public void setSidegoalassists_1v1(Integer sidegoalassists_1v1) {
+        this.sidegoalassists_1v1 = sidegoalassists_1v1;
+    }
+
+    public Integer getRebounds_1v1() {
+        return rebounds_1v1;
+    }
+
+    public void setRebounds_1v1(Integer rebounds_1v1) {
+        this.rebounds_1v1 = rebounds_1v1;
     }
 
     public Map<String, UserClassStat> getClassStats() {

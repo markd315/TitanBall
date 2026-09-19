@@ -72,6 +72,9 @@ public class UserClassStat implements Serializable {
     @Column(name = "goalassists")
     protected Integer goalassists = 0;
 
+    @Column(name = "sidegoalassists")
+    protected Integer sidegoalassists = 0;
+
     @Column(name = "rebounds")
     protected Integer rebounds = 0;
 
@@ -147,6 +150,9 @@ public class UserClassStat implements Serializable {
 
     @Column(name = "goalassists_1v1")
     protected Integer goalassists_1v1 = 0;
+
+    @Column(name = "sidegoalassists_1v1")
+    protected Integer sidegoalassists_1v1 = 0;
 
     @Column(name = "rebounds_1v1")
     protected Integer rebounds_1v1 = 0;
@@ -308,6 +314,14 @@ public class UserClassStat implements Serializable {
 
     public void setGoalassists(Integer goalassists) {
         this.goalassists = goalassists;
+    }
+
+    public Integer getSidegoalassists() {
+        return sidegoalassists != null ? sidegoalassists : 0;
+    }
+
+    public void setSidegoalassists(Integer sidegoalassists) {
+        this.sidegoalassists = sidegoalassists;
     }
 
     public Integer getRebounds() {
@@ -508,6 +522,14 @@ public class UserClassStat implements Serializable {
 
     public void setGoalassists_1v1(Integer goalassists_1v1) {
         this.goalassists_1v1 = goalassists_1v1;
+    }
+
+    public Integer getSidegoalassists_1v1() {
+        return sidegoalassists_1v1 != null ? sidegoalassists_1v1 : 0;
+    }
+
+    public void setSidegoalassists_1v1(Integer sidegoalassists_1v1) {
+        this.sidegoalassists_1v1 = sidegoalassists_1v1;
     }
 
     public Integer getRebounds_1v1() {

@@ -22,6 +22,7 @@ public class ClassStat{
         this.turnovers = 0;
         this.killassists = 0;
         this.goalassists = 0;
+        this.sidegoalassists = 0;
         this.rebounds = 0;
         this.saves = 0;
         this.lasthits = 0;
@@ -103,6 +104,9 @@ public class ClassStat{
 
     @Column(name = "goalassists")
     protected int goalassists;
+
+    @Column(name = "sidegoalassists")
+    protected int sidegoalassists;
 
     @Column(name = "rebounds")
     protected int rebounds;
@@ -247,6 +251,14 @@ public class ClassStat{
 
     public void setGoalassists(int goalassists) {
         this.goalassists = goalassists;
+    }
+
+    public int getSidegoalassists() {
+        return sidegoalassists;
+    }
+
+    public void setSidegoalassists(int sidegoalassists) {
+        this.sidegoalassists = sidegoalassists;
     }
 
     public int getRebounds() {
