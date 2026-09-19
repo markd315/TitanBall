@@ -18,11 +18,11 @@ let activeClassFilter = 'ALL';
 
 function getDefaultStats() {
   const s = { username: sessionStorage.getItem('username') || '', email: sessionStorage.getItem('email') || '', rating: 1000.0, rank: 999, rating_1v1: 1000.0, rank1v1: 999, classStats: {} };
-  ['wins', 'losses', 'ties', 'goals', 'sidegoals', 'points', 'kills', 'deaths', 'killassists', 'goalassists', 'passes', 'turnovers', 'steals', 'blocks', 'rebounds',
+  ['wins', 'losses', 'ties', 'goals', 'sidegoals', 'points', 'kills', 'deaths', 'killassists', 'goalassists', 'sidegoalassists', 'passes', 'turnovers', 'steals', 'blocks', 'rebounds',
    'saves', 'sidegoalsaves', 'centergoalsaves', 'sidegoalsconceded', 'goalsconceded',
    'upgradesgold', 'consumablesgold', 'manaspent',
    'blocks_g', 'passes_g', 'turnovers_g', 'rebounds_g', 'steals_g', 'kills_g', 'deaths_g', 'goalie_matches',
-   'wins_1v1', 'losses_1v1', 'ties_1v1', 'goals_1v1', 'sidegoals_1v1', 'points_1v1', 'kills_1v1', 'deaths_1v1', 'killassists_1v1', 'goalassists_1v1', 'passes_1v1', 'turnovers_1v1', 'steals_1v1', 'blocks_1v1', 'rebounds_1v1'].forEach(k => s[k] = 0);
+   'wins_1v1', 'losses_1v1', 'ties_1v1', 'goals_1v1', 'sidegoals_1v1', 'points_1v1', 'kills_1v1', 'deaths_1v1', 'killassists_1v1', 'goalassists_1v1', 'sidegoalassists_1v1', 'passes_1v1', 'turnovers_1v1', 'steals_1v1', 'blocks_1v1', 'rebounds_1v1'].forEach(k => s[k] = 0);
   return s;
 }
 
@@ -197,7 +197,7 @@ function renderAdvancedStatsPane() {
   }
 
   // Outfield Metrics
-  let goals, sidegoals, points, kills, deaths, passes, turnovers, steals, blocks, assists, killAssists, goalAssists, rebounds;
+  let goals, sidegoals, points, kills, deaths, passes, turnovers, steals, blocks, assists, killAssists, goalAssists, sideGoalAssists, rebounds;
   if (isFiltered) {
     goals = is4v4 ? (cStat?.goals || 0) : (cStat?.goals_1v1 || 0);
     sidegoals = is4v4 ? (cStat?.sidegoals || 0) : (cStat?.sidegoals_1v1 || 0);
@@ -211,7 +211,8 @@ function renderAdvancedStatsPane() {
     blocks = is4v4 ? (cStat?.blocks || 0) : (cStat?.blocks_1v1 || 0);
     killAssists = is4v4 ? (cStat?.killassists || 0) : (cStat?.killassists_1v1 || 0);
     goalAssists = is4v4 ? (cStat?.goalassists || 0) : (cStat?.goalassists_1v1 || 0);
-    assists = is4v4 ? (killAssists + goalAssists) : 0;
+    sideGoalAssists = is4v4 ? (cStat?.sidegoalassists || 0) : (cStat?.sidegoalassists_1v1 || 0);
+    assists = is4v4 ? (goalAssists + sideGoalAssists) : 0;
     rebounds = is4v4 ? (cStat?.rebounds || 0) : (cStat?.rebounds_1v1 || 0);
   } else {
     goals = is4v4 ? (stats.goals || 0) : (stats.goals_1v1 || 0);
@@ -224,9 +225,10 @@ function renderAdvancedStatsPane() {
     turnovers = is4v4 ? (stats.turnovers || 0) : (stats.turnovers_1v1 || 0);
     steals = is4v4 ? (stats.steals || 0) : (stats.steals_1v1 || 0);
     blocks = is4v4 ? (stats.blocks || 0) : (stats.blocks_1v1 || 0);
-    assists = is4v4 ? ((stats.killassists || 0) + (stats.goalassists || 0)) : 0;
     killAssists = is4v4 ? (stats.killassists || 0) : (stats.killassists_1v1 || 0);
     goalAssists = is4v4 ? (stats.goalassists || 0) : (stats.goalassists_1v1 || 0);
+    sideGoalAssists = is4v4 ? (stats.sidegoalassists || 0) : (stats.sidegoalassists_1v1 || 0);
+    assists = is4v4 ? (goalAssists + sideGoalAssists) : 0;
     rebounds = is4v4 ? (stats.rebounds || 0) : 0;
   }
   const kdRatio = deaths > 0 ? (kills / deaths).toFixed(2) : (kills > 0 ? kills.toFixed(2) : '0.00');
@@ -254,6 +256,7 @@ function renderAdvancedStatsPane() {
   const blkPg = mOutfield > 0 ? (blocks / mOutfield).toFixed(1) : '0.0';
   const rebPg = mOutfield > 0 ? (rebounds / mOutfield).toFixed(1) : '0.0';
   const gastPg = mOutfield > 0 ? (goalAssists / mOutfield).toFixed(1) : '0.0';
+  const sgastPg = mOutfield > 0 ? (sideGoalAssists / mOutfield).toFixed(1) : '0.0';
   const kastPg = mOutfield > 0 ? (killAssists / mOutfield).toFixed(1) : '0.0';
 
   // Goalie stats & resources (4v4 matches, when ALL classes view OR GOALIE class is filtered)
@@ -327,8 +330,8 @@ function renderAdvancedStatsPane() {
   const hasOutfieldData = is4v4 && !isGoalieFiltered && outfieldMatches > 0;
   if (hasOutfieldData) {
     // Combat weights: ~75/25 split favoring DBPM
-    obpm = (Number(cpg) - 0.41) * 1.5 + (Number(spg) - 6.00) * 0.35 + (Number(gastPg) - 0.0) * 0.8 + (Number(kpg) - 0.77) * 0.04 + (Number(kastPg) - 0.37) * 0.02 + (Number(passPg) - 14.78) * 0.04 - (Number(toPg) - 6.40) * 0.12;
-    dbpm = (Number(stlPg) - 2.12) * 0.15 + (Number(blkPg) - 26.47) * 0.08 + (Number(rebPg) - 23.14) * 0.08 + (Number(kpg) - 0.77) * 0.12 + (Number(kastPg) - 0.37) * 0.06 - (Number(dpg) - 1.69) * 0.20 - (Number(toPg) - 6.40) * 0.03;
+    obpm = (Number(cpg) - 0.41) * 1.5 + (Number(spg) - 6.00) * 0.35 + (Number(gastPg) - 0.0) * 0.8 + (Number(sgastPg) - 0.0) * 0.18 + (Number(kpg) - 0.77) * 0.04 + (Number(kastPg) - 0.37) * 0.02 + (Number(passPg) - 14.78) * 0.04 - (Number(toPg) - 6.40) * 0.12;
+    dbpm = (Number(stlPg) - 2.12) * 0.22 + (Number(blkPg) - 3.33) * 0.15 + (Number(rebPg) - 23.14) * 0.03 + (Number(kpg) - 0.77) * 0.12 + (Number(kastPg) - 0.37) * 0.06 - (Number(dpg) - 1.69) * 0.20 - (Number(toPg) - 6.40) * 0.03;
     tbpm = obpm + dbpm;
     tbpmStr = formatBpm(tbpm);
     tbpmTier = getBpmTier(tbpm);
@@ -356,11 +359,11 @@ function renderAdvancedStatsPane() {
         </div>
       </div>
       <div class="stats-metric-card">
-        <div class="stats-split-row"><span class="metric-label">Scoring</span><span class="stats-total-count">${goals} center · ${sidegoals} side${is4v4 ? ` · ${goalAssists} ast` : ''}</span></div>
+        <div class="stats-split-row"><span class="metric-label">Scoring</span><span class="stats-total-count">${goals} center · ${sidegoals} side</span></div>
         <div class="stats-split-row" style="justify-content: space-between;"><span class="stats-sub-label" style="font-size: 10px; color: #cbd5e1; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Center / Side</span><span class="stats-total-count">${points} pts</span></div>
         <div class="stats-split-row" style="margin-top: 2px;">
           <div class="stats-per-game"><span class="metric-val"><span style="color:#fbbf24;">${cpg}</span> / <span style="color:#cbd5e1;">${spg}</span></span><span class="pg-unit">/g</span></div>
-          <span class="stats-total-count">${ppg} pts/g${is4v4 ? ` · ${gastPg} G-ast/g` : ''}</span>
+          <span class="stats-total-count">${ppg} pts/g</span>
         </div>
       </div>
       <div class="stats-metric-card">
@@ -371,17 +374,18 @@ function renderAdvancedStatsPane() {
         </div>
       </div>
       <div class="stats-metric-card">
-        <div class="stats-split-row"><span class="metric-label">Ball Handling</span><span class="stats-total-count">${passes} passes · ${turnovers} to</span></div>
-        <div class="stats-split-row" style="justify-content: space-between;"><span class="stats-sub-label" style="font-size: 10px; color: #cbd5e1; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Pass / Turnover</span><span class="stats-total-count">${rebounds} reb (${rebPg}/g)</span></div>
+        <div class="stats-split-row"><span class="metric-label">Playmaking</span><span class="stats-total-count">${is4v4 ? `${goalAssists} CGA · ${sideGoalAssists} SGA` : `${passes} passes`}</span></div>
+        <div class="stats-split-row" style="justify-content: space-between;"><span class="stats-sub-label" style="font-size: 10px; color: #cbd5e1; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">CGA / SGA</span><span class="stats-total-count">${passes} passes · ${turnovers} TO</span></div>
         <div class="stats-split-row" style="margin-top: 2px;">
-          <div class="stats-per-game"><span class="metric-val"><span style="color:#38bdf8;">${passPg}</span> / <span style="color:#f59e0b;">${toPg}</span></span><span class="pg-unit">/g</span></div>
-          <span class="stats-total-count" style="color: #cbd5e1;">pass / to ratio ${turnovers > 0 ? (passes / turnovers).toFixed(1) : passes}</span>
+          <div class="stats-per-game"><span class="metric-val"><span style="color:#38bdf8;">${gastPg}</span> / <span style="color:#a5f3fc;">${sgastPg}</span></span><span class="pg-unit">ast/g</span></div>
+          <span class="stats-total-count">${passPg} pass/g · ${toPg} TO/g</span>
         </div>
       </div>
       <div class="stats-metric-card">
-        <div class="stats-split-row"><span class="metric-label">Defensive Plays</span><span class="stats-total-count">${steals} steals · ${blocks} blocks</span></div>
+        <div class="stats-split-row"><span class="metric-label">Defending</span><span class="stats-total-count">${steals} stl · ${blocks} blk · ${rebounds} reb</span></div>
         <div class="stats-split-row" style="margin-top: 2px;">
-          <div class="stats-per-game"><span class="metric-val"><span style="color:#a7f3d0;">${stlPg}</span> / <span style="color:#a855f7;">${blkPg}</span></span><span class="pg-unit">/g</span></div>
+          <div class="stats-per-game"><span class="metric-val"><span style="color:#34d399;">${stlPg}</span> / <span style="color:#6ee7b7;">${blkPg}</span></span><span class="pg-unit">/g</span></div>
+          <span class="stats-total-count">${rebPg} reb/g</span>
         </div>
       </div>
       ${showGoalie ? `
@@ -402,9 +406,9 @@ function renderAdvancedStatsPane() {
         <div class="stats-split-row" style="margin-top: 2px; align-items: center; justify-content: space-between; gap: 4px; min-width: 0;">
           ${!isGoalieFiltered ? `
           <div class="stats-per-game" style="gap: 2px; flex-shrink: 1; min-width: 0; overflow: hidden;">
-            <span class="metric-val" style="color: #38bdf8; font-size: 12px; font-weight: 700; cursor: help; white-space: nowrap;" title="OBPM = 1.50*(cpg - 0.41) + 0.35*(spg - 6.00) + 0.80*(gast/g - 0.0) + 0.04*(kpg - 0.77) + 0.02*(kast/g - 0.37) + 0.04*(pass/g - 14.78) - 0.12*(to/g - 6.40)">${hasOutfieldData ? formatBpm(obpm) : '—'}</span><span class="pg-unit" style="color: #38bdf8; font-weight: 700; font-size: 8.5px; cursor: help;" title="OBPM (Offensive Box Plus-Minus): Evaluates goal scoring, assists, combat offense, passing volume, and turnover deductions relative to 35,452-match outfield baselines.">OBPM</span>
+            <span class="metric-val" style="color: #38bdf8; font-size: 12px; font-weight: 700; cursor: help; white-space: nowrap;" title="OBPM = 1.50*(cpg - 0.41) + 0.35*(spg - 6.00) + 0.80*(gast/g - 0.0) + 0.18*(sgast/g - 0.0) + 0.04*(kpg - 0.77) + 0.02*(kast/g - 0.37) + 0.04*(pass/g - 14.78) - 0.12*(to/g - 6.40)">${hasOutfieldData ? formatBpm(obpm) : '—'}</span><span class="pg-unit" style="color: #38bdf8; font-weight: 700; font-size: 8.5px; cursor: help;" title="OBPM (Offensive Box Plus-Minus): Evaluates goal scoring, assists, combat offense, passing volume, and turnover deductions relative to 35,452-match outfield baselines.">OBPM</span>
             <span style="color: #475569; margin: 0 1px; font-size: 10px;">·</span>
-            <span class="metric-val" style="color: #a7f3d0; font-size: 12px; font-weight: 700; cursor: help; white-space: nowrap;" title="DBPM = 0.15*(stl/g - 2.12) + 0.08*(blk/g - 26.47) + 0.08*(reb/g - 23.14) + 0.12*(kpg - 0.77) + 0.06*(kast/g - 0.37) - 0.20*(dpg - 1.69) - 0.03*(to/g - 6.40)">${hasOutfieldData ? formatBpm(dbpm) : '—'}</span><span class="pg-unit" style="color: #a7f3d0; font-weight: 700; font-size: 8.5px; cursor: help;" title="DBPM (Defensive Box Plus-Minus): Evaluates steals, shots contested/blocked, loose ball rebounds, kills, and death penalties relative to 35,452-match outfield baselines.">DBPM</span>
+            <span class="metric-val" style="color: #a7f3d0; font-size: 12px; font-weight: 700; cursor: help; white-space: nowrap;" title="DBPM = 0.22*(stl/g - 2.12) + 0.15*(blk/g - 3.33) + 0.03*(reb/g - 23.14) + 0.12*(kpg - 0.77) + 0.06*(kast/g - 0.37) - 0.20*(dpg - 1.69) - 0.03*(to/g - 6.40)">${hasOutfieldData ? formatBpm(dbpm) : '—'}</span><span class="pg-unit" style="color: #a7f3d0; font-weight: 700; font-size: 8.5px; cursor: help;" title="DBPM (Defensive Box Plus-Minus): Evaluates steals, shots contested/blocked, loose ball rebounds, kills, and death penalties relative to 35,452-match outfield baselines.">DBPM</span>
           </div>` : ''}
           ${showGoalie ? `
           <div class="stats-per-game" style="gap: 2px; flex-shrink: 0;">

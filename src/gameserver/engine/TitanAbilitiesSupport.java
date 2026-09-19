@@ -128,6 +128,9 @@ public class TitanAbilitiesSupport {
                         caster.actionState = Titan.TitanState.IDLE;
                         caster.actionFrame = 0;
                         caster.possession = 1;
+                        context.registerBallTouch(caster);
+                        context.lastHomePasser = null;
+                        context.lastAwayPasser = null;
                         context.resetAiReactionAfterPossession(caster);
                         return true;
                     }

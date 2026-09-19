@@ -141,6 +141,7 @@ public class SpringSecurityConfig extends WebSecurityConfigurerAdapter {
 	    turnovers int default 0,
 	    killassists int default 0,
 	    goalassists int default 0,
+	    sidegoalassists int default 0,
 	    rebounds int default 0,
 	    rating_1v1 double default 1000.0,
 	    wins_1v1 int default 0,
@@ -156,6 +157,7 @@ public class SpringSecurityConfig extends WebSecurityConfigurerAdapter {
 	    turnovers_1v1 int default 0,
 	    killassists_1v1 int default 0,
 	    goalassists_1v1 int default 0,
+	    sidegoalassists_1v1 int default 0,
 	    rebounds_1v1 int default 0,
 	    activation varchar(10),
 	    subexpiration timestamp,
@@ -179,6 +181,7 @@ public class SpringSecurityConfig extends WebSecurityConfigurerAdapter {
 	    turnovers int default 0,
 	    killassists int default 0,
 	    goalassists int default 0,
+	    sidegoalassists int default 0,
 	    rebounds int default 0
 	);
 

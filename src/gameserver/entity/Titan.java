@@ -94,6 +94,8 @@ public class Titan extends Entity   {
     @JsonIgnore
     public transient String aiGoalieBuildName = null;
     @JsonIgnore
+    public transient String presetName = null;
+    @JsonIgnore
     public transient List<String> aiGoalieBuildOrder = null;
     @JsonIgnore
     public transient int aiGoalieBuildIndex = 0;

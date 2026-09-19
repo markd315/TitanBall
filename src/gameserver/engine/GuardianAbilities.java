@@ -1244,11 +1244,17 @@ public class GuardianAbilities implements Serializable {
 
     private void scaleAlliedTitans(GameEngine context) {
         for (Titan t : context.players) {
-            if (t.team == team && t.getType() != TitanType.GOALIE) {
+            if (t != null && t.team == team && t.getType() != TitanType.GOALIE && t != context.players[0] && t != context.players[1] && !context.isGoalie(t)) {
                 t.width = (int) (70 * 1.25);
                 t.height = (int) (70 * 1.25);
                 t.centerDist = (t.width + t.height) / 4;
             }
+        }
+        Titan goalie = (team == TeamAffiliation.HOME) ? context.players[0] : context.players[1];
+        if (goalie != null) {
+            goalie.width = 70;
+            goalie.height = 70;
+            goalie.centerDist = (goalie.width + goalie.height) / 4;
         }
     }
 

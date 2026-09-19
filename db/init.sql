@@ -24,6 +24,7 @@ CREATE TABLE users (
     turnovers INT DEFAULT 0,
     killassists INT DEFAULT 0,
     goalassists INT DEFAULT 0,
+    sidegoalassists INT DEFAULT 0,
     rebounds INT DEFAULT 0,
     saves INT DEFAULT 0,
     sidegoalsaves INT DEFAULT 0,
@@ -56,6 +57,7 @@ CREATE TABLE users (
     turnovers_1v1 INT DEFAULT 0,
     killassists_1v1 INT DEFAULT 0,
     goalassists_1v1 INT DEFAULT 0,
+    sidegoalassists_1v1 INT DEFAULT 0,
     rebounds_1v1 INT DEFAULT 0,
     activation VARCHAR(10),
     subexpiration TIMESTAMP,
@@ -80,6 +82,7 @@ CREATE TABLE classstat (
     turnovers INT DEFAULT 0,
     killassists INT DEFAULT 0,
     goalassists INT DEFAULT 0,
+    sidegoalassists INT DEFAULT 0,
     rebounds INT DEFAULT 0,
     saves INT DEFAULT 0,
     lasthits INT DEFAULT 0,
@@ -113,6 +116,7 @@ CREATE TABLE IF NOT EXISTS userclassstat (
     turnovers INT DEFAULT 0,
     killassists INT DEFAULT 0,
     goalassists INT DEFAULT 0,
+    sidegoalassists INT DEFAULT 0,
     rebounds INT DEFAULT 0,
     saves INT DEFAULT 0,
     lasthits INT DEFAULT 0,
@@ -138,6 +142,7 @@ CREATE TABLE IF NOT EXISTS userclassstat (
     turnovers_1v1 INT DEFAULT 0,
     killassists_1v1 INT DEFAULT 0,
     goalassists_1v1 INT DEFAULT 0,
+    sidegoalassists_1v1 INT DEFAULT 0,
     rebounds_1v1 INT DEFAULT 0,
     UNIQUE KEY uk_user_class (email, role),
     INDEX idx_user_class (email, role),
@@ -162,6 +167,7 @@ CREATE TABLE IF NOT EXISTS masteriesstat (
     turnovers INT DEFAULT 0,
     killassists INT DEFAULT 0,
     goalassists INT DEFAULT 0,
+    sidegoalassists INT DEFAULT 0,
     rebounds INT DEFAULT 0,
     saves INT DEFAULT 0,
     lasthits INT DEFAULT 0,
@@ -174,6 +180,9 @@ CREATE TABLE IF NOT EXISTS masteriesstat (
     goalsconceded INT DEFAULT 0,
     manaspent INT DEFAULT 0
 );
+
+-- Alias view for masteriesclassstat pointing to masteriesstat
+CREATE OR REPLACE VIEW masteriesclassstat AS SELECT * FROM masteriesstat;
 
 -- Upgrade class stats for goalie purchases
 CREATE TABLE IF NOT EXISTS upgradeclassstat (
@@ -193,6 +202,7 @@ CREATE TABLE IF NOT EXISTS upgradeclassstat (
     turnovers INT DEFAULT 0,
     killassists INT DEFAULT 0,
     goalassists INT DEFAULT 0,
+    sidegoalassists INT DEFAULT 0,
     rebounds INT DEFAULT 0,
     saves INT DEFAULT 0,
     lasthits INT DEFAULT 0,
@@ -224,6 +234,7 @@ CREATE TABLE IF NOT EXISTS buildorderstat (
     turnovers INT DEFAULT 0,
     killassists INT DEFAULT 0,
     goalassists INT DEFAULT 0,
+    sidegoalassists INT DEFAULT 0,
     rebounds INT DEFAULT 0,
     saves INT DEFAULT 0,
     lasthits INT DEFAULT 0,
@@ -264,6 +275,7 @@ CREATE TABLE premadestats (
     turnovers INT DEFAULT 0,
     killassists INT DEFAULT 0,
     goalassists INT DEFAULT 0,
+    sidegoalassists INT DEFAULT 0,
     rebounds INT DEFAULT 0,
     goals INT DEFAULT 0
 );
@@ -277,7 +289,7 @@ CREATE TABLE premadestats (
 -- Loss (-1.5 archetype): 0.52 goals, 3.22 sidegoals, 1.325 pts,  9.6 blocks, 6.0 steals, 10.8 passes, 0.9 kills, 1.8 deaths,  9.9 turnovers, 0.35 kast, 0.45 gast, 7.6 rebounds
 -- Goalie Win  (+1.5): 1.10 center sv, 0.30 side sv (1.40 sv), 1.50 center conc,  9.00 side conc, 670 upgrade gold, 40 consumable gold, 540 mana
 -- Goalie Loss (-1.5): 0.00 center sv, 0.00 side sv (0.00 sv), 4.40 center conc, 16.00 side conc, 510 upgrade gold, 20 consumable gold, 380 mana
-INSERT INTO users (id, username, email, password, role, created, subexpiration, enabled, rating, wins, losses,
+INSERT IGNORE INTO users (id, username, email, password, role, created, subexpiration, enabled, rating, wins, losses,
                    goals, points, sidegoals, blocks, steals, passes, kills, deaths, turnovers, killassists, goalassists, rebounds,
                    saves, sidegoalsaves, centergoalsaves, sidegoalsconceded, goalsconceded,
                    upgradesgold, consumablesgold, manaspent, goalie_matches,
@@ -288,22 +300,10 @@ VALUES (24, 'markd315', 'markd315@gmail.com',
         9, 19.67, 42, 119, 77, 133, 14, 16, 99, 6, 7, 94,
         9, 2, 7, 134, 31,
         670, 40, 540, 1,
-        1020.0, 6, 5)
-ON DUPLICATE KEY UPDATE rating = VALUES(rating), wins = VALUES(wins), losses = VALUES(losses),
-                        goals = VALUES(goals), points = VALUES(points), sidegoals = VALUES(sidegoals),
-                        blocks = VALUES(blocks), steals = VALUES(steals), passes = VALUES(passes),
-                        kills = VALUES(kills), deaths = VALUES(deaths), turnovers = VALUES(turnovers),
-                        killassists = VALUES(killassists), goalassists = VALUES(goalassists),
-                        rebounds = VALUES(rebounds),
-                        saves = VALUES(saves), sidegoalsaves = VALUES(sidegoalsaves),
-                        centergoalsaves = VALUES(centergoalsaves), sidegoalsconceded = VALUES(sidegoalsconceded),
-                        goalsconceded = VALUES(goalsconceded),
-                        upgradesgold = VALUES(upgradesgold), consumablesgold = VALUES(consumablesgold),
-                        manaspent = VALUES(manaspent), goalie_matches = VALUES(goalie_matches),
-                        rating_1v1 = VALUES(rating_1v1), wins_1v1 = VALUES(wins_1v1), losses_1v1 = VALUES(losses_1v1);
+        1020.0, 6, 5);
 
 -- Test/dev users (all share the same bcrypt password hash)
-INSERT INTO users (id, username, email, password, role, created, subexpiration, enabled, rating, wins, losses,
+INSERT IGNORE INTO users (id, username, email, password, role, created, subexpiration, enabled, rating, wins, losses,
                    goals, points, sidegoals, blocks, steals, passes, kills, deaths, turnovers, killassists, goalassists, rebounds,
                    saves, sidegoalsaves, centergoalsaves, sidegoalsconceded, goalsconceded,
                    upgradesgold, consumablesgold, manaspent, goalie_matches,
@@ -376,34 +376,56 @@ INSERT INTO users (id, username, email, password, role, created, subexpiration, 
  0, 0, 0, 0, 0, 0, 0, 0, 0, 1000.0, 0, 0),
 (25,  'christian',         'christian@gmail.com',         '$2a$12$OPJoXUBmnuUHH/5lsXLDLep56M8gsQ4dzqWTkIJnSDun2HGV39Jo.', 'USER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1, 1000.0, 0, 0,
  0, 0.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
- 0, 0, 0, 0, 0, 0, 0, 0, 0, 1000.0, 0, 0)
-ON DUPLICATE KEY UPDATE rating = VALUES(rating), wins = VALUES(wins), losses = VALUES(losses),
-                        goals = VALUES(goals), points = VALUES(points), sidegoals = VALUES(sidegoals),
-                        blocks = VALUES(blocks), steals = VALUES(steals), passes = VALUES(passes),
-                        kills = VALUES(kills), deaths = VALUES(deaths), turnovers = VALUES(turnovers),
-                        killassists = VALUES(killassists), goalassists = VALUES(goalassists),
-                        rebounds = VALUES(rebounds),
-                        saves = VALUES(saves), sidegoalsaves = VALUES(sidegoalsaves),
-                        centergoalsaves = VALUES(centergoalsaves), sidegoalsconceded = VALUES(sidegoalsconceded),
-                        goalsconceded = VALUES(goalsconceded),
-                        upgradesgold = VALUES(upgradesgold), consumablesgold = VALUES(consumablesgold),
-                        manaspent = VALUES(manaspent), goalie_matches = VALUES(goalie_matches),
-                        rating_1v1 = VALUES(rating_1v1), wins_1v1 = VALUES(wins_1v1), losses_1v1 = VALUES(losses_1v1);
-
-
-
+ 0, 0, 0, 0, 0, 0, 0, 0, 0, 1000.0, 0, 0);
 
 -- Class stat rows (one per playable class)
-INSERT INTO classstat (role) VALUES
+INSERT IGNORE INTO classstat (role) VALUES
 ('GOALIE'), ('WARRIOR'), ('RANGER'), ('DASHER'), ('MARKSMAN'),
 ('STEALTH'), ('SUPPORT'), ('ARTISAN'), ('GOLEM'), ('MAGE'),
 ('BUILDER'), ('GRENADIER'), ('HOUNDMASTER'), ('CAPTAIN'), ('SPIDER');
 
 -- Seed user class stats (admin markd315: Warrior outfield stats + Goalie stats; test user u8: Dasher outfield stats + Goalie stats)
-INSERT INTO userclassstat (email, username, role, wins, losses, ties, goals, points, sidegoals, blocks, steals, passes, kills, deaths, turnovers, killassists, goalassists, rebounds, saves, sidegoalsaves, centergoalsaves, sidegoalsconceded, goalsconceded, upgradesgold, consumablesgold, manaspent, wins_1v1, losses_1v1)
+INSERT IGNORE INTO userclassstat (email, username, role, wins, losses, ties, goals, points, sidegoals, blocks, steals, passes, kills, deaths, turnovers, killassists, goalassists, rebounds, saves, sidegoalsaves, centergoalsaves, sidegoalsconceded, goalsconceded, upgradesgold, consumablesgold, manaspent, wins_1v1, losses_1v1)
 VALUES
 ('markd315@gmail.com', 'markd315', 'WARRIOR', 6, 5, 0, 9, 19.67, 42, 119, 77, 133, 14, 16, 99, 6, 7, 94, 0, 0, 0, 0, 0, 0, 0, 0, 6, 5),
 ('markd315@gmail.com', 'markd315', 'GOALIE', 1, 0, 0, 0, 0.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 2, 7, 134, 31, 670, 40, 540, 0, 0),
 ('e8@gmail.com', 'u8', 'DASHER', 2, 0, 0, 2, 7.25, 10, 18, 2, 5, 0, 0, 5, 0, 0, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
-('e8@gmail.com', 'u8', 'GOALIE', 1, 0, 0, 0, 0.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 6, 4, 26, 3, 670, 40, 540, 0, 0)
-ON DUPLICATE KEY UPDATE wins = VALUES(wins), losses = VALUES(losses), goals = VALUES(goals), points = VALUES(points), sidegoals = VALUES(sidegoals), blocks = VALUES(blocks), steals = VALUES(steals), passes = VALUES(passes), kills = VALUES(kills), deaths = VALUES(deaths), turnovers = VALUES(turnovers), killassists = VALUES(killassists), goalassists = VALUES(goalassists), rebounds = VALUES(rebounds), saves = VALUES(saves), sidegoalsaves = VALUES(sidegoalsaves), centergoalsaves = VALUES(centergoalsaves), sidegoalsconceded = VALUES(sidegoalsconceded), goalsconceded = VALUES(goalsconceded), upgradesgold = VALUES(upgradesgold), consumablesgold = VALUES(consumablesgold), manaspent = VALUES(manaspent);
+('e8@gmail.com', 'u8', 'GOALIE', 1, 0, 0, 0, 0.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 6, 4, 26, 3, 670, 40, 540, 0, 0);
+
+-- Single-game player stats for OBPM / DBPM regression
+CREATE TABLE IF NOT EXISTS playergamestat (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    game_id VARCHAR(64) NOT NULL,
+    recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    match_duration_seconds DOUBLE NOT NULL DEFAULT 0.0,
+    team VARCHAR(8) NOT NULL,
+    won TINYINT(1) NOT NULL,
+    outfieldclass VARCHAR(32) NOT NULL,
+    preset VARCHAR(64) NULL,
+    points_for DOUBLE NOT NULL,
+    points_against DOUBLE NOT NULL,
+    point_diff DOUBLE NOT NULL,
+    cg_for INT NOT NULL DEFAULT 0,
+    cg_against INT NOT NULL DEFAULT 0,
+    sidegoals_for INT NOT NULL DEFAULT 0,
+    sidegoals_against INT NOT NULL DEFAULT 0,
+    goals INT NOT NULL DEFAULT 0,
+    sidegoals INT NOT NULL DEFAULT 0,
+    points DOUBLE NOT NULL DEFAULT 0.0,
+    cg_assists INT NOT NULL DEFAULT 0,
+    sg_assists INT NOT NULL DEFAULT 0,
+    passes INT NOT NULL DEFAULT 0,
+    rebounds INT NOT NULL DEFAULT 0,
+    turnovers INT NOT NULL DEFAULT 0,
+    steals INT NOT NULL DEFAULT 0,
+    blocks INT NOT NULL DEFAULT 0,
+    kills INT NOT NULL DEFAULT 0,
+    deaths INT NOT NULL DEFAULT 0,
+    killassists INT NOT NULL DEFAULT 0,
+    INDEX idx_game_id (game_id),
+    INDEX idx_outfieldclass (outfieldclass),
+    INDEX idx_won (won),
+    INDEX idx_point_diff (point_diff),
+    INDEX idx_recorded_at (recorded_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+

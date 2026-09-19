@@ -91,11 +91,11 @@ public class Parapet extends Entity implements Tickable, Collidable, Serializabl
                 }
             } else if (occ.state == ParapetOccupant.State.MOUNTED) {
                 if (now >= occ.mountGraceUntilEpochMs && hasIssuedMovement(t)) {
-                    // Movement issued -> lose all bonuses immediately and root for 1s
+                    // Movement issued -> lose all bonuses immediately and root for 0.25s
                     occ.state = ParapetOccupant.State.EXITING;
-                    occ.timerUntilEpochMs = now + 1000;
+                    occ.timerUntilEpochMs = now + 250;
                     removeParapetBonuses(context, t);
-                    context.effectPool.addUniqueEffect(new EmptyEffect(1000, t, EffectId.ROOT), context);
+                    context.effectPool.addUniqueEffect(new EmptyEffect(250, t, EffectId.ROOT), context);
                     clearMovement(t);
                 } else {
                     // Keep centered and maintain bonuses
@@ -140,12 +140,15 @@ public class Parapet extends Entity implements Tickable, Collidable, Serializabl
             occ.titanId = t.id;
             occ.entryX = t.X;
             occ.entryY = t.Y;
-            occ.state = ParapetOccupant.State.ENTERING;
-            occ.timerUntilEpochMs = now + 1000;
+            occ.state = ParapetOccupant.State.MOUNTED;
+            occ.timerUntilEpochMs = now;
+            occ.mountGraceUntilEpochMs = now + 350; // Give 350ms to swallow lingering pathfinding clicks
             occupants.put(t.id, occ);
 
-            context.effectPool.addUniqueEffect(new EmptyEffect(1000, t, EffectId.ROOT), context);
+            t.X = this.X + this.width / 2.0 - t.width / 2.0;
+            t.Y = this.Y + this.height / 2.0 - t.height / 2.0;
             clearMovement(t);
+            ensureParapetBonuses(context, t);
         }
     }
 

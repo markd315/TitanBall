@@ -105,6 +105,7 @@ public class Premade implements Serializable{
         this.turnovers = 0;
         this.killassists = 0;
         this.goalassists = 0;
+        this.sidegoalassists = 0;
         this.rebounds = 0;
         Calendar calendar = Calendar.getInstance();
         java.util.Date now = calendar.getTime();
@@ -191,6 +192,9 @@ public class Premade implements Serializable{
 
     @Column(name = "goalassists")
     protected int goalassists;
+
+    @Column(name = "sidegoalassists")
+    protected int sidegoalassists;
 
     @Column(name = "rebounds")
     protected int rebounds;
@@ -305,6 +309,14 @@ public class Premade implements Serializable{
 
     public void setGoalassists(int goalassists) {
         this.goalassists = goalassists;
+    }
+
+    public int getSidegoalassists() {
+        return sidegoalassists;
+    }
+
+    public void setSidegoalassists(int sidegoalassists) {
+        this.sidegoalassists = sidegoalassists;
     }
 
     public int getRebounds() {

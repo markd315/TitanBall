@@ -22,6 +22,7 @@ public class UpgradeClassStat {
         this.turnovers = 0;
         this.killassists = 0;
         this.goalassists = 0;
+        this.sidegoalassists = 0;
         this.rebounds = 0;
         this.saves = 0;
         this.lasthits = 0;
@@ -111,6 +112,9 @@ public class UpgradeClassStat {
 
     @Column(name = "goalassists")
     protected int goalassists = 0;
+
+    @Column(name = "sidegoalassists")
+    protected int sidegoalassists = 0;
 
     @Column(name = "rebounds")
     protected int rebounds = 0;
@@ -247,6 +251,14 @@ public class UpgradeClassStat {
 
     public void setGoalassists(Integer goalassists) {
         this.goalassists = goalassists;
+    }
+
+    public Integer getSidegoalassists() {
+        return sidegoalassists;
+    }
+
+    public void setSidegoalassists(Integer sidegoalassists) {
+        this.sidegoalassists = sidegoalassists;
     }
 
     public Integer getRebounds() {

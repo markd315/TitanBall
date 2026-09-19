@@ -143,6 +143,19 @@ public class BallPhysicsEngine {
                 if (scorer != null) {
                     context.stats.grant(scorer, StatEngine.StatEnum.SIDEGOALS);
                     ourSideScorers.add(scorer);
+
+                    UUID passId = (us.which == TeamAffiliation.HOME) ? context.lastHomePasser : context.lastAwayPasser;
+                    if (passId != null && (attackerId == null || !passId.equals(attackerId))) {
+                        Titan assister = context.titanByID(passId.toString()).orElse(null);
+                        if (assister != null && assister.team == us.which) {
+                            context.stats.grant(context, assister, StatEngine.StatEnum.SIDEGOALASSISTS);
+                        }
+                    }
+                }
+                if (us.which == TeamAffiliation.HOME) {
+                    context.lastHomePasser = null;
+                } else {
+                    context.lastAwayPasser = null;
                 }
                 if (us.score % 1.0 == .75) {
                     goal.freeze();
@@ -216,7 +229,17 @@ public class BallPhysicsEngine {
                     context.stats.grant(scorerHi, StatEngine.StatEnum.GOALS);
                     double centerPoints = 1.0 + (0.5 * nSidegoals);
                     context.stats.grant(scorerHi, StatEngine.StatEnum.POINTS, centerPoints);
+
+                    UUID passIdHi = (us.which == TeamAffiliation.HOME) ? context.lastHomePasser : context.lastAwayPasser;
+                    if (passIdHi != null && (attackerIdHi == null || !passIdHi.equals(attackerIdHi))) {
+                        Titan assisterHi = context.titanByID(passIdHi.toString()).orElse(null);
+                        if (assisterHi != null && assisterHi.team == us.which) {
+                            context.stats.grant(context, assisterHi, StatEngine.StatEnum.GOALASSISTS);
+                        }
+                    }
                 }
+                context.lastHomePasser = null;
+                context.lastAwayPasser = null;
                 for (int sIdx = 0; sIdx < nSidegoals && !ourSideScorers.isEmpty(); sIdx++) {
                     PlayerDivider sideScorer = ourSideScorers.remove(0);
                     if (sideScorer != null) {
@@ -422,9 +445,16 @@ public class BallPhysicsEngine {
             TeamAffiliation oldTeam = lost.team;
             if (gained.team == oldTeam) {
                 context.stats.grant(context, lost, StatEngine.StatEnum.PASSES);
+                if (oldTeam == TeamAffiliation.HOME) {
+                    context.lastHomePasser = lost.id;
+                } else if (oldTeam == TeamAffiliation.AWAY) {
+                    context.lastAwayPasser = lost.id;
+                }
             } else {
                 context.stats.grant(context, lost, StatEngine.StatEnum.TURNOVERS);
                 context.stats.grant(context, gained, StatEngine.StatEnum.BLOCKS);
+                context.lastHomePasser = null;
+                context.lastAwayPasser = null;
                 if (gained.getType() == TitanType.GOALIE) {
                     GameEngine.ShotType st = context.currentShotType;
                     if (st == GameEngine.ShotType.NONE && context.currentStepVel != null) {
@@ -440,8 +470,12 @@ public class BallPhysicsEngine {
                 }
             }
         } else {
+            if (gained.team == TeamAffiliation.HOME) {
+                context.lastHomePasser = null;
+            } else if (gained.team == TeamAffiliation.AWAY) {
+                context.lastAwayPasser = null;
+            }
             context.stats.grant(context, gained, StatEngine.StatEnum.REBOUND);
-            context.stats.grant(context, gained, StatEngine.StatEnum.BLOCKS);
             if (gained.getType() == TitanType.GOALIE) {
                 Titan shooter = (context.titanInPossession().isPresent()) ? context.titanInPossession().get() : (context.lastPossessed != null ? context.titanByID(context.lastPossessed.toString()).orElse(null) : null);
                 GameEngine.ShotType st = context.currentShotType;

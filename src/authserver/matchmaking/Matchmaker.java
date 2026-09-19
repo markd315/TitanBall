@@ -100,63 +100,39 @@ public class Matchmaker {
                 }
             }
 
-            int minToStart = players;
-            long nowMs = System.currentTimeMillis();
-            if (op != null && op.isCoopVsAi()) {
-                boolean hasTimedOutPlayer = false;
-                for (String email : pool) {
-                    Long entryTime = queueEntryTime.get(email);
-                    if (entryTime != null && (nowMs - entryTime >= 8000)) {
-                        hasTimedOutPlayer = true;
-                        break;
-                    }
-                }
-                if (hasTimedOutPlayer) {
-                    minToStart = 1;
-                }
-            }
-
-            // Hybrid match check:
-            // After all players have checked the box and 10 seconds has passed since the most recent player joined,
-            // the match will start.
-            boolean canStartHybrid = false;
-            int winningDiff = 0;
-            if (op != null && !op.isCoopVsAi() && !pool.isEmpty()) {
+            while (!pool.isEmpty()) {
                 boolean allChecked = true;
-                long mostRecentJoinTime = 0;
                 for (String email : pool) {
                     if (!Boolean.TRUE.equals(fillWithAiVotes.get(email))) {
                         allChecked = false;
                         break;
                     }
-                    Long entryTime = queueEntryTime.get(email);
-                    if (entryTime != null && entryTime > mostRecentJoinTime) {
-                        mostRecentJoinTime = entryTime;
-                    }
                 }
-                if (allChecked && mostRecentJoinTime > 0 && (nowMs - mostRecentJoinTime >= 10000)) {
-                    canStartHybrid = true;
-                    // Tally votes for AI difficulty (tiers 0 to 5)
+
+                int minToStart = allChecked ? 1 : players;
+                if (pool.size() < minToStart) {
+                    break;
+                }
+
+                int winningDiff = (op != null) ? op.aiDifficultyIndex : 2;
+                if (op != null) {
                     int[] diffVotes = new int[6];
                     for (String email : pool) {
-                        int diff = aiDifficultyVotes.getOrDefault(email, 2);
+                        int diff = aiDifficultyVotes.getOrDefault(email, op.aiDifficultyIndex);
                         if (diff >= 0 && diff <= 5) {
                             diffVotes[diff]++;
                         }
                     }
                     int maxVotes = -1;
-                    winningDiff = 2; // Default Medium
+                    winningDiff = op.aiDifficultyIndex;
                     for (int d = 0; d < 6; d++) {
                         if (diffVotes[d] > maxVotes) {
                             maxVotes = diffVotes[d];
                             winningDiff = d;
                         }
                     }
-                    minToStart = 1;
                 }
-            }
 
-            while (pool.size() >= minToStart) {
                 List<String> selectedPlayers = new ArrayList<>();
                 // Form match prioritizing grouping mutual partners
                 for (String candidate : pool) {
@@ -183,14 +159,20 @@ public class Matchmaker {
                     }
                 }
 
-                if (!selectedPlayers.isEmpty() && (selectedPlayers.size() == players || (op != null && (op.isCoopVsAi() || canStartHybrid)))) {
+                if (!selectedPlayers.isEmpty() && (selectedPlayers.size() == players || allChecked)) {
                     gameFor.addAll(selectedPlayers);
                     pool.removeAll(selectedPlayers);
-                    if (canStartHybrid) {
-                        op.isHybrid = true;
-                        op.aiDifficultyIndex = winningDiff;
+
+                    GameOptions gameOp = (op != null) ? new GameOptions(val) : new GameOptions();
+                    if (selectedPlayers.size() < players) {
+                        if (!gameOp.isCoopVsAi()) {
+                            gameOp.isHybrid = true;
+                        }
                     }
-                    spawnGame(selectedPlayers, op);
+                    if (allChecked || gameOp.isCoopVsAi()) {
+                        gameOp.aiDifficultyIndex = winningDiff;
+                    }
+                    spawnGame(selectedPlayers, gameOp);
                 } else {
                     break;
                 }

@@ -90,13 +90,7 @@ public class Entity extends Box   {
     }
 
     private void die(GameEngine context) {
-        int respawnMs = 4750;
-        if (context != null && context.c != null) {
-            int cfgMs = context.c.getI("globals.titan.respawn.ms");
-            if (cfgMs > 0) {
-                respawnMs = cfgMs;
-            }
-        }
+        int respawnMs = context.c.getI("globals.titan.respawn.ms");
         context.effectPool.addUniqueEffect(new DeadEffect(respawnMs, this, context), context);
     }
 

@@ -293,6 +293,11 @@ public class ServerApplication {
                             } catch (Exception e) {
                                 e.printStackTrace();
                             }
+                            try {
+                                persistenceManager.recordPlayerGameStats(val.state);
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
                         }
                     }
                 } else if (now - endedGames.get(id) > 5000) {

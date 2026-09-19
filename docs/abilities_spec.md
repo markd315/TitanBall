@@ -86,7 +86,7 @@ Siege Tree (Offense/Breaching)
 
         Accumulators: Increases the radius of enemy hoop trigger volumes temporarily when friendly minions overlap them.
 
-        Parapet: Spawns an elevated battlement in the enemy top lane near the blueline, in front of ball portals (solid for enemy titans). Friendly heroes who collide with it are rooted for 1s and teleported to the center, gaining +20% Defense, +20% Shot/Lob Power, and Steal Protection (HideBallEffect when in possession). Issuing a movement command roots for 1s, removes all bonuses, and teleports the unit back to their entry point.
+        Parapet: Spawns an elevated battlement in the enemy top lane near the blueline, in front of ball portals (solid for enemy titans). Friendly heroes who collide with it are rooted for 0.5s and teleported to the center, gaining +20% Defense, +20% Shot/Lob Power, and Steal Protection (HideBallEffect when in possession). Issuing a movement command roots for 0.25s, removes all bonuses, and teleports the unit back to their entry point.
 
     Tier 5 (Spammable):
 

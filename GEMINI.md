@@ -56,6 +56,8 @@ When prompted with queries to check balance tables (e.g. *"check classstat, mast
    - Identify overperforming classes (>52%) and underperforming classes (<48%).
    - Highlight high-synergy masteries vs underpowered masteries.
    - Contrast strong goalie upgrade branches (e.g. `fortress`, `cultivation`) against lagging trees (e.g. `empowerment`).
+   - **CRITICAL GOALIE UPGRADE RULE**: `siege.t3.pullgoalie` is terrible **BY DESIGN**. Pulling the goalie leaves an empty net; low winrate (~35-39%) and high concessions are completely intentional. NEVER report it as a balance problem or attempt to buff it.
+
 
 
 

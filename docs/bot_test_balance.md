@@ -721,3 +721,14 @@ RANGER_HEALTH               267     344     0       611     43.70%      354     
    - **Spider (54.99% WR)** and **Marksman (52.47% WR)** gained ground under the new pacing.
    - **Captain (39.55% WR)** suffered across all masteries (all 11 Captain masteries sit between 37% and 42%), despite high frags (10,242 kills), indicating Captain is struggling with conversion in the 5.5s respawn meta.
    - **Stealth (50.12% WR)** reached ideal parity even under full bot omniscience.
+
+---
+
+### 11.6 Goalie Upgrade Balance Rule: Pull Goalie (`siege.t3.pullgoalie`) Is Terrible BY DESIGN
+
+> [!CAUTION]
+> **PERMANENT BALANCE DIRECTIVE: `siege.t3.pullgoalie` IS TERRIBLE BY DESIGN.**
+> **DO NOT** flag `siege.t3.pullgoalie` as an underperforming or broken upgrade requiring buffs.
+> Pulling the goalie completely vacates the net, sacrificing goal defense to add an extra offensive body. Consequently, its low win rate (~35–39%) and elevated goals conceded (~2.37/game) are **100% deliberate, expected, and designed game behavior**.
+> It is an all-in desperation or high-risk gimmick upgrade. NEVER flag, report, or attempt to balance/buff `pullgoalie` based on automated statistical winrate or concession thresholds.
+

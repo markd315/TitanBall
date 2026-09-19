@@ -129,11 +129,10 @@ function updateOverlays() {
     refreshUserStats();
   } else if (gameState.phase === GamePhase.WAIT_FOR_GAME) {
     lobbyOverlay.style.display = 'flex';
-    const isCoopAi = (sessionStorage.getItem('lastQueueSize') || '').endsWith('v0');
     const isTutorial = activeQueueTournamentCode === 'tutorial';
     const hybridContainer = document.getElementById('queue-hybrid-container');
     if (hybridContainer) {
-      hybridContainer.style.display = (isTutorial || isCoopAi) ? 'none' : 'flex';
+      hybridContainer.style.display = isTutorial ? 'none' : 'flex';
     }
   }
 }
@@ -551,7 +550,7 @@ function initUIListeners() {
         const lobbyTitle = document.querySelector('#lobby-overlay h2');
         if (lobbyTitle) lobbyTitle.textContent = 'Searching Match';
         const lobbyStatus = document.querySelector('#lobby-overlay .stat-value[style*="pulse"]');
-        if (lobbyStatus) lobbyStatus.textContent = isCoopAi ? 'STARTING COOP VS AI...' : 'FINDING PLAYERS...';
+        if (lobbyStatus) lobbyStatus.textContent = 'FINDING PLAYERS...';
         
         const playerIndex = getPlayerIndexForSize(currentMode);
         let code = `/${playerIndex}/0/1/10/2/9999/10/20`;
@@ -568,12 +567,16 @@ function initUIListeners() {
         activeQueueLane = preferredLane;
 
         const fillAiCheckbox = document.getElementById('queue-fill-ai-checkbox');
+        if (fillAiCheckbox) fillAiCheckbox.checked = false;
         const queueAiDiffSelect = document.getElementById('queue-ai-difficulty-select');
-        const fillAi = (!isCoopAi && fillAiCheckbox) ? fillAiCheckbox.checked : false;
-        const aiDiff = queueAiDiffSelect ? parseInt(queueAiDiffSelect.value, 10) : 2;
-        if (lobbyStatus && !isCoopAi && fillAi) {
-          lobbyStatus.textContent = 'SEARCHING (FILL WITH AI ACTIVE)...';
+        if (isCoopAi) {
+          const aiDiffSelect = document.getElementById('ai-difficulty-select');
+          if (aiDiffSelect && queueAiDiffSelect) {
+            queueAiDiffSelect.value = aiDiffSelect.value;
+          }
         }
+        const fillAi = false;
+        const aiDiff = queueAiDiffSelect ? parseInt(queueAiDiffSelect.value, 10) : 2;
 
         await joinQueue(code, classSel, partnersCsv, preferredLane, fillAi, aiDiff);
         gameState.is3v3 = true;
@@ -631,12 +634,10 @@ function initUIListeners() {
         activeQueueLane = preferredLane;
 
         const fillAiCheckbox = document.getElementById('queue-fill-ai-checkbox');
+        if (fillAiCheckbox) fillAiCheckbox.checked = false;
         const queueAiDiffSelect = document.getElementById('queue-ai-difficulty-select');
-        const fillAi = fillAiCheckbox ? fillAiCheckbox.checked : false;
+        const fillAi = false;
         const aiDiff = queueAiDiffSelect ? parseInt(queueAiDiffSelect.value, 10) : 2;
-        if (lobbyStatus && fillAi) {
-          lobbyStatus.textContent = 'SEARCHING (FILL WITH AI ACTIVE)...';
-        }
 
         await joinQueue('/4/1/1/5/2/9999/10/20', classSel, '', preferredLane, fillAi, aiDiff); // index 4 is 1v1, goalieIndex 1 is off
         gameState.is3v3 = false;
@@ -676,7 +677,7 @@ function initUIListeners() {
     if (lobbyTitle) lobbyTitle.textContent = 'Searching Match';
     const lobbyStatus = document.querySelector('#lobby-overlay .stat-value[style*="pulse"]');
     if (lobbyStatus) {
-      lobbyStatus.textContent = parsed.isCoopAi ? 'STARTING COOP VS AI...' : (fillAi ? 'SEARCHING (FILL WITH AI ACTIVE)...' : 'FINDING PLAYERS...');
+      lobbyStatus.textContent = fillAi ? 'SEARCHING (FILL WITH AI ACTIVE)...' : 'FINDING PLAYERS...';
     }
 
     const partnersCsv = partners.join(',');
@@ -724,9 +725,6 @@ function initUIListeners() {
 
   async function onQueueHybridChange() {
     if (!activeQueueTournamentCode || activeQueueTournamentCode === 'tutorial') return;
-    const isCoopAi = (sessionStorage.getItem('lastQueueSize') || '').endsWith('v0');
-    if (isCoopAi) return;
-
     const fillAi = fillAiCheckbox ? fillAiCheckbox.checked : false;
     const aiDiff = queueAiDiffSelect ? parseInt(queueAiDiffSelect.value, 10) : 2;
     const lobbyStatus = document.getElementById('queue-status-label') || document.querySelector('#lobby-overlay .stat-value[style*="pulse"]');
@@ -1461,8 +1459,8 @@ function drawGameEnded(ctx) {
     }
 
     ctx.save();
-    const panelH = isGoalie ? 520 : 460;
-    const panelY = isGoalie ? 395 : 420;
+    const panelH = isGoalie ? 520 : 490;
+    const panelY = isGoalie ? 395 : 405;
     ctx.fillStyle = 'rgba(10, 26, 20, 0.85)';
     ctx.fillRect(1920 / 2 - 320, panelY, 640, panelH);
     ctx.strokeStyle = '#ff7f11';
@@ -1508,6 +1506,7 @@ function drawGameEnded(ctx) {
         { label: 'TURNOVERS', statIndex: 8, isFloat: false },
         { label: 'KILLASSISTS', statIndex: 9, isFloat: false },
         { label: 'GOALASSISTS', statIndex: 10, isFloat: false },
+        { label: 'SIDEGOALASSISTS', statIndex: 29, isFloat: false },
         { label: 'REBOUND', statIndex: 11, isFloat: false }
       ];
     }

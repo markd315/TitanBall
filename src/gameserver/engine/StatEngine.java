@@ -210,7 +210,8 @@ public class StatEngine  {
         SIDEGOALS_CONCEDED(19), GOALS_CONCEDED(20),
         MANASPENT(21),
         BLOCKS_G(22), PASSES_G(23), TURNOVERS_G(24),
-        REBOUND_G(25), STEALS_G(26), KILLS_G(27), DEATHS_G(28);
+        REBOUND_G(25), STEALS_G(26), KILLS_G(27), DEATHS_G(28),
+        SIDEGOALASSISTS(29);
         private final int index;
 
         private final static Map<Integer, StatEnum> map =
@@ -256,6 +257,7 @@ public class StatEngine  {
         Map<String, Double> steals_g = new HashMap<>();
         Map<String, Double> kills_g = new HashMap<>();
         Map<String, Double> deaths_g = new HashMap<>();
+        Map<String, Double> sidegoalassists = new HashMap<>();
         gamestats.add(goals);
         gamestats.add(sidegoals);
         gamestats.add(points);
@@ -285,6 +287,7 @@ public class StatEngine  {
         gamestats.add(steals_g);
         gamestats.add(kills_g);
         gamestats.add(deaths_g);
+        gamestats.add(sidegoalassists);
     }
 
     public List<Map<String, Double>> getGamestats() {

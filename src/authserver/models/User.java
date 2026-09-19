@@ -91,6 +91,7 @@ public class User implements Serializable, UserDetails {
         this.turnovers = 0;
         this.killassists = 0;
         this.goalassists = 0;
+        this.sidegoalassists = 0;
         this.rebounds = 0;
         this.saves = 0;
         this.sidegoalsaves = 0;
@@ -123,6 +124,7 @@ public class User implements Serializable, UserDetails {
         this.turnovers_1v1 = 0;
         this.killassists_1v1 = 0;
         this.goalassists_1v1 = 0;
+        this.sidegoalassists_1v1 = 0;
         this.rebounds_1v1 = 0;
         this.enabled = false;
         Calendar calendar = Calendar.getInstance();
@@ -259,6 +261,9 @@ public class User implements Serializable, UserDetails {
     @Column(name = "goalassists")
     protected int goalassists;
 
+    @Column(name = "sidegoalassists")
+    protected int sidegoalassists;
+
     @Column(name = "rebounds")
     protected int rebounds;
 
@@ -354,6 +359,9 @@ public class User implements Serializable, UserDetails {
 
     @Column(name = "goalassists_1v1")
     protected int goalassists_1v1;
+
+    @Column(name = "sidegoalassists_1v1")
+    protected int sidegoalassists_1v1;
 
     @Column(name = "rebounds_1v1")
     protected int rebounds_1v1;
@@ -468,6 +476,14 @@ public class User implements Serializable, UserDetails {
 
     public void setGoalassists(int goalassists) {
         this.goalassists = goalassists;
+    }
+
+    public int getSidegoalassists() {
+        return sidegoalassists;
+    }
+
+    public void setSidegoalassists(int sidegoalassists) {
+        this.sidegoalassists = sidegoalassists;
     }
 
     public int getRebounds() {
@@ -596,6 +612,14 @@ public class User implements Serializable, UserDetails {
 
     public void setGoalassists_1v1(int goalassists_1v1) {
         this.goalassists_1v1 = goalassists_1v1;
+    }
+
+    public int getSidegoalassists_1v1() {
+        return sidegoalassists_1v1;
+    }
+
+    public void setSidegoalassists_1v1(int sidegoalassists_1v1) {
+        this.sidegoalassists_1v1 = sidegoalassists_1v1;
     }
 
     public int getRebounds_1v1() {
