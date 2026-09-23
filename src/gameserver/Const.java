@@ -51,6 +51,14 @@ public class Const extends ConstOperations   {
     public final int ATTACKING_THIRD_X = 1368;
     public final int HOOP_SIDEGOAL_CD_MS = hasKey("hoop.sidegoal.cdms") ? getI("hoop.sidegoal.cdms") : 1800;
     public final int HOOP_BOUNCE_EXTRA_KICK = hasKey("hoop.bounce.extra.kick") ? getI("hoop.bounce.extra.kick") : 30;
+    public final double GUARDIAN_BIGGERMODELS_SCALE = hasKey("guardian.biggermodels.scale") ? getD("guardian.biggermodels.scale") : 1.25;
+    public final double GUARDIAN_BIGGERMODELS_COMPENSATION = hasKey("guardian.biggermodels.compensation") ? getD("guardian.biggermodels.compensation") : 7.0;
+    public final double GUARDIAN_PARAPET_DEFENSE_RATIO = hasKey("guardian.parapet.defense.ratio") ? getD("guardian.parapet.defense.ratio") : 2.50;
+    public final double LANE_ADVANTAGE_SOFTCAP = hasKey("guardian.laneadvantage.softcap") ? getD("guardian.laneadvantage.softcap") : 15.0;
+    public final double LANE_ADVANTAGE_HARDCAP = hasKey("guardian.laneadvantage.hardcap") ? getD("guardian.laneadvantage.hardcap") : 30.0;
+    public final double LANE_ADVANTAGE_UNILATERAL_FACTOR = hasKey("guardian.laneadvantage.unilateral.factor") ? getD("guardian.laneadvantage.unilateral.factor") : 0.0050;
+    public final double LANE_ADVANTAGE_DIRECTIONAL_FACTOR = hasKey("guardian.laneadvantage.directional.factor") ? getD("guardian.laneadvantage.directional.factor") : 0.01;
+    public final double MAXIMUM_PRESSURE_MULTIPLIER = hasKey("guardian.maximumpressure.multiplier") ? getD("guardian.maximumpressure.multiplier") : 2.0;
 
     private gameserver.entity.TitanType[] initAiIncludedTitans() {
         if (hasKey("globals.ai.titans.included")) {

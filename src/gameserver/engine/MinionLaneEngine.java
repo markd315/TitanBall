@@ -651,37 +651,44 @@ public class MinionLaneEngine {
         int homeBonus = context.homeLaneBonusValue[L];
         int awayBonus = context.awayLaneBonusValue[L];
 
+        int softCap = (context.c != null) ? (int) context.c.LANE_ADVANTAGE_SOFTCAP : 15;
+        int hardCap = (context.c != null) ? (int) context.c.LANE_ADVANTAGE_HARDCAP : 30;
+        double unilateralFactor = (context.c != null) ? context.c.LANE_ADVANTAGE_UNILATERAL_FACTOR : 0.0050;
+        double directionalFactor = (context.c != null) ? context.c.LANE_ADVANTAGE_DIRECTIONAL_FACTOR : 0.01;
+        double maxPressureMultiplier = (context.c != null) ? context.c.MAXIMUM_PRESSURE_MULTIPLIER : 2.0;
+
         int netMinionsHome = homeCount - awayCount;
-        if (netMinionsHome > 10) netMinionsHome = 10;
-        if (netMinionsHome < -10) netMinionsHome = -10;
+        if (netMinionsHome > softCap) netMinionsHome = softCap;
+        if (netMinionsHome < -softCap) netMinionsHome = -softCap;
 
         int netBonusHome = homeBonus - awayBonus;
         int P_home = netMinionsHome + netBonusHome;
-        if (P_home > 20) P_home = 20;
-        if (P_home < -20) P_home = -20;
+        if (P_home > hardCap) P_home = hardCap;
+        if (P_home < -hardCap) P_home = -hardCap;
 
         int P_team = (team == TeamAffiliation.HOME) ? P_home : -P_home;
 
-        // 1. Quartered Unilateral Boost (-5% to +5%)
-        double unilateralBoost = P_team * 0.0025;
+        // 1. Unilateral Boost
+        double unilateralBoost = P_team * unilateralFactor;
         if (unilateralBoost > 0) {
-            boolean maxPressure = context.homeGoaliePurchasedUpgrades.contains("siege.t6.maximumpressure") ||
-                    context.awayGoaliePurchasedUpgrades.contains("siege.t6.maximumpressure");
+            boolean maxPressure = (team == TeamAffiliation.HOME)
+                    ? context.homeGoaliePurchasedUpgrades.contains("siege.t6.maximumpressure")
+                    : context.awayGoaliePurchasedUpgrades.contains("siege.t6.maximumpressure");
             if (maxPressure && P_team > 5) {
-                unilateralBoost *= 2.0;
+                unilateralBoost *= maxPressureMultiplier;
             }
         } else if (unilateralBoost < 0) {
             boolean impenetrable = (team == TeamAffiliation.HOME)
                     ? context.homeGoaliePurchasedUpgrades.contains("fortress.t6.impenetrable")
                     : context.awayGoaliePurchasedUpgrades.contains("fortress.t6.impenetrable");
             if (impenetrable && P_team < -3) {
-                unilateralBoost = -3 * 0.0025;
+                unilateralBoost = -3 * unilateralFactor;
             }
         }
 
-        // 2. Directional Hill Effect (-20% to +20%)
+        // 2. Directional Hill Effect
         double dirSign = (dirX > 0) ? 1.0 : ((dirX < 0) ? -1.0 : 0.0);
-        double hillEffect = dirSign * P_home * 0.01;
+        double hillEffect = dirSign * P_home * directionalFactor;
 
         if (hillEffect < 0) {
             long insuranceUntil = (team == TeamAffiliation.HOME)

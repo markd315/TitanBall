@@ -515,6 +515,10 @@ public class TitanAiEngine {
                         bestTarget = d;
                         bestTier = 0;
                         break;
+                    } else if (bestTier > 2) {
+                        bestTarget = d;
+                        bestTier = 3;
+                        bestScore = d.getHealth();
                     }
                 }
                 continue;
@@ -1227,7 +1231,8 @@ public class TitanAiEngine {
             } else {
                 double forwardX = currentCX + forwardDir * 250.0;
                 ai.aiTargetX = Math.max(context.c.MIN_X, Math.min(context.c.MAX_X, forwardX));
-                ai.aiTargetY = currentCY;
+                double laneY = getBestPressureLaneY(ai);
+                ai.aiTargetY = currentCY * 0.4 + laneY * 0.6;
             }
             ai.aiTargetAction = 0; // RUN
             ai.isBoosting = false;
@@ -1405,6 +1410,27 @@ public class TitanAiEngine {
             ai.aiTargetAction = 0;
         }
         return;
+    }
+
+    public double getBestPressureLaneY(Titan ai) {
+        int topCY = (int) (context.c.getI("goal.low.y") + context.c.getI("goal.low.height") / 2.0);
+        int midCY = (int) (context.c.getI("goal.hi.y") + context.c.getI("goal.hi.height") / 2.0);
+        int botCY = (int) (context.c.getI("goal.low2.y") + context.c.getI("goal.low.height") / 2.0);
+        int[] laneYs = new int[]{ topCY, midCY, botCY };
+        double forwardDir = (ai.team == TeamAffiliation.HOME) ? 1.0 : -1.0;
+        int bestLane = -1;
+        double bestSpeed = 1.0;
+        for (int L = 0; L < 3; L++) {
+            double spd = context.getLaneMinionSpeed(L, ai.team, 1.0, forwardDir);
+            if (spd > bestSpeed) {
+                bestSpeed = spd;
+                bestLane = L;
+            }
+        }
+        if (bestLane >= 0 && bestSpeed > 1.05) {
+            return laneYs[bestLane];
+        }
+        return ai.Y + ai.height / 2.0;
     }
 
     public boolean isPassPathBlocked(double x1, double y1, double x2, double y2, TeamAffiliation enemyTeam) {

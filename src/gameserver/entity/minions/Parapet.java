@@ -193,7 +193,8 @@ public class Parapet extends Entity implements Tickable, Collidable, Serializabl
 
     private void ensureParapetBonuses(GameEngine context, Titan t) {
         if (!context.effectPool.hasEffect(t, EffectId.DEFENSE)) {
-            context.effectPool.addUniqueEffect(new DefenseEffect(10000, t, 1.20), context);
+            double armorRatio = (context.c != null) ? context.c.GUARDIAN_PARAPET_DEFENSE_RATIO : 2.50;
+            context.effectPool.addUniqueEffect(new DefenseEffect(10000, t, armorRatio), context);
         }
         if (!context.effectPool.hasEffect(t, EffectId.SHOOT)) {
             context.effectPool.addUniqueEffect(new ShootEffect(10000, t, 1.20), context);
