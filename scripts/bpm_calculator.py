@@ -95,6 +95,8 @@ def solve_constrained_ols(X, y, feature_keys, bounds=DEFAULT_BOUNDS, enforce_cg_
 
     cg_idx = (feature_keys.index("goals") + 1) if "goals" in feature_keys else -1
     cg_ast_idx = (feature_keys.index("cg_assists") + 1) if "cg_assists" in feature_keys else -1
+    k_idx = (feature_keys.index("kills") + 1) if "kills" in feature_keys else -1
+    kast_idx = (feature_keys.index("killassists") + 1) if "killassists" in feature_keys else -1
 
     for _ in range(max_iter):
         # 1. Update intercept (unconstrained)
@@ -129,6 +131,13 @@ def solve_constrained_ols(X, y, feature_keys, bounds=DEFAULT_BOUNDS, enforce_cg_
                 excess = (beta[cg_idx] + beta[cg_ast_idx] - 3.0) / 2.0
                 beta[cg_idx] -= excess
                 beta[cg_ast_idx] -= excess
+
+        # 4. Enforce kills >= killassists (kpg >= kastpg)
+        if k_idx != -1 and kast_idx != -1:
+            if beta[k_idx] < beta[kast_idx]:
+                mid = (beta[k_idx] + beta[kast_idx]) / 2.0
+                beta[k_idx] = mid
+                beta[kast_idx] = mid
 
     # R-squared
     y_mean = sum(y) / n

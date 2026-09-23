@@ -1458,9 +1458,112 @@ function drawGameEnded(ctx) {
       }
     }
 
+    // Calculate TBPM for a given player in this match
+    const calculateGameTbpm = (targetEmail) => {
+      if (!game.stats || !game.stats.gamestats) return 0;
+      const getStat = (idx, altIdx) => {
+        const m = game.stats.gamestats[idx];
+        if (m && m[targetEmail] !== undefined) return Number(m[targetEmail]) || 0;
+        if (altIdx !== undefined) {
+          const a = game.stats.gamestats[altIdx];
+          if (a && a[targetEmail] !== undefined) return Number(a[targetEmail]) || 0;
+        }
+        return 0;
+      };
+
+      let targetIsGoalie = false;
+      if (game.clients && game.players) {
+        const cl = game.clients.find(c => c.email && c.email.toLowerCase() === targetEmail.toLowerCase());
+        if (cl && cl.selection) {
+          const pl = game.players[cl.selection - 1];
+          if (pl && pl.type && String(pl.type).toUpperCase() === 'GOALIE') targetIsGoalie = true;
+        }
+      }
+
+      if (targetIsGoalie) {
+        const cgSaves = getStat(18);
+        const cgConc = getStat(20);
+        const sgSaves = getStat(17);
+        const sgConc = getStat(19);
+        const blkG = getStat(4, 22);
+        const rebG = getStat(11, 25);
+        const stlG = getStat(3, 26);
+        const passG = getStat(5, 23);
+        const toG = getStat(8, 24);
+        const gold = getStat(15) + getStat(16);
+        const mana = getStat(21);
+
+        const cgTotal = cgSaves + cgConc;
+        const sgTotal = sgSaves + sgConc;
+        const cgGSAx = cgTotal * 0.344 - cgConc;
+        const sgGSAx = sgTotal * 0.899 - sgConc;
+        const netProt = cgGSAx * 1.50 + sgGSAx * 0.35;
+        const disr = (blkG - 0.005) * 0.05 + (rebG - 0.003) * 0.05 + stlG * 0.08 + passG * 0.02 - (toG - 0.002) * 0.06;
+        const econ = (gold > 0 ? (gold - 865) * 0.002 : 0) + (mana > 0 ? (mana - 662) * 0.0005 : 0);
+        return netProt + disr + econ;
+      } else {
+        const cpg = getStat(0);
+        const spg = getStat(1);
+        const gast = getStat(10);
+        const sgast = getStat(29);
+        const pass = getStat(5);
+        const reb = getStat(11);
+        const to = getStat(8);
+        const d = getStat(7);
+
+        const stl = getStat(3);
+        const blk = getStat(4);
+        const k = getStat(6);
+        const kast = getStat(9);
+
+        const obpm = (cpg - 0.76) * 1.50 
+                   + (spg - 4.68) * 0.32 
+                   + (gast - 0.24) * 1.50 
+                   + (sgast - 3.53) * 0.25 
+                   + (pass - 12.61) * 0.005 
+                   + (reb - 18.73) * 0.010 
+                   - (to - 8.27) * 0.08 
+                   - (d - 1.54) * 0.16;
+
+        const dbpm = (stl - 2.00) * 0.26 
+                   + (blk - 3.35) * 0.15 
+                   + (k - 0.91) * 0.10 
+                   + (kast - 0.46) * 0.10;
+
+        return obpm + dbpm;
+      }
+    };
+
+    // Determine the match MVP (highest TBPM across all players)
+    let maxTbpm = -Infinity;
+    let mvpEmail = null;
+    const allEmails = new Set();
+    if (game.clients) {
+      game.clients.forEach(c => { if (c.email) allEmails.add(c.email); });
+    }
+    if (game.stats && game.stats.gamestats) {
+      for (let i = 0; i < game.stats.gamestats.length; i++) {
+        const m = game.stats.gamestats[i];
+        if (m) {
+          Object.keys(m).forEach(k => allEmails.add(k));
+        }
+      }
+    }
+
+    allEmails.forEach(em => {
+      const score = calculateGameTbpm(em);
+      if (score > maxTbpm) {
+        maxTbpm = score;
+        mvpEmail = em;
+      }
+    });
+
+    const isUserMvp = email && mvpEmail && (email.toLowerCase() === mvpEmail.toLowerCase());
+
     ctx.save();
     const panelH = isGoalie ? 520 : 490;
     const panelY = isGoalie ? 395 : 405;
+
     ctx.fillStyle = 'rgba(10, 26, 20, 0.85)';
     ctx.fillRect(1920 / 2 - 320, panelY, 640, panelH);
     ctx.strokeStyle = '#ff7f11';
@@ -1471,6 +1574,21 @@ function drawGameEnded(ctx) {
     ctx.fillStyle = '#00ff00';
     ctx.textAlign = 'center';
     ctx.fillText('MATCH STATISTICS', 1920 / 2, panelY + 35);
+
+    // If the user earned the highest TBPM, display only an MVP star
+    if (isUserMvp) {
+      const starImg = AssetManager.images['star'];
+      const starSize = 24;
+      const titleWidth = ctx.measureText('MATCH STATISTICS').width;
+      const starX = 1920 / 2 + titleWidth / 2 + 10;
+      if (starImg) {
+        ctx.drawImage(starImg, starX, panelY + 17, starSize, starSize);
+      }
+      ctx.font = 'bold 16px Arial';
+      ctx.fillStyle = '#facc15';
+      ctx.textAlign = 'left';
+      ctx.fillText('MVP', starX + starSize + 4, panelY + 35);
+    }
 
     let statEntries = [];
     if (isGoalie) {

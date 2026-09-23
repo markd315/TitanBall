@@ -341,8 +341,8 @@ function renderAdvancedStatsPane() {
 
     dbpm = (Number(stlPg) - 2.00) * 0.26 
          + (Number(blkPg) - 3.35) * 0.15 
-         + (Number(kpg) - 0.91) * 0.010 
-         + (Number(kastPg) - 0.46) * 0.19;
+         + (Number(kpg) - 0.91) * 0.10 
+         + (Number(kastPg) - 0.46) * 0.10;
 
     tbpm = obpm + dbpm;
     tbpmStr = formatBpm(tbpm);
@@ -420,7 +420,7 @@ function renderAdvancedStatsPane() {
           <div class="stats-per-game" style="gap: 2px; flex-shrink: 1; min-width: 0; overflow: hidden;">
             <span class="metric-val" style="color: #38bdf8; font-size: 12px; font-weight: 700; cursor: help; white-space: nowrap;" title="OBPM = 1.50*(cpg - 0.76) + 0.32*(spg - 4.68) + 1.50*(gast/g - 0.24) + 0.25*(sgast/g - 3.53) + 0.005*(pass/g - 12.61) + 0.010*(reb/g - 18.73) - 0.08*(to/g - 8.27) - 0.16*(dpg - 1.54)">${hasOutfieldData ? formatBpm(obpm) : '—'}</span><span class="pg-unit" style="color: #38bdf8; font-weight: 700; font-size: 8.5px; cursor: help;" title="OBPM (Offensive Box Plus-Minus): Evaluates goals, assists, death penalties, passing, rebounds, and turnover deductions relative to single-game outfield baselines.">OBPM</span>
             <span style="color: #475569; margin: 0 1px; font-size: 10px;">·</span>
-            <span class="metric-val" style="color: #a7f3d0; font-size: 12px; font-weight: 700; cursor: help; white-space: nowrap;" title="DBPM = 0.26*(stl/g - 2.00) + 0.15*(blk/g - 3.35) + 0.010*(kpg - 0.91) + 0.19*(kast/g - 0.46)">${hasOutfieldData ? formatBpm(dbpm) : '—'}</span><span class="pg-unit" style="color: #a7f3d0; font-weight: 700; font-size: 8.5px; cursor: help;" title="DBPM (Defensive Box Plus-Minus): Evaluates steals, shots contested/blocked, kills, and kill assists relative to single-game outfield baselines.">DBPM</span>
+            <span class="metric-val" style="color: #a7f3d0; font-size: 12px; font-weight: 700; cursor: help; white-space: nowrap;" title="DBPM = 0.26*(stl/g - 2.00) + 0.15*(blk/g - 3.35) + 0.10*(kpg - 0.91) + 0.10*(kast/g - 0.46)">${hasOutfieldData ? formatBpm(dbpm) : '—'}</span><span class="pg-unit" style="color: #a7f3d0; font-weight: 700; font-size: 8.5px; cursor: help;" title="DBPM (Defensive Box Plus-Minus): Evaluates steals, shots contested/blocked, kills, and kill assists relative to single-game outfield baselines.">DBPM</span>
           </div>` : ''}
           ${showGoalie ? `
           <div class="stats-per-game" style="gap: 2px; flex-shrink: 0;">

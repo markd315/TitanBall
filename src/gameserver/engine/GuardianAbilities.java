@@ -701,7 +701,7 @@ public class GuardianAbilities implements Serializable {
         Set<String> purchased = (team == TeamAffiliation.HOME) ? context.homeGoaliePurchasedUpgrades : context.awayGoaliePurchasedUpgrades;
         boolean hemmedIn = purchased.contains("fortress.t6.hemmedin");
         int wWidth = hemmedIn ? 16 : 11;
-        int wHeight = hemmedIn ? 162 : 108;
+        int wHeight = hemmedIn ? 122 : 81;
         int hp = 999999;
 
         int topHoopCY = (int) (context.c.getI("goal.low.y") + context.c.getI("goal.low.height") / 2.0);
@@ -753,7 +753,7 @@ public class GuardianAbilities implements Serializable {
 
     private void applyHemmedIn(GameEngine context, Titan goalie) {
         int wWidth = 16;
-        int wHeight = 162;
+        int wHeight = 122;
         int hp = 999999;
         int topHoopCY = (int) (context.c.getI("goal.low.y") + context.c.getI("goal.low.height") / 2.0);
         int botHoopCY = (int) (context.c.getI("goal.low2.y") + context.c.getI("goal.low.height") / 2.0);
@@ -1203,7 +1203,7 @@ public class GuardianAbilities implements Serializable {
                 if (purchased.contains("empowerment.t4.forecheck") && t.X >= 680 && t.X <= 1368) {
                     stealBonus = context.c.getD("guardian.forecheck.bonus");
                 }
-                double biggermodelsEnemyComp = enemyPurchased.contains("fortress.t3.biggermodels") ? (context.c.hasKey("guardian.biggermodels.compensation") ? context.c.getD("guardian.biggermodels.compensation") : 3.0) : 0.0;
+                double biggermodelsEnemyComp = enemyPurchased.contains("fortress.t3.biggermodels") ? ((context.c != null) ? context.c.GUARDIAN_BIGGERMODELS_COMPENSATION : 7.0) : 0.0;
                 double flatMasteryBonus = stealCount * context.c.getI("masteries.stealRadius.flat");
                 t.stealRad = (int) (t.baseStealRad + flatMasteryBonus + heistBonus + stealBonus + biggermodelsEnemyComp);
                 t.damageFactor = t.baseDamageFactor * (1.0 + damageCount * (context.c.getD("masteries.damage.mult") - 1.0));
@@ -1243,10 +1243,12 @@ public class GuardianAbilities implements Serializable {
     }
 
     private void scaleAlliedTitans(GameEngine context) {
+        double scale = (context.c != null)
+                ? context.c.GUARDIAN_BIGGERMODELS_SCALE : 1.25;
         for (Titan t : context.players) {
             if (t != null && t.team == team && t.getType() != TitanType.GOALIE && t != context.players[0] && t != context.players[1] && !context.isGoalie(t)) {
-                t.width = (int) (70 * 1.25);
-                t.height = (int) (70 * 1.25);
+                t.width = (int) (70 * scale);
+                t.height = (int) (70 * scale);
                 t.centerDist = (t.width + t.height) / 4;
             }
         }

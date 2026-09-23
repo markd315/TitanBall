@@ -213,10 +213,10 @@ public class TitanPresetMenu {
     ));
 
     public static final List<TitanPreset> TOPTHREE_GOALIE_PRESETS = Collections.unmodifiableList(Arrays.asList(
-            // GOALIE: Health (50.07%), Speed (50.06%), Boost (50.06%)
+            // GOALIE: Boost (54.50%), Health (52.38%), Speed (49.99%)
             new TitanPreset("TOPTHREE_GOALIE", "Top-3 Goalie", TitanType.GOALIE,
-                    new int[]{0, 3, 10}, true,
-                    "Chosen from preliminary data: Health 50.07%, Speed 50.06%, Boost 50.06%")
+                    new int[]{10, 0, 3}, true,
+                    "Chosen from preliminary data: Boost 54.50%, Health 52.38%, Speed 49.99%")
     ));
 
     // Combined menus containing both curated and data-driven presets
