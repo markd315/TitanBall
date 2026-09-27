@@ -388,7 +388,10 @@ public class TitanPathfinder {
      * and performs axis-split collision checks.
      */
     public static void executeProgrammedMovement(GameEngine context, Titan t) {
-        if (!t.programmed) return;
+        if (!t.programmed) {
+            t.pathingToBall = false;
+            return;
+        }
 
         // Depenetration check: if titan is currently overlapping a solid entity, push out immediately
         if (context != null && context.allSolids != null && t.collidesSolid(context, context.allSolids)) {
@@ -407,27 +410,35 @@ public class TitanPathfinder {
             return;
         }
 
-        // Ball following sentinel check
-        if (t.marchingOrderX == -1 && t.marchingOrderY == -1) {
+        int targetX;
+        int targetY;
+
+        // Ball following / direct ball pathing:
+        // Independent of A*, path directly at the ball coordinates every tick using naive straight-line movement.
+        if (t.pathingToBall || (t.marchingOrderX == -1 && t.marchingOrderY == -1)) {
+            t.pathingToBall = true;
+            t.pathWaypoints = null; // Bypass A* waypoints completely
             if (context.ball != null) {
                 t.marchingOrderX = (int) (context.ball.X + context.ball.centerDist);
                 t.marchingOrderY = (int) (context.ball.Y + context.ball.centerDist);
+                targetX = t.marchingOrderX;
+                targetY = t.marchingOrderY;
             } else {
                 return;
             }
-        }
+        } else {
+            // Check path invalidations
+            if (shouldInvalidatePath(t)) {
+                recalculateTitanPath(context, t);
+            }
 
-        // Check path invalidations
-        if (shouldInvalidatePath(t)) {
-            recalculateTitanPath(context, t);
-        }
-
-        // Target waypoint coords
-        int targetX = t.marchingOrderX;
-        int targetY = t.marchingOrderY;
-        if (t.pathWaypoints != null && t.pathWaypointIdx < t.pathWaypoints.length) {
-            targetX = t.pathWaypoints[t.pathWaypointIdx][0];
-            targetY = t.pathWaypoints[t.pathWaypointIdx][1];
+            // Target waypoint coords
+            targetX = t.marchingOrderX;
+            targetY = t.marchingOrderY;
+            if (t.pathWaypoints != null && t.pathWaypointIdx < t.pathWaypoints.length) {
+                targetX = t.pathWaypoints[t.pathWaypointIdx][0];
+                targetY = t.pathWaypoints[t.pathWaypointIdx][1];
+            }
         }
 
         double titanCenterX = t.X + t.width / 2.0;
@@ -486,7 +497,14 @@ public class TitanPathfinder {
         double currentCenterY = t.Y + t.height / 2.0;
         double distToWp = Math.hypot(targetX - currentCenterX, targetY - currentCenterY);
 
-        if (t.pathWaypoints != null && t.pathWaypointIdx < t.pathWaypoints.length) {
+        if (t.pathingToBall) {
+            // Stop direct ball pathing if self or a friendly teammate gains possession
+            if (t.possession == 1 || (context.titanInPossession().isPresent() && context.titanInPossession().get().team == t.team)) {
+                t.programmed = false;
+                t.pathingToBall = false;
+                t.invalidatePath();
+            }
+        } else if (t.pathWaypoints != null && t.pathWaypointIdx < t.pathWaypoints.length) {
             if (distToWp <= 10.0 || atLocation) {
                 t.pathWaypointIdx++;
                 if (t.pathWaypointIdx >= t.pathWaypoints.length) {

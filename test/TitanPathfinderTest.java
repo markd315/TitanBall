@@ -229,4 +229,108 @@ public class TitanPathfinderTest {
         Assert.assertTrue("Titan must have made progress or computed a valid path",
                 t.X > initialX || (t.pathWaypoints != null && t.pathWaypoints.length > 0));
     }
+
+    @Test
+    public void testRightClickNearEnemyBallCarrierEntersDirectBallPathing() {
+        GameEngine engine = createTestGame();
+        Titan player = engine.players[2]; // HOME team
+        player.team = TeamAffiliation.HOME;
+        player.X = 400;
+        player.Y = 500;
+        player.possession = 0;
+
+        Titan enemy = engine.players[3]; // AWAY team
+        enemy.team = TeamAffiliation.AWAY;
+        enemy.X = 450;
+        enemy.Y = 500;
+        enemy.possession = 1;
+
+        // Position ball on enemy carrier
+        engine.updateBallIfPossessed(enemy, 4);
+
+        // Ensure allSolids has players
+        engine.allSolids = new Entity[engine.players.length];
+        System.arraycopy(engine.players, 0, engine.allSolids, 0, engine.players.length);
+
+        // Right-click directly near enemy ball carrier
+        ClientPacket packet = new ClientPacket();
+        packet.MV_CLICK = true;
+        packet.posX = (int) (enemy.X + enemy.width / 2.0);
+        packet.posY = (int) (enemy.Y + enemy.height / 2.0);
+        packet.camX = 0;
+        packet.camY = 0;
+
+        Assert.assertTrue("Click must register as near enemy ball carrier",
+                engine.isClickNearEnemyBallCarrier(player, packet.posX, packet.posY));
+
+        engine.processProgramming(player, packet);
+
+        Assert.assertTrue("Player must enter programmed state", player.programmed);
+        Assert.assertTrue("Player must enter pathingToBall state", player.pathingToBall);
+        Assert.assertEquals(-1, player.marchingOrderX);
+        Assert.assertEquals(-1, player.marchingOrderY);
+
+        // Step movement: should use naive pathing (no A* waypoints) directly toward ball
+        TitanPathfinder.executeProgrammedMovement(engine, player);
+        Assert.assertNull("Direct ball pathing must bypass A* waypoints", player.pathWaypoints);
+        Assert.assertTrue("Player must advance towards enemy ball carrier", player.X > 400);
+
+        // Step until colliding with enemy carrier
+        for (int i = 0; i < 30; i++) {
+            TitanPathfinder.executeProgrammedMovement(engine, player);
+        }
+
+        // Must be in steal range
+        Assert.assertTrue("Player must reach steal range directly touching enemy",
+                engine.isWithinStealRange(player, enemy));
+
+        // Steal must succeed
+        boolean stolen = gameserver.engine.TitanAbilitiesSupport.stealBall(new gameserver.engine.AbilityStrategy(engine, player));
+        Assert.assertTrue("Steal should succeed from enemy ball carrier", stolen);
+        Assert.assertEquals(1, player.possession);
+        Assert.assertEquals(0, enemy.possession);
+
+        // Movement should stop once player possesses the ball
+        TitanPathfinder.executeProgrammedMovement(engine, player);
+        Assert.assertFalse("Programmed movement should end after obtaining possession", player.programmed);
+        Assert.assertFalse("pathingToBall should reset", player.pathingToBall);
+    }
+
+    @Test
+    public void testRightClickFarFromEnemyCarrierUsesAStar() {
+        GameEngine engine = createTestGame();
+        Titan player = engine.players[2];
+        player.team = TeamAffiliation.HOME;
+        player.X = 200;
+        player.Y = 300;
+
+        Titan enemy = engine.players[3];
+        enemy.team = TeamAffiliation.AWAY;
+        enemy.X = 800;
+        enemy.Y = 300;
+        enemy.possession = 1;
+        engine.updateBallIfPossessed(enemy, 4);
+
+        // Right-click far away from enemy (empty field)
+        ClientPacket packet = new ClientPacket();
+        packet.MV_CLICK = true;
+        packet.posX = 300;
+        packet.posY = 500;
+        packet.camX = 0;
+        packet.camY = 0;
+
+        Assert.assertFalse("Click far away must NOT trigger direct ball pathing",
+                engine.isClickNearEnemyBallCarrier(player, packet.posX, packet.posY));
+
+        engine.processProgramming(player, packet);
+
+        Assert.assertTrue(player.programmed);
+        Assert.assertFalse("pathingToBall must be false for normal move clicks", player.pathingToBall);
+        Assert.assertEquals(300, player.marchingOrderX);
+        Assert.assertEquals(500, player.marchingOrderY);
+
+        TitanPathfinder.executeProgrammedMovement(engine, player);
+        Assert.assertNotNull("Standard move clicks must compute A* waypoints", player.pathWaypoints);
+    }
 }
+

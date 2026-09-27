@@ -1436,6 +1436,7 @@ public class GameEngine extends Game {
 
             if (controlsHeld.RIGHT == 1 || controlsHeld.UP == 1 || controlsHeld.LEFT == 1 || controlsHeld.DOWN == 1) {
                 t.programmed = false;
+                t.pathingToBall = false;
             }
             if (controlsHeld.RIGHT == 1) {
                 t.runLeft = 0;
@@ -1527,17 +1528,50 @@ public class GameEngine extends Game {
         }
     }
 
-    protected void processProgramming(Titan t, ClientPacket request) {
+    public boolean isClickNearEnemyBallCarrier(Titan self, double clickX, double clickY) {
+        if (this.ball == null) return false;
+        Optional<Titan> possessorOpt = this.titanInPossession();
+        if (possessorOpt.isEmpty()) return false;
+        Titan enemy = possessorOpt.get();
+        if (enemy.team == self.team) return false;
+        if (this.effectPool != null && this.effectPool.hasEffect(enemy, gameserver.effects.EffectId.DEAD)) return false;
+        if (!this.isTitanVisibleTo(self, enemy) && !this.ballVisible) return false;
+
+        double enemyCenterX = enemy.X + enemy.width / 2.0;
+        double enemyCenterY = enemy.Y + enemy.height / 2.0;
+        double ballCenterX = this.ball.X + this.ball.centerDist;
+        double ballCenterY = this.ball.Y + this.ball.centerDist;
+
+        double distEnemy = Math.hypot(clickX - enemyCenterX, clickY - enemyCenterY);
+        double distBall = Math.hypot(clickX - ballCenterX, clickY - ballCenterY);
+
+        boolean inEnemyBounds = (clickX >= enemy.X - 25 && clickX <= enemy.X + enemy.width + 25 &&
+                                 clickY >= enemy.Y - 25 && clickY <= enemy.Y + enemy.height + 25);
+
+        return distEnemy <= 80.0 || distBall <= 80.0 || inEnemyBounds;
+    }
+
+    public void processProgramming(Titan t, ClientPacket request) {
         if (request.MV_BALL) {
             t.programmed = true;
+            t.pathingToBall = true;
             t.marchingOrderX = -1;
             t.marchingOrderY = -1;
             t.invalidatePath();
         }
         if (request.MV_CLICK) {
             t.programmed = true;
-            t.marchingOrderX = request.posX + request.camX;
-            t.marchingOrderY = request.posY + request.camY;
+            int clickX = request.posX + request.camX;
+            int clickY = request.posY + request.camY;
+            if (isClickNearEnemyBallCarrier(t, clickX, clickY)) {
+                t.pathingToBall = true;
+                t.marchingOrderX = -1;
+                t.marchingOrderY = -1;
+            } else {
+                t.pathingToBall = false;
+                t.marchingOrderX = clickX;
+                t.marchingOrderY = clickY;
+            }
             t.invalidatePath();
         }
     }

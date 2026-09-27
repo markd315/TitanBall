@@ -243,6 +243,7 @@ public class PlayerInputEngine {
 
             if (controlsHeld.RIGHT == 1 || controlsHeld.UP == 1 || controlsHeld.LEFT == 1 || controlsHeld.DOWN == 1) {
                 t.programmed = false;
+                t.pathingToBall = false;
             }
             if (controlsHeld.RIGHT == 1) {
                 t.runLeft = 0;
@@ -335,14 +336,24 @@ public class PlayerInputEngine {
     public void processProgramming(Titan t, ClientPacket request) {
         if (request.MV_BALL) {
             t.programmed = true;
+            t.pathingToBall = true;
             t.marchingOrderX = -1;
             t.marchingOrderY = -1;
             t.invalidatePath();
         }
         if (request.MV_CLICK) {
             t.programmed = true;
-            t.marchingOrderX = request.posX + request.camX;
-            t.marchingOrderY = request.posY + request.camY;
+            int clickX = request.posX + request.camX;
+            int clickY = request.posY + request.camY;
+            if (context.isClickNearEnemyBallCarrier(t, clickX, clickY)) {
+                t.pathingToBall = true;
+                t.marchingOrderX = -1;
+                t.marchingOrderY = -1;
+            } else {
+                t.pathingToBall = false;
+                t.marchingOrderX = clickX;
+                t.marchingOrderY = clickY;
+            }
             t.invalidatePath();
         }
     }

@@ -329,20 +329,20 @@ function renderAdvancedStatsPane() {
   let obpm = 0, dbpm = 0, tbpm = 0, tbpmStr = '0.00', tbpmTier = getBpmTier(0);
   const hasOutfieldData = is4v4 && !isGoalieFiltered && outfieldMatches > 0;
   if (hasOutfieldData) {
-    // Model C: Offensive production (with death uptime penalty) + Defensive disruption (steals, blocks, kills, assists)
-    obpm = (Number(cpg) - 0.76) * 1.50 
-         + (Number(spg) - 4.68) * 0.32 
-         + (Number(gastPg) - 0.24) * 1.50 
-         + (Number(sgastPg) - 3.53) * 0.25 
+    // Model C (Calibrated from 38,347 Player-Games):
+    obpm = (Number(cpg) - 0.75) * 1.500 
+         + (Number(spg) - 4.87) * 0.352 
+         + (Number(gastPg) - 0.22) * 1.500 
+         + (Number(sgastPg) - 3.63) * 0.300 
          + (Number(passPg) - 12.61) * 0.005 
-         + (Number(rebPg) - 18.73) * 0.010 
-         - (Number(toPg) - 8.27) * 0.08 
-         - (Number(dpg) - 1.54) * 0.16;
+         + (Number(rebPg) - 19.00) * 0.010 
+         - (Number(toPg) - 7.98) * 0.060 
+         - (Number(dpg) - 1.60) * 0.143;
 
-    dbpm = (Number(stlPg) - 2.00) * 0.26 
-         + (Number(blkPg) - 3.35) * 0.15 
-         + (Number(kpg) - 0.91) * 0.10 
-         + (Number(kastPg) - 0.46) * 0.10;
+    dbpm = (Number(stlPg) - 1.89) * 0.210 
+         + (Number(blkPg) - 3.13) * 0.187 
+         + (Number(kpg) - 0.93) * 0.128 
+         + (Number(kastPg) - 0.45) * 0.128;
 
     tbpm = obpm + dbpm;
     tbpmStr = formatBpm(tbpm);
