@@ -75,28 +75,69 @@ public class Box extends Coordinates   {
                 if (collCheck instanceof Titan tc && tc.getType() == TitanType.GOALIE) {
                     double xOffset = (collCheck.width - context.GOALIE_SOLID_W) / 2.0;
                     checkBounds = new gameserver.engine.CollisionMath.Bounds(
-                            (int)collCheck.X + xOffset,
-                            (int)collCheck.Y,
+                            collCheck.X + xOffset,
+                            collCheck.Y,
                             context.GOALIE_SOLID_W,
                             context.GOALIE_SOLID_H
                     );
                 } else if (collCheck instanceof Titan) {
                     checkBounds = new gameserver.engine.CollisionMath.Bounds(
-                            (int)collCheck.X + context.SPRITE_X_EMPTY/2.0,
-                            (int)collCheck.Y + context.SPRITE_Y_EMPTY/2.0,
+                            collCheck.X + context.SPRITE_X_EMPTY/2.0,
+                            collCheck.Y + context.SPRITE_Y_EMPTY/2.0,
                             collCheck.width - context.SPRITE_X_EMPTY,
                             collCheck.height - context.SPRITE_Y_EMPTY);
                 } else if (collCheck instanceof gameserver.entity.minions.Parapet p) {
                     if (this instanceof Titan t && t.team != p.team) {
                         checkBounds = p.getEnemySolidBounds();
                     } else {
-                        checkBounds = new gameserver.engine.CollisionMath.Bounds((int)collCheck.X, (int)collCheck.Y, collCheck.width, collCheck.height);
+                        checkBounds = new gameserver.engine.CollisionMath.Bounds(collCheck.X, collCheck.Y, collCheck.width, collCheck.height);
                     }
                 } else {
-                    checkBounds = new gameserver.engine.CollisionMath.Bounds((int)collCheck.X, (int)collCheck.Y, collCheck.width, collCheck.height);
+                    checkBounds = new gameserver.engine.CollisionMath.Bounds(collCheck.X, collCheck.Y, collCheck.width, collCheck.height);
                 }
 
                 if (cmpBounds.intersects(checkBounds)) {
+                    if (this instanceof Titan && collCheck instanceof Titan) {
+                        gameserver.engine.CollisionMath.Bounds curBounds;
+                        if (this instanceof Titan t && t.getType() == TitanType.GOALIE) {
+                            double xOffset = (this.width - context.GOALIE_SOLID_W) / 2.0;
+                            curBounds = new gameserver.engine.CollisionMath.Bounds(
+                                    this.X + xOffset,
+                                    this.Y,
+                                    context.GOALIE_SOLID_W,
+                                    context.GOALIE_SOLID_H
+                            );
+                        } else {
+                            curBounds = new gameserver.engine.CollisionMath.Bounds(
+                                    this.X + context.SPRITE_X_EMPTY / 2.0,
+                                    this.Y + context.SPRITE_Y_EMPTY / 2.0,
+                                    this.width - context.SPRITE_X_EMPTY,
+                                    this.height - context.SPRITE_Y_EMPTY
+                            );
+                        }
+
+                        if (curBounds.intersects(checkBounds)) {
+                            double curOverlapX = Math.min(curBounds.minX() + curBounds.width(), checkBounds.minX() + checkBounds.width())
+                                    - Math.max(curBounds.minX(), checkBounds.minX());
+                            double curOverlapY = Math.min(curBounds.minY() + curBounds.height(), checkBounds.minY() + checkBounds.height())
+                                    - Math.max(curBounds.minY(), checkBounds.minY());
+
+                            double newOverlapX = Math.min(cmpBounds.minX() + cmpBounds.width(), checkBounds.minX() + checkBounds.width())
+                                    - Math.max(cmpBounds.minX(), checkBounds.minX());
+                            double newOverlapY = Math.min(cmpBounds.minY() + cmpBounds.height(), checkBounds.minY() + checkBounds.height())
+                                    - Math.max(cmpBounds.minY(), checkBounds.minY());
+
+                            boolean separatingX = (xd != 0 && newOverlapX < curOverlapX - 1e-4);
+                            boolean separatingY = (yd != 0 && newOverlapY < curOverlapY - 1e-4);
+
+                            if ((xd != 0 && separatingX && newOverlapY <= curOverlapY + 1e-4) ||
+                                (yd != 0 && separatingY && newOverlapX <= curOverlapX + 1e-4) ||
+                                (separatingX && separatingY)) {
+                                continue;
+                            }
+                        }
+                    }
+
                     if (performIntersection(context, collCheck)){
                         return Optional.of(collCheck);
                     }

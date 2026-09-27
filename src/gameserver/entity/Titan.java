@@ -90,6 +90,8 @@ public class Titan extends Entity   {
     @JsonIgnore
     public transient int aiTargetAction = 0;
     @JsonIgnore
+    public transient TitanState aiPrevActionState = TitanState.IDLE;
+    @JsonIgnore
     public transient UUID aiTargetTitanId = null;
     @JsonIgnore
     public transient String aiGoalieBuildName = null;

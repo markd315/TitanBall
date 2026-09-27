@@ -739,6 +739,7 @@ public class GameEngine extends Game {
             }
             teamIndex++;
         }
+        depenetrateTitans();
     }
 
     protected void setPosition(Titan t, int slotIndex, int slots) {
@@ -747,67 +748,124 @@ public class GameEngine extends Game {
                 t.X = MID_HOME;
                 t.Y = MID_WING_HOME;
             }
-        }
-        if (slots == 2) {
+        } else if (slots == 2) {
             if (slotIndex == 0) {
                 t.X = MID_HOME;
                 t.Y = TOP_WING_HOME;
-            }
-            if (slotIndex == 1) {
+            } else if (slotIndex == 1) {
                 t.X = MID_HOME;
                 t.Y = BOT_WING_HOME;
             }
-        }
-        if (slots == 3) {
+        } else if (slots == 3) {
             if (slotIndex == 0) {
                 t.X = MID_HOME;
                 t.Y = TOP_WING_HOME;
-            }
-            if (slotIndex == 1) {
+            } else if (slotIndex == 1) {
                 t.X = MID_HOME;
                 t.Y = MID_WING_HOME;
-            }
-            if (slotIndex == 2) {
+            } else if (slotIndex == 2) {
                 t.X = MID_HOME;
                 t.Y = BOT_WING_HOME;
             }
-        }
-        if (slots == 4) {
+        } else if (slots == 4) {
             if (slotIndex == 0) {
                 t.X = MID_HOME;
                 t.Y = TOP_WING_HOME;
-            }
-            if (slotIndex == 1) {
+            } else if (slotIndex == 1) {
                 t.X = MID_HOME;
                 t.Y = MID_WING_HOME;
-            }
-            if (slotIndex == 2) {
+            } else if (slotIndex == 2) {
                 t.X = MID_HOME;
                 t.Y = BOT_WING_HOME;
-            }
-            if (slotIndex >= 3) {
+            } else if (slotIndex >= 3) {
                 t.X = DEFENDER_HOME;
                 t.Y = MID_WING_HOME;
             }
-        }
-        if (slots >= 5) {
+        } else if (slots == 5) {
             if (slotIndex == 0) {
                 t.X = MID_HOME;
                 t.Y = TOP_WING_HOME;
-            }
-            if (slotIndex == 1) {
+            } else if (slotIndex == 1) {
                 t.X = MID_HOME;
                 t.Y = MID_WING_HOME;
-            }
-            if (slotIndex == 2) {
+            } else if (slotIndex == 2) {
                 t.X = MID_HOME;
                 t.Y = BOT_WING_HOME;
-            }
-            if (slotIndex == 3) {
+            } else if (slotIndex == 3) {
                 t.X = DEFENDER_HOME;
                 t.Y = TOP_WING_HOME;
+            } else if (slotIndex >= 4) {
+                t.X = DEFENDER_HOME;
+                t.Y = BOT_WING_HOME;
             }
-            if (slotIndex >= 4) {
+        } else if (slots == 6) {
+            if (slotIndex == 0) {
+                t.X = MID_HOME;
+                t.Y = TOP_WING_HOME;
+            } else if (slotIndex == 1) {
+                t.X = MID_HOME;
+                t.Y = MID_WING_HOME;
+            } else if (slotIndex == 2) {
+                t.X = MID_HOME;
+                t.Y = BOT_WING_HOME;
+            } else if (slotIndex == 3) {
+                t.X = DEFENDER_HOME;
+                t.Y = TOP_WING_HOME;
+            } else if (slotIndex == 4) {
+                t.X = DEFENDER_HOME;
+                t.Y = MID_WING_HOME;
+            } else if (slotIndex >= 5) {
+                t.X = DEFENDER_HOME;
+                t.Y = BOT_WING_HOME;
+            }
+        } else if (slots == 7) {
+            int midX = (DEFENDER_HOME + MID_HOME) / 2;
+            if (slotIndex == 0) {
+                t.X = MID_HOME;
+                t.Y = TOP_WING_HOME;
+            } else if (slotIndex == 1) {
+                t.X = FW_HOME;
+                t.Y = MID_WING_HOME;
+            } else if (slotIndex == 2) {
+                t.X = MID_HOME;
+                t.Y = BOT_WING_HOME;
+            } else if (slotIndex == 3) {
+                t.X = midX;
+                t.Y = T_CIRCLE_WING_HOME;
+            } else if (slotIndex == 4) {
+                t.X = midX;
+                t.Y = B_CIRCLE_WING_HOME;
+            } else if (slotIndex == 5) {
+                t.X = DEFENDER_HOME;
+                t.Y = TOP_WING_HOME;
+            } else if (slotIndex >= 6) {
+                t.X = DEFENDER_HOME;
+                t.Y = BOT_WING_HOME;
+            }
+        } else {
+            int midX = (DEFENDER_HOME + MID_HOME) / 2;
+            if (slotIndex == 0) {
+                t.X = MID_HOME;
+                t.Y = TOP_WING_HOME;
+            } else if (slotIndex == 1) {
+                t.X = FW_HOME;
+                t.Y = MID_WING_HOME;
+            } else if (slotIndex == 2) {
+                t.X = MID_HOME;
+                t.Y = BOT_WING_HOME;
+            } else if (slotIndex == 3) {
+                t.X = midX;
+                t.Y = T_CIRCLE_WING_HOME;
+            } else if (slotIndex == 4) {
+                t.X = midX;
+                t.Y = B_CIRCLE_WING_HOME;
+            } else if (slotIndex == 5) {
+                t.X = DEFENDER_HOME;
+                t.Y = TOP_WING_HOME;
+            } else if (slotIndex == 6) {
+                t.X = DEFENDER_HOME;
+                t.Y = MID_WING_HOME;
+            } else if (slotIndex >= 7) {
                 t.X = DEFENDER_HOME;
                 t.Y = BOT_WING_HOME;
             }
@@ -1773,6 +1831,7 @@ public class GameEngine extends Game {
                 if (t.actionState == Titan.TitanState.STEAL) steal(t);
                 checkAndExecuteQueuedShot(t);
             }
+            depenetrateTitans();
             yourPlayerTactics();
         }
         if (ballVisible) {
@@ -1886,6 +1945,132 @@ public class GameEngine extends Game {
                     t.invalidatePath();
                 }
             }
+        }
+    }
+
+    public void depenetrateTitans() {
+        if (players == null || players.length < 2) return;
+
+        for (int pass = 0; pass < 4; pass++) {
+            boolean anyOverlap = false;
+
+            for (int i = 0; i < players.length; i++) {
+                Titan t1 = players[i];
+                if (t1 == null || t1.health <= 0 || (effectPool != null && effectPool.hasEffect(t1, EffectId.DEAD))) continue;
+
+                double t1MinX, t1MinY, t1W, t1H;
+                if (t1.getType() == TitanType.GOALIE) {
+                    double xOffset = (t1.width - GOALIE_SOLID_W) / 2.0;
+                    t1MinX = t1.X + xOffset;
+                    t1MinY = t1.Y;
+                    t1W = GOALIE_SOLID_W;
+                    t1H = GOALIE_SOLID_H;
+                } else {
+                    t1MinX = t1.X + SPRITE_X_EMPTY / 2.0;
+                    t1MinY = t1.Y + SPRITE_Y_EMPTY / 2.0;
+                    t1W = t1.width - SPRITE_X_EMPTY;
+                    t1H = t1.height - SPRITE_Y_EMPTY;
+                }
+                double t1MaxX = t1MinX + t1W;
+                double t1MaxY = t1MinY + t1H;
+
+                for (int j = i + 1; j < players.length; j++) {
+                    Titan t2 = players[j];
+                    if (t2 == null || t2.health <= 0 || (effectPool != null && effectPool.hasEffect(t2, EffectId.DEAD))) continue;
+
+                    double t2MinX, t2MinY, t2W, t2H;
+                    if (t2.getType() == TitanType.GOALIE) {
+                        double xOffset = (t2.width - GOALIE_SOLID_W) / 2.0;
+                        t2MinX = t2.X + xOffset;
+                        t2MinY = t2.Y;
+                        t2W = GOALIE_SOLID_W;
+                        t2H = GOALIE_SOLID_H;
+                    } else {
+                        t2MinX = t2.X + SPRITE_X_EMPTY / 2.0;
+                        t2MinY = t2.Y + SPRITE_Y_EMPTY / 2.0;
+                        t2W = t2.width - SPRITE_X_EMPTY;
+                        t2H = t2.height - SPRITE_Y_EMPTY;
+                    }
+                    double t2MaxX = t2MinX + t2W;
+                    double t2MaxY = t2MinY + t2H;
+
+                    if (t1MinX < t2MaxX && t1MaxX > t2MinX && t1MinY < t2MaxY && t1MaxY > t2MinY) {
+                        anyOverlap = true;
+                        double overlapLeft = t1MaxX - t2MinX;
+                        double overlapRight = t2MaxX - t1MinX;
+                        double overlapTop = t1MaxY - t2MinY;
+                        double overlapBottom = t2MaxY - t1MinY;
+
+                        double minOverlapX = Math.min(overlapLeft, overlapRight);
+                        double minOverlapY = Math.min(overlapTop, overlapBottom);
+
+                        boolean goalie1 = (t1.getType() == TitanType.GOALIE);
+                        boolean goalie2 = (t2.getType() == TitanType.GOALIE);
+
+                        double pushX = 0;
+                        double pushY = 0;
+
+                        if (Math.abs(t1.X - t2.X) < 0.001 && Math.abs(t1.Y - t2.Y) < 0.001) {
+                            pushX = 0;
+                            pushY = t1H + 2.0;
+                        } else if (minOverlapX < minOverlapY) {
+                            if (overlapLeft < overlapRight) {
+                                pushX = -(overlapLeft + 1.0);
+                            } else {
+                                pushX = (overlapRight + 1.0);
+                            }
+                        } else {
+                            if (overlapTop < overlapBottom) {
+                                pushY = -(overlapTop + 1.0);
+                            } else {
+                                pushY = (overlapBottom + 1.0);
+                            }
+                        }
+
+                        if (goalie1 && !goalie2) {
+                            double newX = Math.max(c.MIN_X, Math.min(c.MAX_X - t2.width, t2.X - pushX));
+                            double newY = Math.max(c.MIN_Y, Math.min(c.MAX_Y - t2.height, t2.Y - pushY));
+                            t2.setX(newX);
+                            t2.setY(newY);
+                            if (t2.programmed) t2.invalidatePath();
+                        } else if (goalie2 && !goalie1) {
+                            double newX = Math.max(c.MIN_X, Math.min(c.MAX_X - t1.width, t1.X + pushX));
+                            double newY = Math.max(c.MIN_Y, Math.min(c.MAX_Y - t1.height, t1.Y + pushY));
+                            t1.setX(newX);
+                            t1.setY(newY);
+                            if (t1.programmed) t1.invalidatePath();
+                        } else {
+                            double halfPushX = pushX / 2.0;
+                            double halfPushY = pushY / 2.0;
+
+                            double new1X = Math.max(c.MIN_X, Math.min(c.MAX_X - t1.width, t1.X + halfPushX));
+                            double actualDelta1X = new1X - t1.X;
+                            double new2X = Math.max(c.MIN_X, Math.min(c.MAX_X - t2.width, t2.X + (actualDelta1X - pushX)));
+                            double actualDelta2X = new2X - t2.X;
+                            if (actualDelta2X != actualDelta1X - pushX) {
+                                new1X = Math.max(c.MIN_X, Math.min(c.MAX_X - t1.width, t1.X + pushX + actualDelta2X));
+                            }
+
+                            double new1Y = Math.max(c.MIN_Y, Math.min(c.MAX_Y - t1.height, t1.Y + halfPushY));
+                            double actualDelta1Y = new1Y - t1.Y;
+                            double new2Y = Math.max(c.MIN_Y, Math.min(c.MAX_Y - t2.height, t2.Y + (actualDelta1Y - pushY)));
+                            double actualDelta2Y = new2Y - t2.Y;
+                            if (actualDelta2Y != actualDelta1Y - pushY) {
+                                new1Y = Math.max(c.MIN_Y, Math.min(c.MAX_Y - t1.height, t1.Y + pushY + actualDelta2Y));
+                            }
+
+                            t1.setX(new1X);
+                            t1.setY(new1Y);
+                            t2.setX(new2X);
+                            t2.setY(new2Y);
+
+                            if (t1.programmed) t1.invalidatePath();
+                            if (t2.programmed) t2.invalidatePath();
+                        }
+                    }
+                }
+            }
+            if (!anyOverlap) break;
         }
     }
 
@@ -2441,20 +2626,22 @@ public class GameEngine extends Game {
         int minDelay = (options != null) ? options.getAiReactionTimeMinMs(isGoalie, goalieRatio) : (isGoalie ? (int) Math.round(1200 * goalieRatio) : 1200);
         int maxDelay = (options != null) ? options.getAiReactionTimeMaxMs(isGoalie, goalieRatio) : (isGoalie ? (int) Math.round(1700 * goalieRatio) : 1700);
 
-        // 2. Abilities check (Independent of movement reaction timer - does not reset decision timer)
-        tryUseAbilities(ai);
-        if (ai.actionState != Titan.TitanState.IDLE) {
-            return;
+        // Transition from cast lag or action state back to IDLE -> immediately re-evaluate
+        if (ai.actionState == Titan.TitanState.IDLE &&
+                (ai.aiPrevActionState == Titan.TitanState.A1 || ai.aiPrevActionState == Titan.TitanState.A2 || ai.aiPrevActionState == Titan.TitanState.STEAL)) {
+            ai.aiReactionDelayMs = 0;
         }
+        ai.aiPrevActionState = ai.actionState;
 
-        // 3. Movement target re-evaluation strictly governed by difficulty reaction delay timer.
+        // 2. Tactical decisions & abilities strictly governed by difficulty reaction delay timer.
         if (ai.aiReactionDelayMs == 0 || (nowMs - ai.aiLastDecisionTimeMs >= ai.aiReactionDelayMs)) {
             evaluateAiDecision(ai);
+            tryUseAbilities(ai);
             ai.aiLastDecisionTimeMs = nowMs;
             ai.aiReactionDelayMs = minDelay + (long)(Math.random() * (maxDelay - minDelay + 1));
         }
 
-        // 3. Apply movement to target destination
+        // 3. Apply movement to target destination (ability execution does not block pathfinding/destination)
         if (ai.aiTargetX >= 0 && ai.aiTargetY >= 0) {
             double currentCenterX = ai.X + ai.width / 2.0;
             double currentCenterY = ai.Y + ai.height / 2.0;
@@ -2505,9 +2692,11 @@ public class GameEngine extends Game {
                 if (passTarget != null) {
                     ai.aiTargetX = passTarget.X + passTarget.width / 2.0;
                     ai.aiTargetY = passTarget.Y + passTarget.height / 2.0;
-                    ai.aiTargetAction = 1;
-                    executeAiShot(ai, ai.aiTargetX, ai.aiTargetY);
-                    ai.aiTargetAction = 0;
+                    if (ai.actionState == Titan.TitanState.IDLE) {
+                        ai.aiTargetAction = 1;
+                        executeAiShot(ai, ai.aiTargetX, ai.aiTargetY);
+                        ai.aiTargetAction = 0;
+                    }
                 } else {
                     Titan impeding = getHorizontalImpedingEnemy(ai, enemyTeam);
                     double[] backTarget = calculateBackwardDiagonalEvadeTarget(ai, impeding, currentCenterX, currentCenterY);
@@ -2519,13 +2708,15 @@ public class GameEngine extends Game {
             }
         }
 
-        // 4. Execute queued actions
-        if ((ai.aiTargetAction == 1 || ai.aiTargetAction == 3) && ai.possession == 1) { // SHOOT / PASS / LOB
-            executeAiShot(ai, ai.aiTargetX, ai.aiTargetY, ai.aiTargetAction);
-            ai.aiTargetAction = 0;
-        } else if (ai.aiTargetAction == 2 && ai.possession == 0) { // STEAL
-            executeAiSteal(ai);
-            ai.aiTargetAction = 0;
+        // 4. Execute queued actions (only when IDLE)
+        if (ai.actionState == Titan.TitanState.IDLE) {
+            if ((ai.aiTargetAction == 1 || ai.aiTargetAction == 3) && ai.possession == 1) { // SHOOT / PASS / LOB
+                executeAiShot(ai, ai.aiTargetX, ai.aiTargetY, ai.aiTargetAction);
+                ai.aiTargetAction = 0;
+            } else if (ai.aiTargetAction == 2 && ai.possession == 0) { // STEAL
+                executeAiSteal(ai);
+                ai.aiTargetAction = 0;
+            }
         }
     }
 
@@ -2662,7 +2853,6 @@ public class GameEngine extends Game {
                 case MAGE: return enemyDist <= c.getI("titan.portal.range") * rf;
                 case BUILDER: return enemyDist <= c.getI("titan.trap.range") * rf;
                 case MARKSMAN: return enemyDist <= c.getI("titan.slow.range") * rf;
-                case ARTISAN: return ai.possession == 0 && Math.hypot(ball.X - ai.X, ball.Y - ai.Y) <= (c.getI("titan.suck.range") / 2.0) * rf;
                 case SUPPORT: return enemyDist <= (c.getI("titan.stun.range") / 2.0) * rf;
                 case GOLEM: return enemyDist <= 200.0 || ai.getHealth() < ai.maxHealth * 0.7;
                 case STEALTH: return enemyDist <= 300.0;
@@ -4733,6 +4923,7 @@ public class GameEngine extends Game {
             // It prevents the effect at the end of the shootingState from leaving the ball beyond the margins with no more play to go back
             bounceWalls();
             t.actionState = Titan.TitanState.IDLE;
+            t.aiReactionDelayMs = 0;
             detectGoals();
             minorHoopBounce();
         }
@@ -4756,6 +4947,7 @@ public class GameEngine extends Game {
             t.actionState = Titan.TitanState.IDLE;
             t.popMove();
             checkAndExecuteQueuedShot(t);
+            t.aiReactionDelayMs = 0;
         }
     }
 
@@ -4768,6 +4960,7 @@ public class GameEngine extends Game {
             t.actionState = Titan.TitanState.IDLE;
             t.popMove();
             checkAndExecuteQueuedShot(t);
+            t.aiReactionDelayMs = 0;
         }
     }
 
@@ -4780,6 +4973,7 @@ public class GameEngine extends Game {
             t.actionState = Titan.TitanState.IDLE;
             t.popMove();
             checkAndExecuteQueuedShot(t);
+            t.aiReactionDelayMs = 0;
         }
     }
 

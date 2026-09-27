@@ -50,6 +50,43 @@ export function drawMinions(ctx, game, camX, camY) {
     ctx.restore();
     drawHillChevrons(ctx, game, camX, camY);
 
+    // Draw 40% opacity purple link line between partner ball portals that are not part of the wall
+    if (game.entityPool) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(168, 85, 247, 0.4)';
+        ctx.lineWidth = 2;
+
+        for (let i = 0; i < game.entityPool.length; i++) {
+            const p1 = game.entityPool[i];
+            if (!p1 || p1.entityClass !== 'BallPortal' || p1.health <= 0) continue;
+            // Ignore wall portals (which have isWall: true or no createdById)
+            if (p1.isWall || !p1.createdById) continue;
+
+            for (let j = i + 1; j < game.entityPool.length; j++) {
+                const p2 = game.entityPool[j];
+                if (!p2 || p2.entityClass !== 'BallPortal' || p2.health <= 0) continue;
+                if (p2.isWall || !p2.createdById) continue;
+
+                const isPartner = (p1.createdById && p1.createdById === p2.createdById) ||
+                                  (p1.destinationId && p1.destinationId === p2.id) ||
+                                  (p2.destinationId && p2.destinationId === p1.id);
+
+                if (isPartner) {
+                    const cx1 = Math.floor(p1.X + (p1.width || 50) / 2 - camX);
+                    const cy1 = Math.floor(p1.Y + (p1.height || 50) / 2 - camY);
+                    const cx2 = Math.floor(p2.X + (p2.width || 50) / 2 - camX);
+                    const cy2 = Math.floor(p2.Y + (p2.height || 50) / 2 - camY);
+
+                    ctx.beginPath();
+                    ctx.moveTo(cx1, cy1);
+                    ctx.lineTo(cx2, cy2);
+                    ctx.stroke();
+                }
+            }
+        }
+        ctx.restore();
+    }
+
     staticFrame = (staticFrame + 1) % 60; // 60 frames per cycle roughly
     const isAltFrame = staticFrame > 30;
 

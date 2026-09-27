@@ -20,12 +20,14 @@ public class BallPortal extends Entity implements Collidable, Serializable {
     private UUID createdById;
     private Instant createdAt;//only used serverside so clock skew is irrelevant
     private Instant cdUntil;
+    public boolean isWall;
     public UUID destinationId;
     public Integer destinationX;
     public Integer destinationY;
 
     public BallPortal(TeamAffiliation team, int x, int y, int width, int height, int cdMs) {
         super(team);
+        this.isWall = true;
         this.COOLDOWN_MS = cdMs;
         this.MAX_RANGE = 999999;
         this.setX(x);
@@ -40,6 +42,7 @@ public class BallPortal extends Entity implements Collidable, Serializable {
 
     public BallPortal(TeamAffiliation team, Titan pl, List<Entity> pool, int x, int y, GameEngine context) {
         super(team);
+        this.isWall = false;
         this.COOLDOWN_MS = context.c.getI("bportal.cdms");
         this.MAX_RANGE = context.c.getI("bportal.range");
         this.setX(x);
@@ -60,6 +63,8 @@ public class BallPortal extends Entity implements Collidable, Serializable {
         }else{
             if(secondCanStayIfRange.bp != null){
                 secondCanStayIfRange.bp.rangeCircle = null;
+                secondCanStayIfRange.bp.destinationId = this.id;
+                this.destinationId = secondCanStayIfRange.bp.id;
             }
         }
         this.rangeCircle = new RangeCircle(1.0, 0.0, 0.0, 1.0, MAX_RANGE);
@@ -185,6 +190,10 @@ public class BallPortal extends Entity implements Collidable, Serializable {
 
     public UUID getCreatedById() {
         return createdById;
+    }
+
+    public boolean isWall() {
+        return isWall;
     }
 
     private class RetObj{

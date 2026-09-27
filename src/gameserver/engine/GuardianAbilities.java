@@ -851,6 +851,8 @@ public class GuardianAbilities implements Serializable {
         
         BallPortal p2 = new BallPortal(team, goalie, context.entityPool, px, py2, context);
         p2.team = team; p2.health = 99999; p2.maxHealth = 99999;
+        p1.destinationId = p2.id;
+        p2.destinationId = p1.id;
         context.entityPool.add(p2);
     }
 

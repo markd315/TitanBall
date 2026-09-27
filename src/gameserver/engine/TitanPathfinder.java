@@ -392,6 +392,7 @@ public class TitanPathfinder {
 
         // Depenetration check: if titan is currently overlapping a solid entity, push out immediately
         if (context != null && context.allSolids != null && t.collidesSolid(context, context.allSolids)) {
+            context.depenetrateTitans();
             if (context.entityPool != null) {
                 for (Entity e : context.entityPool) {
                     if (e != null && e.solid && !(e instanceof Titan) && e.health > 0) {

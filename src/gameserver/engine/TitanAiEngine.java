@@ -188,20 +188,22 @@ public class TitanAiEngine {
         int minDelay = (context.options != null) ? context.options.getAiReactionTimeMinMs(isGoalie, goalieRatio) : (isGoalie ? (int) Math.round(1200 * goalieRatio) : 1200);
         int maxDelay = (context.options != null) ? context.options.getAiReactionTimeMaxMs(isGoalie, goalieRatio) : (isGoalie ? (int) Math.round(1700 * goalieRatio) : 1700);
 
-        // 2. Abilities check (Independent of movement reaction timer - does not reset decision timer)
-        tryUseAbilities(ai);
-        if (ai.actionState != Titan.TitanState.IDLE) {
-            return;
+        // Transition from cast lag or action state back to IDLE -> immediately re-evaluate
+        if (ai.actionState == Titan.TitanState.IDLE &&
+                (ai.aiPrevActionState == Titan.TitanState.A1 || ai.aiPrevActionState == Titan.TitanState.A2 || ai.aiPrevActionState == Titan.TitanState.STEAL)) {
+            ai.aiReactionDelayMs = 0;
         }
+        ai.aiPrevActionState = ai.actionState;
 
-        // 3. Movement target re-evaluation strictly governed by difficulty reaction delay timer.
+        // 2. Tactical decisions & abilities strictly governed by difficulty reaction delay timer.
         if (ai.aiReactionDelayMs == 0 || (nowMs - ai.aiLastDecisionTimeMs >= ai.aiReactionDelayMs)) {
             evaluateAiDecision(ai);
+            tryUseAbilities(ai);
             ai.aiLastDecisionTimeMs = nowMs;
             ai.aiReactionDelayMs = minDelay + (long)(Math.random() * (maxDelay - minDelay + 1));
         }
 
-        // 3. Apply movement to target destination
+        // 3. Apply movement to target destination (ability execution does not block pathfinding/destination)
         if (ai.aiTargetX >= 0 && ai.aiTargetY >= 0) {
             double currentCenterX = ai.X + ai.width / 2.0;
             double currentCenterY = ai.Y + ai.height / 2.0;
@@ -252,9 +254,11 @@ public class TitanAiEngine {
                 if (passTarget != null) {
                     ai.aiTargetX = passTarget.X + passTarget.width / 2.0;
                     ai.aiTargetY = passTarget.Y + passTarget.height / 2.0;
-                    ai.aiTargetAction = 1;
-                    executeAiShot(ai, ai.aiTargetX, ai.aiTargetY);
-                    ai.aiTargetAction = 0;
+                    if (ai.actionState == Titan.TitanState.IDLE) {
+                        ai.aiTargetAction = 1;
+                        executeAiShot(ai, ai.aiTargetX, ai.aiTargetY);
+                        ai.aiTargetAction = 0;
+                    }
                 } else {
                     Titan impeding = getHorizontalImpedingEnemy(ai, enemyTeam);
                     double[] backTarget = calculateBackwardDiagonalEvadeTarget(ai, impeding, currentCenterX, currentCenterY);
@@ -266,13 +270,15 @@ public class TitanAiEngine {
             }
         }
 
-        // 4. Execute queued actions
-        if ((ai.aiTargetAction == 1 || ai.aiTargetAction == 3) && ai.possession == 1) { // SHOOT / PASS / LOB
-            executeAiShot(ai, ai.aiTargetX, ai.aiTargetY, ai.aiTargetAction);
-            ai.aiTargetAction = 0;
-        } else if (ai.aiTargetAction == 2 && ai.possession == 0) { // STEAL
-            executeAiSteal(ai);
-            ai.aiTargetAction = 0;
+        // 4. Execute queued actions (only when IDLE)
+        if (ai.actionState == Titan.TitanState.IDLE) {
+            if ((ai.aiTargetAction == 1 || ai.aiTargetAction == 3) && ai.possession == 1) { // SHOOT / PASS / LOB
+                executeAiShot(ai, ai.aiTargetX, ai.aiTargetY, ai.aiTargetAction);
+                ai.aiTargetAction = 0;
+            } else if (ai.aiTargetAction == 2 && ai.possession == 0) { // STEAL
+                executeAiSteal(ai);
+                ai.aiTargetAction = 0;
+            }
         }
     }
 
@@ -410,7 +416,6 @@ public class TitanAiEngine {
                 case MAGE: return enemyDist <= c.getI("titan.portal.range") * rf;
                 case BUILDER: return enemyDist <= c.getI("titan.trap.range") * rf;
                 case MARKSMAN: return enemyDist <= c.getI("titan.slow.range") * rf;
-                case ARTISAN: return ai.possession == 0 && Math.hypot(context.ball.X - ai.X, context.ball.Y - ai.Y) <= (c.getI("titan.suck.range") / 2.0) * rf;
                 case SUPPORT: return enemyDist <= (c.getI("titan.stun.range") / 2.0) * rf;
                 case GOLEM: return enemyDist <= 200.0 || ai.getHealth() < ai.maxHealth * 0.7;
                 case STEALTH: return enemyDist <= 300.0;
