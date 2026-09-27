@@ -42,6 +42,7 @@ public class Titan extends Entity   {
     public boolean programmed = false;
     public int marchingOrderX = 0;
     public int marchingOrderY = 0;
+    public boolean pathingToBall = false;
     @JsonIgnore
     public transient int[][] pathWaypoints = null;
     @JsonIgnore
