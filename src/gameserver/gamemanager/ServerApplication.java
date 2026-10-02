@@ -37,30 +37,25 @@ public class ServerApplication {
     public static boolean recordBotGamesStats = true;
 
     static {
-        try {
+        try (FileInputStream fis = new FileInputStream(new File("application.properties"))) {
             prop = new Properties();
-            prop.load(new FileInputStream(new File("application.properties")));
+            prop.load(fis);
             appSecret = prop.getProperty("app.jwtSecret");
-            String p = prop.getProperty("stats.excludeAiMatches", "true").trim();
-            if (p.startsWith("${") && p.endsWith("}")) {
-                String[] parts = p.substring(2, p.length() - 1).split(":", 2);
-                String envVal = System.getenv(parts[0]);
-                excludeAiMatchesFromStats = Boolean.parseBoolean(envVal != null ? envVal : (parts.length > 1 ? parts[1] : "true"));
-            } else {
-                excludeAiMatchesFromStats = Boolean.parseBoolean(p);
-            }
-
-            String rbg = prop.getProperty("stats.record.botgames", "true").trim();
-            if (rbg.startsWith("${") && rbg.endsWith("}")) {
-                String[] parts = rbg.substring(2, rbg.length() - 1).split(":", 2);
-                String envVal = System.getenv(parts[0]);
-                recordBotGamesStats = Boolean.parseBoolean(envVal != null ? envVal : (parts.length > 1 ? parts[1] : "true"));
-            } else {
-                recordBotGamesStats = Boolean.parseBoolean(rbg);
-            }
+            excludeAiMatchesFromStats = resolveBooleanProperty(prop, "stats.excludeAiMatches", true);
+            recordBotGamesStats = resolveBooleanProperty(prop, "stats.record.botgames", true);
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private static boolean resolveBooleanProperty(Properties properties, String key, boolean defaultValue) {
+        String val = properties.getProperty(key, String.valueOf(defaultValue)).trim();
+        if (val.startsWith("${") && val.endsWith("}")) {
+            String[] parts = val.substring(2, val.length() - 1).split(":", 2);
+            String envVal = System.getenv(parts[0]);
+            return Boolean.parseBoolean(envVal != null ? envVal : (parts.length > 1 ? parts[1] : String.valueOf(defaultValue)));
+        }
+        return Boolean.parseBoolean(val);
     }
 
     public static boolean isExcludeAiMatchesFromStats() {
@@ -102,18 +97,14 @@ public class ServerApplication {
     }
 
     private static void cleanupCorruptStates(Collection<String> gameFor) {
-        Set<String> rm = new HashSet<>();
-        for(String id : states.keySet()){
-            ManagedGame gt = states.get(id);
-            boolean userFound = gt.gameContainsEmail(gameFor);
-            if(userFound){
-                rm.add(id);
+        states.entrySet().removeIf(entry -> {
+            ManagedGame gt = entry.getValue();
+            if (gt != null && gt.gameContainsEmail(gameFor)) {
+                System.out.println("removed a corrupt state! (somehow)");
+                return true;
             }
-        }
-        for(String id : rm){
-            System.out.println("removed a corrupt state! (somehow)");
-            states.remove(id);//avoid comod
-        }
+            return false;
+        });
     }
 
     private static long lastExpiryCheckMs = 0;
@@ -233,14 +224,7 @@ public class ServerApplication {
                     }
 
                     if (!skipStats && persistenceManager != null && val.options != null) {
-                        boolean is1v1 = (val.options.playerIndex == 4 
-                                || "/1/1/1/5/2/9999/10/12".equals(val.options.toStringSrv())
-                                || "/4/1/1/5/2/9999/10/12".equals(val.options.toStringSrv())
-                                || "/1/1/1/5/2/9999/10/20".equals(val.options.toStringSrv())
-                                || "/4/1/1/5/2/9999/10/20".equals(val.options.toStringSrv())
-                                || val.options.allowsNoGoalie());
-                        
-                        if (is1v1) {
+                        if (val.options.is1v1()) {
                             System.out.println("Recording 1v1 postgame stats for game: " + id);
                             inject1v1RatingsToPlayers(val.state);
                             for (PlayerDivider player : val.state.clients) {
@@ -280,16 +264,8 @@ public class ServerApplication {
                                     if (p.selection == 1) homeGoalie = p;
                                     else if (p.selection == 2) awayGoalie = p;
                                 }
-                                if (homeGoalie != null && val.state.homeGoalieAllPurchasedUpgrades != null) {
-                                    for (String up : val.state.homeGoalieAllPurchasedUpgrades) {
-                                        persistenceManager.recordUpgradeStats(val.state.stats, homeGoalie.email, up, homeGoalie.wasVictorious);
-                                    }
-                                }
-                                if (awayGoalie != null && val.state.awayGoalieAllPurchasedUpgrades != null) {
-                                    for (String up : val.state.awayGoalieAllPurchasedUpgrades) {
-                                        persistenceManager.recordUpgradeStats(val.state.stats, awayGoalie.email, up, awayGoalie.wasVictorious);
-                                    }
-                                }
+                                recordGoalieUpgrades(val.state, homeGoalie, val.state.homeGoalieAllPurchasedUpgrades);
+                                recordGoalieUpgrades(val.state, awayGoalie, val.state.awayGoalieAllPurchasedUpgrades);
                             } catch (Exception e) {
                                 e.printStackTrace();
                             }
@@ -316,56 +292,23 @@ public class ServerApplication {
     }
 
     private static void injectRatingsToPlayers(GameEngine state) {
-        if (state == null || state.clients == null || persistenceManager == null || persistenceManager.userService == null) return;
-        List<Rating> home = new ArrayList<>(), away = new ArrayList<>();
-        for (PlayerDivider pl : state.clients) {
-            if (pl.email == null) continue;
-            User persistence = persistenceManager.userService.findUserByEmail(pl.email);
-            if (persistence == null) {
-                persistence = persistenceManager.userService.findUserByUsername(pl.email);
-            }
-            if (persistence == null) continue;
-            int totalGames = (persistence.getLosses() != null ? persistence.getLosses() : 0) + (persistence.getWins() != null ? persistence.getWins() : 0);
-            Rating<User> oldRating = new Rating<>(persistence, totalGames);
-            double curRating = persistence.getRating() != null ? persistence.getRating() : 1000.0;
-            pl.newRating = curRating;
-            Titan t = state.titanSelected(pl);
-            if (t != null && t.team == TeamAffiliation.HOME) {
-                oldRating.setRating(curRating);
-                home.add(oldRating);
-            } else if (t != null && t.team == TeamAffiliation.AWAY) {
-                oldRating.setRating(curRating);
-                away.add(oldRating);
-            }
-        }
-        if (home.isEmpty() && away.isEmpty()) return;
-
-        boolean hasAi = (state.options != null && state.options.isHybrid())
-                || (state.options != null && state.options.isCoopVsAi())
-                || home.isEmpty() || away.isEmpty();
-        if (hasAi && state.options != null && !state.options.isAiRated()) {
-            return;
-        }
-
-        double botRatingVal = (state.options != null) ? state.options.getAiRating() : 1000.0;
-
-        Rating<String> homeRating = home.isEmpty()
-                ? new Rating<>("home", botRatingVal, 10)
-                : new Rating<>(home, "home", 0);
-        Rating<String> awayRating = away.isEmpty()
-                ? new Rating<>("away", botRatingVal, 10)
-                : new Rating<>(away, "away", 0);
-
-        double diff = (state.home != null && state.away != null) ? (state.home.score - state.away.score) : 0.0;
-        Match<String> match = new Match<>(homeRating, awayRating, diff);
-        match.injectAverage(home, away);
-        for (PlayerDivider pl : state.clients) {
-            if (!home.isEmpty()) updatePlayerRating(pl, home);
-            if (!away.isEmpty()) updatePlayerRating(pl, away);
-        }
+        injectRatingsInternal(state, false);
     }
 
     private static void inject1v1RatingsToPlayers(GameEngine state) {
+        injectRatingsInternal(state, true);
+    }
+
+    private static void recordGoalieUpgrades(GameEngine state, PlayerDivider goalie, Set<String> upgrades) {
+        if (goalie != null && goalie.email != null && upgrades != null && persistenceManager != null && state != null) {
+            for (String up : upgrades) {
+                persistenceManager.recordUpgradeStats(state.stats, goalie.email, up, goalie.wasVictorious);
+            }
+        }
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static void injectRatingsInternal(GameEngine state, boolean is1v1) {
         if (state == null || state.clients == null || persistenceManager == null || persistenceManager.userService == null) return;
         List<Rating> home = new ArrayList<>(), away = new ArrayList<>();
         for (PlayerDivider pl : state.clients) {
@@ -375,9 +318,14 @@ public class ServerApplication {
                 persistence = persistenceManager.userService.findUserByUsername(pl.email);
             }
             if (persistence == null) continue;
-            int totalGames = (persistence.getLosses_1v1() != null ? persistence.getLosses_1v1() : 0) + (persistence.getWins_1v1() != null ? persistence.getWins_1v1() : 0);
+            int losses = is1v1 ? (persistence.getLosses_1v1() != null ? persistence.getLosses_1v1() : 0)
+                               : (persistence.getLosses() != null ? persistence.getLosses() : 0);
+            int wins = is1v1 ? (persistence.getWins_1v1() != null ? persistence.getWins_1v1() : 0)
+                             : (persistence.getWins() != null ? persistence.getWins() : 0);
+            int totalGames = losses + wins;
             Rating<User> oldRating = new Rating<>(persistence, totalGames);
-            double curRating = persistence.getRating_1v1() != null ? persistence.getRating_1v1() : 1000.0;
+            Double rawRating = is1v1 ? persistence.getRating_1v1() : persistence.getRating();
+            double curRating = rawRating != null ? rawRating : 1000.0;
             pl.newRating = curRating;
             Titan t = state.titanSelected(pl);
             if (t != null && t.team == TeamAffiliation.HOME) {
@@ -415,9 +363,10 @@ public class ServerApplication {
         }
     }
 
+    @SuppressWarnings("rawtypes")
     private static void updatePlayerRating(PlayerDivider pl, List<Rating> team) {
-        for (Rating<User> r : team) {
-            if (r != null && r.getID() != null && r.getID().getEmail() != null && r.getID().getEmail().equals(pl.email)) {
+        for (Rating r : team) {
+            if (r != null && r.getID() instanceof User u && u.getEmail() != null && u.getEmail().equals(pl.email)) {
                 pl.newRating = r.rating;
             }
         }

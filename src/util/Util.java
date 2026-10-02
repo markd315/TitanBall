@@ -49,8 +49,11 @@ public class Util {
     }
 
     public static boolean isRole(Authentication auth, String role) {
-        for(GrantedAuthority r : auth.getAuthorities()){
-            if(r.getAuthority().equals(role)){
+        if (auth == null || role == null) {
+            return false;
+        }
+        for (GrantedAuthority r : auth.getAuthorities()) {
+            if (role.equals(r.getAuthority())) {
                 return true;
             }
         }
@@ -60,23 +63,22 @@ public class Util {
     public static String jwtExtractEmail(String token) {
         try {
             String body = token.split("\\.")[1];
-            String json = new String(Base64.getDecoder().decode(body.getBytes()));
+            String json = new String(Base64.getDecoder().decode(body.getBytes(java.nio.charset.StandardCharsets.UTF_8)), java.nio.charset.StandardCharsets.UTF_8);
             JSONObject j = new JSONObject(json);
-            String ret = (String) j.get("sub");
-            return ret;
-        }catch (Exception e){
+            return (String) j.get("sub");
+        } catch (Exception e) {
             return "error";//especially for the first tick
         }
     }
 
-    public static String randomKey(){
-        Random rng = new Random();
-        String s = "";
-        for(int i=0; i<10; i++){
-            char c = (char) (65+ rng.nextInt(26));
-            s+=c;
+    public static String randomKey() {
+        java.util.concurrent.ThreadLocalRandom rng = java.util.concurrent.ThreadLocalRandom.current();
+        StringBuilder sb = new StringBuilder(10);
+        for (int i = 0; i < 10; i++) {
+            char c = (char) ('A' + rng.nextInt(26));
+            sb.append(c);
         }
-        return s;
+        return sb.toString();
     }
 
     public static double calculatePain(Entity e, GoalHoop pain) {

@@ -115,8 +115,11 @@ public class Entity extends Box   {
 
 
     public boolean teamPoss(GameEngine context) {
-        for(Titan t : context.players){
-            if(t.possession == 1 && t.team.equals(this.team)){
+        if (context == null || context.players == null) {
+            return false;
+        }
+        for (Titan t : context.players) {
+            if (t != null && t.possession == 1 && t.team == this.team) {
                 return true;
             }
         }
@@ -124,54 +127,26 @@ public class Entity extends Box   {
     }
 
     public void translateBounded(GameEngine context, double dx, double dy) {
-        this.X+=dx;
-        this.Y+=dy;
-        if(this instanceof Titan && context.effectPool.hasEffect((Titan) this, EffectId.DEAD)){
+        this.X += dx;
+        this.Y += dy;
+        if (this instanceof Titan titan && context.effectPool != null && context.effectPool.hasEffect(titan, EffectId.DEAD)) {
             this.X = 99999;
             this.Y = 99999;
             return;
         }
-        if(this instanceof Titan && ((Titan) this).getType() == TitanType.GOALIE){
+        if (this instanceof Titan titan && titan.getType() == TitanType.GOALIE) {
             java.util.Set<String> purchased = (this.team == TeamAffiliation.HOME) ? context.homeGoaliePurchasedUpgrades : context.awayGoaliePurchasedUpgrades;
             boolean pullGoalie = purchased != null && purchased.contains("siege.t3.pullgoalie");
             if (!pullGoalie) {
-                if(this.team == TeamAffiliation.HOME ){
-                    if(this.X > context.c.GOALIE_XH_MAX){
-                        this.X = context.c.GOALIE_XH_MAX;
-                    }
-                    if(this.X < context.c.GOALIE_XH_MIN){
-                        this.X = context.c.GOALIE_XH_MIN;
-                    }
-                }else{
-                    if(this.X > context.c.GOALIE_XA_MAX){
-                        this.X = context.c.GOALIE_XA_MAX;
-                    }
-                    if(this.X < context.c.GOALIE_XA_MIN){
-                        this.X = context.c.GOALIE_XA_MIN;
-                    }
-                }
-                if(this.Y > context.c.GOALIE_Y_MAX){
-                    this.Y = context.c.GOALIE_Y_MAX;
-                }
-                if(this.Y < context.c.GOALIE_Y_MIN){
-                    this.Y = context.c.GOALIE_Y_MIN;
-                }
+                int xMin = (this.team == TeamAffiliation.HOME) ? context.c.GOALIE_XH_MIN : context.c.GOALIE_XA_MIN;
+                int xMax = (this.team == TeamAffiliation.HOME) ? context.c.GOALIE_XH_MAX : context.c.GOALIE_XA_MAX;
+                this.X = Math.max(xMin, Math.min(xMax, this.X));
+                this.Y = Math.max(context.c.GOALIE_Y_MIN, Math.min(context.c.GOALIE_Y_MAX, this.Y));
                 return;
             }
         }
-        if(this.X > context.c.E_MAX_X){
-            this.X = context.c.E_MAX_X;
-        }
-        if(this.X < context.c.E_MIN_X){
-            this.X = context.c.E_MIN_X;
-        }
-        if(this.Y > context.c.E_MAX_Y){
-            this.Y = context.c.E_MAX_Y;
-        }
-        if(this.Y < context.c.E_MIN_Y){
-            this.Y = context.c.E_MIN_Y;
-        }
-
+        this.X = Math.max(context.c.E_MIN_X, Math.min(context.c.E_MAX_X, this.X));
+        this.Y = Math.max(context.c.E_MIN_Y, Math.min(context.c.E_MAX_Y, this.Y));
     }
 
     public String toString()   {

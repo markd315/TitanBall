@@ -168,7 +168,8 @@ public class Titan extends Entity   {
         this.throwPower = throwPower;
     }
 
-    ConstOperations c = new Const("res/game.cfg");
+    private static final Const DEFAULT_CONST = new Const("res/game.cfg");
+    ConstOperations c = DEFAULT_CONST;
 
     public void setVarsBasedOnType() {
         if(type != null){
@@ -255,17 +256,17 @@ public class Titan extends Entity   {
         this.sel = sel;
     }
 
-    public static Map<TitanType, Double> titanHealth = new HashMap();
-    public static Map<TitanType, Double> titanSpeed = new HashMap();
-    public static Map<TitanType, Double> titanShoot = new HashMap();
-    static Map<TitanType, Integer> titanEFrames = new HashMap();
-    static Map<TitanType, Integer> titanRFrames = new HashMap();
-    static Map<TitanType, Integer> titanStealFrames = new HashMap();
-    public static Map<TitanType, Integer> titanStealRad = new HashMap();
-    static Map<TitanType, Set<RangeCircle>> titanRange = new HashMap();
-    public static Map<TitanType, String> titanText = new HashMap();
-    public static Map<TitanType, String> titanEText = new HashMap();
-    public static Map<TitanType, String> titanRText = new HashMap();
+    public static Map<TitanType, Double> titanHealth = new HashMap<>();
+    public static Map<TitanType, Double> titanSpeed = new HashMap<>();
+    public static Map<TitanType, Double> titanShoot = new HashMap<>();
+    static Map<TitanType, Integer> titanEFrames = new HashMap<>();
+    static Map<TitanType, Integer> titanRFrames = new HashMap<>();
+    static Map<TitanType, Integer> titanStealFrames = new HashMap<>();
+    public static Map<TitanType, Integer> titanStealRad = new HashMap<>();
+    static Map<TitanType, Set<RangeCircle>> titanRange = new HashMap<>();
+    public static Map<TitanType, String> titanText = new HashMap<>();
+    public static Map<TitanType, String> titanEText = new HashMap<>();
+    public static Map<TitanType, String> titanRText = new HashMap<>();
 
     public static double normalOutOfTenFromStat(Map<TitanType, ?> stat, TitanType query){
         double mean=0.0, sd=0.0;
@@ -315,15 +316,12 @@ public class Titan extends Entity   {
             inspeed *= context.c.getD("guardian.dilators.speedmult");
         }
         for(Effect eff : context.effectPool.getEffects()){
-            if(eff.on.id.equals(this.id)
-                && eff.effect.equals(EffectId.SLOW)){
-                RatioEffect sl = (RatioEffect) eff;
-                inspeed /= sl.getRatio();
-            }
-            if(eff.on.id.equals(this.id)
-                    && eff.effect.equals(EffectId.FAST)){
-                RatioEffect sl = (RatioEffect) eff;
-                inspeed *= sl.getRatio();
+            if(eff.on.id.equals(this.id) && eff instanceof RatioEffect sl){
+                if (eff.effect == EffectId.SLOW) {
+                    inspeed /= sl.getRatio();
+                } else if (eff.effect == EffectId.FAST) {
+                    inspeed *= sl.getRatio();
+                }
             }
         }
 
@@ -391,7 +389,7 @@ public class Titan extends Entity   {
     public int runDown = 0;
 
     static{
-        Const c = new Const("res/game.cfg");
+        Const c = DEFAULT_CONST;
         for (TitanType t : TitanType.values()) {
             String prefix = "titan." + t.name().toLowerCase() + ".";
             if (c.hasKey(prefix + "speed")) titanSpeed.put(t, c.getD(prefix + "speed"));

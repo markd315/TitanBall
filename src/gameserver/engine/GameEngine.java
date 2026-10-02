@@ -2769,7 +2769,7 @@ public class GameEngine extends Game {
 
 
         TeamAffiliation myTeam = ai.team;
-        TeamAffiliation enemyTeam = (myTeam == TeamAffiliation.HOME) ? TeamAffiliation.AWAY : TeamAffiliation.HOME;
+        TeamAffiliation enemyTeam = (myTeam != null) ? myTeam.opposite() : TeamAffiliation.AWAY;
 
         Optional<Titan> possessorOpt = titanInPossession();
         boolean looseBall = !possessorOpt.isPresent();
@@ -2874,7 +2874,7 @@ public class GameEngine extends Game {
         if (type == null) return false;
         if (c != null && !c.AI_OMNISCIENCE_ENABLED && effectPool != null && effectPool.hasEffect(ai, EffectId.BLIND)) return false;
 
-        TeamAffiliation enemyTeam = (ai.team == TeamAffiliation.HOME) ? TeamAffiliation.AWAY : TeamAffiliation.HOME;
+        TeamAffiliation enemyTeam = (ai.team != null) ? ai.team.opposite() : TeamAffiliation.AWAY;
         Titan nearestEnemy = findNearestEnemy(ai, enemyTeam);
         double enemyDist = (nearestEnemy != null) ? Math.hypot(nearestEnemy.X - ai.X, nearestEnemy.Y - ai.Y) : Double.MAX_VALUE;
 
@@ -5177,9 +5177,9 @@ public class GameEngine extends Game {
         double TOP_MID_DIV = (TOP_CENTER + MID_CENTER) / 2.0;
         double MID_BOT_DIV = (MID_CENTER + BOT_CENTER) / 2.0;
 
-        boolean isHome = (team == TeamAffiliation.HOME);
+        boolean isHome = team.isHome();
         boolean overcharged = isHome ? (homeGoalieAbilities.overchargedWavesQueued > 0) : (awayGoalieAbilities.overchargedWavesQueued > 0);
-        java.util.Set<String> upgrades = isHome ? homeGoaliePurchasedUpgrades : awayGoaliePurchasedUpgrades;
+        java.util.Set<String> upgrades = getGoaliePurchasedUpgrades(team);
 
         LaneMinion m = new LaneMinion(spawnX, spawnY, team, L);
         m.health = c.getD("minion.base.health");
@@ -5208,7 +5208,7 @@ public class GameEngine extends Game {
             m.armorRatio = 1.0;
         }
 
-        GuardianAbilities ga = (team == TeamAffiliation.HOME) ? homeGoalieAbilities : awayGoalieAbilities;
+        GuardianAbilities ga = isHome ? homeGoalieAbilities : awayGoalieAbilities;
         if (upgrades.contains("siege.t3.rushlane") && ga.airSupportLane == L) {
             m.damageMultiplier *= 1.40;
         }

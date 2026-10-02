@@ -86,6 +86,16 @@ public class Game   {
     public Set<String> homeGoalieAllPurchasedUpgrades = new HashSet<String>();
     public Set<String> awayGoalieAllPurchasedUpgrades = new HashSet<String>();
 
+    public Set<String> getGoaliePurchasedUpgrades(TeamAffiliation team) {
+        return (team == TeamAffiliation.HOME) ? homeGoaliePurchasedUpgrades : awayGoaliePurchasedUpgrades;
+    }
+
+    public boolean hasGoalieUpgrade(TeamAffiliation team, String upgradeKey) {
+        if (team == null || upgradeKey == null) return false;
+        Set<String> set = (team == TeamAffiliation.HOME) ? homeGoaliePurchasedUpgrades : awayGoaliePurchasedUpgrades;
+        return set != null && set.contains(upgradeKey);
+    }
+
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class RecentPurchase {
         public String team;

@@ -13,12 +13,13 @@ export function setSelectedTargetEntityId(id) {
 
 export function getSelectedTargetEntity(game) {
     if (!game || !selectedTargetEntityId) return null;
+    const targetIdStr = selectedTargetEntityId.toString();
     let targetEntity = null;
     if (game.players) {
-        targetEntity = game.players.find(p => p.id !== undefined && p.id.toString() === selectedTargetEntityId.toString() && p.health > 0);
+        targetEntity = game.players.find(p => p.id !== undefined && p.id.toString() === targetIdStr && p.health > 0);
     }
     if (!targetEntity && game.entityPool) {
-        targetEntity = game.entityPool.find(e => e.id !== undefined && e.id.toString() === selectedTargetEntityId.toString() && e.health > 0);
+        targetEntity = game.entityPool.find(e => e.id !== undefined && e.id.toString() === targetIdStr && e.health > 0);
     }
     return targetEntity;
 }
@@ -41,7 +42,7 @@ export function isSingleTargetAbility(titan, slot = 'E') {
     if (!titan || !titan.type) return false;
     const type = titan.type.toString().toUpperCase();
     const slotKey = (slot === '1' || slot === 'Q' || slot === 'E') ? 'E' : 'R';
-    return !!(SINGLE_TARGET_ABILITIES[type] && SINGLE_TARGET_ABILITIES[type][slotKey]);
+    return Boolean(SINGLE_TARGET_ABILITIES[type]?.[slotKey]);
 }
 
 export function hasAnySingleTargetAbility(titan) {

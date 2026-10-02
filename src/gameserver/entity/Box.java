@@ -63,6 +63,26 @@ public class Box extends Coordinates   {
         } else {
             cmpBounds = new gameserver.engine.CollisionMath.Bounds(this.X + xd, this.Y + yd, this.width, this.height);
         }
+        gameserver.engine.CollisionMath.Bounds curBounds = null;
+        if (this instanceof Titan t) {
+            if (t.getType() == TitanType.GOALIE) {
+                double xOffset = (this.width - context.GOALIE_SOLID_W) / 2.0;
+                curBounds = new gameserver.engine.CollisionMath.Bounds(
+                        this.X + xOffset,
+                        this.Y,
+                        context.GOALIE_SOLID_W,
+                        context.GOALIE_SOLID_H
+                );
+            } else {
+                curBounds = new gameserver.engine.CollisionMath.Bounds(
+                        this.X + context.SPRITE_X_EMPTY / 2.0,
+                        this.Y + context.SPRITE_Y_EMPTY / 2.0,
+                        this.width - context.SPRITE_X_EMPTY,
+                        this.height - context.SPRITE_Y_EMPTY
+                );
+            }
+        }
+
         Optional<Box> ret = Optional.empty();
         if (solids == null) {
             return ret;
@@ -97,25 +117,7 @@ public class Box extends Coordinates   {
                 }
 
                 if (cmpBounds.intersects(checkBounds)) {
-                    if (this instanceof Titan && collCheck instanceof Titan) {
-                        gameserver.engine.CollisionMath.Bounds curBounds;
-                        if (this instanceof Titan t && t.getType() == TitanType.GOALIE) {
-                            double xOffset = (this.width - context.GOALIE_SOLID_W) / 2.0;
-                            curBounds = new gameserver.engine.CollisionMath.Bounds(
-                                    this.X + xOffset,
-                                    this.Y,
-                                    context.GOALIE_SOLID_W,
-                                    context.GOALIE_SOLID_H
-                            );
-                        } else {
-                            curBounds = new gameserver.engine.CollisionMath.Bounds(
-                                    this.X + context.SPRITE_X_EMPTY / 2.0,
-                                    this.Y + context.SPRITE_Y_EMPTY / 2.0,
-                                    this.width - context.SPRITE_X_EMPTY,
-                                    this.height - context.SPRITE_Y_EMPTY
-                            );
-                        }
-
+                    if (curBounds != null && collCheck instanceof Titan) {
                         if (curBounds.intersects(checkBounds)) {
                             double curOverlapX = Math.min(curBounds.minX() + curBounds.width(), checkBounds.minX() + checkBounds.width())
                                     - Math.max(curBounds.minX(), checkBounds.minX());
@@ -148,20 +150,13 @@ public class Box extends Coordinates   {
     }
 
     private boolean performIntersection(GameEngine context, Box collCheck){
-        if (collCheck instanceof Collidable) {
-            Collidable c = (Collidable) collCheck;
+        if (collCheck instanceof Collidable c) {
             c.triggerCollide(context, this);
         }
         if (collCheck instanceof gameserver.entity.minions.Parapet p) {
-            if (this instanceof Titan t && t.team != p.team) {
-                return true;
-            }
-            return false;
+            return this instanceof Titan t && t.team != p.team;
         }
-        if(collCheck.solid) {
-            return true;
-        }
-        return false;
+        return collCheck.solid;
     }
 
     public boolean intersectCircle(double x2, double y2, double r2) {

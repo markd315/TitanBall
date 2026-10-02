@@ -10,7 +10,7 @@ import java.util.Scanner;
 public class ConstOperations  implements Serializable {
 
     public static final long serialVersionUID = 1L;
-    private Map<String, String> cache = new HashMap();
+    private Map<String, String> cache = new HashMap<>();
     public ConstOperations(String s) {
         try (Scanner sc = new Scanner(new File(s))) {
             while (sc.hasNextLine()) {
@@ -31,7 +31,7 @@ public class ConstOperations  implements Serializable {
                     line = line.substring(0, slashIdx);
                 }
 
-                String[] parts = line.split("=");
+                String[] parts = line.split("=", 2);
                 if (parts.length >= 2) {
                     cache.put(parts[0].trim(), parts[1].trim());
                 }
@@ -62,10 +62,7 @@ public class ConstOperations  implements Serializable {
 
     public boolean hasKey(String key){
         String s = getS(key);
-        if(s == null || s.equals("")){
-            return false;
-        }
-        return true;
+        return s != null && !s.isEmpty();
     }
 
     public double getD(String key){
@@ -92,17 +89,14 @@ public class ConstOperations  implements Serializable {
 
     public boolean getB(String key){
         String s = getS(key);
-        if(s == null || s.equals("")){
-            return false;
-        }
-        return s.toLowerCase().equals("true");
+        return "true".equalsIgnoreCase(s);
     }
 
     public boolean getB(String key, boolean defaultVal){
         String s = getS(key);
-        if(s == null || s.equals("")){
+        if (s == null || s.isEmpty()) {
             return defaultVal;
         }
-        return s.toLowerCase().equals("true");
+        return "true".equalsIgnoreCase(s);
     }
 }

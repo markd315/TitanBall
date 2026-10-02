@@ -1,5 +1,6 @@
 package authserver.users;
 
+import authserver.models.AggregateStatTracker;
 import authserver.models.BuildOrderStat;
 import authserver.models.ClassStat;
 import authserver.models.MasteriesStat;
@@ -401,89 +402,101 @@ public class PersistenceManager {
         if (userClassStat != null && userClassStatService != null) userClassStatService.save(userClassStat);
     }
 
+    private static int safeInt(Integer val) {
+        return val != null ? val : 0;
+    }
+
+    private static double safeDouble(Double val) {
+        return val != null ? val : 0.0;
+    }
+
+    public void accumulateAggregateStats(AggregateStatTracker tracker, JsonNode toAdd, int wasVictorious) {
+        if (tracker == null || toAdd == null) return;
+        if (wasVictorious == 1) {
+            tracker.setWins(safeInt(tracker.getWins()) + 1);
+        } else if (wasVictorious == -1) {
+            tracker.setLosses(safeInt(tracker.getLosses()) + 1);
+        } else {
+            tracker.setTies(safeInt(tracker.getTies()) + 1);
+        }
+        if (toAdd.has(StatEngine.StatEnum.GOALS.toString())) {
+            tracker.setGoals(safeInt(tracker.getGoals()) + toAdd.get(StatEngine.StatEnum.GOALS.toString()).asInt());
+        }
+        if (toAdd.has(StatEngine.StatEnum.SIDEGOALS.toString())) {
+            tracker.setSidegoals(safeInt(tracker.getSidegoals()) + toAdd.get(StatEngine.StatEnum.SIDEGOALS.toString()).asInt());
+        }
+        if (toAdd.has(StatEngine.StatEnum.POINTS.toString())) {
+            tracker.setPoints(safeDouble(tracker.getPoints()) + toAdd.get(StatEngine.StatEnum.POINTS.toString()).asDouble());
+        }
+        if (toAdd.has(StatEngine.StatEnum.STEALS.toString())) {
+            tracker.setSteals(safeInt(tracker.getSteals()) + toAdd.get(StatEngine.StatEnum.STEALS.toString()).asInt());
+        }
+        if (toAdd.has(StatEngine.StatEnum.BLOCKS.toString())) {
+            tracker.setBlocks(safeInt(tracker.getBlocks()) + toAdd.get(StatEngine.StatEnum.BLOCKS.toString()).asInt());
+        }
+        if (toAdd.has(StatEngine.StatEnum.PASSES.toString())) {
+            tracker.setPasses(safeInt(tracker.getPasses()) + toAdd.get(StatEngine.StatEnum.PASSES.toString()).asInt());
+        }
+        if (toAdd.has(StatEngine.StatEnum.KILLS.toString())) {
+            tracker.setKills(safeInt(tracker.getKills()) + toAdd.get(StatEngine.StatEnum.KILLS.toString()).asInt());
+        }
+        if (toAdd.has(StatEngine.StatEnum.DEATHS.toString())) {
+            tracker.setDeaths(safeInt(tracker.getDeaths()) + toAdd.get(StatEngine.StatEnum.DEATHS.toString()).asInt());
+        }
+        if (toAdd.has(StatEngine.StatEnum.TURNOVERS.toString())) {
+            tracker.setTurnovers(safeInt(tracker.getTurnovers()) + toAdd.get(StatEngine.StatEnum.TURNOVERS.toString()).asInt());
+        }
+        if (toAdd.has(StatEngine.StatEnum.KILLASSISTS.toString())) {
+            tracker.setKillassists(safeInt(tracker.getKillassists()) + toAdd.get(StatEngine.StatEnum.KILLASSISTS.toString()).asInt());
+        }
+        if (toAdd.has(StatEngine.StatEnum.GOALASSISTS.toString())) {
+            tracker.setGoalassists(safeInt(tracker.getGoalassists()) + toAdd.get(StatEngine.StatEnum.GOALASSISTS.toString()).asInt());
+        }
+        if (toAdd.has(StatEngine.StatEnum.SIDEGOALASSISTS.toString())) {
+            tracker.setSidegoalassists(safeInt(tracker.getSidegoalassists()) + toAdd.get(StatEngine.StatEnum.SIDEGOALASSISTS.toString()).asInt());
+        }
+        if (toAdd.has(StatEngine.StatEnum.REBOUND.toString())) {
+            tracker.setRebounds(safeInt(tracker.getRebounds()) + toAdd.get(StatEngine.StatEnum.REBOUND.toString()).asInt());
+        }
+        if (toAdd.has(StatEngine.StatEnum.SAVES.toString())) {
+            tracker.setSaves(tracker.getSaves() + toAdd.get(StatEngine.StatEnum.SAVES.toString()).asInt());
+        }
+        if (toAdd.has(StatEngine.StatEnum.LASTHITS.toString())) {
+            tracker.setLasthits(tracker.getLasthits() + toAdd.get(StatEngine.StatEnum.LASTHITS.toString()).asInt());
+        }
+        if (toAdd.has(StatEngine.StatEnum.MINIONDAMAGE.toString())) {
+            tracker.setMiniondamage(tracker.getMiniondamage() + toAdd.get(StatEngine.StatEnum.MINIONDAMAGE.toString()).asDouble());
+        }
+        if (toAdd.has(StatEngine.StatEnum.UPGRADESGOLD.toString())) {
+            tracker.setUpgradesgold(tracker.getUpgradesgold() + toAdd.get(StatEngine.StatEnum.UPGRADESGOLD.toString()).asInt());
+        }
+        if (toAdd.has(StatEngine.StatEnum.CONSUMABLESGOLD.toString())) {
+            tracker.setConsumablesgold(tracker.getConsumablesgold() + toAdd.get(StatEngine.StatEnum.CONSUMABLESGOLD.toString()).asInt());
+        }
+        if (toAdd.has(StatEngine.StatEnum.SIDEGOAL_SAVES.toString())) {
+            tracker.setSidegoalsaves(tracker.getSidegoalsaves() + toAdd.get(StatEngine.StatEnum.SIDEGOAL_SAVES.toString()).asInt());
+        }
+        if (toAdd.has(StatEngine.StatEnum.CENTERGOAL_SAVES.toString())) {
+            tracker.setCentergoalsaves(tracker.getCentergoalsaves() + toAdd.get(StatEngine.StatEnum.CENTERGOAL_SAVES.toString()).asInt());
+        }
+        if (toAdd.has(StatEngine.StatEnum.SIDEGOALS_CONCEDED.toString())) {
+            tracker.setSidegoalsconceded(tracker.getSidegoalsconceded() + toAdd.get(StatEngine.StatEnum.SIDEGOALS_CONCEDED.toString()).asInt());
+        }
+        if (toAdd.has(StatEngine.StatEnum.GOALS_CONCEDED.toString())) {
+            tracker.setGoalsconceded(tracker.getGoalsconceded() + toAdd.get(StatEngine.StatEnum.GOALS_CONCEDED.toString()).asInt());
+        }
+        if (toAdd.has(StatEngine.StatEnum.MANASPENT.toString())) {
+            tracker.setManaspent(tracker.getManaspent() + toAdd.get(StatEngine.StatEnum.MANASPENT.toString()).asInt());
+        }
+    }
+
     public synchronized void recordClassStats(StatEngine stats, String trackerKey, String className, int wasVictorious) {
         if (classService == null) return;
         ClassStat classStat = classService.findStatsTrackerByRole(className);
         if (classStat == null) {
             classStat = new ClassStat(className);
         }
-        com.fasterxml.jackson.databind.JsonNode toAdd = stats.statsOf(trackerKey);
-        if (wasVictorious == 1) {
-            classStat.setWins(classStat.getWins() + 1);
-        } else if (wasVictorious == -1) {
-            classStat.setLosses(classStat.getLosses() + 1);
-        } else {
-            classStat.setTies(classStat.getTies() + 1);
-        }
-        if (toAdd.has(StatEngine.StatEnum.GOALS.toString())) {
-            classStat.setGoals(classStat.getGoals() + toAdd.get(StatEngine.StatEnum.GOALS.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.SIDEGOALS.toString())) {
-            classStat.setSidegoals(classStat.getSidegoals() + toAdd.get(StatEngine.StatEnum.SIDEGOALS.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.POINTS.toString())) {
-            classStat.setPoints(classStat.getPoints() + toAdd.get(StatEngine.StatEnum.POINTS.toString()).asDouble());
-        }
-        if (toAdd.has(StatEngine.StatEnum.STEALS.toString())) {
-            classStat.setSteals(classStat.getSteals() + toAdd.get(StatEngine.StatEnum.STEALS.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.BLOCKS.toString())) {
-            classStat.setBlocks(classStat.getBlocks() + toAdd.get(StatEngine.StatEnum.BLOCKS.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.PASSES.toString())) {
-            classStat.setPasses(classStat.getPasses() + toAdd.get(StatEngine.StatEnum.PASSES.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.KILLS.toString())) {
-            classStat.setKills(classStat.getKills() + toAdd.get(StatEngine.StatEnum.KILLS.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.DEATHS.toString())) {
-            classStat.setDeaths(classStat.getDeaths() + toAdd.get(StatEngine.StatEnum.DEATHS.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.TURNOVERS.toString())) {
-            classStat.setTurnovers(classStat.getTurnovers() + toAdd.get(StatEngine.StatEnum.TURNOVERS.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.KILLASSISTS.toString())) {
-            classStat.setKillassists(classStat.getKillassists() + toAdd.get(StatEngine.StatEnum.KILLASSISTS.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.GOALASSISTS.toString())) {
-            classStat.setGoalassists(classStat.getGoalassists() + toAdd.get(StatEngine.StatEnum.GOALASSISTS.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.SIDEGOALASSISTS.toString())) {
-            classStat.setSidegoalassists(classStat.getSidegoalassists() + toAdd.get(StatEngine.StatEnum.SIDEGOALASSISTS.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.REBOUND.toString())) {
-            classStat.setRebounds(classStat.getRebounds() + toAdd.get(StatEngine.StatEnum.REBOUND.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.SAVES.toString())) {
-            classStat.setSaves(classStat.getSaves() + toAdd.get(StatEngine.StatEnum.SAVES.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.LASTHITS.toString())) {
-            classStat.setLasthits(classStat.getLasthits() + toAdd.get(StatEngine.StatEnum.LASTHITS.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.MINIONDAMAGE.toString())) {
-            classStat.setMiniondamage(classStat.getMiniondamage() + toAdd.get(StatEngine.StatEnum.MINIONDAMAGE.toString()).asDouble());
-        }
-        if (toAdd.has(StatEngine.StatEnum.UPGRADESGOLD.toString())) {
-            classStat.setUpgradesgold(classStat.getUpgradesgold() + toAdd.get(StatEngine.StatEnum.UPGRADESGOLD.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.CONSUMABLESGOLD.toString())) {
-            classStat.setConsumablesgold(classStat.getConsumablesgold() + toAdd.get(StatEngine.StatEnum.CONSUMABLESGOLD.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.SIDEGOAL_SAVES.toString())) {
-            classStat.setSidegoalsaves(classStat.getSidegoalsaves() + toAdd.get(StatEngine.StatEnum.SIDEGOAL_SAVES.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.CENTERGOAL_SAVES.toString())) {
-            classStat.setCentergoalsaves(classStat.getCentergoalsaves() + toAdd.get(StatEngine.StatEnum.CENTERGOAL_SAVES.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.SIDEGOALS_CONCEDED.toString())) {
-            classStat.setSidegoalsconceded(classStat.getSidegoalsconceded() + toAdd.get(StatEngine.StatEnum.SIDEGOALS_CONCEDED.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.GOALS_CONCEDED.toString())) {
-            classStat.setGoalsconceded(classStat.getGoalsconceded() + toAdd.get(StatEngine.StatEnum.GOALS_CONCEDED.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.MANASPENT.toString())) {
-            classStat.setManaspent(classStat.getManaspent() + toAdd.get(StatEngine.StatEnum.MANASPENT.toString()).asInt());
-        }
+        accumulateAggregateStats(classStat, stats.statsOf(trackerKey), wasVictorious);
         classService.saveClass(classStat);
     }
 
@@ -493,83 +506,7 @@ public class PersistenceManager {
         if (masteriesStat == null) {
             masteriesStat = new MasteriesStat(masteryPair);
         }
-        com.fasterxml.jackson.databind.JsonNode toAdd = stats.statsOf(trackerKey);
-        if (wasVictorious == 1) {
-            masteriesStat.setWins(masteriesStat.getWins() + 1);
-        } else if (wasVictorious == -1) {
-            masteriesStat.setLosses(masteriesStat.getLosses() + 1);
-        } else {
-            masteriesStat.setTies(masteriesStat.getTies() + 1);
-        }
-        if (toAdd.has(StatEngine.StatEnum.GOALS.toString())) {
-            masteriesStat.setGoals(masteriesStat.getGoals() + toAdd.get(StatEngine.StatEnum.GOALS.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.SIDEGOALS.toString())) {
-            masteriesStat.setSidegoals(masteriesStat.getSidegoals() + toAdd.get(StatEngine.StatEnum.SIDEGOALS.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.POINTS.toString())) {
-            masteriesStat.setPoints(masteriesStat.getPoints() + toAdd.get(StatEngine.StatEnum.POINTS.toString()).asDouble());
-        }
-        if (toAdd.has(StatEngine.StatEnum.STEALS.toString())) {
-            masteriesStat.setSteals(masteriesStat.getSteals() + toAdd.get(StatEngine.StatEnum.STEALS.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.BLOCKS.toString())) {
-            masteriesStat.setBlocks(masteriesStat.getBlocks() + toAdd.get(StatEngine.StatEnum.BLOCKS.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.PASSES.toString())) {
-            masteriesStat.setPasses(masteriesStat.getPasses() + toAdd.get(StatEngine.StatEnum.PASSES.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.KILLS.toString())) {
-            masteriesStat.setKills(masteriesStat.getKills() + toAdd.get(StatEngine.StatEnum.KILLS.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.DEATHS.toString())) {
-            masteriesStat.setDeaths(masteriesStat.getDeaths() + toAdd.get(StatEngine.StatEnum.DEATHS.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.TURNOVERS.toString())) {
-            masteriesStat.setTurnovers(masteriesStat.getTurnovers() + toAdd.get(StatEngine.StatEnum.TURNOVERS.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.KILLASSISTS.toString())) {
-            masteriesStat.setKillassists(masteriesStat.getKillassists() + toAdd.get(StatEngine.StatEnum.KILLASSISTS.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.GOALASSISTS.toString())) {
-            masteriesStat.setGoalassists(masteriesStat.getGoalassists() + toAdd.get(StatEngine.StatEnum.GOALASSISTS.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.SIDEGOALASSISTS.toString())) {
-            masteriesStat.setSidegoalassists(masteriesStat.getSidegoalassists() + toAdd.get(StatEngine.StatEnum.SIDEGOALASSISTS.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.REBOUND.toString())) {
-            masteriesStat.setRebounds(masteriesStat.getRebounds() + toAdd.get(StatEngine.StatEnum.REBOUND.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.SAVES.toString())) {
-            masteriesStat.setSaves(masteriesStat.getSaves() + toAdd.get(StatEngine.StatEnum.SAVES.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.LASTHITS.toString())) {
-            masteriesStat.setLasthits(masteriesStat.getLasthits() + toAdd.get(StatEngine.StatEnum.LASTHITS.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.MINIONDAMAGE.toString())) {
-            masteriesStat.setMiniondamage(masteriesStat.getMiniondamage() + toAdd.get(StatEngine.StatEnum.MINIONDAMAGE.toString()).asDouble());
-        }
-        if (toAdd.has(StatEngine.StatEnum.UPGRADESGOLD.toString())) {
-            masteriesStat.setUpgradesgold(masteriesStat.getUpgradesgold() + toAdd.get(StatEngine.StatEnum.UPGRADESGOLD.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.CONSUMABLESGOLD.toString())) {
-            masteriesStat.setConsumablesgold(masteriesStat.getConsumablesgold() + toAdd.get(StatEngine.StatEnum.CONSUMABLESGOLD.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.SIDEGOAL_SAVES.toString())) {
-            masteriesStat.setSidegoalsaves(masteriesStat.getSidegoalsaves() + toAdd.get(StatEngine.StatEnum.SIDEGOAL_SAVES.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.CENTERGOAL_SAVES.toString())) {
-            masteriesStat.setCentergoalsaves(masteriesStat.getCentergoalsaves() + toAdd.get(StatEngine.StatEnum.CENTERGOAL_SAVES.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.SIDEGOALS_CONCEDED.toString())) {
-            masteriesStat.setSidegoalsconceded(masteriesStat.getSidegoalsconceded() + toAdd.get(StatEngine.StatEnum.SIDEGOALS_CONCEDED.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.GOALS_CONCEDED.toString())) {
-            masteriesStat.setGoalsconceded(masteriesStat.getGoalsconceded() + toAdd.get(StatEngine.StatEnum.GOALS_CONCEDED.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.MANASPENT.toString())) {
-            masteriesStat.setManaspent(masteriesStat.getManaspent() + toAdd.get(StatEngine.StatEnum.MANASPENT.toString()).asInt());
-        }
+        accumulateAggregateStats(masteriesStat, stats.statsOf(trackerKey), wasVictorious);
         masteriesService.saveMasteriesStat(masteriesStat);
     }
 
@@ -579,83 +516,7 @@ public class PersistenceManager {
         if (upgradeStat == null) {
             upgradeStat = new UpgradeClassStat(upgradeKey);
         }
-        com.fasterxml.jackson.databind.JsonNode toAdd = stats.statsOf(trackerKey);
-        if (wasVictorious == 1) {
-            upgradeStat.setWins(upgradeStat.getWins() + 1);
-        } else if (wasVictorious == -1) {
-            upgradeStat.setLosses(upgradeStat.getLosses() + 1);
-        } else {
-            upgradeStat.setTies(upgradeStat.getTies() + 1);
-        }
-        if (toAdd.has(StatEngine.StatEnum.GOALS.toString())) {
-            upgradeStat.setGoals(upgradeStat.getGoals() + toAdd.get(StatEngine.StatEnum.GOALS.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.SIDEGOALS.toString())) {
-            upgradeStat.setSidegoals(upgradeStat.getSidegoals() + toAdd.get(StatEngine.StatEnum.SIDEGOALS.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.POINTS.toString())) {
-            upgradeStat.setPoints(upgradeStat.getPoints() + toAdd.get(StatEngine.StatEnum.POINTS.toString()).asDouble());
-        }
-        if (toAdd.has(StatEngine.StatEnum.STEALS.toString())) {
-            upgradeStat.setSteals(upgradeStat.getSteals() + toAdd.get(StatEngine.StatEnum.STEALS.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.BLOCKS.toString())) {
-            upgradeStat.setBlocks(upgradeStat.getBlocks() + toAdd.get(StatEngine.StatEnum.BLOCKS.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.PASSES.toString())) {
-            upgradeStat.setPasses(upgradeStat.getPasses() + toAdd.get(StatEngine.StatEnum.PASSES.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.KILLS.toString())) {
-            upgradeStat.setKills(upgradeStat.getKills() + toAdd.get(StatEngine.StatEnum.KILLS.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.DEATHS.toString())) {
-            upgradeStat.setDeaths(upgradeStat.getDeaths() + toAdd.get(StatEngine.StatEnum.DEATHS.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.TURNOVERS.toString())) {
-            upgradeStat.setTurnovers(upgradeStat.getTurnovers() + toAdd.get(StatEngine.StatEnum.TURNOVERS.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.KILLASSISTS.toString())) {
-            upgradeStat.setKillassists(upgradeStat.getKillassists() + toAdd.get(StatEngine.StatEnum.KILLASSISTS.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.GOALASSISTS.toString())) {
-            upgradeStat.setGoalassists(upgradeStat.getGoalassists() + toAdd.get(StatEngine.StatEnum.GOALASSISTS.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.SIDEGOALASSISTS.toString())) {
-            upgradeStat.setSidegoalassists(upgradeStat.getSidegoalassists() + toAdd.get(StatEngine.StatEnum.SIDEGOALASSISTS.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.REBOUND.toString())) {
-            upgradeStat.setRebounds(upgradeStat.getRebounds() + toAdd.get(StatEngine.StatEnum.REBOUND.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.SAVES.toString())) {
-            upgradeStat.setSaves(upgradeStat.getSaves() + toAdd.get(StatEngine.StatEnum.SAVES.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.LASTHITS.toString())) {
-            upgradeStat.setLasthits(upgradeStat.getLasthits() + toAdd.get(StatEngine.StatEnum.LASTHITS.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.MINIONDAMAGE.toString())) {
-            upgradeStat.setMiniondamage(upgradeStat.getMiniondamage() + toAdd.get(StatEngine.StatEnum.MINIONDAMAGE.toString()).asDouble());
-        }
-        if (toAdd.has(StatEngine.StatEnum.UPGRADESGOLD.toString())) {
-            upgradeStat.setUpgradesgold(upgradeStat.getUpgradesgold() + toAdd.get(StatEngine.StatEnum.UPGRADESGOLD.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.CONSUMABLESGOLD.toString())) {
-            upgradeStat.setConsumablesgold(upgradeStat.getConsumablesgold() + toAdd.get(StatEngine.StatEnum.CONSUMABLESGOLD.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.SIDEGOAL_SAVES.toString())) {
-            upgradeStat.setSidegoalsaves(upgradeStat.getSidegoalsaves() + toAdd.get(StatEngine.StatEnum.SIDEGOAL_SAVES.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.CENTERGOAL_SAVES.toString())) {
-            upgradeStat.setCentergoalsaves(upgradeStat.getCentergoalsaves() + toAdd.get(StatEngine.StatEnum.CENTERGOAL_SAVES.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.SIDEGOALS_CONCEDED.toString())) {
-            upgradeStat.setSidegoalsconceded(upgradeStat.getSidegoalsconceded() + toAdd.get(StatEngine.StatEnum.SIDEGOALS_CONCEDED.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.GOALS_CONCEDED.toString())) {
-            upgradeStat.setGoalsconceded(upgradeStat.getGoalsconceded() + toAdd.get(StatEngine.StatEnum.GOALS_CONCEDED.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.MANASPENT.toString())) {
-            upgradeStat.setManaspent(upgradeStat.getManaspent() + toAdd.get(StatEngine.StatEnum.MANASPENT.toString()).asInt());
-        }
+        accumulateAggregateStats(upgradeStat, stats.statsOf(trackerKey), wasVictorious);
         upgradeClassStatService.saveUpgradeClassStat(upgradeStat);
     }
 
@@ -665,83 +526,7 @@ public class PersistenceManager {
         if (stat == null) {
             stat = new BuildOrderStat(buildName);
         }
-        com.fasterxml.jackson.databind.JsonNode toAdd = stats.statsOf(trackerKey);
-        if (wasVictorious == 1) {
-            stat.setWins(stat.getWins() + 1);
-        } else if (wasVictorious == -1) {
-            stat.setLosses(stat.getLosses() + 1);
-        } else {
-            stat.setTies(stat.getTies() + 1);
-        }
-        if (toAdd.has(StatEngine.StatEnum.GOALS.toString())) {
-            stat.setGoals(stat.getGoals() + toAdd.get(StatEngine.StatEnum.GOALS.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.SIDEGOALS.toString())) {
-            stat.setSidegoals(stat.getSidegoals() + toAdd.get(StatEngine.StatEnum.SIDEGOALS.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.POINTS.toString())) {
-            stat.setPoints(stat.getPoints() + toAdd.get(StatEngine.StatEnum.POINTS.toString()).asDouble());
-        }
-        if (toAdd.has(StatEngine.StatEnum.STEALS.toString())) {
-            stat.setSteals(stat.getSteals() + toAdd.get(StatEngine.StatEnum.STEALS.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.BLOCKS.toString())) {
-            stat.setBlocks(stat.getBlocks() + toAdd.get(StatEngine.StatEnum.BLOCKS.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.PASSES.toString())) {
-            stat.setPasses(stat.getPasses() + toAdd.get(StatEngine.StatEnum.PASSES.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.KILLS.toString())) {
-            stat.setKills(stat.getKills() + toAdd.get(StatEngine.StatEnum.KILLS.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.DEATHS.toString())) {
-            stat.setDeaths(stat.getDeaths() + toAdd.get(StatEngine.StatEnum.DEATHS.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.TURNOVERS.toString())) {
-            stat.setTurnovers(stat.getTurnovers() + toAdd.get(StatEngine.StatEnum.TURNOVERS.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.KILLASSISTS.toString())) {
-            stat.setKillassists(stat.getKillassists() + toAdd.get(StatEngine.StatEnum.KILLASSISTS.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.GOALASSISTS.toString())) {
-            stat.setGoalassists(stat.getGoalassists() + toAdd.get(StatEngine.StatEnum.GOALASSISTS.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.SIDEGOALASSISTS.toString())) {
-            stat.setSidegoalassists(stat.getSidegoalassists() + toAdd.get(StatEngine.StatEnum.SIDEGOALASSISTS.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.REBOUND.toString())) {
-            stat.setRebounds(stat.getRebounds() + toAdd.get(StatEngine.StatEnum.REBOUND.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.SAVES.toString())) {
-            stat.setSaves(stat.getSaves() + toAdd.get(StatEngine.StatEnum.SAVES.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.LASTHITS.toString())) {
-            stat.setLasthits(stat.getLasthits() + toAdd.get(StatEngine.StatEnum.LASTHITS.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.MINIONDAMAGE.toString())) {
-            stat.setMiniondamage(stat.getMiniondamage() + toAdd.get(StatEngine.StatEnum.MINIONDAMAGE.toString()).asDouble());
-        }
-        if (toAdd.has(StatEngine.StatEnum.UPGRADESGOLD.toString())) {
-            stat.setUpgradesgold(stat.getUpgradesgold() + toAdd.get(StatEngine.StatEnum.UPGRADESGOLD.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.CONSUMABLESGOLD.toString())) {
-            stat.setConsumablesgold(stat.getConsumablesgold() + toAdd.get(StatEngine.StatEnum.CONSUMABLESGOLD.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.SIDEGOAL_SAVES.toString())) {
-            stat.setSidegoalsaves(stat.getSidegoalsaves() + toAdd.get(StatEngine.StatEnum.SIDEGOAL_SAVES.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.CENTERGOAL_SAVES.toString())) {
-            stat.setCentergoalsaves(stat.getCentergoalsaves() + toAdd.get(StatEngine.StatEnum.CENTERGOAL_SAVES.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.SIDEGOALS_CONCEDED.toString())) {
-            stat.setSidegoalsconceded(stat.getSidegoalsconceded() + toAdd.get(StatEngine.StatEnum.SIDEGOALS_CONCEDED.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.GOALS_CONCEDED.toString())) {
-            stat.setGoalsconceded(stat.getGoalsconceded() + toAdd.get(StatEngine.StatEnum.GOALS_CONCEDED.toString()).asInt());
-        }
-        if (toAdd.has(StatEngine.StatEnum.MANASPENT.toString())) {
-            stat.setManaspent(stat.getManaspent() + toAdd.get(StatEngine.StatEnum.MANASPENT.toString()).asInt());
-        }
+        accumulateAggregateStats(stat, stats.statsOf(trackerKey), wasVictorious);
         buildOrderStatService.saveBuildOrderStat(stat);
     }
 

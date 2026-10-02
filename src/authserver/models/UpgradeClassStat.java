@@ -4,7 +4,7 @@ import javax.persistence.*;
 
 @Entity
 @Table(name = "upgradeclassstat")
-public class UpgradeClassStat {
+public class UpgradeClassStat implements AggregateStatTracker {
 
     public UpgradeClassStat(String upgrade) {
         this.upgrade = upgrade;

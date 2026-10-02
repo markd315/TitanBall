@@ -19,10 +19,10 @@ public class AbilityPositionHelper {
                 context.c.GOALIE_Y_MAX - (context.c.GOALIE_Y_MIN) + 10);
         if (goalA.intersects(corners) ||
                 goalH.intersects(corners) ||
-                goalA.contains(new CollisionMath.Point2D(corners.minX(), corners.minY())) ||
-                goalA.contains(new CollisionMath.Point2D(corners.minX() + corners.width(), corners.minY() + corners.height())) ||
-                goalH.contains(new CollisionMath.Point2D(corners.minX(), corners.minY())) ||
-                goalH.contains(new CollisionMath.Point2D(corners.minX() + corners.width(), corners.minY() + corners.height()))) {
+                goalA.contains(corners.minX(), corners.minY()) ||
+                goalA.contains(corners.minX() + corners.width(), corners.minY() + corners.height()) ||
+                goalH.contains(corners.minX(), corners.minY()) ||
+                goalH.contains(corners.minX() + corners.width(), corners.minY() + corners.height())) {
             return false; // redzone
         }
         return inBounds(corners, context);
@@ -33,8 +33,7 @@ public class AbilityPositionHelper {
                 context.c.MAX_X - context.c.MIN_X,
                 context.c.MAX_Y - context.c.MIN_Y);
         return corners.intersects(bounds) ||
-                bounds.contains(new CollisionMath.Point2D(corners.minX(), corners.minY())) ||
-                bounds.contains(new CollisionMath.Point2D(corners.minX(), corners.minY()));
+                bounds.contains(corners.minX(), corners.minY());
     }
 
     public static boolean isPositionOccupied(double testX, double testY, Titan caster, GameEngine context) {

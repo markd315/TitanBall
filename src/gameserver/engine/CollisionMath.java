@@ -39,9 +39,17 @@ public class CollisionMath   {
     public record RectangleData(double x, double y, double width, double height) {}
 
     public static boolean ellipseBoundsIntersect(EllipseData e1, EllipseData e2) {
-        Bounds b1 = new Bounds(e1.centerX() - e1.radiusX(), e1.centerY() - e1.radiusY(), e1.radiusX() * 2, e1.radiusY() * 2);
-        Bounds b2 = new Bounds(e2.centerX() - e2.radiusX(), e2.centerY() - e2.radiusY(), e2.radiusX() * 2, e2.radiusY() * 2);
-        return b1.intersects(b2);
+        double minX1 = e1.centerX() - e1.radiusX();
+        double maxX1 = e1.centerX() + e1.radiusX();
+        double minY1 = e1.centerY() - e1.radiusY();
+        double maxY1 = e1.centerY() + e1.radiusY();
+
+        double minX2 = e2.centerX() - e2.radiusX();
+        double maxX2 = e2.centerX() + e2.radiusX();
+        double minY2 = e2.centerY() - e2.radiusY();
+        double maxY2 = e2.centerY() + e2.radiusY();
+
+        return minX1 < maxX2 && maxX1 > minX2 && minY1 < maxY2 && maxY1 > minY2;
     }
 
     public enum CollisionSide {

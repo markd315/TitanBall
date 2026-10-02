@@ -9,7 +9,7 @@ export function degreesFromCoords(dx, dy) {
 }
 
 export function distance(x1, y1, x2, y2) {
-    return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+    return Math.hypot(x2 - x1, y2 - y1);
 }
 
 export function updateCamera(game, state) {
@@ -22,10 +22,8 @@ export function updateCamera(game, state) {
         }
         // Center player on the screen. Screen resolution is 1920x960.
         // Center of screen is 960 (half of 1920), and 480 (half of 960).
-        state.camX = Math.floor(myTitan.X + 35 - 960);
-        if (state.camX < 0) state.camX = 0;
-        if (state.camX > 188) state.camX = 188; // Clamp based on 2108x1214 field texture dimensions (2108 - 1920 = 188)
-        
+        // Clamp based on 2108x1214 field texture dimensions (2108 - 1920 = 188)
+        state.camX = Math.max(0, Math.min(188, Math.floor(myTitan.X + 35 - 960)));
         state.camY = 130; // Set camera Y offset to compress top scorebug header space symmetrically
     }
 }

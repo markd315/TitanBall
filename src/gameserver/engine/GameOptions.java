@@ -59,13 +59,13 @@ public class GameOptions   {
     }
 
     public double getAiRating() {
-        switch (aiDifficultyIndex) {
-            case 1: return 900.0;  // Easy: 900 ELO
-            case 2: return 1000.0; // Medium: 1000 ELO
-            case 3: return 1100.0; // Hard: 1100 ELO
-            case 4: return 1200.0; // Expert: 1200 ELO
-            default: return 1000.0;
-        }
+        return switch (aiDifficultyIndex) {
+            case 1 -> 900.0;  // Easy: 900 ELO
+            case 2 -> 1000.0; // Medium: 1000 ELO
+            case 3 -> 1100.0; // Hard: 1100 ELO
+            case 4 -> 1200.0; // Expert: 1200 ELO
+            default -> 1000.0;
+        };
     }
 
     public int getAiReactionTimeMinMs() {
@@ -77,16 +77,14 @@ public class GameOptions   {
     }
 
     public int getAiReactionTimeMinMs(boolean isGoalie, double goalieRatio) {
-        int base;
-        switch (aiDifficultyIndex) {
-            case 0: base = 2000; break; // Beginner: 2000-5000ms
-            case 1: base = 1200; break; // Easy: 1200-1700ms
-            case 2: base = 500;  break; // Medium: 500-1200ms
-            case 3: base = 200;  break; // Hard: 200-700ms
-            case 4: base = 0;    break; // Expert: 0-200ms
-            case 5: base = 0;    break; // Perfect: 0ms every tick
-            default: base = 500; break;
-        }
+        int base = switch (aiDifficultyIndex) {
+            case 0 -> 2000; // Beginner: 2000-5000ms
+            case 1 -> 1200; // Easy: 1200-1700ms
+            case 2 -> 500;  // Medium: 500-1200ms
+            case 3 -> 200;  // Hard: 200-700ms
+            case 4, 5 -> 0; // Expert: 0-200ms, Perfect: 0ms
+            default -> 500;
+        };
         return isGoalie ? (int) Math.round(base * goalieRatio) : base;
     }
 
@@ -99,22 +97,31 @@ public class GameOptions   {
     }
 
     public int getAiReactionTimeMaxMs(boolean isGoalie, double goalieRatio) {
-        int base;
-        switch (aiDifficultyIndex) {
-            case 0: base = 5000; break; // Beginner: 2000-5000ms
-            case 1: base = 1700; break; // Easy: 1200-1700ms
-            case 2: base = 1200; break; // Medium: 500-1200ms
-            case 3: base = 700;  break; // Hard: 200-700ms
-            case 4: base = 200;  break; // Expert: 0-200ms
-            case 5: base = 0;    break; // Perfect: 0ms every tick
-            default: base = 1200; break;
-        }
+        int base = switch (aiDifficultyIndex) {
+            case 0 -> 5000; // Beginner: 2000-5000ms
+            case 1 -> 1700; // Easy: 1200-1700ms
+            case 2 -> 1200; // Medium: 500-1200ms
+            case 3 -> 700;  // Hard: 200-700ms
+            case 4 -> 200;  // Expert: 0-200ms
+            case 5 -> 0;    // Perfect: 0ms every tick
+            default -> 1200;
+        };
         return isGoalie ? (int) Math.round(base * goalieRatio) : base;
     }
 
     /** 1v1 scrimmage is the only mode where guardians may be omitted. */
     public boolean allowsNoGoalie() {
         return playerIndex >= 0 && playerIndex < playersVal.length && playersVal[playerIndex] == 1;
+    }
+
+    public boolean is1v1() {
+        String srv = toStringSrv();
+        return playerIndex == 4
+                || "/1/1/1/5/2/9999/10/12".equals(srv)
+                || "/4/1/1/5/2/9999/10/12".equals(srv)
+                || "/1/1/1/5/2/9999/10/20".equals(srv)
+                || "/4/1/1/5/2/9999/10/20".equals(srv)
+                || allowsNoGoalie();
     }
 
     public boolean goaliesDisabled() {
@@ -164,25 +171,17 @@ public class GameOptions   {
     }
 
     public String disp(int optionLine){
-        switch (optionLine){
-            case 0:
-                return playersDisp[playerIndex];
-            case 1:
-                return goalieDisp[goalieIndex];
-            case 2:
-                return bestOfDisp[bestOfIndex];
-            case 3:
-                return playToDisp[playToIndex];
-            case 4:
-                return winByDisp[winByIndex];
-            case 5:
-                return hardWinDisp[hardWinIndex];
-            case 6:
-                return suddenDeathDisp[suddenDeathIndex];
-            case 7:
-                return tieDisp[tieIndex];
-        }
-        return "bad";
+        return switch (optionLine) {
+            case 0 -> playersDisp[playerIndex];
+            case 1 -> goalieDisp[goalieIndex];
+            case 2 -> bestOfDisp[bestOfIndex];
+            case 3 -> playToDisp[playToIndex];
+            case 4 -> winByDisp[winByIndex];
+            case 5 -> hardWinDisp[hardWinIndex];
+            case 6 -> suddenDeathDisp[suddenDeathIndex];
+            case 7 -> tieDisp[tieIndex];
+            default -> "bad";
+        };
     }
 
     public void advance(int optionLine, int dist){
@@ -215,14 +214,7 @@ public class GameOptions   {
     }
 
     public int circleAdvance(int curr, int inc, int[] bounds){
-        curr += inc;
-        if(curr >= bounds.length){
-            curr -= bounds.length;
-        }
-        if(curr < 0){
-            curr += bounds.length;
-        }
-        return curr;
+        return Math.floorMod(curr + inc, bounds.length);
     }
 
     public void getDisplay(int code){
@@ -250,7 +242,7 @@ public class GameOptions   {
         sb.append(aiDifficultyIndex);
         sb.append("/");
         sb.append(isHybrid ? 1 : 0);
-        return new String(sb);
+        return sb.toString();
     }
 
     public String toString(){
@@ -271,7 +263,7 @@ public class GameOptions   {
         sb.append(suddenDeathVal[suddenDeathIndex]);
         sb.append("/");
         sb.append(tieVal[tieIndex]);
-        return new String(sb);
+        return sb.toString();
     }
 
     public static int[] getPlayersVal() {

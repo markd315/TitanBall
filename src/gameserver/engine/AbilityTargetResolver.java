@@ -75,7 +75,7 @@ public class AbilityTargetResolver {
         }
 
         // 2. Target enemy ball carrier if one exists
-        TeamAffiliation enemyTeam = (caster.team == TeamAffiliation.HOME) ? TeamAffiliation.AWAY : TeamAffiliation.HOME;
+        TeamAffiliation enemyTeam = (caster.team != null) ? caster.team.opposite() : TeamAffiliation.AWAY;
         java.util.Optional<Titan> possessorOpt = context.titanInPossession();
         if (possessorOpt.isPresent() && possessorOpt.get().team == enemyTeam
                 && !context.effectPool.hasEffect(possessorOpt.get(), EffectId.DEAD)) {

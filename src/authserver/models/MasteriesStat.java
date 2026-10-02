@@ -4,7 +4,7 @@ import javax.persistence.*;
 
 @Entity
 @Table(name = "masteriesstat")
-public class MasteriesStat {
+public class MasteriesStat implements AggregateStatTracker {
 
     public MasteriesStat(String role) {
         this.role = role;

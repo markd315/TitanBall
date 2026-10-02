@@ -4,7 +4,7 @@ import javax.persistence.*;
 
 @Entity
 @Table(name = "buildorderstat")
-public class BuildOrderStat {
+public class BuildOrderStat implements AggregateStatTracker {
 
     public BuildOrderStat(String buildname) {
         this.buildname = buildname;

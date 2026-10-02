@@ -5,7 +5,7 @@ import {
     tabNames, tabColors, tabKeys,
     isNodeUnlocked, getNodeDef, getNodeConfigKey,
     HARDCODED_COSTS, ABILITY_TOOLTIPS, TREE_SHORT_NAME
-} from '../render/hud.js';
+} from '../data/goalieTree.js';
 
 // ─── constants & presets ───────────────────────────────────────────────────────
 export const EMPTY_SLOT_COLOR = '#475569';

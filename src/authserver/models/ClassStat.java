@@ -4,7 +4,7 @@ import javax.persistence.*;
 
 @Entity
 @Table(name = "classstat")
-public class ClassStat{
+public class ClassStat implements AggregateStatTracker {
 
     public ClassStat(String className){
         this.role = className;
@@ -237,32 +237,48 @@ public class ClassStat{
         this.turnovers = turnovers;
     }
 
-    public int getKillassists() {
+    public Integer getKillassists() {
         return killassists;
+    }
+
+    public void setKillassists(Integer killassists) {
+        this.killassists = killassists != null ? killassists : 0;
     }
 
     public void setKillassists(int killassists) {
         this.killassists = killassists;
     }
 
-    public int getGoalassists() {
+    public Integer getGoalassists() {
         return goalassists;
+    }
+
+    public void setGoalassists(Integer goalassists) {
+        this.goalassists = goalassists != null ? goalassists : 0;
     }
 
     public void setGoalassists(int goalassists) {
         this.goalassists = goalassists;
     }
 
-    public int getSidegoalassists() {
+    public Integer getSidegoalassists() {
         return sidegoalassists;
+    }
+
+    public void setSidegoalassists(Integer sidegoalassists) {
+        this.sidegoalassists = sidegoalassists != null ? sidegoalassists : 0;
     }
 
     public void setSidegoalassists(int sidegoalassists) {
         this.sidegoalassists = sidegoalassists;
     }
 
-    public int getRebounds() {
+    public Integer getRebounds() {
         return rebounds;
+    }
+
+    public void setRebounds(Integer rebounds) {
+        this.rebounds = rebounds != null ? rebounds : 0;
     }
 
     public void setRebounds(int rebounds) {
